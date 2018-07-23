@@ -1,0 +1,12 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+.fonttools-rtl {
+  font-family: var(--font), proxima-nova, "Helvetica Neue", Helvetica, Arial,
+    sans-serif !important;
+  direction: rtl !important;
+  text-align: right !important;
+}

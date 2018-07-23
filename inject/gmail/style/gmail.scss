@@ -1,0 +1,26 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), Roboto, RobotoDraft, Helvetica, Arial, sans-serif !important;
+  td,
+  input,
+  textarea,
+  select {
+    font-family: var(--font), Roboto, RobotoDraft, Helvetica, Arial, sans-serif !important;
+  }
+  *[dir="rtl"]:not(.gmail_default),
+  *[dir="rtl"]:not(.editable) {
+    font-family: var(--font), "Roboto", sans-serif;
+  }
+  .editable div[dir="rtl"] {
+    font-family: sans-serif;
+  }
+}
+
+.fonttools-rtl {
+  font-family: var(--font), "Roboto", sans-serif !important;
+}

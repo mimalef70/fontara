@@ -1,0 +1,14 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), "Roboto", sans-serif !important;
+  line-height: 1.7;
+  *[dir="rtl"] {
+    font-family: var(--font), "Open Sans", sans-serif !important;
+    line-height: 1.7;
+  }
+}

@@ -1,0 +1,18 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), Helvetica Neue, Arial, Helvetica, sans-serif !important;
+  button,
+  html,
+  input,
+  select,
+  textarea,
+  .canonical-card div[class*="sc"],
+  .markeddown {
+    font-family: var(--font), Helvetica Neue, Arial, Helvetica, sans-serif !important;
+  }
+}

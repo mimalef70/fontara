@@ -1,0 +1,43 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  line-height: 1.7 !important;
+
+  .TwitterCard {
+    font-family: var(--font), "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    line-height: 1.7 !important;
+  }
+  .TweetTextSize,
+  .tweet {
+    line-height: 1.7 !important;
+  }
+
+  .QuoteTweet-text {
+    max-height: 90px !important;
+  }
+
+  &:not(.rtl) {
+    .stream-item-footer,
+    .global-nav [role="navigation"] {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    }
+  }
+  &.rtl {
+    .ProfileTweet-actionCount {
+      line-height: 2;
+    }
+  }
+
+  // *:lang(fa) {
+  //   line-height: 1.7 !important;
+  // }
+
+  // .tweet-text {
+  //   line-height: 1.7 !important;
+  // }
+}

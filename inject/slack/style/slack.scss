@@ -1,0 +1,40 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), "Helvetica Neue", Helvetica, "Segoe UI", Tahoma,
+    Arial, sans-serif !important;
+}
+
+[lang] body {
+  font-family: var(--font), NotoSansJP, Slack-Lato, appleLogo, sans-serif;
+}
+
+[lang] #msg_input,
+[lang="de-DE"] #msg_input.texty_legacy,
+[lang="de-DE"] .texty_legacy,
+[lang="en-US"] #msg_input.texty_legacy,
+[lang="en-US"] .texty_legacy,
+[lang="es-ES"] #msg_input.texty_legacy,
+[lang="es-ES"] .texty_legacy,
+[lang="fr-FR"] #msg_input.texty_legacy,
+[lang="fr-FR"] .texty_legacy {
+  font-family: var(--font), NotoSansJP, Slack-Lato, appleLogo, sans-serif !important;
+}
+
+pre {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.c-message__body.slack-rtl {
+  text-align: right;
+}
+
+.rtl-input .ql-editor {
+  direction: rtl !important;
+  text-align: right !important;
+}

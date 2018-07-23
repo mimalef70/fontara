@@ -1,0 +1,24 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), sans-serif !important;
+  line-height: 1.7 !important;
+}
+
+.read,
+.title,
+.entryBody,
+.summary {
+  font-family: var(--font), "Slab Serif", sans-serif !important;
+}
+
+h1,
+h2,
+h3,
+[class*="fx"] {
+  font-family: var(--font), sans-serif !important;
+}

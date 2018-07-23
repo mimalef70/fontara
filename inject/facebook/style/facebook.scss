@@ -1,0 +1,31 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), Helvetica, Arial, sans-serif !important;
+  &._-kb.mac {
+    font-family: var(--font), Helvetica Neue, Helvetica, Arial, sans-serif !important;
+  }
+  &._-kb.apple {
+    font-family: var(--font), system-ui, -apple-system, BlinkMacSystemFont,
+      ".SFNSText-Regular", sans-serif !important;
+  }
+  &._-kb.segoe {
+    font-family: var(--font), Segoe UI Historic, Segoe UI, Helvetica, Arial,
+      sans-serif !important;
+  }
+  &._-kb.roboto {
+    font-family: var(--font), Roboto, Helvetica, Arial, sans-serif !important;
+  }
+  button,
+  input,
+  label,
+  select,
+  td,
+  textarea {
+    font-family: var(--font), Helvetica, Arial, sans-serif !important;
+  }
+}

@@ -1,0 +1,1705 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  li-icon[type^="premium-"] text {
+    font-family: var(--font), Source Sans Pro, Helvetica, Arial, sans-serif;
+  }
+  artdeco-slider + datalist li,
+  artdeco-slider + datalist option,
+  artdeco-slider + ul li,
+  artdeco-slider + ul option,
+  html body,
+  label {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  input,
+  textarea {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .large-header,
+  .large-text,
+  .medium-text,
+  .small-text,
+  body,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  p {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  blockquote {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  artdeco-pill[type="toggle"] button,
+  artdeco-pill[type="toggle"] label,
+  artdeco-pill[type="input"] input[type="text"],
+  artdeco-pill[type="input"] label .artdeco-pill-label-text,
+  artdeco-toggle-pill button,
+  artdeco-toggle-pill label {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  artdeco-modal-header h1,
+  artdeco-modal-header h2,
+  artdeco-modal-header h3,
+  artdeco-modal-header h4,
+  artdeco-modal-header h5,
+  artdeco-modal-header h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  artdeco-chip .artdeco-chip-text,
+  artdeco-chip[size="large"],
+  artdeco-tabs
+    artdeco-spotlight-tablist[role="tablist"]
+    artdeco-spotlight-tab[role="tab"]
+    .artdeco-tab-primary-text,
+  artdeco-tabs artdeco-tablist[role="tablist"] artdeco-tab[role="tab"] {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  artdeco-tabs
+    artdeco-spotlight-tablist[role="tablist"]
+    artdeco-spotlight-tab[role="tab"]
+    .artdeco-tab-secondary-text {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  artdeco-dropdown-header,
+  artdeco-dropdown-header dl > dt,
+  artdeco-dropdown-header h2,
+  artdeco-dropdown-header h3,
+  artdeco-dropdown-header h4,
+  artdeco-dropdown-header h5,
+  artdeco-dropdown-header h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  artdeco-dropdown-item,
+  artdeco-dropdown-item :not(:first-child) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  artdeco-dropdown-item:not([disabled]):hover,
+  artdeco-inline-feedback {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .card > h1,
+  .card > h2,
+  .card > h3,
+  .card > h4,
+  .card > h5,
+  .card > h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .card-1x2 > h1,
+  .card-1x2 > h2,
+  .card-1x2 > h3,
+  .card-1x2 > h4,
+  .card-1x2 > h5,
+  .card-1x2 > h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .card-3x2 > h1,
+  .card-3x2 > h2,
+  .card-3x2 > h3,
+  .card-3x2 > h4,
+  .card-3x2 > h5,
+  .card-3x2 > h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .artdeco-dropdown dl a,
+  .artdeco-dropdown dl button,
+  .artdeco-dropdown dl > dt,
+  .artdeco-dropdown h1,
+  .artdeco-dropdown h2,
+  .artdeco-dropdown h3,
+  .artdeco-dropdown h4,
+  .artdeco-dropdown h5,
+  .artdeco-dropdown h6,
+  .artdeco-dropdown ol a,
+  .artdeco-dropdown ol button,
+  .artdeco-dropdown ul a,
+  .artdeco-dropdown ul button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .artdeco-dropdown dl a :not(:first-child),
+  .artdeco-dropdown dl button :not(:first-child),
+  .artdeco-dropdown ol a :not(:first-child),
+  .artdeco-dropdown ol button :not(:first-child),
+  .artdeco-dropdown ul a :not(:first-child),
+  .artdeco-dropdown ul button :not(:first-child) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .artdeco-dropdown-menu dl > dt,
+  .artdeco-dropdown-menu h1,
+  .artdeco-dropdown-menu h2,
+  .artdeco-dropdown-menu h3,
+  .artdeco-dropdown-menu h4,
+  .artdeco-dropdown-menu h5,
+  .artdeco-dropdown-menu h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .artdeco-dropdown-menu dl a,
+  .artdeco-dropdown-menu dl button,
+  .artdeco-dropdown-menu ol a,
+  .artdeco-dropdown-menu ol button,
+  .artdeco-dropdown-menu ul a,
+  .artdeco-dropdown-menu ul button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .artdeco-dropdown-menu dl a :not(:first-child),
+  .artdeco-dropdown-menu dl button :not(:first-child),
+  .artdeco-dropdown-menu ol a :not(:first-child),
+  .artdeco-dropdown-menu ol button :not(:first-child),
+  .artdeco-dropdown-menu ul a :not(:first-child),
+  .artdeco-dropdown-menu ul button :not(:first-child) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .hovercard,
+  .hovercard-bottom,
+  .hovercard-left,
+  .hovercard-right,
+  .hovercard-top {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .badge abbr {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .pagination > li.selected,
+  .pagination > li > a,
+  .pagination > li > button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .list h1,
+  .list h2,
+  .list h3,
+  .list h4,
+  .list h5,
+  .list h6,
+  .list > dl > dt {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  @media (min-width: 769px) {
+    .list h1,
+    .list h2,
+    .list h3,
+    .list h4,
+    .list h5,
+    .list h6,
+    .list > dl > dt {
+      font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+        Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+        Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+        Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+    }
+  }
+  .list button,
+  .list > dl,
+  .list > ol,
+  .list > ul {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .small-degree-label {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .tooltip,
+  .tooltip-inverse {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityPhoto-circle-1-rollup,
+  .EntityPhoto-circle-3-rollup {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .toggle-24dp input[type="checkbox"] + label {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityPhoto-circle-4-rollup,
+  .EntityPhoto-circle-4-stackedRollup {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2 dt,
+  .EntityLockup-square-2 dt h2,
+  .EntityLockup-square-2 dt h3,
+  .EntityLockup-square-2 dt h4,
+  .EntityLockup-square-2 dt h5,
+  .EntityLockup-square-2 dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2 .badge,
+  .EntityLockup-square-2 dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2-company dt,
+  .EntityLockup-square-2-company dt h2,
+  .EntityLockup-square-2-company dt h3,
+  .EntityLockup-square-2-company dt h4,
+  .EntityLockup-square-2-company dt h5,
+  .EntityLockup-square-2-company dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2-company .badge,
+  .EntityLockup-square-2-company dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2-ghost-company dt,
+  .EntityLockup-square-2-ghost-company dt h2,
+  .EntityLockup-square-2-ghost-company dt h3,
+  .EntityLockup-square-2-ghost-company dt h4,
+  .EntityLockup-square-2-ghost-company dt h5,
+  .EntityLockup-square-2-ghost-company dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2-ghost-company .badge,
+  .EntityLockup-square-2-ghost-company dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2-ghost-school dt,
+  .EntityLockup-square-2-ghost-school dt h2,
+  .EntityLockup-square-2-ghost-school dt h3,
+  .EntityLockup-square-2-ghost-school dt h4,
+  .EntityLockup-square-2-ghost-school dt h5,
+  .EntityLockup-square-2-ghost-school dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-2-ghost-school .badge,
+  .EntityLockup-square-2-ghost-school dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-4-ghost-company dt,
+  .EntityLockup-square-4-ghost-company dt h2,
+  .EntityLockup-square-4-ghost-company dt h3,
+  .EntityLockup-square-4-ghost-company dt h4,
+  .EntityLockup-square-4-ghost-company dt h5,
+  .EntityLockup-square-4-ghost-company dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-4-ghost-company .badge,
+  .EntityLockup-square-4-ghost-company dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-5-ghost-company dt,
+  .EntityLockup-square-5-ghost-company dt h2,
+  .EntityLockup-square-5-ghost-company dt h3,
+  .EntityLockup-square-5-ghost-company dt h4,
+  .EntityLockup-square-5-ghost-company dt h5,
+  .EntityLockup-square-5-ghost-company dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-5-ghost-company .badge,
+  .EntityLockup-square-5-ghost-company dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-5-ghost-group dt,
+  .EntityLockup-square-5-ghost-group dt h2,
+  .EntityLockup-square-5-ghost-group dt h3,
+  .EntityLockup-square-5-ghost-group dt h4,
+  .EntityLockup-square-5-ghost-group dt h5,
+  .EntityLockup-square-5-ghost-group dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-5-ghost-group .badge,
+  .EntityLockup-square-5-ghost-group dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-5-ghost-school dt,
+  .EntityLockup-square-5-ghost-school dt h2,
+  .EntityLockup-square-5-ghost-school dt h3,
+  .EntityLockup-square-5-ghost-school dt h4,
+  .EntityLockup-square-5-ghost-school dt h5,
+  .EntityLockup-square-5-ghost-school dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-square-5-ghost-school .badge,
+  .EntityLockup-square-5-ghost-school dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-2 dt,
+  .EntityLockup-circle-2 dt h2,
+  .EntityLockup-circle-2 dt h3,
+  .EntityLockup-circle-2 dt h4,
+  .EntityLockup-circle-2 dt h5,
+  .EntityLockup-circle-2 dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-2 .badge,
+  .EntityLockup-circle-2 dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-2-ghost-person dt,
+  .EntityLockup-circle-2-ghost-person dt h2,
+  .EntityLockup-circle-2-ghost-person dt h3,
+  .EntityLockup-circle-2-ghost-person dt h4,
+  .EntityLockup-circle-2-ghost-person dt h5,
+  .EntityLockup-circle-2-ghost-person dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-2-ghost-person .badge,
+  .EntityLockup-circle-2-ghost-person dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-3-ghost-person dt,
+  .EntityLockup-circle-3-ghost-person dt h2,
+  .EntityLockup-circle-3-ghost-person dt h3,
+  .EntityLockup-circle-3-ghost-person dt h4,
+  .EntityLockup-circle-3-ghost-person dt h5,
+  .EntityLockup-circle-3-ghost-person dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-3-ghost-person .badge,
+  .EntityLockup-circle-3-ghost-person dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-4-ghost-company dt,
+  .EntityLockup-circle-4-ghost-company dt h2,
+  .EntityLockup-circle-4-ghost-company dt h3,
+  .EntityLockup-circle-4-ghost-company dt h4,
+  .EntityLockup-circle-4-ghost-company dt h5,
+  .EntityLockup-circle-4-ghost-company dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-4-ghost-company .badge,
+  .EntityLockup-circle-4-ghost-company dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-4-ghost-person dt,
+  .EntityLockup-circle-4-ghost-person dt h2,
+  .EntityLockup-circle-4-ghost-person dt h3,
+  .EntityLockup-circle-4-ghost-person dt h4,
+  .EntityLockup-circle-4-ghost-person dt h5,
+  .EntityLockup-circle-4-ghost-person dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-4-ghost-person .badge,
+  .EntityLockup-circle-4-ghost-person dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-4 dt,
+  .EntityLockup-circle-4 dt h2,
+  .EntityLockup-circle-4 dt h3,
+  .EntityLockup-circle-4 dt h4,
+  .EntityLockup-circle-4 dt h5,
+  .EntityLockup-circle-4 dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-circle-4 .badge,
+  .EntityLockup-circle-4 dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-company-5 dt,
+  .EntityLockup-company-5 dt h2,
+  .EntityLockup-company-5 dt h3,
+  .EntityLockup-company-5 dt h4,
+  .EntityLockup-company-5 dt h5,
+  .EntityLockup-company-5 dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-company-5 .badge,
+  .EntityLockup-company-5 dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-company-4 dt,
+  .EntityLockup-company-4 dt h2,
+  .EntityLockup-company-4 dt h3,
+  .EntityLockup-company-4 dt h4,
+  .EntityLockup-company-4 dt h5,
+  .EntityLockup-company-4 dt h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .EntityLockup-company-4 .badge,
+  .EntityLockup-company-4 dd:not(.badge) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .label,
+  .label-16dp,
+  .label-16dp-success,
+  .label-accent {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .label-20dp,
+  .label-24dp {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .static-pill {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-12px-white-70\%,
+  .Sans-13px-black-55\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-13px-black-55\%-italic,
+  .Sans-13px-black-55\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-13px-black-100\%,
+  .Sans-13px-black-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-13px-black-70\%,
+  .Sans-13px-black-70\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-13px-black-85\%,
+  .Sans-13px-black-85\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-13px-white-55\%,
+  .Sans-13px-white-70\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-13px-white-85\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-13px-white-100\%,
+  .Sans-13px-white-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-15px-black-55\%,
+  .Sans-15px-black-55\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-15px-black-70\%,
+  .Sans-15px-black-70\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .Sans-15px-black-100\%,
+  .Sans-15px-black-100\%-semibold,
+  .Sans-15px-black-85\%,
+  .Sans-15px-black-85\%-semibold,
+  .Sans-15px-black-85\%-semibold-dense,
+  .Sans-15px-black-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-15px-black-55\%-dense,
+  .Sans-15px-white-70\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-15px-black-70\%-semibold-dense,
+  .Sans-15px-white-70\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-15px-white-85\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-14px-white-100\%,
+  .Sans-15px-white-100\%,
+  .Sans-15px-white-100\%-dense,
+  .Sans-15px-white-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-16px-black-90\%-semibold,
+  .Sans-17px-black-55\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-55\%-dense,
+  .Sans-17px-black-55\%-semibold-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-55\%-open {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-55\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-70\%,
+  .Sans-17px-black-70\%-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-70\%-semibold,
+  .Sans-17px-black-70\%-semibold-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-85\%,
+  .Sans-17px-black-85\%-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-85\%-semibold,
+  .Sans-17px-black-85\%-semibold-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-85\%-open,
+  .Sans-17px-black-90\%-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-90\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-100\%,
+  .Sans-17px-black-100\%-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-black-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-16px-black-55\%-italic,
+  .Sans-17px-white-85\%,
+  .Sans-17px-white-85\%-semibold-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-white-100\%,
+  .Sans-17px-white-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-white-100\%-dense,
+  .Sans-17px-white-100\%-semibold-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-17px-white-100\%-open,
+  .Sans-19px-black-55\%-open {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-19px-black-70\%,
+  .Sans-19px-black-70\%-open {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-19px-black-100\%-semibold,
+  .Sans-19px-black-85\%,
+  .Sans-19px-black-85\%-dense,
+  .Sans-19px-black-85\%-light,
+  .Sans-19px-black-85\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-19px-white-85\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-19px-white-100\%-open,
+  .Sans-19px-white-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-21px-black-55\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-21px-black-70\%,
+  .Sans-21px-black-70\%-open,
+  .Sans-21px-black-70\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-20px-black-90\%,
+  .Sans-21px-black-100\%,
+  .Sans-21px-black-100\%-semibold,
+  .Sans-21px-black-85\%,
+  .Sans-21px-black-85\%-dense,
+  .Sans-21px-black-85\%-light,
+  .Sans-21px-black-85\%-semibold,
+  .Sans-21px-black-85\%-semibold-dense {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-21px-white-85\%-light,
+  .Sans-21px-white-85\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-20px-white-100\%-bold,
+  .Sans-21px-white-100\%,
+  .Sans-21px-white-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-26px-black-70\%-light {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-26px-black-100\%-semibold,
+  .Sans-26px-black-85\%,
+  .Sans-26px-black-85\%-light,
+  .Sans-26px-black-85\%-regular,
+  .Sans-26px-black-85\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .Sans-26px-white-100\%,
+  .Sans-26px-white-100\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-34px-black-100\%,
+  .Sans-34px-black-85\%,
+  .Sans-34px-black-85\%-light,
+  .Sans-34px-black-85\%-semibold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-34px-white-100\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-42px-black-85\%-regular {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-14px-black-90\%,
+  .Sans-14px-black-90\%-bold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-14px-black-60\%,
+  .Sans-14px-black-75\%,
+  .Sans-14px-white-100\%,
+  .Sans-14px-white-70\% {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .Sans-16px-black-90\%-bold,
+  .Sans-20px-black-90\%-bold {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .type-ahead-input input,
+  .type-ahead-input-wrapper > button,
+  .type-ahead-result-info p {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .type-ahead-result-info h3 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .type-ahead-wormhole
+    .type-ahead-wrapper.type-ahead-theme-primary
+    .type-ahead-input-wrapper
+    > button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .entity .browsemap h2,
+  .entity h2,
+  .entity p {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .entity .sub-title-description,
+  .entity .title-description {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .entity .empty-state {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .time-ago {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .global-title-container .global-title-text,
+  .sub-nav-item a,
+  .sub-nav-item button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .actor-list .actor-item .headline,
+  .actor-list .actor-item .name,
+  .artdeco-container-card-action-bar,
+  .artdeco-feedback__message,
+  .distance-badge,
+  .not-found__footer,
+  .not-found__main-cta,
+  .not-found__main-heading,
+  .not-found__main-subheading {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .entity-item p,
+  .entity-list-item .insight p {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .entity-list-item .insight .name {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .entity-item .name {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .profile-item .location,
+  .quote-item .quoted-text {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .img-edit-button--text .img-edit-button__dropdown dl > dt,
+  .img-edit-button--text .img-edit-button__dropdown h1,
+  .img-edit-button--text .img-edit-button__dropdown h2,
+  .img-edit-button--text .img-edit-button__dropdown h3,
+  .img-edit-button--text .img-edit-button__dropdown h4,
+  .img-edit-button--text .img-edit-button__dropdown h5,
+  .img-edit-button--text .img-edit-button__dropdown h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .img-edit-button--text .img-edit-button__dropdown dl a,
+  .img-edit-button--text .img-edit-button__dropdown dl button,
+  .img-edit-button--text .img-edit-button__dropdown ol a,
+  .img-edit-button--text .img-edit-button__dropdown ol button,
+  .img-edit-button--text .img-edit-button__dropdown ul a,
+  .img-edit-button--text .img-edit-button__dropdown ul button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .img-edit-button--text .img-edit-button__dropdown dl a :not(:first-child),
+  .img-edit-button--text
+    .img-edit-button__dropdown
+    dl
+    button
+    :not(:first-child),
+  .img-edit-button--text .img-edit-button__dropdown ol a :not(:first-child),
+  .img-edit-button--text
+    .img-edit-button__dropdown
+    ol
+    button
+    :not(:first-child),
+  .img-edit-button--text .img-edit-button__dropdown ul a :not(:first-child),
+  .img-edit-button--text
+    .img-edit-button__dropdown
+    ul
+    button
+    :not(:first-child) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .facepile-row.xsmall .people-left,
+  .facepile-row.xxsmall .people-left {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .facepile-row.large .people-left,
+  .facepile-row.medium .people-left,
+  .facepile-row.small .people-left {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .flavor > div p {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .flavor > div strong,
+  .headless-takeover .modal-wormhole .modal-wormhole-content h1,
+  .headless-takeover .shared-modal-dialog h1,
+  .modal-wormhole .headless-takeover .modal-wormhole-content h1 {
+    font-weight: 600;
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .headless-takeover .modal-wormhole .modal-wormhole-content p,
+  .headless-takeover .shared-modal-dialog p,
+  .modal-wormhole .headless-takeover .modal-wormhole-content p {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .headless-takeover .modal-wormhole .modal-wormhole-content button,
+  .headless-takeover .shared-modal-dialog button,
+  .modal-wormhole .headless-takeover .modal-wormhole-content button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .actor-name-with-distance {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .actor-name-with-distance .name-and-icon {
+    display: inline-block;
+  }
+  .notification-item .action,
+  .notification-item .message,
+  .notification-item .title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .numeric-stat-list .numeric-stat {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .results-pagination .results-paginator button,
+  .results-pagination .results-paginator li {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .search-alert__facets-applied {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .smart-hovercard-container .bottom-smart-hovercard,
+  .smart-hovercard-container .left-smart-hovercard,
+  .smart-hovercard-container .right-smart-hovercard,
+  .smart-hovercard-container .top-smart-hovercard {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .toggle-switch input[type="checkbox"] + label {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .entity-all .card h2,
+  .entity-all .card li,
+  .entity-all .card p {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--generic .attachment-filename,
+  .msg-attachment-preview__attachment-type--generic .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--pdf:before {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--pdf .attachment-filename,
+  .msg-attachment-preview__attachment-type--pdf .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--doc:before {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--doc .attachment-filename,
+  .msg-attachment-preview__attachment-type--doc .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--ai:before {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--ai .attachment-filename,
+  .msg-attachment-preview__attachment-type--ai .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--xls:before {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--xls .attachment-filename,
+  .msg-attachment-preview__attachment-type--xls .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .msg-attachment-preview__attachment-type--psd:before {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .msg-attachment-preview__attachment-type--psd .attachment-filename,
+  .msg-attachment-preview__attachment-type--psd .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--ppt:before {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--ppt .attachment-filename,
+  .msg-attachment-preview__attachment-type--ppt .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--txt:before {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--txt .attachment-filename {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .msg-attachment-preview__attachment-type--txt .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .jobs-search-filters .global-title-container .global-title h1,
+  .search-alerts-modal .global-title-container .global-title h1,
+  .search-facets-modal .global-title-container .global-title h1 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .jobs-search-filters .global-title-container .global-title button,
+  .search-alerts-modal .global-title-container .global-title button,
+  .search-facets-modal .global-title-container .global-title button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .tooltip-container .tooltip {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .ca-activity-header__article-title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .ca-activity-header__social-counts {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .ca-analytics-highlight__primary-message,
+  .ca-analytics-highlight__secondary-message,
+  .ca-suggested-articles__title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .ca-suggested-article__reason,
+  .ca-suggested-article__title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .ca-suggested-article__share-action {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .artdeco-container-card .card-heading {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .icon-tooltip .hovercard-container .hovercard,
+  .job-alert-item .content-container .alert-title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .job-alert-item .content-container .alert-location,
+  .job-alert-item .count-container {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .neptune-shared-modal .modal-header-text,
+  .neptune-shared-modal .modal-textarea,
+  .popover-container .popover {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .push-perm-card {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .results-paginator .next,
+  .results-paginator .prev,
+  .search-alerts-rail__hovercard {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .results-paginator .page-list {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .results-paginator .page-list ol button,
+  .results-paginator .page-list ol li.active {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .shared-search-box.is-inline input {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .search-s-facet-value__count,
+  .shared-search-box.is-inline
+    .location-search-form.invalid-location
+    .label-text {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .search-s-rail__saved-jobs-count {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .search-s-rail__saved-jobs-label {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .user-feedback-container
+    #user-feedback-modal
+    .user-feedback-header
+    .user-feedback-title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .user-feedback-container
+    #user-feedback-modal
+    .message-input-wrap
+    .feedback-disclaimer,
+  .user-feedback-container #user-feedback-modal .option-content,
+  .user-feedback-container #user-feedback-modal .option-header {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-create-share-view__warning-feedback,
+  .sharing-error-tooltip,
+  .sharing-textarea__textarea {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-error-tooltip__header {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-create-reshare-view__warn-msg {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-create-share-view__create-content--is-expanded
+    :-ms-input-placeholder {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-create-share-view__create-content--is-expanded ::placeholder {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-create-share-view__create-content--is-default {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-create-share-view__warn-msg,
+  .sharing-share-box__genesis-sharebox-v2-button
+    .sharing-share-action-media__upload-input-label {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-share-box__media-preview-attachment .attachment-filename,
+  .sharing-share-box__media-preview-attachment .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .video-setting-modal__caption-preview-attachment .attachment-filename,
+  .video-setting-modal__caption-preview-attachment .attachment-filesize {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-visibility-select__option-description,
+  .sharing-visibility-select__option-title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    dl
+    > dt,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    h1,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    h2,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    h3,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    h4,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    h5,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    dl
+    a,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    dl
+    button,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ol
+    a,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ol
+    button,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ul
+    a,
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ul
+    button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    dl
+    a
+    :not(:first-child),
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    dl
+    button
+    :not(:first-child),
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ol
+    a
+    :not(:first-child),
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ol
+    button
+    :not(:first-child),
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ul
+    a
+    :not(:first-child),
+  .sharing-visibility-select__vis-dropdown.sharing-visibility-select__vis-dropdown
+    ul
+    button
+    :not(:first-child) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-edit-share__char-count-warn {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-directed-posting-dropdown__options.dropdown-options dl > dt,
+  .sharing-directed-posting-dropdown__options.dropdown-options h1,
+  .sharing-directed-posting-dropdown__options.dropdown-options h2,
+  .sharing-directed-posting-dropdown__options.dropdown-options h3,
+  .sharing-directed-posting-dropdown__options.dropdown-options h4,
+  .sharing-directed-posting-dropdown__options.dropdown-options h5,
+  .sharing-directed-posting-dropdown__options.dropdown-options h6 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-directed-posting-dropdown__options.dropdown-options dl a,
+  .sharing-directed-posting-dropdown__options.dropdown-options dl button,
+  .sharing-directed-posting-dropdown__options.dropdown-options ol a,
+  .sharing-directed-posting-dropdown__options.dropdown-options ol button,
+  .sharing-directed-posting-dropdown__options.dropdown-options ul a,
+  .sharing-directed-posting-dropdown__options.dropdown-options ul button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .sharing-directed-posting-dropdown__options.dropdown-options
+    dl
+    a
+    :not(:first-child),
+  .sharing-directed-posting-dropdown__options.dropdown-options
+    dl
+    button
+    :not(:first-child),
+  .sharing-directed-posting-dropdown__options.dropdown-options
+    ol
+    a
+    :not(:first-child),
+  .sharing-directed-posting-dropdown__options.dropdown-options
+    ol
+    button
+    :not(:first-child),
+  .sharing-directed-posting-dropdown__options.dropdown-options
+    ul
+    a
+    :not(:first-child),
+  .sharing-directed-posting-dropdown__options.dropdown-options
+    ul
+    button
+    :not(:first-child) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+}

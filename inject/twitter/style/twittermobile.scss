@@ -1,0 +1,20 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), Tahoma, Arial, sans-serif !important;
+  line-height: 1.7 !important;
+
+  *:lang(fa) {
+    font-family: var(--font), Tahoma, Arial, sans-serif !important;
+    line-height: 1.7 !important;
+  }
+
+  span {
+    font-family: var(--font), Tahoma, Arial, sans-serif !important;
+    line-height: 1.7 !important;
+  }
+}

@@ -1,0 +1,9 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+[dir="rtl"] {
+  font-family: var(--font), "Roboto Slab", "Times New Roman", serif !important;
+}

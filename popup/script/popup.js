@@ -258,17 +258,6 @@ function handleFont() {
   browser.storage.local.set({ font: this.value });
 }
 
-const links = document.querySelectorAll('a');
-for (const link of links) {
-  link.addEventListener('click', e => {
-    e.preventDefault();
-
-    chrome.tabs.create({
-      url: link.href
-    });
-  });
-}
-
 browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
   if (fonts.custom_fonts != undefined) {
     var OptGroup = document.createElement('optgroup');
@@ -291,3 +280,37 @@ browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
     googleEnabled: false
   });
 });
+
+var query = { active: true, currentWindow: true };
+function callback(tabs) {
+  var currentTab = tabs[0]; // there will be only one in this array
+  var url = new URL(currentTab.url).hostname.replace(/\./g, '-');
+  console.log(url);
+  const link = document.querySelector('#developer');
+
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    if (url === 'www-linkedin-com') {
+      chrome.tabs.create({
+        url: 'https://www.linkedin.com/in/mostafaalahyari/'
+      });
+    } else {
+      chrome.tabs.create({
+        url: 'https://twitter.com/mimalef70'
+      });
+    }
+  });
+}
+
+chrome.tabs.query(query, callback);
+
+const links = document.querySelectorAll('a.new-tab');
+for (const link of links) {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+
+    chrome.tabs.create({
+      url: link.href
+    });
+  });
+}

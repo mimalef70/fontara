@@ -10,6 +10,9 @@ browser.storage.local.get('font', function(data) {
   }
 });
 
-// browser.runtime.onInstalled.addListener(function() {
-//   chrome.tabs.create({ url: 'http://www.ok.com' }, function() {});
-// });
+browser.runtime.onInstalled.addListener(function() {
+  chrome.tabs.create(
+    { url: 'https://virgool.io/@mimalef70/fontara-font-changer-dvzsripy2669' },
+    function() {}
+  );
+});

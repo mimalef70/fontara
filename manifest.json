@@ -1,6 +1,6 @@
 {
   "name": "__MSG_appName__",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
   "author": "Mostafa Alahyari",
@@ -10,8 +10,7 @@
   },
   "default_locale": "en",
   "background": {
-    "scripts": ["script/background.js"],
-    "persistent": true
+    "scripts": ["script/background.js"]
   },
   "permissions": ["tabs", "storage", "*://*/*"],
   "content_scripts": [
@@ -402,7 +401,8 @@
   "web_accessible_resources": [
     "fonts/file/*.woff",
     "fonts/file/*.woff2",
-    "custom_font/script/option.js"
+    "custom_font/script/option.js",
+    "popup/script/choices.min.js"
   ],
   "content_security_policy":
     "script-src 'self'; object-src 'self';font-src 'self' data:;style-src 'self' 'unsafe-inline';"

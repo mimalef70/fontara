@@ -1,0 +1,15 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+* {
+  font-family: var(--font), "Crisp Proxima Nova Regular",sans-serif !important;
+}
+
+.c-digyot span {
+  direction: rtl;
+  text-align: right;
+  line-height: 160%;
+}

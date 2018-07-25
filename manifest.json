@@ -195,6 +195,13 @@
       "all_frames": true
     },
     {
+      "matches": ["https://app.crisp.chat/*"],
+      "js": ["inject/crisp/script/contentscript.js"],
+      "css": ["inject/crisp/style/crisp.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
       "matches": [
         "https://www.google.com/*",
         "https://www.google.ad/*",

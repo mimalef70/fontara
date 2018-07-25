@@ -1,0 +1,20 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+.fonttools-rtl,
+.markdown-body,
+[dir="rtl"],
+input,
+textarea {
+  font-family: var(--font), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol" !important;
+}
+
+.markdown-body.fonttools-rtl {
+  direction: rtl;
+  text-align: right;
+}

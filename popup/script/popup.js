@@ -25,6 +25,7 @@ const paperdropboxStatus = document.querySelector('#paperdropbox');
 const inoreaderStatus = document.querySelector('#inoreader');
 const feedlyStatus = document.querySelector('#feedly');
 const goodreadsStatus = document.querySelector('#goodreads');
+const githubStatus = document.querySelector('#github');
 
 browser.storage.local.get(
   [
@@ -46,7 +47,8 @@ browser.storage.local.get(
     'paperdropbox',
     'inoreader',
     'feedly',
-    'goodreads'
+    'goodreads',
+    'github'
   ],
   function(data) {
     if (data.twitter == undefined) {
@@ -237,6 +239,16 @@ browser.storage.local.get(
         goodreadsStatus.checked = true;
       } else {
         goodreadsStatus.checked = false;
+      }
+    }
+    if (data.github == undefined) {
+      browser.storage.local.set({ github: true });
+      githubStatus.checked = true;
+    } else {
+      if (data.github == true) {
+        githubStatus.checked = true;
+      } else {
+        githubStatus.checked = false;
       }
     }
   }

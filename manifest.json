@@ -195,6 +195,16 @@
       "all_frames": true
     },
     {
+      "matches": ["https://github.com/*"],
+      "js": [
+        "inject/github/script/contentscript.js",
+        "inject/github/script/github.js"
+      ],
+      "css": ["inject/github/style/github.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
       "matches": [
         "https://www.google.com/*",
         "https://www.google.ad/*",

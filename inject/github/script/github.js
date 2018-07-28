@@ -13,7 +13,7 @@ browser.storage.local.get('github', function(items) {
 
     let run_on_page = () => {
       let post_articles = document.querySelectorAll(
-        'p,h1,h2,h3,h4,h5,h6,span,a,strong,.markdown-body'
+        'p,h1,h2,h3,h4,h5,h6,span,a,strong'
       );
       if (!post_articles.length) return;
 
@@ -41,7 +41,7 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
 
         let run_on_page = () => {
           let post_articles = document.querySelectorAll(
-            'p,h1,h2,h3,h4,h5,h6,span,a,strong,.markdown-body'
+            'p,h1,h2,h3,h4,h5,h6,span,a,strong'
           );
           if (!post_articles.length) return;
 

@@ -6,15 +6,15 @@
 
 body {
   font-family: var(--font), "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-  line-height: 1.7 !important;
 
   .TwitterCard {
     font-family: var(--font), "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-    line-height: 1.7 !important;
   }
   .TweetTextSize,
-  .tweet {
-    line-height: 1.7 !important;
+  .tweet-text {
+    &:lang(fa) {
+      line-height: 1.7 !important;
+    }
   }
 
   .QuoteTweet-text {
@@ -29,15 +29,16 @@ body {
   }
   &.rtl {
     .ProfileTweet-actionCount {
-      line-height: 2;
+      // line-height: 2;
     }
   }
 
-  // *:lang(fa) {
-  //   line-height: 1.7 !important;
-  // }
-
-  // .tweet-text {
-  //   line-height: 1.7 !important;
-  // }
+  &.fa,
+  &.ur,
+  &.ar {
+    font-family: var(--font), Tahoma, Arial, sans-serif !important;
+    .TwitterCard {
+      font-family: var(--font), Tahoma, Arial, sans-serif !important;
+    }
+  }
 }

@@ -2,59 +2,60 @@
 
 body {
   background: #fff;
-  width: 304px;
+  width: 320px;
   font-size: 12px;
   font-family: vazir, sans-serif;
   margin: 0 !important;
-}
-
-body main {
-  padding: 15px;
+  main {
+    padding: 20px;
+  }
 }
 
 *,
 :after,
 :before {
+  -webkit-box-sizing: border-box;
   box-sizing: border-box;
 }
 
 .choices__list--dropdown .choices__item--selectable {
   padding-right: 100px;
-}
-.choices__list--dropdown .choices__item--selectable:after {
-  content: attr(data-select-text);
-  font-family: vazir;
-  font-size: 11px;
-  opacity: 0;
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  -webkit-transform: translateY(-50%);
-  transform: translateY(-50%);
-}
-[dir="rtl"] .choices__list--dropdown .choices__item--selectable {
-  text-align: right;
-  padding-left: 100px;
-  padding-right: 10px;
-}
-[dir="rtl"] .choices__list--dropdown .choices__item--selectable:after {
-  right: auto;
-  left: 50px;
+  &:after {
+    content: attr(data-select-text);
+    font-family: vazir;
+    font-size: 11px;
+    opacity: 0;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    -webkit-transform: translateY(-50%);
+    transform: translateY(-50%);
+  }
 }
 
-[dir="rtl"] .choices__group {
-  text-align: right;
+[dir="rtl"] {
+  .choices__list--dropdown .choices__item--selectable {
+    text-align: right;
+    padding-left: 100px;
+    padding-right: 10px;
+    &:after {
+      right: auto;
+      left: 50px;
+    }
+  }
+  .choices__group {
+    text-align: right;
+  }
 }
 
 .choices__item--selectable:after {
   font-family: vazir;
 }
 
-[data-id="custom-font"] ~ div:after {
-  display: none;
-}
-
 [data-id="custom-font"] ~ div {
+  &:after {
+    display: none;
+  }
   padding-left: 10px !important;
 }
 
@@ -78,204 +79,151 @@ body main {
     font-family: Shabnam !important;
   }
 }
+
 [data-value="Tanha"] {
   font-family: Tanha;
   &:after {
     font-family: Tanha !important;
   }
 }
+
 [data-value="Sahel"] {
   font-family: Sahel;
   &:after {
     font-family: Sahel !important;
   }
 }
+
 [data-value="Gandom"] {
   font-family: Gandom;
   &:after {
     font-family: Gandom !important;
   }
 }
+
 [data-value="Parastoo"] {
   font-family: Parastoo;
   &:after {
     font-family: Parastoo !important;
   }
 }
+
 [data-value="Mikhak"] {
   font-family: Mikhak;
   &:after {
     font-family: Mikhak !important;
   }
 }
+
 [data-value="Behdad"] {
   font-family: Behdad;
   &:after {
     font-family: Behdad !important;
   }
 }
-.pretty .state label:after,
-.pretty .state label:before {
-  right: 3px !important;
-  top: 14px !important;
-}
 
-.pretty input ~ .state .logo {
-  background-size: 32px 32px;
-  width: 32px;
-  height: 32px;
-  margin-right: 22px;
-}
-
-.pretty input:not(:checked) ~ .state {
-  .twitter-logo {
-    background-image: url(/images/twitter.png);
+.pretty {
+  .state label {
+    &:after,
+    &:before {
+      right: 3px !important;
+      top: 14px !important;
+    }
   }
-  .paperdropbox-logo {
-    background-image: url(/images/paperdropbox.png);
-  }
-  .inoreader-logo {
-    background-image: url(/images/inoreader.png);
-  }
-  .facebook-logo {
-    background-image: url(/images/facebook.png);
-  }
-  .feedly-logo {
-    background-image: url(/images/feedly.png);
-  }
-  .gmail-logo {
-    background-image: url(/images/gmail.png);
-  }
-  .googleplus-logo {
-    background-image: url(/images/googleplus.png);
-  }
-  .instagram-logo {
-    background-image: url(/images/instagram.png);
-  }
-  .linkedin-logo {
-    background-image: url(/images/linkedin.png);
-  }
-  .medium-logo {
-    background-image: url(/images/medium.png);
-  }
-  .getpocket-logo {
-    background-image: url(/images/getpocket.png);
-  }
-  .google-logo {
-    background-image: url(/images/google.png);
-  }
-  .slack-logo {
-    background-image: url(/images/slack.png);
-  }
-  .telegram-logo {
-    background-image: url(/images/telegram.png);
-  }
-  .trello-logo {
-    background-image: url(/images/trello.png);
-  }
-  .whatsapp-logo {
-    background-image: url(/images/whatsapp.png);
-  }
-  .wikipedia-logo {
-    background-image: url(/images/wikipedia.png);
-  }
-  .youtube-logo {
-    background-image: url(/images/youtube.png);
-  }
-  .goodreads-logo {
-    background-image: url(/images/goodreads.png);
-  }
-  .github-logo {
-    background-image: url(/images/github.png);
-  }
-}
-
-.pretty input:checked ~ .state {
-  .twitter-logo {
-    background-image: url(/images/twitter.png);
-  }
-  .paperdropbox-logo {
-    background-image: url(/images/paperdropbox.png);
-  }
-  .inoreader-logo {
-    background-image: url(/images/inoreader.png);
-  }
-  .facebook-logo {
-    background-image: url(/images/facebook.png);
-  }
-  .feedly-logo {
-    background-image: url(/images/feedly.png);
-  }
-  .gmail-logo {
-    background-image: url(/images/gmail.png);
-  }
-  .googleplus-logo {
-    background-image: url(/images/googleplus.png);
-  }
-  .instagram-logo {
-    background-image: url(/images/instagram.png);
-  }
-  .linkedin-logo {
-    background-image: url(/images/linkedin.png);
-  }
-  .medium-logo {
-    background-image: url(/images/medium.png);
-  }
-  .getpocket-logo {
-    background-image: url(/images/getpocket.png);
-  }
-  .google-logo {
-    background-image: url(/images/google.png);
-  }
-  .slack-logo {
-    background-image: url(/images/slack.png);
-  }
-  .telegram-logo {
-    background-image: url(/images/telegram.png);
-  }
-  .trello-logo {
-    background-image: url(/images/trello.png);
-  }
-  .whatsapp-logo {
-    background-image: url(/images/whatsapp.png);
-  }
-  .wikipedia-logo {
-    background-image: url(/images/wikipedia.png);
-  }
-  .youtube-logo {
-    background-image: url(/images/youtube.png);
-  }
-  .goodreads-logo {
-    background-image: url(/images/goodreads.png);
-  }
-  .github-logo {
-    background-image: url(/images/github.png);
+  input {
+    ~ .state .logo {
+      background-size: 32px 32px;
+      width: 32px;
+      height: 32px;
+      margin-right: 22px;
+    }
+    &:not(:checked) ~ .state,
+    &:checked ~ .state {
+      .twitter-logo {
+        background-image: url(/images/twitter.png);
+      }
+      .paperdropbox-logo {
+        background-image: url(/images/paperdropbox.png);
+      }
+      .inoreader-logo {
+        background-image: url(/images/inoreader.png);
+      }
+      .facebook-logo {
+        background-image: url(/images/facebook.png);
+      }
+      .feedly-logo {
+        background-image: url(/images/feedly.png);
+      }
+      .gmail-logo {
+        background-image: url(/images/gmail.png);
+      }
+      .googleplus-logo {
+        background-image: url(/images/googleplus.png);
+      }
+      .instagram-logo {
+        background-image: url(/images/instagram.png);
+      }
+      .linkedin-logo {
+        background-image: url(/images/linkedin.png);
+      }
+      .medium-logo {
+        background-image: url(/images/medium.png);
+      }
+      .getpocket-logo {
+        background-image: url(/images/getpocket.png);
+      }
+      .google-logo {
+        background-image: url(/images/google.png);
+      }
+      .slack-logo {
+        background-image: url(/images/slack.png);
+      }
+      .telegram-logo {
+        background-image: url(/images/telegram.png);
+      }
+      .trello-logo {
+        background-image: url(/images/trello.png);
+      }
+      .whatsapp-logo {
+        background-image: url(/images/whatsapp.png);
+      }
+      .wikipedia-logo {
+        background-image: url(/images/wikipedia.png);
+      }
+      .youtube-logo {
+        background-image: url(/images/youtube.png);
+      }
+      .goodreads-logo {
+        background-image: url(/images/goodreads.png);
+      }
+      .github-logo {
+        background-image: url(/images/github.png);
+      }
+    }
   }
 }
 
 .select-font {
   position: relative;
-
   .choices__inner > .choices__list > .choices__item--selectable {
     width: 139px;
     height: 22px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
   .choices__list--dropdown.is-active {
     z-index: 999;
   }
 }
 
-.icons {
-  .pretty {
-    margin-bottom: 15px;
-  }
+.icons .pretty {
+  margin-bottom: 15px;
 }
+
 footer {
   background: #f8f8f8;
 }
+
 .creator {
   text-align: center;
   padding: 17px 0px;
@@ -307,7 +255,7 @@ footer {
 }
 
 .selected-item {
-  color: #2d80f7;
+  color: #2374ff;
   &:before {
     content: "\e903" !important;
     font-family: "fontara";
@@ -315,12 +263,12 @@ footer {
     left: 9px;
     top: 15px;
     opacity: 1 !important;
-    color: #2d80f7;
+    color: #2374ff;
   }
 }
 
-.choices__list--dropdown .choices__item--choice.is-highlighted {
-  &:before {
+.choices__list--dropdown {
+  .choices__item--choice.is-highlighted:before {
     content: "\e901";
     font-family: "fontara";
     position: absolute;
@@ -328,25 +276,11 @@ footer {
     top: 15px;
     opacity: 0.3;
   }
-}
-
-.choices__list--dropdown .choices__item--selectable.is-highlighted {
-  background-color: #f9f9f9;
-}
-
-#optionpage {
-  text-align: center;
-  display: block;
-  color: #2d80f7;
-  margin-bottom: 24px;
-  font-weight: bold;
-  -webkit-font-smoothing: antialiased;
-  letter-spacing: 0.2px;
-  span {
-    font-weight: bold;
-    vertical-align: middle;
+  .choices__item--selectable.is-highlighted {
+    background-color: #f9f9f9;
   }
 }
+
 .choices {
   margin-bottom: 14px !important;
 }
@@ -362,30 +296,259 @@ a {
 
 .choices[data-type*="select-one"].is-open:before {
   content: "";
-  background: #eee;
+  background: #0000003d;
   width: 100%;
   height: 100%;
   position: fixed;
   top: 0;
   left: 0;
-  z-index: -1;
+  z-index: 2;
 }
 
-.drop-down-link {
-  background: #2d80f7;
-  display: block;
-  margin-top: 4px;
-  padding: 10px;
+#optionpage {
   text-align: center;
-  border-radius: 2px;
+  display: block;
+  color: #2374ff;
+  margin-bottom: 24px;
+  font-weight: bold;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.2px;
+  span {
+    font-weight: bold;
+    vertical-align: middle;
+  }
+}
+
+.choices[data-type*="select-one"].is-open {
+  margin-bottom: 56px !important;
+}
+
+.choices[data-type*="select-one"].is-open + #optionpage {
+  padding: 10px;
+  border-radius: 3px;
   color: #fff;
   font-size: 13px;
   position: fixed;
-  width: 274px;
-  bottom: 74px;
+  width: 280px;
+  bottom: 25px;
+  background: #2374ff;
+  z-index: 3;
+}
+
+.choices__item + .choices__group {
+  padding-top: 5px;
+}
+
+.choices__inner {
+  background: #ffffff;
+  box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.08),
+    0 3px 7px 0 rgba(0, 0, 0, 0.09);
+  border-radius: 3px;
+  font-family: Vazir;
+  font-size: 15px;
+  color: #2b2b2b;
+  text-align: right;
+  border: none;
+}
+
+.choices[data-type*="select-one"]:after {
+  content: "\e905";
+  font-family: "fontara";
+  height: auto;
+  width: auto;
+  border: none;
+  top: 18px;
+}
+
+.choices[data-type*="select-one"].is-open:after {
+  content: "\e904";
+  margin-top: 0;
+}
+
+.is-open .choices__list--dropdown {
+  border-color: #e0e0e0;
+}
+
+.choices__list--dropdown {
+  border: none;
+  border-top: 1px solid;
+}
+
+.choices__list--dropdown {
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+
+.is-open .choices__inner {
+  z-index: 3;
+  position: relative;
+}
+
+[class*="hint--"]:after {
+  text-shadow: none;
+  box-shadow: none;
+}
+
+input[type="checkbox"] {
   display: none;
 }
 
-.choices[data-type*="select-one"].is-open + .drop-down-link {
-  display: block;
+input[type="checkbox"] + label {
+  background-size: 46px 46px;
+  width: 46px;
+  height: 46px;
+  display: inline-block;
+  border-radius: 3px;
+  margin-left: 9px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+input[type="checkbox"] + label:nth-child(5n) {
+  margin-left: 0 !important;
+}
+
+input[type="checkbox"]:checked + label {
+  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.08),
+    0 3px 7px 0 rgba(0, 0, 0, 0.09);
+
+  &:hover {
+    box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.1),
+      0 6px 17px 0 rgba(0, 0, 0, 0.23);
+  }
+}
+
+input[type="checkbox"] + label {
+  &[for="twitter"] {
+    background-image: url(/images/twitter-deactive.png);
+  }
+  &[for="facebook"] {
+    background-image: url(/images/facebook-deactive.png);
+  }
+  &[for="linkedin"] {
+    background-image: url(/images/linkedin-deactive.png);
+  }
+  &[for="gmail"] {
+    background-image: url(/images/gmail-deactive.png);
+  }
+  &[for="instagram"] {
+    background-image: url(/images/instagram-deactive.png);
+  }
+  &[for="google"] {
+    background-image: url(/images/google-deactive.png);
+  }
+  &[for="googleplus"] {
+    background-image: url(/images/googleplus-deactive.png);
+  }
+  &[for="medium"] {
+    background-image: url(/images/medium-deactive.png);
+  }
+  &[for="getpocket"] {
+    background-image: url(/images/getpocket-deactive.png);
+  }
+  &[for="slack"] {
+    background-image: url(/images/slack-deactive.png);
+  }
+  &[for="telegram"] {
+    background-image: url(/images/telegram-deactive.png);
+  }
+  &[for="trello"] {
+    background-image: url(/images/trello-deactive.png);
+  }
+  &[for="whatsapp"] {
+    background-image: url(/images/whatsapp-deactive.png);
+  }
+  &[for="wikipedia"] {
+    background-image: url(/images/wikipedia-deactive.png);
+  }
+  &[for="youtube"] {
+    background-image: url(/images/youtube-deactive.png);
+  }
+  &[for="paperdropbox"] {
+    background-image: url(/images/paperdropbox-deactive.png);
+  }
+  &[for="inoreader"] {
+    background-image: url(/images/inoreader-deactive.png);
+  }
+  &[for="feedly"] {
+    background-image: url(/images/feedly-deactive.png);
+  }
+  &[for="goodreads"] {
+    background-image: url(/images/goodreads-deactive.png);
+  }
+  &[for="github"] {
+    background-image: url(/images/github-deactive.png);
+  }
+}
+
+input[type="checkbox"]:checked + label {
+  &[for="twitter"] {
+    background-image: url(/images/twitter-active.png);
+  }
+  &[for="facebook"] {
+    background-image: url(/images/facebook-active.png);
+  }
+  &[for="linkedin"] {
+    background-image: url(/images/linkedin-active.png);
+  }
+  &[for="gmail"] {
+    background-image: url(/images/gmail-active.png);
+  }
+  &[for="instagram"] {
+    background-image: url(/images/instagram-active.png);
+  }
+  &[for="google"] {
+    background-image: url(/images/google-active.png);
+  }
+  &[for="googleplus"] {
+    background-image: url(/images/googleplus-active.png);
+  }
+  &[for="medium"] {
+    background-image: url(/images/medium-active.png);
+  }
+  &[for="getpocket"] {
+    background-image: url(/images/getpocket-active.png);
+  }
+  &[for="slack"] {
+    background-image: url(/images/slack-active.png);
+  }
+  &[for="telegram"] {
+    background-image: url(/images/telegram-active.png);
+  }
+  &[for="trello"] {
+    background-image: url(/images/trello-active.png);
+  }
+  &[for="whatsapp"] {
+    background-image: url(/images/whatsapp-active.png);
+  }
+  &[for="wikipedia"] {
+    background-image: url(/images/wikipedia-active.png);
+  }
+  &[for="youtube"] {
+    background-image: url(/images/youtube-active.png);
+  }
+  &[for="paperdropbox"] {
+    background-image: url(/images/paperdropbox-active.png);
+  }
+  &[for="inoreader"] {
+    background-image: url(/images/inoreader-active.png);
+  }
+  &[for="feedly"] {
+    background-image: url(/images/feedly-active.png);
+  }
+  &[for="goodreads"] {
+    background-image: url(/images/goodreads-active.png);
+  }
+  &[for="github"] {
+    background-image: url(/images/github-active.png);
+  }
+}
+
+.icons::selection {
+  color: #fff;
+}
+
+.icons::-moz-selection {
+  color: #fff;
 }

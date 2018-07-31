@@ -288,7 +288,7 @@ browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
     searchEnabled: false,
     shouldSort: false,
     noResultsText: 'نتیجه ای یافت نشد',
-    itemSelectText: '... هرگز نميرد آن که دلش زنده شد به عشق',
+    itemSelectText: '!بِستَک دل و دین از من از من',
     googleEnabled: false
   });
 });
@@ -297,7 +297,6 @@ var query = { active: true, currentWindow: true };
 function callback(tabs) {
   var currentTab = tabs[0]; // there will be only one in this array
   var url = new URL(currentTab.url).hostname.replace(/\./g, '-');
-  console.log(url);
   const link = document.querySelector('#developer');
 
   link.addEventListener('click', e => {
@@ -315,6 +314,31 @@ function callback(tabs) {
 }
 
 chrome.tabs.query(query, callback);
+
+window.addEventListener('load', function() {
+  browser.storage.local.get(['font'], function(fonts) {
+    document
+      .querySelector(`.choices__list--dropdown [data-value='${fonts.font}']`)
+      .classList.add('selected-item');
+  });
+
+  selectFontElement.addEventListener('change', function() {
+    var elems = document.querySelectorAll(
+      'choices__list--dropdown .choices__item--choice'
+    );
+    [].forEach.call(elems, function(el) {
+      el.classList.remove('selected-item');
+    });
+    document
+      .querySelector(`.choices__list--dropdown [data-value='${this.value}']`)
+      .classList.add('selected-item');
+    console.log(
+      document.querySelector(
+        `.choices__list--dropdown [data-value='${this.value}']`
+      )
+    );
+  });
+});
 
 const links = document.querySelectorAll('a.new-tab');
 for (const link of links) {

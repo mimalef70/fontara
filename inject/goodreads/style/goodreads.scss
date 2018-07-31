@@ -14,7 +14,9 @@
 .aboutAuthorInfo,
 .quoteText,
 .questionText,
-.updateBodyAfterImage {
+.updateBodyAfterImage,
+.description,
+.storyText {
   &.fonttools-rtl {
     direction: rtl !important;
     text-align: right !important;
@@ -32,4 +34,18 @@ input[type="text"] {
 
 .elementList {
   font-family: var(--font), "Lato", "Helvetica Neue", "Helvetica", sans-serif !important;
+}
+
+.bookLink {
+  font-family: var(--font), "Merriweather", Georgia, "Times New Roman", serif !important;
+}
+
+input[type="text"],
+input[type="search"],
+textarea {
+  font-family: var(--font), "Lato", "Helvetica Neue", "Helvetica", sans-serif !important;
+}
+
+.storyTitle {
+  font-family: var(--font), "Merriweather", "Georgia", serif !important;
 }

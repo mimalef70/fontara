@@ -3,10 +3,11 @@
 
 <head>
   <meta charset="utf-8">
-  <link href="style/popup.css" rel="stylesheet">
   <link rel="stylesheet" href="style/choices.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style/pretty-checkbox.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style/hint.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style/font.css" rel="stylesheet">
+  <link href="style/popup.css" rel="stylesheet">
 </head>
 
 
@@ -31,7 +32,11 @@
           <option value="Mikhak">میخک</option>
         </optgroup>
       </select>
-      <a href='../../custom_font/index.html' class="new-tab" id="optionpage">افزودن فونت دلخواه</a>
+      <a title="افزودن فونت دلخواه" href="../../custom_font/index.html" class="new-tab drop-down-link">افزودن فونت دلخواه</a>
+      <a href='../../custom_font/index.html' class="new-tab" id="optionpage">
+        <span class="icon-round-add-button"></span>
+        افزودن فونت دلخواه
+      </a>
     </div>
     <div class="icons">
       <div class="pretty p-default hint--top" aria-label="Twitter">
@@ -203,17 +208,19 @@
       توسط&nbsp
       <a id="developer" href="#"> مصطفی الهیاری </a>
       <div class="social">
-        <a href="https://twitter.com/mimalef70" class="new-tab" id="user-twitter">
-          <img src="/images/twitter-creator.png" />
+        <a href="https://twitter.com/mimalef70" class="new-tab hint--right hint--rounded" aria-label="My Twitter" id="user-twitter">
+          <span class="icon-twitter-square"></span>
         </a>
-        <a href="https://www.linkedin.com/in/mostafaalahyari/" class="new-tab" id="user-linkedin">
-          <img src="/images/linkedin-creator.png" />
+        <a href="https://www.linkedin.com/in/mostafaalahyari/" class="new-tab hint--right hint--rounded" aria-label="My Linkedin"
+          id="user-linkedin">
+          <span class="icon-linkedin-square"></span>
         </a>
-        <a href="https://github.com/mimalef70/fontara-fc" class="new-tab" id="user-github">
-          <img src="/images/github-creator.png" />
+        <a href="https://github.com/mimalef70/fontara-fc" class="new-tab hint--right hint--rounded" aria-label="Project Github" id="user-github">
+          <span class="icon-github-square"></span>
         </a>
-        <a href="https://virgool.io/@mimalef70/fontara-font-changer-dvzsripy2669" class="new-tab" id="user-www">
-          <img src="/images/www-creator.png" />
+        <a href="https://virgool.io/@mimalef70/fontara-font-changer-dvzsripy2669" class="new-tab hint--right hint--rounded" aria-label="Project Page"
+          id="user-www">
+          <span class="icon-external-link-square"></span>
         </a>
       </div>
 

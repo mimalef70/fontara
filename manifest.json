@@ -158,6 +158,13 @@
       "all_frames": true
     },
     {
+      "matches": ["https://calendar.google.com/*"],
+      "js": ["inject/google/script/contentscript.js"],
+      "css": ["inject/google/style/calendar.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
       "matches": ["https://www.youtube.com/*"],
       "js": [
         "inject/youtube/script/contentscript.js",
@@ -201,6 +208,18 @@
         "inject/github/script/github.js"
       ],
       "css": ["inject/github/style/github.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://www.wunderlist.com/*"],
+      "css": ["inject/wunderlist/style/wunderlist.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://messages.android.com/*"],
+      "css": ["inject/messagesandroid/style/messagesandroid.css"],
       "run_at": "document_end",
       "all_frames": true
     },

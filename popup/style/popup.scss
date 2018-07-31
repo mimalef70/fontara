@@ -221,7 +221,7 @@ body {
 }
 
 footer {
-  background: #f8f8f8;
+  background: #f9f9f9;
 }
 
 .creator {
@@ -313,9 +313,14 @@ a {
   font-weight: bold;
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0.2px;
+
   span {
     font-weight: bold;
     vertical-align: middle;
+  }
+  &:hover {
+    transition: color 0.2s ease-in-out;
+    color: #005eff;
   }
 }
 
@@ -330,9 +335,14 @@ a {
   font-size: 13px;
   position: fixed;
   width: 280px;
-  bottom: 25px;
-  background: #2374ff;
+  bottom: 31px;
+  background-color: #2374ff;
   z-index: 3;
+  &:hover {
+    color: #fff;
+    background-color: #005eff;
+    transition: background-color 0.2s ease-in-out;
+  }
 }
 
 .choices__item + .choices__group {

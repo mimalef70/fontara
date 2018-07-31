@@ -342,7 +342,7 @@ window.addEventListener('load', function() {
 
 const links = document.querySelectorAll('a.new-tab');
 for (const link of links) {
-  link.addEventListener('click', e => {
+  link.addEventListener('mousedown', e => {
     e.preventDefault();
 
     chrome.tabs.create({

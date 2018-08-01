@@ -1,0 +1,44 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body {
+  font-family: var(--font), Open Sans, sans-serif !important;
+}
+html {
+  font-family: var(--font), sans-serif !important;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font), Open Sans, sans-serif !important;
+}
+
+#wporg-header h2.rosetta {
+  font-family: var(--font), Georgia, Times New Roman, serif !important;
+}
+
+#wporg-header ul li a {
+  font-family: var(--font), Open Sans, Helvetica, Arial, Liberation Sans,
+    sans-serif !important;
+}
+#wporg-header #head-search form input.text {
+  font-family: var(--font), Open Sans, sans-serif !important;
+}
+.home-welcome {
+  font-family: var(--font), Open Sans, sans-serif !important;
+}
+
+h2,
+h3,
+h4,
+h3.head,
+#home-welcome p.intro,
+.wall-link span {
+  font-family: var(--font), Open Sans, sans-serif, arial !important;
+}

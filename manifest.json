@@ -165,6 +165,24 @@
       "all_frames": true
     },
     {
+      "matches": ["https://fa.wordpress.org/*", "http://wp-persian.com/*"],
+      "css": ["inject/wordpress/style/wordpress.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["*://*.blogspot.com/*"],
+      "css": ["inject/blogspot/style/blogspot.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["*://*.wordpress.com/*"],
+      "css": ["inject/wordpressblog/style/wordpressblog.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
       "matches": ["https://www.youtube.com/*"],
       "js": [
         "inject/youtube/script/contentscript.js",
@@ -214,13 +232,13 @@
     {
       "matches": ["https://www.wunderlist.com/*"],
       "css": ["inject/wunderlist/style/wunderlist.css"],
-      "run_at": "document_end",
+      "run_at": "document_start",
       "all_frames": true
     },
     {
       "matches": ["https://messages.android.com/*"],
       "css": ["inject/messagesandroid/style/messagesandroid.css"],
-      "run_at": "document_end",
+      "run_at": "document_start",
       "all_frames": true
     },
     {

@@ -1,6 +1,6 @@
 {
   "name": "__MSG_appName__",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
   "author": "Mostafa Alahyari",
@@ -448,8 +448,7 @@
   "web_accessible_resources": [
     "fonts/file/*.woff",
     "fonts/file/*.woff2",
-    "custom_font/script/option.js",
-    "popup/script/choices.min.js"
+    "custom_font/script/option.js"
   ],
   "content_security_policy":
     "script-src 'self'; object-src 'self';font-src 'self' data:;style-src 'self' 'unsafe-inline';"

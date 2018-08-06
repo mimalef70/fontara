@@ -29,7 +29,6 @@ browser.storage.local.get('slack', function(items) {
       setTimeout(rtlifyInput, 20);
     };
     msgInputElement.oninput = msgInputElement.onkeyup = msgInputElement.onpaste = msgInputElement.onchange = msgInputElement.onpropertychange = timeoutRtlifyFunc;
-    س;
     var target = document.getElementById('msg_input');
     var observer = new MutationObserver(function(mutations) {
       mutations = mutations.filter(function(mutation) {

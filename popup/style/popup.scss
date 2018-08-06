@@ -39,7 +39,7 @@ body {
     text-align: right;
     &:after {
       right: auto;
-      left: 50px;
+      left: 75px;
     }
   }
   .choices__group {
@@ -227,7 +227,7 @@ footer {
 
 .creator {
   text-align: center;
-  padding: 17px 0px;
+  padding: 19px 0px;
   font-weight: bold;
   color: #828282;
   -webkit-font-smoothing: antialiased;
@@ -338,7 +338,7 @@ a {
   font-size: 13px;
   position: fixed;
   width: 280px;
-  bottom: 24px;
+  bottom: 25px;
   background: #2374ff;
   box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.08),
     0 3px 7px 0 rgba(0, 0, 0, 0.09);
@@ -590,4 +590,11 @@ input[type="checkbox"]:checked + label {
 
 .choices__list--dropdown .choices__list {
   max-height: 304px;
+}
+
+span.icon-heart {
+  color: #ff1546;
+  vertical-align: middle;
+  font-size: 10px;
+  padding: 0 2px;
 }

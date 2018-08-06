@@ -288,7 +288,7 @@ browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
     searchEnabled: false,
     shouldSort: false,
     noResultsText: 'نتیجه ای یافت نشد',
-    itemSelectText: '!بِستَک دل و دین از من از من',
+    itemSelectText: '!بِستَک دل و دین از من',
     googleEnabled: false
   });
 });
@@ -350,3 +350,11 @@ for (const link of links) {
     });
   });
 }
+
+document.querySelector('#optionpage').addEventListener('mousedown', e => {
+  e.preventDefault();
+
+  chrome.tabs.create({
+    url: '../../custom_font/index.html'
+  });
+});

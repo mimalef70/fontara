@@ -1,0 +1,16 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+body,
+input,
+select,
+textarea {
+  font-family: var(--font), "DDG_ProximaNova", "DDG_ProximaNova_UI_0",
+    "DDG_ProximaNova_UI_1", "DDG_ProximaNova_UI_2", "DDG_ProximaNova_UI_3",
+    "DDG_ProximaNova_UI_4", "DDG_ProximaNova_UI_5", "DDG_ProximaNova_UI_6",
+    "Proxima Nova", "Helvetica Neue", "Helvetica", "Segoe UI", "Nimbus Sans L",
+    "Liberation Sans", "Open Sans", FreeSans, Arial, sans-serif !important;
+}

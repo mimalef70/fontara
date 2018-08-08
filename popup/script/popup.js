@@ -26,6 +26,7 @@ const inoreaderStatus = document.querySelector('#inoreader');
 const feedlyStatus = document.querySelector('#feedly');
 const goodreadsStatus = document.querySelector('#goodreads');
 const githubStatus = document.querySelector('#github');
+const virgoolStatus = document.querySelector('#virgool');
 
 browser.storage.local.get(
   [
@@ -48,7 +49,8 @@ browser.storage.local.get(
     'inoreader',
     'feedly',
     'goodreads',
-    'github'
+    'github',
+    'virgool'
   ],
   function(data) {
     if (data.twitter == undefined) {
@@ -249,6 +251,16 @@ browser.storage.local.get(
         githubStatus.checked = true;
       } else {
         githubStatus.checked = false;
+      }
+    }
+    if (data.virgool == undefined) {
+      browser.storage.local.set({ virgool: true });
+      virgoolStatus.checked = true;
+    } else {
+      if (data.virgool == true) {
+        virgoolStatus.checked = true;
+      } else {
+        virgoolStatus.checked = false;
       }
     }
   }

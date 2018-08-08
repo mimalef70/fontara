@@ -144,6 +144,19 @@
       "all_frames": true
     },
     {
+      "matches": ["https://virgool.io/*"],
+      "js": ["inject/virgool/script/contentscript.js"],
+      "css": ["inject/virgool/style/virgool.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://duckduckgo.com/*"],
+      "css": ["inject/duckduckgo/style/duckduckgo.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
       "matches": ["https://keep.google.com/*"],
       "js": ["inject/google/script/contentscript.js"],
       "css": ["inject/google/style/keepgoogle.css"],
@@ -431,9 +444,12 @@
         "https://www.google.co.zw/*",
         "https://www.google.cat/*"
       ],
-      "js": ["inject/google/script/contentscript.js"],
+      "js": [
+        "inject/google/script/contentscript.js",
+        "inject/google/script/google.js"
+      ],
       "css": ["inject/google/style/google.css"],
-      "run_at": "document_start",
+      "run_at": "document_end",
       "all_frames": true
     }
   ],

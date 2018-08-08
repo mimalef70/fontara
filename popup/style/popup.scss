@@ -515,6 +515,9 @@ input[type="checkbox"] + label {
   &[for="github"] {
     background-image: url(/images/github-deactive.png);
   }
+  &[for="virgool"] {
+    background-image: url(/images/virgool-deactive.png);
+  }
 }
 
 input[type="checkbox"]:checked + label {
@@ -577,6 +580,9 @@ input[type="checkbox"]:checked + label {
   }
   &[for="github"] {
     background-image: url(/images/github-active.png);
+  }
+  &[for="virgool"] {
+    background-image: url(/images/virgool-active.png);
   }
 }
 

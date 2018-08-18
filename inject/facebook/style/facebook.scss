@@ -4,7 +4,7 @@
   --font: Vazir;
 }
 
-body {
+html body {
   font-family: var(--font), Helvetica, Arial, sans-serif !important;
   &._-kb.mac {
     font-family: var(--font), Helvetica Neue, Helvetica, Arial, sans-serif !important;
@@ -27,5 +27,15 @@ body {
   td,
   textarea {
     font-family: var(--font), Helvetica, Arial, sans-serif !important;
+  }
+
+  div[dir="rtl"] {
+    font-family: var(--font), Georgia, serif !important;
+  }
+
+  ._5s6c._5s6c,
+  ._5s6c {
+    font-family: var(--font), Georgia, serif !important;
+    letter-spacing: normal;
   }
 }

@@ -420,169 +420,177 @@ a {
   transition: 0.2s ease;
 }
 
-input[type="checkbox"] {
-  display: none;
-}
+.icons {
+  input[type="checkbox"] {
+    display: none;
+  }
 
-input[type="checkbox"] + label {
-  background-size: 46px 46px;
-  width: 46px;
-  height: 46px;
-  border-radius: 3px;
-  margin-left: 10px;
-  margin-bottom: 10px;
-  float: right;
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-}
+  input[type="checkbox"] + label {
+    background-size: 46px 46px;
+    width: 46px;
+    height: 46px;
+    border-radius: 3px;
+    margin-left: 10px;
+    margin-bottom: 10px;
+    float: right;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+  }
 
-input[type="checkbox"] + label:nth-child(5n) {
-  margin-left: 5px !important;
-}
+  input[type="checkbox"] + label:nth-child(5n) {
+    margin-left: 5px !important;
+  }
 
-input[type="checkbox"] + label:nth-child(5n + 2) {
-  margin-right: 5px !important;
-}
+  input[type="checkbox"] + label:nth-child(5n + 2) {
+    margin-right: 5px !important;
+  }
 
-input[type="checkbox"]:checked + label {
-  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.08),
-    0 3px 7px 0 rgba(0, 0, 0, 0.09);
+  input[type="checkbox"]:checked + label {
+    box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.08),
+      0 3px 7px 0 rgba(0, 0, 0, 0.09);
 
-  &:hover {
-    box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.1),
-      0 6px 17px 0 rgba(0, 0, 0, 0.23);
+    &:hover {
+      box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.1),
+        0 6px 17px 0 rgba(0, 0, 0, 0.23);
+    }
   }
-}
 
-input[type="checkbox"] + label {
-  &[for="twitter"] {
-    background-image: url(/images/twitter-deactive.png);
+  input[type="checkbox"] + label {
+    &[for="twitter"] {
+      background-image: url(/images/twitter-deactive.png);
+    }
+    &[for="facebook"] {
+      background-image: url(/images/facebook-deactive.png);
+    }
+    &[for="linkedin"] {
+      background-image: url(/images/linkedin-deactive.png);
+    }
+    &[for="gmail"] {
+      background-image: url(/images/gmail-deactive.png);
+    }
+    &[for="instagram"] {
+      background-image: url(/images/instagram-deactive.png);
+    }
+    &[for="google"] {
+      background-image: url(/images/google-deactive.png);
+    }
+    &[for="googleplus"] {
+      background-image: url(/images/googleplus-deactive.png);
+    }
+    &[for="medium"] {
+      background-image: url(/images/medium-deactive.png);
+    }
+    &[for="getpocket"] {
+      background-image: url(/images/getpocket-deactive.png);
+    }
+    &[for="slack"] {
+      background-image: url(/images/slack-deactive.png);
+    }
+    &[for="telegram"] {
+      background-image: url(/images/telegram-deactive.png);
+    }
+    &[for="trello"] {
+      background-image: url(/images/trello-deactive.png);
+    }
+    &[for="whatsapp"] {
+      background-image: url(/images/whatsapp-deactive.png);
+    }
+    &[for="wikipedia"] {
+      background-image: url(/images/wikipedia-deactive.png);
+    }
+    &[for="youtube"] {
+      background-image: url(/images/youtube-deactive.png);
+    }
+    &[for="paperdropbox"] {
+      background-image: url(/images/paperdropbox-deactive.png);
+    }
+    &[for="inoreader"] {
+      background-image: url(/images/inoreader-deactive.png);
+    }
+    &[for="feedly"] {
+      background-image: url(/images/feedly-deactive.png);
+    }
+    &[for="goodreads"] {
+      background-image: url(/images/goodreads-deactive.png);
+    }
+    &[for="github"] {
+      background-image: url(/images/github-deactive.png);
+    }
+    &[for="virgool"] {
+      background-image: url(/images/virgool-deactive.png);
+    }
+    &[for="global"] {
+      background-image: url(/images/global-deactive.png);
+    }
   }
-  &[for="facebook"] {
-    background-image: url(/images/facebook-deactive.png);
-  }
-  &[for="linkedin"] {
-    background-image: url(/images/linkedin-deactive.png);
-  }
-  &[for="gmail"] {
-    background-image: url(/images/gmail-deactive.png);
-  }
-  &[for="instagram"] {
-    background-image: url(/images/instagram-deactive.png);
-  }
-  &[for="google"] {
-    background-image: url(/images/google-deactive.png);
-  }
-  &[for="googleplus"] {
-    background-image: url(/images/googleplus-deactive.png);
-  }
-  &[for="medium"] {
-    background-image: url(/images/medium-deactive.png);
-  }
-  &[for="getpocket"] {
-    background-image: url(/images/getpocket-deactive.png);
-  }
-  &[for="slack"] {
-    background-image: url(/images/slack-deactive.png);
-  }
-  &[for="telegram"] {
-    background-image: url(/images/telegram-deactive.png);
-  }
-  &[for="trello"] {
-    background-image: url(/images/trello-deactive.png);
-  }
-  &[for="whatsapp"] {
-    background-image: url(/images/whatsapp-deactive.png);
-  }
-  &[for="wikipedia"] {
-    background-image: url(/images/wikipedia-deactive.png);
-  }
-  &[for="youtube"] {
-    background-image: url(/images/youtube-deactive.png);
-  }
-  &[for="paperdropbox"] {
-    background-image: url(/images/paperdropbox-deactive.png);
-  }
-  &[for="inoreader"] {
-    background-image: url(/images/inoreader-deactive.png);
-  }
-  &[for="feedly"] {
-    background-image: url(/images/feedly-deactive.png);
-  }
-  &[for="goodreads"] {
-    background-image: url(/images/goodreads-deactive.png);
-  }
-  &[for="github"] {
-    background-image: url(/images/github-deactive.png);
-  }
-  &[for="virgool"] {
-    background-image: url(/images/virgool-deactive.png);
-  }
-}
 
-input[type="checkbox"]:checked + label {
-  &[for="twitter"] {
-    background-image: url(/images/twitter-active.png);
-  }
-  &[for="facebook"] {
-    background-image: url(/images/facebook-active.png);
-  }
-  &[for="linkedin"] {
-    background-image: url(/images/linkedin-active.png);
-  }
-  &[for="gmail"] {
-    background-image: url(/images/gmail-active.png);
-  }
-  &[for="instagram"] {
-    background-image: url(/images/instagram-active.png);
-  }
-  &[for="google"] {
-    background-image: url(/images/google-active.png);
-  }
-  &[for="googleplus"] {
-    background-image: url(/images/googleplus-active.png);
-  }
-  &[for="medium"] {
-    background-image: url(/images/medium-active.png);
-  }
-  &[for="getpocket"] {
-    background-image: url(/images/getpocket-active.png);
-  }
-  &[for="slack"] {
-    background-image: url(/images/slack-active.png);
-  }
-  &[for="telegram"] {
-    background-image: url(/images/telegram-active.png);
-  }
-  &[for="trello"] {
-    background-image: url(/images/trello-active.png);
-  }
-  &[for="whatsapp"] {
-    background-image: url(/images/whatsapp-active.png);
-  }
-  &[for="wikipedia"] {
-    background-image: url(/images/wikipedia-active.png);
-  }
-  &[for="youtube"] {
-    background-image: url(/images/youtube-active.png);
-  }
-  &[for="paperdropbox"] {
-    background-image: url(/images/paperdropbox-active.png);
-  }
-  &[for="inoreader"] {
-    background-image: url(/images/inoreader-active.png);
-  }
-  &[for="feedly"] {
-    background-image: url(/images/feedly-active.png);
-  }
-  &[for="goodreads"] {
-    background-image: url(/images/goodreads-active.png);
-  }
-  &[for="github"] {
-    background-image: url(/images/github-active.png);
-  }
-  &[for="virgool"] {
-    background-image: url(/images/virgool-active.png);
+  input[type="checkbox"]:checked + label {
+    &[for="twitter"] {
+      background-image: url(/images/twitter-active.png);
+    }
+    &[for="facebook"] {
+      background-image: url(/images/facebook-active.png);
+    }
+    &[for="linkedin"] {
+      background-image: url(/images/linkedin-active.png);
+    }
+    &[for="gmail"] {
+      background-image: url(/images/gmail-active.png);
+    }
+    &[for="instagram"] {
+      background-image: url(/images/instagram-active.png);
+    }
+    &[for="google"] {
+      background-image: url(/images/google-active.png);
+    }
+    &[for="googleplus"] {
+      background-image: url(/images/googleplus-active.png);
+    }
+    &[for="medium"] {
+      background-image: url(/images/medium-active.png);
+    }
+    &[for="getpocket"] {
+      background-image: url(/images/getpocket-active.png);
+    }
+    &[for="slack"] {
+      background-image: url(/images/slack-active.png);
+    }
+    &[for="telegram"] {
+      background-image: url(/images/telegram-active.png);
+    }
+    &[for="trello"] {
+      background-image: url(/images/trello-active.png);
+    }
+    &[for="whatsapp"] {
+      background-image: url(/images/whatsapp-active.png);
+    }
+    &[for="wikipedia"] {
+      background-image: url(/images/wikipedia-active.png);
+    }
+    &[for="youtube"] {
+      background-image: url(/images/youtube-active.png);
+    }
+    &[for="paperdropbox"] {
+      background-image: url(/images/paperdropbox-active.png);
+    }
+    &[for="inoreader"] {
+      background-image: url(/images/inoreader-active.png);
+    }
+    &[for="feedly"] {
+      background-image: url(/images/feedly-active.png);
+    }
+    &[for="goodreads"] {
+      background-image: url(/images/goodreads-active.png);
+    }
+    &[for="github"] {
+      background-image: url(/images/github-active.png);
+    }
+    &[for="virgool"] {
+      background-image: url(/images/virgool-active.png);
+    }
+    &[for="global"] {
+      background-image: url(/images/global-active.png);
+    }
   }
 }
 
@@ -603,4 +611,12 @@ span.icon-heart {
   vertical-align: middle;
   font-size: 10px;
   padding: 0 2px;
+}
+
+.global-section {
+  display: none;
+  .global-fav {
+    width: 20px;
+    vertical-align: middle;
+  }
 }

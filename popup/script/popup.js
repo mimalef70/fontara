@@ -1,8 +1,11 @@
 'use strict';
 
 window.browser = (function() {
-  return window.msBrowser || window.browser || window.chrome;
+  return window.msBrowser || window.chrome || window.browser;
 })();
+
+const manifestData = chrome.runtime.getManifest();
+const exclude_matches = manifestData.content_scripts[0].exclude_matches;
 
 const selectFontElement = document.querySelector('#fonttools-font');
 
@@ -28,6 +31,8 @@ const goodreadsStatus = document.querySelector('#goodreads');
 const githubStatus = document.querySelector('#github');
 const virgoolStatus = document.querySelector('#virgool');
 
+const globalItem = document.querySelector('#global');
+
 browser.storage.local.get(
   [
     'twitter',
@@ -50,7 +55,8 @@ browser.storage.local.get(
     'feedly',
     'goodreads',
     'github',
-    'virgool'
+    'virgool',
+    'sites'
   ],
   function(data) {
     if (data.twitter == undefined) {
@@ -263,6 +269,10 @@ browser.storage.local.get(
         virgoolStatus.checked = false;
       }
     }
+
+    if (data.sites == undefined) {
+      browser.storage.local.set({ sites: [] });
+    }
   }
 );
 
@@ -300,7 +310,7 @@ browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
     searchEnabled: false,
     shouldSort: false,
     noResultsText: 'نتیجه ای یافت نشد',
-    itemSelectText: '!بِستَک دل و دین از من',
+    itemSelectText: '!بِستَد دل و دین از من',
     googleEnabled: false
   });
 });
@@ -308,24 +318,69 @@ browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
 var query = { active: true, currentWindow: true };
 function callback(tabs) {
   var currentTab = tabs[0]; // there will be only one in this array
-  var url = new URL(currentTab.url).hostname.replace(/\./g, '-');
+  var url = new URL(currentTab.url).hostname;
+  console.log(currentTab);
+
+  //Global Settings
+  document.querySelector('.global-site').textContent = url;
+
+  if (currentTab.favIconUrl == '') {
+    document.querySelector('.global-fav').remove();
+  } else {
+    document.querySelector('.global-fav').src = currentTab.favIconUrl;
+  }
+
+  globalItem.addEventListener('change', function() {
+    if (this.checked == false) {
+      browser.storage.local.get({ sites: [] }, function(result) {
+        var sites = result.sites;
+        sites = sites.filter(item => item !== url);
+        browser.storage.local.set({ sites: sites }, function(result) {
+          browser.storage.local.get('sites', function(result) {
+            console.log(result.sites);
+          });
+        });
+      });
+    } else {
+      browser.storage.local.get({ sites: [] }, function(result) {
+        var sites = result.sites;
+        sites.push(url);
+        browser.storage.local.set({ sites: sites }, function(result) {
+          browser.storage.local.get('sites', function(result) {
+            console.log(result.sites);
+          });
+        });
+      });
+    }
+    chrome.tabs.reload();
+  });
+
+  browser.storage.local.get('sites', function(result) {
+    if (result.sites.includes(url)) {
+      globalItem.checked = true;
+    } else {
+      globalItem.checked = false;
+    }
+  });
+
+  //Developer Settings
   const link = document.querySelector('#developer');
 
   link.addEventListener('click', e => {
     e.preventDefault();
-    if (url === 'www-linkedin-com') {
-      chrome.tabs.create({
+    if (url === 'www.linkedin.com') {
+      browser.tabs.create({
         url: 'https://www.linkedin.com/in/mostafaalahyari/'
       });
     } else {
-      chrome.tabs.create({
+      browser.tabs.create({
         url: 'https://twitter.com/mimalef70'
       });
     }
   });
 }
 
-chrome.tabs.query(query, callback);
+browser.tabs.query(query, callback);
 
 window.addEventListener('load', function() {
   browser.storage.local.get(['font'], function(fonts) {
@@ -357,7 +412,7 @@ for (const link of links) {
   link.addEventListener('mousedown', e => {
     e.preventDefault();
 
-    chrome.tabs.create({
+    browser.tabs.create({
       url: link.href
     });
   });
@@ -366,7 +421,17 @@ for (const link of links) {
 document.querySelector('#optionpage').addEventListener('mousedown', e => {
   e.preventDefault();
 
-  chrome.tabs.create({
+  browser.tabs.create({
     url: '../../custom_font/index.html'
   });
 });
+
+// Show Global Section
+chrome.tabs.query(
+  { url: exclude_matches, active: true, currentWindow: true },
+  function(tabs) {
+    if (tabs === undefined || tabs.length == 0) {
+      document.querySelector('.global-section').style.display = 'block';
+    }
+  }
+);

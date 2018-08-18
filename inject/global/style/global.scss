@@ -1,0 +1,9 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+html body .global-rtl {
+  font-family: var(--font), sans-serif !important;
+}

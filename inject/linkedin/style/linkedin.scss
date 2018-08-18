@@ -4,7 +4,14 @@
   --font: Vazir;
 }
 
-body {
+html body {
+  .ember-view {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+    Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+    Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+    Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
   li-icon[type^="premium-"] text {
     font-family: var(--font), Source Sans Pro, Helvetica, Arial, sans-serif;
   }

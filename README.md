@@ -11,7 +11,7 @@
 - Support other RTL languages like **Kurdish**, **Arabic**;
 - Support adding your favorite font-face;
 - Built-in support for popular social media such as **Google Search**, **Facebook**, **Twitter**, **Telegram**, **Github**, **LinkedIn**, etc.
-- 
+
 ---------------
 ### Downlod Links
 

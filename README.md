@@ -7,9 +7,9 @@
 ---------------
 ### Features
 
-- Experience new web surfing with a brand new typesetting for Persian (Farsi) world;
-- Support other RTL languages like **Kurdish**, **Arabic**;
-- Support adding your favorite font-face;
+- Experience new web surfing with a brand new typesetting for Persian (Farsi) world
+- Support other RTL languages like **Kurdish**, **Arabic**
+- Support adding your favorite font-face
 - Built-in support for popular social media such as **Google Search**, **Facebook**, **Twitter**, **Telegram**, **Github**, **LinkedIn**, etc.
 
 ---------------

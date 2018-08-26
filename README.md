@@ -14,6 +14,8 @@
 
 Are you bored of seeing the same fonts all the time? Well, we have a way of changing the font on **almost any website** to a custom one of your own choosing. With installing **Font ARA**, you can change the font on most popular social media sites such as Facebook, Twitter, Google, Instagram, GitHub, or **almost any other site**.
 
+Have fun experimenting with different fonts and settings with your browser. Find something that suits your personality and make your browser your own.
+
 ------
 
 ### Features
@@ -21,7 +23,7 @@ Are you bored of seeing the same fonts all the time? Well, we have a way of chan
 - Experience new web surfing with a brand new view for **Right-to-Left Languages** on the internet especially for **Persian (فارسی)** users
 - Support **almost All Languages** including **Right-to-Left Languages** such as **Kurdish** **(کوردی)**, **Arabic** **(العَرَبِيَّة‎)**, **Dari Persian** **(فارسی دری)**, etc.
 - Support **adding UNLIMITED Favorite Font-face** for providing a perfect view in any issues with the built-in Fonts
-- **Built-in support** for popular social media and most famous sites such as **Twitter**, **Tweetdeck**, **Twitter Mobile**, **LinkedIn** , **Instagram**, **Facebook**, **Wikipedia**, **GitHub**, **WhatsApp**, **Telegram**, **Trello**, **Feedly**, **Inoreader**, **Slack**, **Google Plus**, **Medium**, **Getpocket**, **Paper Dropbox**, **Google Keep**, **Google Translate**, **Youtube**, **Goodreads**, **Gmail**, **Google inbox**, **Hangout**, **Google Search**, **Google Calendar**, **WordPress**, **WordPress Blog**, **BlogSpot**, **Android Messages**, **Wunderlist** , etc.
+- **Built-in support** for popular social media and most famous sites such as **Twitter**, **TweetDeck**, **Twitter Mobile**, **LinkedIn** , **Instagram**, **Facebook**, **Wikipedia**, **GitHub**, **WhatsApp**, **Telegram**, **Trello**, **Feedly**, **Inoreader**, **Slack**, **Google Plus**, **Medium**, **Getpocket**, **Paper Dropbox**, **Google Keep**, **Google Translate**, **YouTube**, **Goodreads**, **Gmail**, **Google inbox**, **Hangout**, **Google Search**, **Google Calendar**, **WordPress**, **WordPress Blog**, **BlogSpot**, **Android Messages**, **Wunderlist** , etc.
 - **Global support** for personalizing sites which are not included in the built-in list
 - It is completely [**Open Source**](https://github.com/mimalef70/fontara)
 - It is **Free of Charge**

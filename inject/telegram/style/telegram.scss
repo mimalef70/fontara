@@ -9,3 +9,7 @@ body {
     Arial, Helvetica, Verdana, sans-serif !important;
   line-height: 1.7 !important;
 }
+
+body.non_osx {
+  font: 12px/18px var(--font), Tahoma, sans-serif, Arial, Helvetica !important;
+}

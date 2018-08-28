@@ -108,3 +108,10 @@
     format("woff2");
   font-weight: bold;
 }
+
+@font-face {
+  font-family: Estedad;
+  src: url("chrome-extension://__MSG_@@extension_id__/fonts/file/Estedad-Medium-A.woff2")
+    format("woff2");
+  font-weight: bold;
+}

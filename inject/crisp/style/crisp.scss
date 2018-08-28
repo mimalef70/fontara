@@ -1,0 +1,79 @@
+@import "../../../fonts/style/_fonts.scss";
+
+:root {
+  --font: Vazir;
+}
+
+.c-jdk3ml {
+  font-family: var(--font), "Crisp Proxima Nova Light", sans-serif !important;
+}
+.c-1bh4z23 {
+  font-family: var(--font), "Crisp Proxima Nova Regular", sans-serif !important;
+}
+.c-fqowr9 {
+  font-family: var(--font), "Crisp Proxima Nova Semibold", sans-serif !important;
+}
+.c-7f8utj {
+  font-family: var(--font), "Crisp Proxima Nova Bold", sans-serif !important;
+}
+.c-1mke0wq {
+  font-family: var(--font), "Hack Regular", sans-serif !important;
+}
+body {
+  font-family: var(--font), "Crisp Proxima Nova Regular", "Helvetica Neue",
+    Helvetica, Arial, sans-serif !important;
+}
+
+[data-state^="app.website"]
+  .c-bw1bvl
+  .c-olgdtt
+  .c-zfaku1
+  .c-a05qt
+  .c-14429rr
+  > :first-child.c-20tcj1.c-1118s7m {
+  font-family: var(--font), "Crisp Proxima Nova Semibold" !important;
+}
+
+[data-state^="app.website"]
+  .c-bw1bvl
+  .c-olgdtt
+  .c-zfaku1
+  .c-a05qt
+  .c-14429rr
+  .c-20tcj1.c-1r78d8v[data-type="#"],
+[data-state^="app.website"]
+  .c-bw1bvl
+  .c-olgdtt
+  .c-zfaku1
+  .c-a05qt
+  .c-14429rr
+  .c-20tcj1.c-1r78d8v[data-type="##"] {
+  font-family: var(--font), "Crisp Proxima Nova Bold" !important;
+}
+
+[data-state^="app.website"]
+  .c-bw1bvl
+  .c-olgdtt
+  .c-zfaku1
+  .c-a05qt
+  .c-14429rr
+  .c-20tcj1.c-12dwrdf[data-label]:after,
+[data-state^="app.website"]
+  .c-bw1bvl
+  .c-olgdtt
+  .c-zfaku1
+  .c-a05qt
+  .c-14429rr
+  .c-20tcj1.c-l2mggu[data-label]:after {
+  font-family: var(--font), "Crisp Proxima Nova Semibold" !important;
+}
+
+[data-state^="app.website"]
+  .c-bw1bvl
+  .c-olgdtt
+  .c-zfaku1
+  .c-a05qt
+  .c-14429rr
+  .c-20tcj1.c-g5s85w[data-type]:before {
+  font-family: var(--font), "Crisp Proxima Nova Semibold" !important;
+}

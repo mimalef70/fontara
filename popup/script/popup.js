@@ -30,6 +30,10 @@ const feedlyStatus = document.querySelector('#feedly');
 const goodreadsStatus = document.querySelector('#goodreads');
 const githubStatus = document.querySelector('#github');
 const virgoolStatus = document.querySelector('#virgool');
+const duckduckgoStatus = document.querySelector('#duckduckgo');
+const messagesandroidStatus = document.querySelector('#messagesandroid');
+const wordpressStatus = document.querySelector('#wordpress');
+const crispStatus = document.querySelector('#crisp');
 
 const globalItem = document.querySelector('#global');
 
@@ -56,6 +60,10 @@ browser.storage.local.get(
     'goodreads',
     'github',
     'virgool',
+    'duckduckgo',
+    'messagesandroid',
+    'wordpress',
+    'crisp',
     'sites'
   ],
   function(data) {
@@ -269,6 +277,46 @@ browser.storage.local.get(
         virgoolStatus.checked = false;
       }
     }
+    if (data.duckduckgo == undefined) {
+      browser.storage.local.set({ duckduckgo: true });
+      duckduckgoStatus.checked = true;
+    } else {
+      if (data.duckduckgo == true) {
+        duckduckgoStatus.checked = true;
+      } else {
+        duckduckgoStatus.checked = false;
+      }
+    }
+    if (data.messagesandroid == undefined) {
+      browser.storage.local.set({ messagesandroid: true });
+      messagesandroidStatus.checked = true;
+    } else {
+      if (data.messagesandroid == true) {
+        messagesandroidStatus.checked = true;
+      } else {
+        messagesandroidStatus.checked = false;
+      }
+    }
+    if (data.wordpress == undefined) {
+      browser.storage.local.set({ wordpress: true });
+      wordpressStatus.checked = true;
+    } else {
+      if (data.wordpress == true) {
+        wordpressStatus.checked = true;
+      } else {
+        wordpressStatus.checked = false;
+      }
+    }
+    if (data.crisp == undefined) {
+      browser.storage.local.set({ crisp: true });
+      crispStatus.checked = true;
+    } else {
+      if (data.crisp == true) {
+        crispStatus.checked = true;
+      } else {
+        crispStatus.checked = false;
+      }
+    }
 
     if (data.sites == undefined) {
       browser.storage.local.set({ sites: [] });
@@ -319,12 +367,14 @@ var query = { active: true, currentWindow: true };
 function callback(tabs) {
   var currentTab = tabs[0]; // there will be only one in this array
   var url = new URL(currentTab.url).hostname;
-  console.log(currentTab);
 
   //Global Settings
-  document.querySelector('.global-site').textContent = url;
-
-  if (currentTab.favIconUrl == '') {
+  document.querySelector('.global-site').textContent = url.replace(
+    /^www\./,
+    ''
+  );
+  console.log(currentTab.favIconUrl);
+  if (currentTab.favIconUrl == '' || currentTab.favIconUrl == undefined) {
     document.querySelector('.global-fav').remove();
   } else {
     document.querySelector('.global-fav').src = currentTab.favIconUrl;
@@ -335,21 +385,13 @@ function callback(tabs) {
       browser.storage.local.get({ sites: [] }, function(result) {
         var sites = result.sites;
         sites = sites.filter(item => item !== url);
-        browser.storage.local.set({ sites: sites }, function(result) {
-          browser.storage.local.get('sites', function(result) {
-            console.log(result.sites);
-          });
-        });
+        browser.storage.local.set({ sites: sites });
       });
     } else {
       browser.storage.local.get({ sites: [] }, function(result) {
         var sites = result.sites;
         sites.push(url);
-        browser.storage.local.set({ sites: sites }, function(result) {
-          browser.storage.local.get('sites', function(result) {
-            console.log(result.sites);
-          });
-        });
+        browser.storage.local.set({ sites: sites });
       });
     }
     chrome.tabs.reload();
@@ -399,11 +441,6 @@ window.addEventListener('load', function() {
     document
       .querySelector(`.choices__list--dropdown [data-value='${this.value}']`)
       .classList.add('selected-item');
-    console.log(
-      document.querySelector(
-        `.choices__list--dropdown [data-value='${this.value}']`
-      )
-    );
   });
 });
 

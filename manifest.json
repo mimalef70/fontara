@@ -1,6 +1,6 @@
 {
   "name": "__MSG_appName__",
-  "version": "2.0.5",
+  "version": "3.0.0",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
   "author": "Mostafa Alahyari",
@@ -15,7 +15,7 @@
   "permissions": ["tabs", "storage", "*://*/*"],
   "content_scripts": [
     {
-      "matches": ["*://*/*"],
+      "matches": ["<all_urls>"],
       "exclude_matches": [
         "https://twitter.com/*",
         "https://tweetdeck.twitter.com/*",
@@ -39,10 +39,11 @@
         "https://keep.google.com/*",
         "https://translate.google.com/*",
         "https://calendar.google.com/*",
-        "https://fa.wordpress.org/*",
-        "http://wp-persian.com/*",
+        "*://fa.wordpress.org/*",
+        "*://wp-persian.com/*",
         "*://*.blogspot.com/*",
         "*://*.wordpress.com/*",
+        "https://app.crisp.chat/*",
         "https://www.youtube.com/*",
         "https://www.goodreads.com/*",
         "https://mail.google.com/*",
@@ -385,6 +386,7 @@
     },
     {
       "matches": ["https://duckduckgo.com/*"],
+      "js": ["inject/duckduckgo/script/contentscript.js"],
       "css": ["inject/duckduckgo/style/duckduckgo.css"],
       "run_at": "document_start",
       "all_frames": true
@@ -411,20 +413,23 @@
       "all_frames": true
     },
     {
-      "matches": ["https://fa.wordpress.org/*", "http://wp-persian.com/*"],
+      "matches": ["*://fa.wordpress.org/*", "*://wp-persian.com/*"],
+      "js": ["inject/wordpress/script/contentscript.js"],
       "css": ["inject/wordpress/style/wordpress.css"],
       "run_at": "document_start",
       "all_frames": true
     },
     {
-      "matches": ["*://*.blogspot.com/*"],
-      "css": ["inject/blogspot/style/blogspot.css"],
+      "matches": ["*://*.wordpress.com/*"],
+      "js": ["inject/wordpress/script/contentscript.js"],
+      "css": ["inject/wordpressblog/style/wordpressblog.css"],
       "run_at": "document_start",
       "all_frames": true
     },
     {
-      "matches": ["*://*.wordpress.com/*"],
-      "css": ["inject/wordpressblog/style/wordpressblog.css"],
+      "matches": ["*://*.blogspot.com/*"],
+      "js": ["inject/google/script/contentscript.js"],
+      "css": ["inject/blogspot/style/blogspot.css"],
       "run_at": "document_start",
       "all_frames": true
     },
@@ -483,7 +488,15 @@
     },
     {
       "matches": ["https://messages.android.com/*"],
+      "js": ["inject/messagesandroid/script/contentscript.js"],
       "css": ["inject/messagesandroid/style/messagesandroid.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://app.crisp.chat/*"],
+      "js": ["inject/crisp/script/contentscript.js"],
+      "css": ["inject/crisp/style/crisp.css"],
       "run_at": "document_start",
       "all_frames": true
     },

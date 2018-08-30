@@ -4,32 +4,8 @@
   --font: Vazir;
 }
 
-.wf-b #cnt,
-.wf-b #cnt .g,
-.wf-b #cnt .std,
-.wf-b #cnt h1,
-.wf-b #cnt input,
-.wf-b #cnt select,
-.wf-b .g-bbl-container {
-  font-family: var(--font), "Roboto", arial, sans-serif !important;
-}
-
-body {
-  font-family: var(--font), "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-  #viewport {
-    font-family: var(--font), "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-  }
-  *[dir="rtl"] {
-    font-family: var(--font), Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
-  }
-  .g,
-  body,
-  html,
-  input,
-  .std,
-  h1 {
-    font-family: var(--font), arial, sans-serif !important;
-  }
+.fonttools-rtl {
+  font-family: var(--font), arial, sans-serif !important;
 }
 
 h3.fonttools-rtl {
@@ -42,4 +18,8 @@ h3.fonttools-rtl {
 
 cite.fonttools-rtl {
   font-size: 13px;
+}
+
+input {
+  font-family: var(--font), arial, sans-serif !important;
 }

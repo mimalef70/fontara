@@ -6,9 +6,10 @@ body {
   font-size: 12px;
   font-family: shabnam, sans-serif;
   margin: 0 !important;
+  overflow: hidden;
   main {
-    padding: 20px;
-    float: right;
+    padding: 20px 20px 5px 20px;
+    overflow-x: hidden;
   }
 }
 
@@ -121,84 +122,10 @@ body {
   }
 }
 
-.pretty {
-  .state label {
-    &:after,
-    &:before {
-      right: 3px !important;
-      top: 14px !important;
-    }
-  }
-  input {
-    ~ .state .logo {
-      background-size: 32px 32px;
-      width: 32px;
-      height: 32px;
-      margin-right: 22px;
-    }
-    &:not(:checked) ~ .state,
-    &:checked ~ .state {
-      .twitter-logo {
-        background-image: url(/images/twitter.png);
-      }
-      .paperdropbox-logo {
-        background-image: url(/images/paperdropbox.png);
-      }
-      .inoreader-logo {
-        background-image: url(/images/inoreader.png);
-      }
-      .facebook-logo {
-        background-image: url(/images/facebook.png);
-      }
-      .feedly-logo {
-        background-image: url(/images/feedly.png);
-      }
-      .gmail-logo {
-        background-image: url(/images/gmail.png);
-      }
-      .googleplus-logo {
-        background-image: url(/images/googleplus.png);
-      }
-      .instagram-logo {
-        background-image: url(/images/instagram.png);
-      }
-      .linkedin-logo {
-        background-image: url(/images/linkedin.png);
-      }
-      .medium-logo {
-        background-image: url(/images/medium.png);
-      }
-      .getpocket-logo {
-        background-image: url(/images/getpocket.png);
-      }
-      .google-logo {
-        background-image: url(/images/google.png);
-      }
-      .slack-logo {
-        background-image: url(/images/slack.png);
-      }
-      .telegram-logo {
-        background-image: url(/images/telegram.png);
-      }
-      .trello-logo {
-        background-image: url(/images/trello.png);
-      }
-      .whatsapp-logo {
-        background-image: url(/images/whatsapp.png);
-      }
-      .wikipedia-logo {
-        background-image: url(/images/wikipedia.png);
-      }
-      .youtube-logo {
-        background-image: url(/images/youtube.png);
-      }
-      .goodreads-logo {
-        background-image: url(/images/goodreads.png);
-      }
-      .github-logo {
-        background-image: url(/images/github.png);
-      }
-    }
+[data-value="Estedad"] {
+  font-family: Estedad;
+  &:after {
+    font-family: Estedad !important;
   }
 }
 
@@ -206,7 +133,7 @@ body {
   position: relative;
   .choices__inner > .choices__list > .choices__item--selectable {
     width: 139px;
-    height: 22px;
+    height: 23px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -216,8 +143,7 @@ body {
 }
 
 .icons {
-  float: right;
-  width: 100%;
+  font-size: 0px;
 }
 
 footer {
@@ -283,7 +209,7 @@ footer {
 }
 
 .choices {
-  margin-bottom: 20px !important;
+  margin-bottom: 10px !important;
 }
 
 .choices__heading {
@@ -310,35 +236,43 @@ a {
 }
 
 #optionpage {
-  text-align: center;
   display: block;
-  color: #2374ff;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   font-weight: bold;
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0.2px;
-
+  background: #edf3fd;
+  border-radius: 3px;
+  font-size: 13px;
+  color: #2374ff;
+  text-align: center;
+  padding: 9px;
+  position: relative;
   span {
     font-weight: bold;
     vertical-align: middle;
+    font-size: 15px;
+    position: absolute;
+    right: 60px;
+    top: 10px;
   }
   &:hover {
-    transition: color 0.2s ease-in-out;
-    color: #1e65df;
+    transition: background-color 0.2s ease-in-out;
+    background: #dee7f5;
   }
 }
 
 .choices[data-type*="select-one"].is-open {
-  margin-bottom: 56px !important;
+  margin-bottom: 61px !important;
 }
 
 .choices[data-type*="select-one"].is-open + #optionpage {
-  padding: 10px;
+  padding: 9px;
   color: #fff;
   font-size: 13px;
   position: fixed;
   width: 280px;
-  bottom: 25px;
+  top: 416px;
   background: #2374ff;
   box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.08),
     0 3px 7px 0 rgba(0, 0, 0, 0.09);
@@ -368,8 +302,8 @@ a {
   transition: box-shadow 0.09s ease-in-out;
   padding: 6.5px !important;
   &:hover {
-    box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.08),
-      0 5px 10px 0 rgba(0, 0, 0, 0.13);
+    box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.1),
+      0 4px 7px 0 rgba(0, 0, 0, 0.14);
   }
 }
 
@@ -432,7 +366,7 @@ a {
     border-radius: 3px;
     margin-left: 10px;
     margin-bottom: 10px;
-    float: right;
+    display: inline-block;
     cursor: pointer;
     transition: all 0.15s ease-in-out;
   }
@@ -519,8 +453,17 @@ a {
     &[for="virgool"] {
       background-image: url(/images/virgool-deactive.png);
     }
-    &[for="global"] {
-      background-image: url(/images/global-deactive.png);
+    &[for="duckduckgo"] {
+      background-image: url(/images/duckduckgo-deactive.png);
+    }
+    &[for="messagesandroid"] {
+      background-image: url(/images/messagesandroid-deactive.png);
+    }
+    &[for="wordpress"] {
+      background-image: url(/images/wordpress-deactive.png);
+    }
+    &[for="crisp"] {
+      background-image: url(/images/crisp-deactive.png);
     }
   }
 
@@ -588,8 +531,17 @@ a {
     &[for="virgool"] {
       background-image: url(/images/virgool-active.png);
     }
-    &[for="global"] {
-      background-image: url(/images/global-active.png);
+    &[for="duckduckgo"] {
+      background-image: url(/images/duckduckgo-active.png);
+    }
+    &[for="messagesandroid"] {
+      background-image: url(/images/messagesandroid-active.png);
+    }
+    &[for="wordpress"] {
+      background-image: url(/images/wordpress-active.png);
+    }
+    &[for="crisp"] {
+      background-image: url(/images/crisp-active.png);
     }
   }
 }
@@ -603,7 +555,7 @@ a {
 }
 
 .choices__list--dropdown .choices__list {
-  max-height: 304px;
+  max-height: 346px;
 }
 
 span.icon-heart {
@@ -615,8 +567,44 @@ span.icon-heart {
 
 .global-section {
   display: none;
+  clear: both;
+  border-top: 1px solid #ebebeb;
+  font-size: 13px;
+  font-weight: bold;
+  -webkit-font-smoothing: antialiased;
   .global-fav {
-    width: 20px;
+    width: 12px;
     vertical-align: middle;
+    margin: 0 2px;
+  }
+  input[type="checkbox"] {
+    display: none;
+  }
+
+  input[type="checkbox"] + label {
+    background-size: 15px;
+    background-repeat: no-repeat;
+    background-position: right;
+    padding-right: 20px;
+    border-radius: 3px;
+    margin-right: 25px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    display: inline-block;
+    cursor: pointer;
+    -webkit-transition: all 0.15s ease-in-out;
+    transition: all 0.15s ease-in-out;
+  }
+
+  input[type="checkbox"]:checked + label {
+    &[for="global"] {
+      background-image: url(/images/global-active.png);
+    }
+  }
+
+  input[type="checkbox"] + label {
+    &[for="global"] {
+      background-image: url(/images/global-deactive.png);
+    }
   }
 }

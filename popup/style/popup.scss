@@ -608,3 +608,28 @@ span.icon-heart {
     }
   }
 }
+
+.donate-section {
+  a {
+    display: block;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    -webkit-font-smoothing: antialiased;
+    color: #17bd3f;
+    padding: 7px;
+    background: #e2fce9;
+    -webkit-transition: all 0.2s ease-in-out;
+    transition: all 0.2s ease-in-out;
+    &:hover {
+      background: #d2f0da;
+    }
+    &:after {
+      font-family: shabnam;
+      font-size: 10px;
+    }
+    span {
+      vertical-align: middle;
+    }
+  }
+}

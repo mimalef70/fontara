@@ -16,3 +16,7 @@ browser.storage.local.get('font', function(data) {
 //     function() {}
 //   );
 // });
+
+browser.runtime.setUninstallURL(
+  'https://docs.google.com/forms/d/e/1FAIpQLSdkUvCG9vfASEits6qeAuH1UdtdAGlLp6I5QfJ4_jbsaKorLQ/viewform'
+);

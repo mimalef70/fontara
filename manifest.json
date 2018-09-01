@@ -12,6 +12,10 @@
   "background": {
     "scripts": ["script/background.js"]
   },
+  "options_ui": {
+    "page": "custom_font/index.html",
+    "open_in_tab": true
+  },
   "permissions": ["tabs", "storage", "*://*/*"],
   "content_scripts": [
     {

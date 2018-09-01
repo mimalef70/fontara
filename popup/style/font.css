@@ -1,17 +1,18 @@
 @font-face {
-  font-family: 'fontara';
-  src:  url('fonts/fontara.eot?q5v3ke');
-  src:  url('fonts/fontara.eot?q5v3ke#iefix') format('embedded-opentype'),
-    url('fonts/fontara.ttf?q5v3ke') format('truetype'),
-    url('fonts/fontara.woff?q5v3ke') format('woff'),
-    url('fonts/fontara.svg?q5v3ke#fontara') format('svg');
+  font-family: "fontara";
+  src: url("fonts/fontara.eot?q5v3ke");
+  src: url("fonts/fontara.eot?q5v3ke#iefix") format("embedded-opentype"),
+    url("fonts/fontara.ttf?q5v3ke") format("truetype"),
+    url("fonts/fontara.woff?q5v3ke") format("woff"),
+    url("fonts/fontara.svg?q5v3ke#fontara") format("svg");
   font-weight: normal;
   font-style: normal;
 }
 
-[class^="icon-"], [class*=" icon-"] {
+[class^="icon-"],
+[class*=" icon-"] {
   /* use !important to prevent issues with browser extensions that change fonts */
-  font-family: 'fontara' !important;
+  font-family: "fontara" !important;
   speak: none;
   font-style: normal;
   font-weight: normal;
@@ -24,6 +25,9 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-Icon:before {
+  content: "\e90b";
+}
 .icon-envelope-square:before {
   content: "\e90a";
 }

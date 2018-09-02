@@ -34,7 +34,7 @@ let run_on_page = () => {
     len = post_articles.length;
   for (; i < len; i++) run_against_article(post_articles[i]);
 };
-
+run_on_page();
 new MutationObserver(run_on_page).observe(document.body, {
   childList: true,
   subtree: true

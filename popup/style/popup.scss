@@ -576,6 +576,10 @@ span.icon-heart {
   -webkit-font-smoothing: antialiased;
   padding: 7.5px 14px 7.5px 0;
   margin-bottom: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
   .global-fav {
     width: 12px;
     vertical-align: middle;

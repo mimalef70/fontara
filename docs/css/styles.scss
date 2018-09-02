@@ -36,8 +36,25 @@ Author URI: http://themeforest.net/user/fourtyfive
 GLOBAL SHARED STYLES
 ==========================
 
-/* RESET AND DEFAULTS */
 
+/* RESET AND DEFAULTS */
+@font-face {
+  font-family: Shabnam;
+  src: url("fonts/Shabnam.eot");
+  src: url("fonts/Shabnam.eot?#iefix") format("embedded-opentype"),
+    url("fonts/Shabnam.woff") format("woff"),
+    url("fonts/Shabnam.ttf") format("truetype");
+  font-weight: normal;
+}
+
+@font-face {
+  font-family: Shabnam;
+  src: url("fonts/Shabnam-Bold.eot");
+  src: url("fonts/Shabnam-Bold.eot?#iefix") format("embedded-opentype"),
+    url("fonts/Shabnam-Bold.woff") format("woff"),
+    url("fonts/Shabnam-Bold.ttf") format("truetype");
+  font-weight: bold;
+}
 html,
 body {
   -webkit-font-smoothing: antialiased;
@@ -50,7 +67,7 @@ body {
 }
 
 body {
-  font-family: tahoma, sans-serif;
+  font-family: Shabnam, sans-serif;
   font-size: 1rem;
   color: #637282;
   overflow-x: hidden;
@@ -94,7 +111,7 @@ h6,
 .h5,
 .h6 {
   color: #1b2733;
-  font-family: "Rubik", sans-serif;
+  font-family: Shabnam, sans-serif;
   font-weight: 600;
 }
 
@@ -288,7 +305,7 @@ BUTTONS
   line-height: 24px;
   font-weight: 500;
   border-radius: 2px;
-  font-family: "Rubik", sans-serif;
+  font-family: Shabnam, sans-serif;
 }
 
 .btn-default {
@@ -1084,7 +1101,7 @@ PRICING TABLE
   font-weight: bold;
   font-size: 56px;
   line-height: 58px;
-  font-family: "Rubik", sans-serif;
+  font-family: Shabnam, sans-serif;
 }
 
 .pricing-currency {

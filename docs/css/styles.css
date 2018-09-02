@@ -871,6 +871,22 @@ Hero
   margin-left: auto;
 }
 
+.browser-logo__wrapper {
+  text-align: center;
+  margin-top: 50px;
+}
+
+.browser-logo__wrapper a {
+  display: inline-block;
+  width: 50px;
+  margin: 0 10px;
+}
+
+.browser-logo__wrapper a img {
+  width: 50px;
+  height: 50px;
+}
+
 .client-logo__wrapper {
   text-align: center;
   display: -webkit-inline-box;

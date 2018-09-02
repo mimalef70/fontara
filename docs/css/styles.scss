@@ -302,17 +302,17 @@ BUTTONS
 }
 
 .btn-primary {
-  background: #2fe7b1;
+  background: #ffe374;
   color: #1b2733;
   &:hover,
   &:focus,
   &:visited {
     -webkit-transform: translate(-1px, -1px);
     transform: translate(-1px, -1px);
-    background: #2fe7b1;
+    background: #ffe374;
     color: #1b2733;
-    -webkit-box-shadow: 5px 5px 0 rgba(47, 91, 231, 0.8);
-    box-shadow: 5px 5px 0 rgba(47, 91, 231, 0.8);
+    -webkit-box-shadow: 5px 5px 0 #2274ff;
+    box-shadow: 5px 5px 0 #2274ff;
   }
 }
 
@@ -347,7 +347,7 @@ BUTTONS
 }
 
 .btn-link--primary {
-  color: #2fe7b1;
+  color: #ffe374;
 }
 
 .btn-link--secondary {
@@ -490,8 +490,8 @@ FORMS AND INPUTS
     box-shadow: -5px 5px 0 0 #2f5be7;
   }
   .btn-secondary:hover {
-    -webkit-box-shadow: -5px 5px 0 0 #2fe7b1;
-    box-shadow: -5px 5px 0 0 #2fe7b1;
+    -webkit-box-shadow: -5px 5px 0 0 #ffe374;
+    box-shadow: -5px 5px 0 0 #ffe374;
   }
 }
 
@@ -596,7 +596,7 @@ MODALS
 }
 
 .mfp-close {
-  background: #2fe7b1 !important;
+  background: #ffe374 !important;
   display: inline-block !important;
   width: 48px !important;
   height: 48px !important;
@@ -612,8 +612,8 @@ MODALS
   outline: 0 !important;
   &:hover {
     background-color: #15b586 !important;
-    -webkit-box-shadow: -5px -5px #2fe7b1;
-    box-shadow: -5px -5px #2fe7b1;
+    -webkit-box-shadow: -5px -5px #ffe374;
+    box-shadow: -5px -5px #ffe374;
   }
   &:active,
   &:focus {
@@ -690,6 +690,7 @@ NAVIGATION BAR
     padding: 20px 25px;
     text-transform: capitalize;
     color: #637282;
+    font-weight: bold;
     &:hover {
       color: #1b2733;
     }
@@ -730,7 +731,7 @@ NAVIGATION BAR
   height: 40px;
   border-radius: 50%;
   display: inline-block;
-  background: #2fe7b1;
+  background: #ffe374;
   -webkit-transition: all 0.4s ease-in-out;
   transition: all 0.4s ease-in-out;
   position: absolute;
@@ -815,6 +816,7 @@ Hero
   -ms-flex-align: center;
   align-items: center;
   min-height: 550px;
+  margin-top: 40px;
 }
 
 .hero-content {
@@ -1044,7 +1046,7 @@ PRICING TABLE
   &.active {
     background: transparent;
     color: #1b2733;
-    border-bottom-color: #2fe7b1;
+    border-bottom-color: #ffe374;
   }
 }
 
@@ -1156,12 +1158,12 @@ PRICING TABLE
   -webkit-transition: all 0.5s ease-in-out;
   transition: all 0.5s ease-in-out;
   .u-icon {
-    background: #2fe7b1;
+    background: #ffe374;
     margin-right: 10px;
   }
   &:hover {
-    -webkit-box-shadow: 5px 5px #2fe7b1;
-    box-shadow: 5px 5px #2fe7b1;
+    -webkit-box-shadow: 5px 5px #ffe374;
+    box-shadow: 5px 5px #ffe374;
     -webkit-transform: translate(-1px, -1px);
     transform: translate(-1px, -1px);
   }
@@ -1443,7 +1445,7 @@ BACKGROUND COLORS AND SHAPES COLORS
 }
 
 .bg-primary {
-  background: #2fe7b1 !important;
+  background: #ffe374 !important;
 }
 
 .bg-secondary {
@@ -1539,7 +1541,7 @@ BACKGROUND COLORS AND SHAPES COLORS
 }
 
 .text-primary {
-  color: #2fe7b1 !important;
+  color: #ffe374 !important;
 }
 
 .text-secondary {

@@ -42,7 +42,7 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
   if (changes.medium != undefined) {
     browser.storage.local.get('medium', function(items) {
       if (items.medium == true || items.medium == undefined) {
-        console.log('hello');
+        // console.log('hello');
         let fix_font_visual = post_article => {
           let paragraphs = post_article.querySelectorAll('p');
           let i = 0,

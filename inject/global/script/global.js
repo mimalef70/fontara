@@ -12,7 +12,7 @@ browser.storage.local.get('sites', function(result) {
     };
 
     let run_on_page = () => {
-      console.log('yes');
+      // console.log('yes');
       let post_articles = document.querySelectorAll(
         'h1,h2,h3,h4,h5,h6,p,li,td,tr,pre,font,blockquote,small,center,span,a,div,strong,input'
       );
@@ -58,6 +58,6 @@ browser.storage.local.get('sites', function(result) {
       }
     });
   } else {
-    console.log('no');
+    // console.log('no');
   }
 });

@@ -699,7 +699,7 @@
         "inject/google/script/google.js"
       ],
       "css": ["inject/google/style/google.css"],
-      "run_at": "document_end",
+      "run_at": "document_idle",
       "all_frames": true
     }
   ],

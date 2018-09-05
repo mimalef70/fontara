@@ -5,10 +5,27 @@
 }
 
 html body {
-  .fonttools-rtl {
-    direction: rtl !important;
+  p.fonttools-rtl {
+    text-align: right !important;
   }
 
+  .ql-editor {
+    text-align: unset;
+    text-align: -webkit-auto;
+  }
+  .pv-accomplishments-block__title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+
+  .pv-entity__secondary-title {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
   .reader-social-details__likes-list .feed-s-likes-list__header {
     font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
       Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,

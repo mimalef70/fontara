@@ -7,20 +7,24 @@ browser.storage.local.get('linkedin', function(items) {
   if (items.linkedin == true || items.linkedin == undefined) {
     let run_against_article = post_article => {
       if (!patt.test(post_article.innerText)) return;
-
       post_article.classList.add('fonttools-rtl');
+      post_article.setAttribute('dir', 'auto');
     };
 
     let run_on_page = () => {
       let post_articles = document.querySelectorAll(
-        'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,span,a,strong'
+        'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
       );
 
       var inputComment =
-        document.querySelectorAll('.mentions-texteditor') !== null;
+        document.querySelectorAll(
+          '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+        ) !== null;
       if (inputComment) {
         [].forEach.call(
-          document.querySelectorAll('.mentions-texteditor'),
+          document.querySelectorAll(
+            '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+          ),
           function(el) {
             el.setAttribute('dir', 'auto');
           }
@@ -48,14 +52,30 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
       if (items.linkedin == true || items.linkedin == undefined) {
         let run_against_article = post_article => {
           if (!patt.test(post_article.innerText)) return;
-
           post_article.classList.add('fonttools-rtl');
+          post_article.setAttribute('dir', 'auto');
         };
 
         let run_on_page = () => {
           let post_articles = document.querySelectorAll(
-            'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,span,a,strong'
+            'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
           );
+
+          var inputComment =
+            document.querySelectorAll(
+              '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+            ) !== null;
+          if (inputComment) {
+            [].forEach.call(
+              document.querySelectorAll(
+                '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+              ),
+              function(el) {
+                el.setAttribute('dir', 'auto');
+              }
+            );
+          }
+
           if (!post_articles.length) return;
 
           let i = 0,

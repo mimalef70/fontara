@@ -275,9 +275,12 @@
     },
     {
       "matches": ["https://www.linkedin.com/*"],
-      "js": ["inject/linkedin/script/contentscript.js"],
+      "js": [
+        "inject/linkedin/script/contentscript.js",
+        "inject/linkedin/script/linkedin.js"
+      ],
       "css": ["inject/linkedin/style/linkedin.css"],
-      "run_at": "document_start",
+      "run_at": "document_idle",
       "all_frames": true
     },
     {

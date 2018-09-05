@@ -12,7 +12,11 @@ browser.storage.local.get('font', function(data) {
 
 // browser.runtime.onInstalled.addListener(function() {
 //   chrome.tabs.create(
-//     { url: 'https://virgool.io/@mimalef70/fontara-font-changer-dvzsripy2669' },
+//     { url: 'https://mimalef70.github.io/fontara' },
 //     function() {}
 //   );
 // });
+
+browser.runtime.setUninstallURL(
+  'https://docs.google.com/forms/d/e/1FAIpQLSdkUvCG9vfASEits6qeAuH1UdtdAGlLp6I5QfJ4_jbsaKorLQ/viewform'
+);

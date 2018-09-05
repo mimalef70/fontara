@@ -3,26 +3,34 @@ window.browser = (function() {
 })();
 var patt = /[\u05D0-\u05EA]|[\u0620-\u063F]|[\u0641-\u064A]|[\u0675-\u06D3]|[\u0710-\u071C]|[\u071E-\u072F]|[\u074E-\u077F]|[\u08A0-\u08AC]|[\u08AE-\u08B4]|[\u07C1-\u07C9]|[\u07CC-\u07E9]/g;
 var obsRun = false;
-browser.storage.local.get('medium', function(items) {
-  if (items.medium == true || items.medium == undefined) {
-    let fix_font_visual = post_article => {
-      let paragraphs = post_article.querySelectorAll('p');
-      let i = 0,
-        len = paragraphs.length;
-      for (; i < len; i++) paragraphs[i].classList.add('p-rtl');
-    };
-
+browser.storage.local.get('linkedin', function(items) {
+  if (items.linkedin == true || items.linkedin == undefined) {
     let run_against_article = post_article => {
       if (!patt.test(post_article.innerText)) return;
-
       post_article.classList.add('fonttools-rtl');
-      fix_font_visual(post_article);
+      post_article.setAttribute('dir', 'auto');
     };
 
     let run_on_page = () => {
       let post_articles = document.querySelectorAll(
-        'article, .postArticle-content , .popover, .k'
+        'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
       );
+
+      var inputComment =
+        document.querySelectorAll(
+          '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+        ) !== null;
+      if (inputComment) {
+        [].forEach.call(
+          document.querySelectorAll(
+            '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+          ),
+          function(el) {
+            el.setAttribute('dir', 'auto');
+          }
+        );
+      }
+
       if (!post_articles.length) return;
 
       let i = 0,
@@ -39,27 +47,35 @@ browser.storage.local.get('medium', function(items) {
 });
 
 browser.storage.onChanged.addListener(function(changes, namespace) {
-  if (changes.medium != undefined) {
-    browser.storage.local.get('medium', function(items) {
-      if (items.medium == true || items.medium == undefined) {
-        // console.log('hello');
-        let fix_font_visual = post_article => {
-          let paragraphs = post_article.querySelectorAll('p');
-          let i = 0,
-            len = paragraphs.length;
-          for (; i < len; i++) paragraphs[i].classList.add('p-rtl');
-        };
-
+  if (changes.linkedin != undefined) {
+    browser.storage.local.get('linkedin', function(items) {
+      if (items.linkedin == true || items.linkedin == undefined) {
         let run_against_article = post_article => {
           if (!patt.test(post_article.innerText)) return;
           post_article.classList.add('fonttools-rtl');
-          fix_font_visual(post_article);
+          post_article.setAttribute('dir', 'auto');
         };
 
         let run_on_page = () => {
           let post_articles = document.querySelectorAll(
-            'article, .postArticle-content , .popover, .k'
+            'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
           );
+
+          var inputComment =
+            document.querySelectorAll(
+              '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+            ) !== null;
+          if (inputComment) {
+            [].forEach.call(
+              document.querySelectorAll(
+                '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+              ),
+              function(el) {
+                el.setAttribute('dir', 'auto');
+              }
+            );
+          }
+
           if (!post_articles.length) return;
 
           let i = 0,

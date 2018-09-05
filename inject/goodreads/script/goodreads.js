@@ -22,6 +22,7 @@ browser.storage.local.get('goodreads', function(items) {
       for (; i < len; i++) run_against_article(post_articles[i]);
     };
     obsRun = true;
+    run_on_page();
     new MutationObserver(run_on_page).observe(document.body, {
       childList: true,
       subtree: true
@@ -50,6 +51,7 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
           for (; i < len; i++) run_against_article(post_articles[i]);
         };
         if (obsRun == false) {
+          run_on_page();
           new MutationObserver(run_on_page).observe(document.body, {
             childList: true,
             subtree: true

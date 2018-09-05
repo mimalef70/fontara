@@ -368,12 +368,32 @@ function callback(tabs) {
   var currentTab = tabs[0]; // there will be only one in this array
   var url = new URL(currentTab.url).hostname;
 
+  function ValidURL(str) {
+    var pattern = new RegExp(
+      '^(https?:\\/\\/)?' + // protocol
+      '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' + // domain name
+      '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+      '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+      '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+        '(\\#[-a-z\\d_]*)?$',
+      'i'
+    ); // fragment locater
+    if (!pattern.test(str)) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  if (!ValidURL(currentTab.url)) {
+    document.querySelector('.global-section').style.display = 'none';
+  }
+
   //Global Settings
   document.querySelector('.global-site').textContent = url.replace(
     /^www\./,
     ''
   );
-  console.log(currentTab.favIconUrl);
   if (currentTab.favIconUrl == '' || currentTab.favIconUrl == undefined) {
     document.querySelector('.global-fav').remove();
   } else {
@@ -467,8 +487,8 @@ document.querySelector('#optionpage').addEventListener('mousedown', e => {
 chrome.tabs.query(
   { url: exclude_matches, active: true, currentWindow: true },
   function(tabs) {
-    if (tabs === undefined || tabs.length == 0) {
-      document.querySelector('.global-section').style.display = 'block';
+    if (!(tabs === undefined || tabs.length == 0)) {
+      document.querySelector('.global-section').style.display = 'none';
     }
   }
 );

@@ -61,6 +61,6 @@ browser.storage.local.get('sites', function(result) {
       });
     });
   } else {
-    console.log('no');
+    // console.log('no');
   }
 });

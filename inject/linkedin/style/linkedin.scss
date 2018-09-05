@@ -5,15 +5,96 @@
 }
 
 html body {
+  .fonttools-rtl {
+    direction: rtl !important;
+  }
+
+  .reader-social-details__likes-list .feed-s-likes-list__header {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .reader-social-details__comments-list
+    .feed-shared-comments-list__show-previous-button,
+  .reader-social-details__comments-list .show-prev-replies {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .slate-resizable-image-embed__follow-button {
+    font-family: var(--font), sans-serif !important;
+  }
+  .reader-article-content ol,
+  .reader-article-content p,
+  .reader-article-content ul,
+  .reader-article-content > div {
+    font-family: var(--font), Source Serif Pro, serif !important;
+  }
+  .reader-article-content ol em,
+  .reader-article-content ol i,
+  .reader-article-content p em,
+  .reader-article-content p i,
+  .reader-article-content ul em,
+  .reader-article-content ul i,
+  .reader-article-content > div em,
+  .reader-article-content > div i {
+    font-family: var(--font), Georgia, Source Serif Pro, serif !important;
+  }
+  .reader-article-content h2 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .reader-article-content h3 {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .reader-article-content blockquote {
+    font-family: var(--font), Georgia, Source Serif Pro, serif !important;
+  }
+  .reader-article-content q,
+  .reader-article-content q p {
+    font-family: var(--font), Georgia, Source Serif Pro, serif !important;
+  }
+  .reader-article-content blockquote p {
+    font-family: var(--font), Georgia, Source Serif Pro, serif !important;
+  }
+  .external-social-share__list dl a,
+  .external-social-share__list dl button,
+  .external-social-share__list ol a,
+  .external-social-share__list ol button,
+  .external-social-share__list ul a,
+  .external-social-share__list ul button {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
+  .external-social-share__list dl a :not(:first-child),
+  .external-social-share__list dl button :not(:first-child),
+  .external-social-share__list ol a :not(:first-child),
+  .external-social-share__list ol button :not(:first-child),
+  .external-social-share__list ul a :not(:first-child),
+  .external-social-share__list ul button :not(:first-child) {
+    font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+  }
   .ember-view {
     font-family: var(--font), -apple-system, system-ui, BlinkMacSystemFont,
-    Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
-    Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
+      Segoe UI, Roboto, Helvetica Neue, Fira Sans, Ubuntu, Oxygen, Oxygen Sans,
+      Cantarell, Droid Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Emoji,
+      Segoe UI Symbol, Lucida Grande, Helvetica, Arial, sans-serif !important;
   }
 
   li-icon[type^="premium-"] text {
-    font-family: var(--font), Source Sans Pro, Helvetica, Arial, sans-serif;
+    font-family: var(--font), Source Sans Pro, Helvetica, Arial, sans-serif !important;
   }
   artdeco-slider + datalist li,
   artdeco-slider + datalist option,

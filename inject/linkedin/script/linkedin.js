@@ -3,8 +3,8 @@ window.browser = (function() {
 })();
 var patt = /[\u05D0-\u05EA]|[\u0620-\u063F]|[\u0641-\u064A]|[\u0675-\u06D3]|[\u0710-\u071C]|[\u071E-\u072F]|[\u074E-\u077F]|[\u08A0-\u08AC]|[\u08AE-\u08B4]|[\u07C1-\u07C9]|[\u07CC-\u07E9]/g;
 var obsRun = false;
-browser.storage.local.get('github', function(items) {
-  if (items.github == true || items.github == undefined) {
+browser.storage.local.get('linkedin', function(items) {
+  if (items.linkedin == true || items.linkedin == undefined) {
     let run_against_article = post_article => {
       if (!patt.test(post_article.innerText)) return;
 
@@ -13,8 +13,20 @@ browser.storage.local.get('github', function(items) {
 
     let run_on_page = () => {
       let post_articles = document.querySelectorAll(
-        'p,h1,h2,h3,h4,h5,h6,span,a,strong'
+        'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,span,a,strong'
       );
+
+      var inputComment =
+        document.querySelectorAll('.mentions-texteditor') !== null;
+      if (inputComment) {
+        [].forEach.call(
+          document.querySelectorAll('.mentions-texteditor'),
+          function(el) {
+            el.setAttribute('dir', 'auto');
+          }
+        );
+      }
+
       if (!post_articles.length) return;
 
       let i = 0,
@@ -31,9 +43,9 @@ browser.storage.local.get('github', function(items) {
 });
 
 browser.storage.onChanged.addListener(function(changes, namespace) {
-  if (changes.github != undefined) {
-    browser.storage.local.get('github', function(items) {
-      if (items.github == true || items.github == undefined) {
+  if (changes.linkedin != undefined) {
+    browser.storage.local.get('linkedin', function(items) {
+      if (items.linkedin == true || items.linkedin == undefined) {
         let run_against_article = post_article => {
           if (!patt.test(post_article.innerText)) return;
 
@@ -42,7 +54,7 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
 
         let run_on_page = () => {
           let post_articles = document.querySelectorAll(
-            'p,h1,h2,h3,h4,h5,h6,span,a,strong'
+            'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,span,a,strong'
           );
           if (!post_articles.length) return;
 

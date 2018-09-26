@@ -1,6 +1,7 @@
 {
   "name": "__MSG_appName__",
-  "version": "3.0.0",
+  "short_name": "FontARA",
+  "version": "3.0.1",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
   "author": "Mostafa Alahyari",

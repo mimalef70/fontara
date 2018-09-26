@@ -1,11 +1,10 @@
 {
   "appName": {
-    "message": "FontARA Font Changer",
+    "message": "FontARA Font Changer (for all sites)",
     "description": "The name of the application"
   },
   "appDescription": {
-    "message":
-      "Improve font style for persian users with custom fonts, Change the font on Twitter, Gmail, Slack, Medium, Paper Dropbox, Facebook, Hangout, Linkedin, Wikipedia, Youtube and etc.",
+    "message": "With FontARA, Persian users can change the font on most popular social media sites such as Facebook, Twitter, Google+, Instagram or almost any other site.",
     "description": "The description of the application"
   }
 }

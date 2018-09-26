@@ -1980,3 +1980,20 @@ footer {
 .hint--top:before {
   font-family: Samim;
 }
+
+.testimonial-section {
+  .owl-carousel .owl-item img {
+    display: inline;
+  }
+
+  i.icon.ion-logo-twitter {
+    color: #2374ff;
+    background: #ffe374;
+    padding: 9px;
+    border-radius: 50%;
+    display: block;
+    width: 36px;
+    height: 36px;
+    margin-left: 10px;
+  }
+}

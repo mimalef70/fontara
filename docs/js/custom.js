@@ -41,16 +41,21 @@ $(window).on('load', function() {
   /*====================================================*/
   $(navbarLinks).on('click', function(event) {
     var $anchor = $(this);
-    $('html, body').stop().animate({
-      scrollTop: ($($anchor.attr('href')).offset().top - 50)
-    }, 1250, 'easeInOutExpo');
+    $('html, body')
+      .stop()
+      .animate(
+        {
+          scrollTop: $($anchor.attr('href')).offset().top - 50
+        },
+        1250,
+        'easeInOutExpo'
+      );
     event.preventDefault();
   });
 
   /*====================================================*/
   /* TESTIMONIAL SLIDER                                 */
   /*====================================================*/
-
 
   var $ClientsSlider = $('.testimonial-slider');
   if ($ClientsSlider.length > 0) {
@@ -59,13 +64,17 @@ $(window).on('load', function() {
       center: true,
       margin: 0,
       items: 1,
-      nav: false,
+      nav: true,
+      rtl: true,
       dots: true,
       lazyLoad: true,
       dotsContainer: '.dots'
-    })
+    });
     $('.owl-dot').on('click', function() {
-      $(this).addClass('active').siblings().removeClass('active');
+      $(this)
+        .addClass('active')
+        .siblings()
+        .removeClass('active');
       $ClientsSlider.trigger('to.owl.carousel', [$(this).index(), 300]);
     });
   }
@@ -83,7 +92,7 @@ $(window).on('load', function() {
     },
     navigation: {
       nextEl: '.swiper-button-next',
-      prevEl: '.swiper-button-prev',
+      prevEl: '.swiper-button-prev'
     }
   });
 
@@ -120,7 +129,9 @@ $(window).on('load', function() {
         vimeo: {
           index: 'vimeo.com/',
           id: function(url) {
-            var m = url.match(/(https?:\/\/)?(www.)?(player.)?vimeo.com\/([a-z]*\/)*([0-9]{6,11})[?]?.*/);
+            var m = url.match(
+              /(https?:\/\/)?(www.)?(player.)?vimeo.com\/([a-z]*\/)*([0-9]{6,11})[?]?.*/
+            );
             if (!m || !m[5]) return null;
             return m[5];
           },
@@ -129,5 +140,4 @@ $(window).on('load', function() {
       }
     }
   });
-
 })(jQuery);

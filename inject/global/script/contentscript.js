@@ -7,7 +7,6 @@ window.browser = (function() {
 var url = new URL(document.location.href).hostname;
 
 browser.storage.local.get('sites', function(result) {
-  console.log(result.sites);
   if (result.sites && result.sites.includes(url)) {
     browser.storage.local.get('font', function(items) {
       document.documentElement.style.setProperty(`--font`, items.font);

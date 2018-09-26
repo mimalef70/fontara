@@ -38,7 +38,6 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
   browser.storage.local.get(['font', 'twitter', 'custom_fonts'], function(
     items
   ) {
-    console.log(changes.custom_fonts);
     if (changes.custom_fonts != undefined) {
       if (document.getElementById('custom-font')) {
         document.getElementById('custom-font').remove();

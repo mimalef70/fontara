@@ -12,6 +12,8 @@ browser.storage.local.get('linkedin', function(items) {
     };
 
     let run_on_page = () => {
+      console.log('hello');
+
       let post_articles = document.querySelectorAll(
         'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
       );
@@ -53,10 +55,11 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
         let run_against_article = post_article => {
           if (!patt.test(post_article.innerText)) return;
           post_article.classList.add('fonttools-rtl');
-          post_article.setAttribute('dir', 'auto');
+          // post_article.setAttribute('dir', 'auto');
         };
 
         let run_on_page = () => {
+          console.log('hello change');
           let post_articles = document.querySelectorAll(
             'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
           );

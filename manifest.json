@@ -1,7 +1,7 @@
 {
   "name": "__MSG_appName__",
   "short_name": "FontARA",
-  "version": "3.0.1",
+  "version": "3.0.3",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
   "author": "Mostafa Alahyari",
@@ -276,10 +276,7 @@
     },
     {
       "matches": ["https://www.linkedin.com/*"],
-      "js": [
-        "inject/linkedin/script/contentscript.js",
-        "inject/linkedin/script/linkedin.js"
-      ],
+      "js": ["inject/linkedin/script/contentscript.js"],
       "css": ["inject/linkedin/style/linkedin.css"],
       "run_at": "document_idle",
       "all_frames": true

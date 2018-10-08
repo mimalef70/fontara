@@ -1,18 +1,17 @@
-## New Web Surfing Experience with Font ARA
+![](https://mimalef70.github.io/fontara/images/demo/logo.svg)
+
+# FontARA Version 3.0 
 
 
-![](https://pbs.twimg.com/media/Di39Tb1XgAAkIaj.jpg:large)  
+![](https://mimalef70.github.io/fontara/images/demo/screens/TwitterBanner.jpg)
 
+![](https://mimalef70.github.io/fontara/images/demo/screens/Banner1.jpg)
+![](https://mimalef70.github.io/fontara/images/demo/screens/Banner2.jpg)
+![](https://mimalef70.github.io/fontara/images/demo/screens/Banner3.jpg)
+![](https://mimalef70.github.io/fontara/images/demo/screens/Banner4.jpg)
+![](https://mimalef70.github.io/fontara/images/demo/screens/Banner5.jpg)
 
-#### Without using Font ARA
-
-![](https://files.virgool.io/upload/users/1715/posts/dvzsripy2669/igx3uoabyjeo.jpeg)  
-
-#### With using Font ARA
-
-![](https://files.virgool.io/upload/users/1715/posts/dvzsripy2669/gjuxprbyr3ts.jpeg)
-
-Are you bored of seeing the same fonts all the time? Well, we have a way of changing the font on **almost any website** to a custom one of your own choosing. With installing **Font ARA**, you can change the font on most popular social media sites such as Facebook, Twitter, Google, Instagram, GitHub, or **almost any other site**.
+Are you bored of seeing the same fonts all the time? Well, we have a way of changing the font on **almost any website** to a custom one of your own choosing. With installing **FontARA**, you can change the font on most popular social media sites such as Facebook, Twitter, Google, Instagram, GitHub, or **almost any other site**.
 
 Have fun experimenting with different fonts and settings with your browser. Find something that suits your personality and make your browser your own.
 
@@ -29,18 +28,20 @@ Have fun experimenting with different fonts and settings with your browser. Find
 - It is **Free of Charge**
 
 ---------------
-### Download Links for all explorers
+### Download Links
 
-* Download for [**Google Chrome**](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/)
-* Download for [**Mozilla Firefox**](https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/)
-* Download for [**Opera**](https://addons.opera.com/en/extensions/details/fontara-font-changer/)
-* Download for [**Safari**](https://) _will release soon_
-* Download for [**Edge**](https://) _will release soon_
+<a href="https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/chrome.svg" alt="Google Chrome" width="45" /></a>
+<a href="https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/firefox.svg" alt="Mozilla Firefox" width="45" /></a>
+<a href="https://addons.opera.com/en/extensions/details/fontara-font-changer/"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/opera.svg" alt="Opera" width="45" /></a>
+<a href="#"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/safari.svg" alt="Safari" width="45" /></a>
+<a href="#"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/microsoft-edge.svg" alt="Microsoft Edge" width="45" /></a>
+
+
 ---------------
 ### Contacts
-- **[Font ARA on GitHub](https://github.com/mimalef70/fontara)**
-- **[Mostafa Alahyari on Twitter](https://twitter.com/mimalef70)**
-- [**For More Details**](https://virgool.io/@mimalef70/fontara-font-changer-dvzsripy2669)
+- [**FontARA on GitHub**](https://github.com/mimalef70/fontara)
+- [**Mostafa Alahyari on Twitter**](https://twitter.com/mimalef70)
+- [**For More Details**](https://mimalef70.github.io/fontara/)
 
 ------
 

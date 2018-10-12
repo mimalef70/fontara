@@ -7,28 +7,37 @@ browser.storage.local.get('linkedin', function(items) {
   if (items.linkedin == true || items.linkedin == undefined) {
     let run_against_article = post_article => {
       if (!patt.test(post_article.innerText)) return;
-      post_article.classList.add('fonttools-rtl');
-      post_article.setAttribute('dir', 'auto');
+      if (!post_article.classList.contains('fonttools-rtl')) {
+        post_article.classList.add('fonttools-rtl');
+      }
+      if (
+        !(
+          post_article.hasAttribute('dir') &&
+          post_article.getAttribute('dir') == 'rtl'
+        )
+      ) {
+        post_article.setAttribute('dir', 'auto');
+      }
     };
 
     let run_on_page = () => {
-      console.log('hello');
-
       let post_articles = document.querySelectorAll(
-        'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
+        'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong,.feed-shared-text'
       );
 
       var inputComment =
         document.querySelectorAll(
-          '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+          '.msg-form__message-texteditor, .mentions-texteditor, textarea, input'
         ) !== null;
       if (inputComment) {
         [].forEach.call(
           document.querySelectorAll(
-            '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+            '.msg-form__message-texteditor, .mentions-texteditor, textarea, input'
           ),
           function(el) {
-            el.setAttribute('dir', 'auto');
+            if (!(el.hasAttribute('dir') && el.getAttribute('dir') == 'rtl')) {
+              el.setAttribute('dir', 'rtl');
+            }
           }
         );
       }
@@ -41,10 +50,11 @@ browser.storage.local.get('linkedin', function(items) {
     };
     obsRun = true;
     run_on_page();
-    new MutationObserver(run_on_page).observe(document.body, {
-      childList: true,
-      subtree: true
-    });
+    // new MutationObserver(run_on_page).observe(document.body, {
+    //   childList: true,
+    //   subtree: true
+    // });
+    setInterval(run_on_page, 2000);
   }
 });
 
@@ -54,27 +64,40 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
       if (items.linkedin == true || items.linkedin == undefined) {
         let run_against_article = post_article => {
           if (!patt.test(post_article.innerText)) return;
-          post_article.classList.add('fonttools-rtl');
-          // post_article.setAttribute('dir', 'auto');
+          if (!post_article.classList.contains('fonttools-rtl')) {
+            post_article.classList.add('fonttools-rtl');
+          }
+          if (
+            !(
+              post_article.hasAttribute('dir') &&
+              post_article.getAttribute('dir') == 'rtl'
+            )
+          ) {
+            post_article.setAttribute('dir', 'auto');
+          }
         };
 
         let run_on_page = () => {
           console.log('hello change');
           let post_articles = document.querySelectorAll(
-            'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong'
+            'h1,h2,h3,h4,h5,h6,p,ol,blockquote,pre,font,small,center,a,strong,.feed-shared-text'
           );
 
           var inputComment =
             document.querySelectorAll(
-              '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+              '.msg-form__message-texteditor, .mentions-texteditor, textarea, input'
             ) !== null;
           if (inputComment) {
             [].forEach.call(
               document.querySelectorAll(
-                '.feed-shared-text, .msg-form__message-texteditor, .mentions-texteditor, textarea, input'
+                '.msg-form__message-texteditor, .mentions-texteditor, textarea, input'
               ),
               function(el) {
-                el.setAttribute('dir', 'auto');
+                if (
+                  !(el.hasAttribute('dir') && el.getAttribute('dir') == 'rtl')
+                ) {
+                  el.setAttribute('dir', 'rtl');
+                }
               }
             );
           }
@@ -87,10 +110,11 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
         };
         if (obsRun == false) {
           run_on_page();
-          new MutationObserver(run_on_page).observe(document.body, {
-            childList: true,
-            subtree: true
-          });
+          // new MutationObserver(run_on_page).observe(document.body, {
+          //   childList: true,
+          //   subtree: true
+          // });
+          setInterval(run_on_page, 2000);
         } else {
           run_on_page();
         }

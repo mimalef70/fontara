@@ -11,12 +11,20 @@
 #description,
 .bookAuthorProfile__about,
 .reviewText,
+.gr-newsfeedItem__reviewText,
 .aboutAuthorInfo,
 .quoteText,
 .questionText,
 .updateBodyAfterImage,
 .description,
-.storyText {
+.gr-book__description,
+.storyText,
+.gr-comment__body,
+.gr-newsfeedItem__generalStatusText,
+.gr-newsfeedItem__userStatusText,
+.readable,
+.value,
+expandableHtml {
   &.fonttools-rtl {
     direction: rtl !important;
     text-align: right !important;

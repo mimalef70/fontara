@@ -4,14 +4,6 @@
   --font: Vazir;
 }
 
-body {
-  font-family: var(--font), Roboto, "Noto Naskh Arabic UI", Helvetica, Arial,
-    sans-serif !important;
-}
-.gb_pb {
-  font-family: var(--font), Roboto, RobotoDraft, Arial, sans-serif !important;
-}
-
-.gb_je {
-  font-family: var(--font), "Product Sans", Arial, sans-serif !important;
+body * {
+  font-family: var(--font), "Google Sans", Roboto, Arial, sans-serif, 'Material Icons Extended' !important;
 }

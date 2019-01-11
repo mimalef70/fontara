@@ -129,6 +129,20 @@ body {
   }
 }
 
+[data-value="Nika"] {
+  font-family: Nika;
+  &:after {
+    font-family: Nika !important;
+  }
+}
+
+[data-value="GanjNamehSans"] {
+  font-family: GanjNamehSans;
+  &:after {
+    font-family: GanjNamehSans !important;
+  }
+}
+
 .select-font {
   position: relative;
   .choices__inner > .choices__list > .choices__item--selectable {

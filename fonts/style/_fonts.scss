@@ -113,5 +113,19 @@
   font-family: Estedad;
   src: url("chrome-extension://__MSG_@@extension_id__/fonts/file/Estedad-Medium-A.woff2")
     format("woff2");
-  font-weight: bold;
+  font-weight: Normal;
+}
+
+@font-face {
+  font-family: Nika;
+  src: url("chrome-extension://__MSG_@@extension_id__/fonts/file/Nika-Regular.woff2")
+    format("woff2");
+  font-weight: Normal;
+}
+
+@font-face {
+  font-family: GanjNamehSans;
+  src: url("chrome-extension://__MSG_@@extension_id__/fonts/file/GanjNamehSans-Regular.woff2")
+    format("woff2");
+  font-weight: Normal;
 }

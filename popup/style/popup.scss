@@ -621,14 +621,16 @@ span.icon-heart {
     font-size: 14px;
     font-weight: bold;
     -webkit-font-smoothing: antialiased;
-    color: #fb6021;
+    //color: #fb6021;
     padding: 7px;
-    background: #ffece3;
+    //background: #ffece3;
     -webkit-transition: all 0.15s ease-in-out;
     transition: all 0.15s ease-in-out;
     border-radius: 3px;
+    background: #E91E63;
+    color: #fdedf1;
     &:hover {
-      background: #f6dbce;
+      background: #e6004e;
     }
     &:after {
       font-family: shabnam;

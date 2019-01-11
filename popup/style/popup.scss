@@ -124,6 +124,7 @@ body {
 
 [data-value="Estedad"] {
   font-family: Estedad;
+  line-height: 1.4;
   &:after {
     font-family: Estedad !important;
   }
@@ -140,6 +141,20 @@ body {
   font-family: GanjNamehSans;
   &:after {
     font-family: GanjNamehSans !important;
+  }
+}
+
+[data-value="Shahab"] {
+  font-family: Shahab;
+  &:after {
+    font-family: Shahab !important;
+  }
+}
+
+[data-value="Farbod"] {
+  font-family: Farbod;
+  &:after {
+    font-family: Farbod !important;
   }
 }
 

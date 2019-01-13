@@ -12,7 +12,7 @@ browser.storage.local.get('font', function(data) {
 
 browser.runtime.onInstalled.addListener(function() {
   chrome.tabs.create(
-    { url: 'https://mimalef70.github.io/fontara' },
+    { url: 'https://mimalef70.github.io/fontara#changelogs' },
     function() {}
   );
 });

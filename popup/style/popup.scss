@@ -151,10 +151,11 @@ body {
   }
 }
 
-[data-value="Farbod"] {
-  font-family: Farbod;
+[data-value="AzarMehr"] {
+  font-family: AzarMehr;
+  line-height: 1.4;
   &:after {
-    font-family: Farbod !important;
+    font-family: AzarMehr !important;
   }
 }
 
@@ -248,6 +249,17 @@ footer {
   border: none;
   padding: 6px 14px 6px 10px;
 }
+
+.choices__heading a {
+  color: #9d9d9d;
+  -webkit-transition: all 0.15s ease-in-out;
+  transition: all 0.15s ease-in-out;
+  &:hover {
+    color: #2374ff;
+  }
+}
+
+
 
 a {
   text-decoration: none;

@@ -1,6 +1,6 @@
 'use strict';
 
-window.browser = (function() {
+window.browser = (function () {
   return window.msBrowser || window.chrome || window.browser;
 })();
 
@@ -66,9 +66,11 @@ browser.storage.local.get(
     'crisp',
     'sites'
   ],
-  function(data) {
+  function (data) {
     if (data.twitter == undefined) {
-      browser.storage.local.set({ twitter: true });
+      browser.storage.local.set({
+        twitter: true
+      });
       twitterStatus.checked = true;
     } else {
       if (data.twitter == true) {
@@ -78,7 +80,9 @@ browser.storage.local.get(
       }
     }
     if (data.facebook == undefined) {
-      browser.storage.local.set({ facebook: true });
+      browser.storage.local.set({
+        facebook: true
+      });
       facebookStatus.checked = true;
     } else {
       if (data.facebook == true) {
@@ -88,7 +92,9 @@ browser.storage.local.get(
       }
     }
     if (data.linkedin == undefined) {
-      browser.storage.local.set({ linkedin: true });
+      browser.storage.local.set({
+        linkedin: true
+      });
       linkedinStatus.checked = true;
     } else {
       if (data.linkedin == true) {
@@ -98,7 +104,9 @@ browser.storage.local.get(
       }
     }
     if (data.gmail == undefined) {
-      browser.storage.local.set({ gmail: true });
+      browser.storage.local.set({
+        gmail: true
+      });
       gmailStatus.checked = true;
     } else {
       if (data.gmail == true) {
@@ -108,7 +116,9 @@ browser.storage.local.get(
       }
     }
     if (data.google == undefined) {
-      browser.storage.local.set({ google: true });
+      browser.storage.local.set({
+        google: true
+      });
       googleStatus.checked = true;
     } else {
       if (data.google == true) {
@@ -118,7 +128,9 @@ browser.storage.local.get(
       }
     }
     if (data.instagram == undefined) {
-      browser.storage.local.set({ instagram: true });
+      browser.storage.local.set({
+        instagram: true
+      });
       instagramStatus.checked = true;
     } else {
       if (data.instagram == true) {
@@ -128,7 +140,9 @@ browser.storage.local.get(
       }
     }
     if (data.googleplus == undefined) {
-      browser.storage.local.set({ googleplus: true });
+      browser.storage.local.set({
+        googleplus: true
+      });
       googleplusStatus.checked = true;
     } else {
       if (data.googleplus == true) {
@@ -138,7 +152,9 @@ browser.storage.local.get(
       }
     }
     if (data.medium == undefined) {
-      browser.storage.local.set({ medium: true });
+      browser.storage.local.set({
+        medium: true
+      });
       mediumStatus.checked = true;
     } else {
       if (data.medium == true) {
@@ -148,7 +164,9 @@ browser.storage.local.get(
       }
     }
     if (data.getpocket == undefined) {
-      browser.storage.local.set({ getpocket: true });
+      browser.storage.local.set({
+        getpocket: true
+      });
       getpocketStatus.checked = true;
     } else {
       if (data.getpocket == true) {
@@ -158,7 +176,9 @@ browser.storage.local.get(
       }
     }
     if (data.slack == undefined) {
-      browser.storage.local.set({ slack: true });
+      browser.storage.local.set({
+        slack: true
+      });
       slackStatus.checked = true;
     } else {
       if (data.slack == true) {
@@ -168,7 +188,9 @@ browser.storage.local.get(
       }
     }
     if (data.telegram == undefined) {
-      browser.storage.local.set({ telegram: true });
+      browser.storage.local.set({
+        telegram: true
+      });
       telegramStatus.checked = true;
     } else {
       if (data.telegram == true) {
@@ -178,7 +200,9 @@ browser.storage.local.get(
       }
     }
     if (data.trello == undefined) {
-      browser.storage.local.set({ trello: true });
+      browser.storage.local.set({
+        trello: true
+      });
       trelloStatus.checked = true;
     } else {
       if (data.trello == true) {
@@ -188,7 +212,9 @@ browser.storage.local.get(
       }
     }
     if (data.whatsapp == undefined) {
-      browser.storage.local.set({ whatsapp: true });
+      browser.storage.local.set({
+        whatsapp: true
+      });
       whatsappStatus.checked = true;
     } else {
       if (data.whatsapp == true) {
@@ -198,7 +224,9 @@ browser.storage.local.get(
       }
     }
     if (data.wikipedia == undefined) {
-      browser.storage.local.set({ wikipedia: true });
+      browser.storage.local.set({
+        wikipedia: true
+      });
       wikipediaStatus.checked = true;
     } else {
       if (data.wikipedia == true) {
@@ -208,7 +236,9 @@ browser.storage.local.get(
       }
     }
     if (data.youtube == undefined) {
-      browser.storage.local.set({ youtube: true });
+      browser.storage.local.set({
+        youtube: true
+      });
       youtubeStatus.checked = true;
     } else {
       if (data.youtube == true) {
@@ -218,7 +248,9 @@ browser.storage.local.get(
       }
     }
     if (data.paperdropbox == undefined) {
-      browser.storage.local.set({ paperdropbox: true });
+      browser.storage.local.set({
+        paperdropbox: true
+      });
       paperdropboxStatus.checked = true;
     } else {
       if (data.paperdropbox == true) {
@@ -228,7 +260,9 @@ browser.storage.local.get(
       }
     }
     if (data.inoreader == undefined) {
-      browser.storage.local.set({ inoreader: true });
+      browser.storage.local.set({
+        inoreader: true
+      });
       inoreaderStatus.checked = true;
     } else {
       if (data.inoreader == true) {
@@ -238,7 +272,9 @@ browser.storage.local.get(
       }
     }
     if (data.feedly == undefined) {
-      browser.storage.local.set({ feedly: true });
+      browser.storage.local.set({
+        feedly: true
+      });
       feedlyStatus.checked = true;
     } else {
       if (data.feedly == true) {
@@ -248,7 +284,9 @@ browser.storage.local.get(
       }
     }
     if (data.goodreads == undefined) {
-      browser.storage.local.set({ goodreads: true });
+      browser.storage.local.set({
+        goodreads: true
+      });
       goodreadsStatus.checked = true;
     } else {
       if (data.goodreads == true) {
@@ -258,7 +296,9 @@ browser.storage.local.get(
       }
     }
     if (data.github == undefined) {
-      browser.storage.local.set({ github: true });
+      browser.storage.local.set({
+        github: true
+      });
       githubStatus.checked = true;
     } else {
       if (data.github == true) {
@@ -268,7 +308,9 @@ browser.storage.local.get(
       }
     }
     if (data.virgool == undefined) {
-      browser.storage.local.set({ virgool: true });
+      browser.storage.local.set({
+        virgool: true
+      });
       virgoolStatus.checked = true;
     } else {
       if (data.virgool == true) {
@@ -278,7 +320,9 @@ browser.storage.local.get(
       }
     }
     if (data.duckduckgo == undefined) {
-      browser.storage.local.set({ duckduckgo: true });
+      browser.storage.local.set({
+        duckduckgo: true
+      });
       duckduckgoStatus.checked = true;
     } else {
       if (data.duckduckgo == true) {
@@ -288,7 +332,9 @@ browser.storage.local.get(
       }
     }
     if (data.messagesandroid == undefined) {
-      browser.storage.local.set({ messagesandroid: true });
+      browser.storage.local.set({
+        messagesandroid: true
+      });
       messagesandroidStatus.checked = true;
     } else {
       if (data.messagesandroid == true) {
@@ -298,7 +344,9 @@ browser.storage.local.get(
       }
     }
     if (data.wordpress == undefined) {
-      browser.storage.local.set({ wordpress: true });
+      browser.storage.local.set({
+        wordpress: true
+      });
       wordpressStatus.checked = true;
     } else {
       if (data.wordpress == true) {
@@ -308,7 +356,9 @@ browser.storage.local.get(
       }
     }
     if (data.crisp == undefined) {
-      browser.storage.local.set({ crisp: true });
+      browser.storage.local.set({
+        crisp: true
+      });
       crispStatus.checked = true;
     } else {
       if (data.crisp == true) {
@@ -319,17 +369,23 @@ browser.storage.local.get(
     }
 
     if (data.sites == undefined) {
-      browser.storage.local.set({ sites: [] });
+      browser.storage.local.set({
+        sites: []
+      });
     }
   }
 );
 
-document.querySelectorAll("[type='checkbox']").forEach(function(el) {
-  el.addEventListener('change', function() {
+document.querySelectorAll("[type='checkbox']").forEach(function (el) {
+  el.addEventListener('change', function () {
     if (this.checked == false) {
-      browser.storage.local.set({ [this.getAttribute('id')]: false });
+      browser.storage.local.set({
+        [this.getAttribute('id')]: false
+      });
     } else {
-      browser.storage.local.set({ [this.getAttribute('id')]: true });
+      browser.storage.local.set({
+        [this.getAttribute('id')]: true
+      });
     }
   });
 });
@@ -337,16 +393,18 @@ document.querySelectorAll("[type='checkbox']").forEach(function(el) {
 selectFontElement.addEventListener('change', handleFont);
 
 function handleFont() {
-  browser.storage.local.set({ font: this.value });
+  browser.storage.local.set({
+    font: this.value
+  });
 }
 
-browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
+browser.storage.local.get(['custom_fonts', 'font'], function (fonts) {
   if (fonts.custom_fonts != undefined) {
     var OptGroup = document.createElement('optgroup');
     OptGroup.label = 'فونت های شما';
     OptGroup.id = 'custom-font';
     document.getElementById('fonttools-font').appendChild(OptGroup);
-    Object.keys(fonts.custom_fonts).forEach(function(item) {
+    Object.keys(fonts.custom_fonts).forEach(function (item) {
       var CustomFontOption = document.createElement('option');
       CustomFontOption.textContent = item;
       CustomFontOption.value = item;
@@ -363,7 +421,11 @@ browser.storage.local.get(['custom_fonts', 'font'], function(fonts) {
   });
 });
 
-var query = { active: true, currentWindow: true };
+var query = {
+  active: true,
+  currentWindow: true
+};
+
 function callback(tabs) {
   var currentTab = tabs[0]; // there will be only one in this array
   var url = new URL(currentTab.url).hostname;
@@ -375,7 +437,7 @@ function callback(tabs) {
       '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
       '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
       '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-        '(\\#[-a-z\\d_]*)?(#.*)?$',
+      '(\\#[-a-z\\d_]*)?(#.*)?$',
       'i'
     ); // fragment locater
     if (!pattern.test(str)) {
@@ -400,24 +462,32 @@ function callback(tabs) {
     document.querySelector('.global-fav').src = currentTab.favIconUrl;
   }
 
-  globalItem.addEventListener('change', function() {
+  globalItem.addEventListener('change', function () {
     if (this.checked == false) {
-      browser.storage.local.get({ sites: [] }, function(result) {
+      browser.storage.local.get({
+        sites: []
+      }, function (result) {
         var sites = result.sites;
         sites = sites.filter(item => item !== url);
-        browser.storage.local.set({ sites: sites });
+        browser.storage.local.set({
+          sites: sites
+        });
       });
     } else {
-      browser.storage.local.get({ sites: [] }, function(result) {
+      browser.storage.local.get({
+        sites: []
+      }, function (result) {
         var sites = result.sites;
         sites.push(url);
-        browser.storage.local.set({ sites: sites });
+        browser.storage.local.set({
+          sites: sites
+        });
       });
     }
     chrome.tabs.reload();
   });
 
-  browser.storage.local.get('sites', function(result) {
+  browser.storage.local.get('sites', function (result) {
     if (result.sites.includes(url)) {
       globalItem.checked = true;
     } else {
@@ -444,18 +514,28 @@ function callback(tabs) {
 
 browser.tabs.query(query, callback);
 
-window.addEventListener('load', function() {
-  browser.storage.local.get(['font'], function(fonts) {
+window.addEventListener('load', function () {
+  browser.storage.local.get(['font'], function (fonts) {
     document
       .querySelector(`.choices__list--dropdown [data-value='${fonts.font}']`)
       .classList.add('selected-item');
+    const links = document.querySelectorAll('a.new-tab');
+    for (const link of links) {
+      link.addEventListener('mousedown', e => {
+        e.preventDefault();
+
+        browser.tabs.create({
+          url: link.href
+        });
+      });
+    }
   });
 
-  selectFontElement.addEventListener('change', function() {
+  selectFontElement.addEventListener('change', function () {
     var elems = document.querySelectorAll(
       'choices__list--dropdown .choices__item--choice'
     );
-    [].forEach.call(elems, function(el) {
+    [].forEach.call(elems, function (el) {
       el.classList.remove('selected-item');
     });
     document
@@ -484,9 +564,12 @@ document.querySelector('#optionpage').addEventListener('mousedown', e => {
 });
 
 // Show Global Section
-chrome.tabs.query(
-  { url: exclude_matches, active: true, currentWindow: true },
-  function(tabs) {
+chrome.tabs.query({
+    url: exclude_matches,
+    active: true,
+    currentWindow: true
+  },
+  function (tabs) {
     if (!(tabs === undefined || tabs.length == 0)) {
       document.querySelector('.global-section').style.display = 'none';
     }

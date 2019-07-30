@@ -12,7 +12,7 @@ browser.storage.local.get('getpocket', function(items) {
     };
 
     let run_on_page = () => {
-      let post_articles = document.querySelectorAll('p,h1,h2,h3,h4,h5,h6,a');
+      let post_articles = document.querySelectorAll('p,h1,h2,h3,h4,h5,h6,a,article div');
       if (!post_articles.length) return;
 
       let i = 0,
@@ -40,7 +40,7 @@ browser.storage.onChanged.addListener(function(changes, namespace) {
 
         let run_on_page = () => {
           let post_articles = document.querySelectorAll(
-            'p,h1,h2,h3,h4,h5,h6,a'
+            'p,h1,h2,h3,h4,h5,h6,a,article div'
           );
           if (!post_articles.length) return;
 

@@ -1,13 +1,16 @@
-window.browser = (function() {
+window.browser = (function () {
   return window.msBrowser || window.browser || window.chrome;
 })();
 var patt = /[\u05D0-\u05EA]|[\u0620-\u063F]|[\u0641-\u064A]|[\u0675-\u06D3]|[\u0710-\u071C]|[\u071E-\u072F]|[\u074E-\u077F]|[\u08A0-\u08AC]|[\u08AE-\u08B4]|[\u07C1-\u07C9]|[\u07CC-\u07E9]/g;
 var obsRun = false;
-browser.storage.local.get('google', function(items) {
+if (typeof(document.querySelector("[title='Search']")) != 'undefined' && document.querySelector("[title='Search']") != null) {
+  document.querySelector("[title='Search']").setAttribute("dir", "auto");
+}
+
+browser.storage.local.get('google', function (items) {
   if (items.google == true || items.google == undefined) {
     let run_against_article = post_article => {
       if (!patt.test(post_article.innerText)) return;
-
       post_article.classList.add('fonttools-rtl');
     };
 
@@ -30,9 +33,9 @@ browser.storage.local.get('google', function(items) {
   }
 });
 
-browser.storage.onChanged.addListener(function(changes, namespace) {
+browser.storage.onChanged.addListener(function (changes, namespace) {
   if (changes.google != undefined) {
-    browser.storage.local.get('google', function(items) {
+    browser.storage.local.get('google', function (items) {
       if (items.google == true || items.google == undefined) {
         let run_against_article = post_article => {
           if (!patt.test(post_article.innerText)) return;

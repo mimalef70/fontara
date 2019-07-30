@@ -519,7 +519,7 @@ window.addEventListener('load', function () {
     document
       .querySelector(`.choices__list--dropdown [data-value='${fonts.font}']`)
       .classList.add('selected-item');
-    const links = document.querySelectorAll('a.new-tab');
+    const links = document.querySelectorAll('a.new-tab-font');
     for (const link of links) {
       link.addEventListener('mousedown', e => {
         e.preventDefault();

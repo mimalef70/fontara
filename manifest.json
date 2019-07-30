@@ -1,7 +1,7 @@
 {
   "name": "__MSG_appName__",
   "short_name": "FontARA",
-  "version": "3.8",
+  "version": "3.9",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
   "author": "Mostafa Alahyari",
@@ -37,7 +37,7 @@
         "https://*.slack.com/*",
         "https://plus.google.com/*",
         "https://medium.com/*",
-        "https://getpocket.com/*",
+        "https://*.getpocket.com/*",
         "https://paper.dropbox.com/*",
         "https://virgool.io/*",
         "https://duckduckgo.com/*",
@@ -54,6 +54,7 @@
         "https://mail.google.com/*",
         "https://inbox.google.com/*",
         "https://hangouts.google.com/*",
+        "https://tasks.google.com/*",
         "https://github.com/*",
         "https://www.wunderlist.com/*",
         "https://messages.android.com/*",
@@ -261,6 +262,13 @@
       "all_frames": true
     },
     {
+      "matches": ["https://*.twimg.com/*"],
+      "js": ["inject/twitter/script/contentscript.js"],
+      "css": ["inject/twitter/style/twitter.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
       "matches": ["https://tweetdeck.twitter.com/*"],
       "js": ["inject/twitter/script/contentscript.js"],
       "css": ["inject/twitter/style/tweetdeck.css"],
@@ -369,7 +377,7 @@
       "all_frames": true
     },
     {
-      "matches": ["https://getpocket.com/*"],
+      "matches": ["https://*.getpocket.com/*"],
       "js": [
         "inject/getpocket/script/contentscript.js",
         "inject/getpocket/script/getpocket.js"
@@ -473,6 +481,13 @@
     },
     {
       "matches": ["https://hangouts.google.com/*"],
+      "js": ["inject/gmail/script/contentscript.js"],
+      "css": ["inject/gmail/style/gmail.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://tasks.google.com/*"],
       "js": ["inject/gmail/script/contentscript.js"],
       "css": ["inject/gmail/style/gmail.css"],
       "run_at": "document_end",

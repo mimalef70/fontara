@@ -26,7 +26,7 @@ let run_against_article = post_article => {
 
 let run_on_page = () => {
   let post_articles = document.querySelectorAll(
-    'p,h1,h2,h3,h4,h5,h6,a,span,#description-text,#description,yt-formatted-string'
+    'p,h1,h2,h3,h4,h5,h6,a,span,#description-text,#description,#content-text,yt-formatted-string'
   );
   if (!post_articles.length) return;
 

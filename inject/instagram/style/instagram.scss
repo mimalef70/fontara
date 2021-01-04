@@ -4,7 +4,7 @@
   --font: Vazir;
 }
 
-body {
+body, textarea {
   font-family: Tahoma, Arial, sans-serif !important;
   font-family: var(--font), -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, Helvetica, Arial, sans-serif !important;

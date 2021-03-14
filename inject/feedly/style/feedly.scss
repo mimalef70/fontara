@@ -19,6 +19,7 @@ body {
 h1,
 h2,
 h3,
-[class*="fx"] {
+[class*="fx"],
+.fx .entry .entry__title {
   font-family: var(--font), sans-serif !important;
 }

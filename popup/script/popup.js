@@ -21,6 +21,7 @@ const getpocketStatus = document.querySelector('#getpocket');
 const slackStatus = document.querySelector('#slack');
 const telegramStatus = document.querySelector('#telegram');
 const trelloStatus = document.querySelector('#trello');
+const clickupStatus = document.querySelector('#clickup');
 const whatsappStatus = document.querySelector('#whatsapp');
 const wikipediaStatus = document.querySelector('#wikipedia');
 const youtubeStatus = document.querySelector('#youtube');
@@ -51,6 +52,7 @@ browser.storage.local.get(
     'slack',
     'telegram',
     'trello',
+    'clickup',
     'whatsapp',
     'wikipedia',
     'youtube',
@@ -209,6 +211,18 @@ browser.storage.local.get(
         trelloStatus.checked = true;
       } else {
         trelloStatus.checked = false;
+      }
+    }
+    if (data.clickup == undefined) {
+      browser.storage.local.set({
+        clickup: true
+      });
+      clickupStatus.checked = true;
+    } else {
+      if (data.clickup == true) {
+        clickupStatus.checked = true;
+      } else {
+        clickupStatus.checked = false;
       }
     }
     if (data.whatsapp == undefined) {

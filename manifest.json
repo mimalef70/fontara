@@ -1,7 +1,7 @@
 {
   "name": "__MSG_appName__",
   "short_name": "FontARA",
-  "version": "3.9",
+  "version": "3.10",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
   "author": "Mostafa Alahyari",
@@ -22,6 +22,7 @@
     {
       "matches": ["<all_urls>"],
       "exclude_matches": [
+        "https://app.clickup.com/*",
         "https://twitter.com/*",
         "https://tweetdeck.twitter.com/*",
         "https://mobile.twitter.com/*",
@@ -250,6 +251,13 @@
         "inject/global/script/contentscript.js",
         "inject/global/script/global.js"
       ],
+      "css": ["inject/global/style/global.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://app.clickup.com/*"],
+      "js": ["inject/clickup/script/contentscript.js"],
       "css": ["inject/global/style/global.css"],
       "run_at": "document_end",
       "all_frames": true

@@ -397,6 +397,10 @@ a {
 }
 
 .icons {
+  overflow-y: scroll;
+  max-height: 300px;
+  box-shadow: inset 0px -8px 10px -8px rgb(0 0 0 / 50%);
+  
   input[type="checkbox"] {
     display: none;
   }
@@ -467,6 +471,9 @@ a {
     }
     &[for="trello"] {
       background-image: url(/images/trello-deactive.png);
+    }
+    &[for="clickup"] {
+      background-image: url(/images/clickup-deactive.png);
     }
     &[for="whatsapp"] {
       background-image: url(/images/whatsapp-deactive.png);
@@ -545,6 +552,9 @@ a {
     }
     &[for="trello"] {
       background-image: url(/images/trello-active.png);
+    }
+    &[for="clickup"] {
+      background-image: url(/images/clickup-active.png);
     }
     &[for="whatsapp"] {
       background-image: url(/images/whatsapp-active.png);

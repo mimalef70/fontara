@@ -259,7 +259,7 @@
       "matches": ["https://app.clickup.com/*"],
       "js": ["inject/clickup/script/contentscript.js"],
       "css": ["inject/global/style/global.css"],
-      "run_at": "document_end",
+      "run_at": "document_idle",
       "all_frames": true
     },
     {

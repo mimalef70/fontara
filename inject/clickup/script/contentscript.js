@@ -5,7 +5,14 @@ window.browser = (function() {
 })();
 
 browser.storage.local.get(['font', 'clickup'], function(configs) {
-  setFont(configs);
+  const callback = (mutations, observer) => {
+    observer.disconnect();
+    setFont(configs);
+  };
+  new MutationObserver(callback).observe(document.body, {
+    attributes: true,
+    attributeFilter: ['style']
+  });
 });
 
 browser.storage.local.get('custom_fonts', function(fonts) {

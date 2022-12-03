@@ -10,3 +10,9 @@ body {
     Roboto, Helvetica, Arial, sans-serif !important;
   line-height: 1.7 !important;
 }
+
+div,
+p,
+span {
+  font-family: var(--font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Color Emoji", sans-serif !important;
+}

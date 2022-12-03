@@ -1,13 +1,15 @@
 @font-face {
   font-family: Vazir;
-  src: url("chrome-extension://__MSG_@@extension_id__/fonts/file/Vazir-WOL.woff") format("woff");
-  font-weight: normal;
-}
-
-@font-face {
-  font-family: Vazir;
-  src: url("chrome-extension://__MSG_@@extension_id__/fonts/file/Vazir-Bold-WOL.woff") format("woff");
-  font-weight: bold;
+  src:
+      url("chrome-extension://__MSG_@@extension_id__/fonts/file/Vazirmatn[wght].woff2") format('woff2 supports variations'),
+      url("chrome-extension://__MSG_@@extension_id__/fonts/file/Vazirmatn[wght].woff2") format('woff2-variations'),
+      url("chrome-extension://__MSG_@@extension_id__/fonts/file/Vazirmatn[wght].woff2") format(woff2) tech(variations),
+      url("chrome-extension://__MSG_@@extension_id__/fonts/file/Vazirmatn[wght].ttf") format(truetype) tech(variations),
+      url("chrome-extension://__MSG_@@extension_id__/fonts/file/Vazirmatn[wght].ttf") format("truetype-variations"),
+    ;
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
 }
 
 @font-face {

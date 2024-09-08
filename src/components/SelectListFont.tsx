@@ -97,7 +97,8 @@ const storage = new Storage()
 const fonts = [
   { value: "Estedad", name: "استعداد", svg: ExampleSvg },
   { value: "Vazirmatn", name: "وزیر", svg: ExampleSvg },
-  { value: "Morraba", name: "مربا", svg: ExampleSvg }
+  { value: "Morraba", name: "مربا", svg: ExampleSvg },
+  { value: "Dana", name: "دانا", svg: ExampleSvg }
 ]
 
 export default function SelectListFont() {

@@ -24,7 +24,18 @@ export const fonts = [
   { value: "Estedad", name: "استعداد", svg: ExampleSvg },
   { value: "Vazirmatn", name: "وزیر", svg: ExampleSvg },
   { value: "Morraba", name: "مربا", svg: ExampleSvg },
-  { value: "Dana", name: "دانا", svg: ExampleSvg }
+  { value: "Dana", name: "دانا", svg: ExampleSvg },
+  { value: "Samim", name: "صمیم", svg: ExampleSvg },
+  { value: "Shabnam", name: "شبنم", svg: ExampleSvg },
+  { value: "Sahel", name: "ساحل", svg: ExampleSvg },
+  { Value: "Parastoo", name: "پرستو", svg: ExampleSvg },
+  { value: "Gandom", name: "گندم", svg: ExampleSvg },
+  { value: "Tanha", name: "تنها", svg: ExampleSvg },
+  { value: "Behdad", name: "بهداد", svg: ExampleSvg },
+  { value: "Nika", name: "نیکا", svg: ExampleSvg },
+  { value: "Ganjname", name: "گنج نامه", svg: ExampleSvg },
+  { value: "Shahab", name: "شهاب", svg: ExampleSvg },
+  { value: "Mikhak", name: "میخک", svg: ExampleSvg }
 ]
 
 export default function SelectListFont() {
@@ -61,13 +72,13 @@ export default function SelectListFont() {
           transition
           className={clsx(
             " data-[closed]:scale-95 data-[closed]:opacity-0 w-[var(--button-width)] rounded-xl border border-black/5 bg-black/5 p-1 [--anchor-gap:var(--spacing-1)] focus:outline-none",
-            "transition duration-100 ease-out data-[leave]:data-[closed]:opacity-0"
+            "transition duration-100 ease-out data-[leave]:data-[closed]:opacity-0 mt-1 h-60 overflow-auto"
           )}>
           {fonts.map((font) => (
             <ListboxOption
               key={font.name}
               value={font}
-              className="group flex gap-2 rounded-lg py-1.5 px-3  data-[focus]:bg-black/10">
+              className="group flex gap-2 rounded-lg py-1.5 px-3  data-[focus]:bg-black/10 ">
               {({ selected }) => (
                 <>
                   <CheckIcon

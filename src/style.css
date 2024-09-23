@@ -1,3 +1,86 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: "estedad";
+  src: url("../assets/fonts/estedad/variable/Estedad[KSHD,wght].woff2")
+    format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "morabba";
+  src: url("../assets/fonts/morraba/variable/MorabbaVF.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "samim";
+  src: url("../assets/fonts/samim/variable/Samim-WOL.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "shabnam";
+  src: url("../assets/fonts/shabnam/variable/Shabnam-WOL.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "sahel";
+  src: url("../assets/fonts/sahel/variable/Sahel-WOL.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "parastoo";
+  src: url("../assets/fonts/parastoo/variable/Parastoo-WOL.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "gandom";
+  src: url("../assets/fonts/gandom/variable/Gandom-WOL.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "tanha";
+  src: url("../assets/fonts/tanha/variable/Tanha-WOL.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "behdad";
+  src: url("../assets/fonts/behdad/variable/Behdad-Regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "nika";
+  src: url("../assets/fonts/nika/variable/Nika-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "ganjname";
+  src: url("../assets/fonts/ganjname/variable/GanjNamehSans-Regular.woff2")
+    format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "shahab";
+  src: url("../assets/fonts/shahab/variable/Shahab-Regular.woff2")
+    format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "mikhak";
+  src: url("../assets/fonts/mikhak/variable/Mikhak-Regular.woff2")
+    format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}

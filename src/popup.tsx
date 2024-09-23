@@ -4,8 +4,8 @@ import SelectListFont from "~components/SelectListFont"
 
 function IndexPopup() {
   return (
-    <div dir="rtl">
-      <div className="w-96 h-96 p-4">
+    <div dir="rtl" className="font-mikhak">
+      <div className="w-[22rem]  h-[550px] p-4">
         <SelectListFont />
       </div>
     </div>

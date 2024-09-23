@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import crisp from "url:~assets/logos/crisp-active.png"
 import dropbox from "url:~assets/logos/dropbox-active.png"
 import duckduckgo from "url:~assets/logos/duckduckgo-active.png"
@@ -23,131 +23,151 @@ import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
 
-function PopularUrl() {
-  const initialBoxes = [
-    {
-      id: "crisp",
-      src: crisp,
-      isActive: true,
-      url: "https://app.crisp.chat/*"
-    },
-    {
-      id: "dropbox",
-      src: dropbox,
-      isActive: true,
-      url: "https://www.dropbox.com/*"
-    },
-    {
-      id: "duckduckgo",
-      src: duckduckgo,
-      isActive: true,
-      url: "https://duckduckgo.com/*"
-    },
-    {
-      id: "facebook",
-      src: facebook,
-      isActive: true,
-      url: "https://www.facebook.com/*"
-    },
-    { id: "feedly", src: feedly, isActive: true, url: "https://feedly.com/*" },
-    {
-      id: "getpocket",
-      src: getpocket,
-      isActive: true,
-      url: "https://getpocket.com/*"
-    },
-    { id: "github", src: github, isActive: true, url: "https://github.com/*" },
-    {
-      id: "gmail",
-      src: gmail,
-      isActive: true,
-      url: "https://mail.google.com/*"
-    },
-    {
-      id: "goodreads",
-      src: goodreads,
-      isActive: true,
-      url: "https://www.goodreads.com/*"
-    },
-    {
-      id: "google",
-      src: google,
-      isActive: true,
-      url: "https://www.google.com/*"
-    },
-    {
-      id: "inoreader",
-      src: inoreader,
-      isActive: true,
-      url: "https://www.inoreader.com/*"
-    },
-    {
-      id: "instagram",
-      src: instagram,
-      isActive: true,
-      url: "https://www.instagram.com/*"
-    },
-    {
-      id: "linkedin",
-      src: linkedin,
-      isActive: true,
-      url: "https://www.linkedin.com/*"
-    },
-    { id: "medium", src: medium, isActive: true, url: "https://medium.com/*" },
-    {
-      id: "messagesandroid",
-      src: messagesandroid,
-      isActive: true,
-      url: "https://messages.google.com/*"
-    },
-    { id: "slack", src: slack, isActive: true, url: "https://*.slack.com/*" },
-    {
-      id: "telegram",
-      src: telegram,
-      isActive: true,
-      url: "https://web.telegram.org/*"
-    },
-    { id: "trello", src: trello, isActive: true, url: "https://trello.com/*" },
-    {
-      id: "twitter",
-      src: twitter,
-      isActive: true,
-      url: "https://twitter.com/*"
-    },
-    {
-      id: "virgool",
-      src: virgool,
-      isActive: true,
-      url: "https://virgool.io/*"
-    },
-    {
-      id: "whatsapp",
-      src: whatsapp,
-      isActive: true,
-      url: "https://web.whatsapp.com/*"
-    },
-    {
-      id: "wikipedia",
-      src: wikipedia,
-      isActive: true,
-      url: "https://*.wikipedia.org/*"
-    },
-    {
-      id: "wordpress",
-      src: wordpress,
-      isActive: true,
-      url: "https://*.wordpress.com/*"
-    }
-  ]
+import { Storage } from "@plasmohq/storage"
 
+interface BoxItem {
+  id: string
+  src: string
+  isActive: boolean
+  url: string
+}
+
+const storage = new Storage()
+
+export const initialBoxes: BoxItem[] = [
+  { id: "crisp", src: crisp, isActive: true, url: "" },
+  {
+    id: "dropbox",
+    src: dropbox,
+    isActive: true,
+    url: "https://www.dropbox.com/*"
+  },
+  {
+    id: "duckduckgo",
+    src: duckduckgo,
+    isActive: true,
+    url: "https://duckduckgo.com/*"
+  },
+  {
+    id: "facebook",
+    src: facebook,
+    isActive: true,
+    url: "https://www.facebook.com/*"
+  },
+  { id: "feedly", src: feedly, isActive: true, url: "https://feedly.com/*" },
+  {
+    id: "getpocket",
+    src: getpocket,
+    isActive: true,
+    url: "https://getpocket.com/*"
+  },
+  { id: "github", src: github, isActive: true, url: "https://github.com/*" },
+  {
+    id: "gmail",
+    src: gmail,
+    isActive: true,
+    url: "https://mail.google.com/*"
+  },
+  {
+    id: "goodreads",
+    src: goodreads,
+    isActive: true,
+    url: "https://www.goodreads.com/*"
+  },
+  {
+    id: "google",
+    src: google,
+    isActive: true,
+    url: "https://www.google.com/*"
+  },
+  {
+    id: "inoreader",
+    src: inoreader,
+    isActive: true,
+    url: "https://www.inoreader.com/*"
+  },
+  {
+    id: "instagram",
+    src: instagram,
+    isActive: true,
+    url: "https://www.instagram.com/*"
+  },
+  {
+    id: "linkedin",
+    src: linkedin,
+    isActive: true,
+    url: "https://www.linkedin.com/*"
+  },
+  { id: "medium", src: medium, isActive: true, url: "https://medium.com/*" },
+  {
+    id: "messagesandroid",
+    src: messagesandroid,
+    isActive: true,
+    url: "https://messages.google.com/*"
+  },
+  { id: "slack", src: slack, isActive: true, url: "https://slack.com/*" },
+  {
+    id: "telegram",
+    src: telegram,
+    isActive: true,
+    url: "https://web.telegram.org/*"
+  },
+  { id: "trello", src: trello, isActive: true, url: "https://trello.com/*" },
+  { id: "twitter", src: twitter, isActive: true, url: "https://x.com/*" },
+  {
+    id: "virgool",
+    src: virgool,
+    isActive: true,
+    url: "https://virgool.io/*"
+  },
+  {
+    id: "whatsapp",
+    src: whatsapp,
+    isActive: true,
+    url: "https://web.whatsapp.com/*"
+  },
+  {
+    id: "wikipedia",
+    src: wikipedia,
+    isActive: true,
+    url: "https://*.wikipedia.org/*"
+  },
+  {
+    id: "wordpress",
+    src: wordpress,
+    isActive: true,
+    url: "https://*.wordpress.org/*"
+  }
+]
+function PopularUrl() {
   const [boxes, setBoxes] = useState(initialBoxes)
 
-  const toggleActive = (id: string) => {
-    setBoxes(
-      boxes.map((box) =>
-        box.id === id ? { ...box, isActive: !box.isActive } : box
-      )
+  useEffect(() => {
+    const initializeBoxes = async () => {
+      // await storage.clear()
+      const storedUrls = await storage.get<BoxItem[]>("activeUrls")
+      if (storedUrls && storedUrls.length > 0) {
+        setBoxes(storedUrls)
+      } else {
+        await storage.set("activeUrls", initialBoxes)
+        setBoxes(initialBoxes)
+      }
+    }
+
+    initializeBoxes()
+  }, [])
+
+  const toggleActive = async (id: string) => {
+    const updatedBoxes = boxes.map((box) =>
+      box.id === id ? { ...box, isActive: !box.isActive } : box
     )
+    setBoxes(updatedBoxes)
+    await storage.set("activeUrls", updatedBoxes)
+
+    chrome.runtime.sendMessage({
+      action: "updateActiveUrls",
+      activeUrls: updatedBoxes
+    })
   }
 
   return (

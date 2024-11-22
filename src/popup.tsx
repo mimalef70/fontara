@@ -1,12 +1,12 @@
 import "~src/style.css"
 
-import SelectListFont from "~components/SelectListFont"
+import BasicVersion from "~components/BasicVersion"
 
 function IndexPopup() {
   return (
     <div dir="rtl" className="font-mikhak">
-      <div className="w-[22rem]  h-[550px] p-4">
-        <SelectListFont />
+      <div className="w-[25rem]  h-[570px] p-4">
+        <BasicVersion />
       </div>
     </div>
   )

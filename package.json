@@ -15,7 +15,7 @@
     "@plasmohq/messaging": "^0.6.2",
     "@plasmohq/storage": "^1.12.0",
     "clsx": "^2.1.1",
-    "plasmo": "0.89.1",
+    "plasmo": "0.89.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-flaticons": "^1.1.5"
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
     "@types/chrome": "0.0.258",
+    "@types/firefox-webext-browser": "^120.0.4",
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
@@ -55,6 +56,11 @@
     ],
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
+    },
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "{03c6bd86-18fd-3664-87e7-90e1edbb85a0}"
+      }
     }
   }
 }

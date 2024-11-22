@@ -84,3 +84,30 @@
   font-weight: normal;
   font-style: normal;
 }
+
+@layer base {
+  :root {
+    --sb-track-color: #232e33;
+    --sb-thumb-color: #286396;
+    --sb-size: 9px;
+  }
+
+  body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+  }
+
+  body::-webkit-scrollbar {
+    width: var(--sb-size) !important;
+  }
+
+  body::-webkit-scrollbar-track {
+    background: var(--sb-track-color);
+    border-radius: 2px;
+  }
+
+  body::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border-radius: 2px;
+  }
+}

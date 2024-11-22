@@ -45,14 +45,15 @@ const localFonts: Record<string, string> = {
 const googleFonts: Record<string, string> = {
   Vazirmatn: "https://fonts.googleapis.com/css2?family=Vazirmatn&display=swap"
 }
-
+const browserAPI = typeof browser !== "undefined" ? browser : chrome
+console.log(browserAPI)
 let currentFont = "Estedad"
 let activeUrls: string[] = []
 
 // Function to convert wildcard patterns to RegExp
 export function patternToRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&")
-  const regexString = `^${escaped.replace(/\*/g, ".*")}$`
+  const regexString = `^${escaped.replace(/\*/g, ".*").replace(/\/$/, "")}(\\/[^\\/]+)?$`
   return new RegExp(regexString, "i") // Case-insensitive matching
 }
 
@@ -61,6 +62,7 @@ export function isCurrentUrlMatched(patterns: string[]): boolean {
   const currentUrl = window.location.href
   return patterns.some((pattern) => {
     const regex = patternToRegex(pattern)
+    // console.log(regex)
     return regex.test(currentUrl)
   })
 }
@@ -223,7 +225,7 @@ window.addEventListener("activeUrlsChanged", (event: CustomEvent) => {
 })
 
 // Listen for messages to update the font or active URLs
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "updateActiveUrls") {
     updateActiveUrlsAndInitialize(message.activeUrls)
     sendResponse({ success: true })
@@ -248,7 +250,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       initializeFonts()
     }
   }
-  return true // Indicates that the response is sent asynchronously
+  return true
 })
 
 // Function to update active URLs and reset fonts if necessary

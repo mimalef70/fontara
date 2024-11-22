@@ -6,7 +6,8 @@
     "paths": {
       "~*": ["./src/*"]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "types": ["chrome", "firefox-webext-browser"]
   },
   "jsx": "react-jsx"
 }

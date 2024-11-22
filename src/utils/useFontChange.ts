@@ -5,7 +5,7 @@ import { sendToBackground } from "@plasmohq/messaging"
 
 import { Storage } from "@plasmohq/storage"
 
-import { fonts } from "~components/SelectListFont"
+import { fonts } from "~components/BasicVersion"
 
 const storage = new Storage()
 

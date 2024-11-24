@@ -14,6 +14,7 @@
     "@heroicons/react": "^2.1.5",
     "@plasmohq/messaging": "^0.6.2",
     "@plasmohq/storage": "^1.12.0",
+    "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-select": "^2.1.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",

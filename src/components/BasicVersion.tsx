@@ -1,7 +1,5 @@
 
-import clsx from "clsx"
 import React, { useEffect, useState } from "react"
-import ExampleSvg from "react:../../assets/font-samples/estedad.svg"
 import crisp from "url:~assets/logos/crisp-active.png"
 import dropbox from "url:~assets/logos/dropbox-active.png"
 import duckduckgo from "url:~assets/logos/duckduckgo-active.png"
@@ -25,13 +23,17 @@ import virgool from "url:~assets/logos/virgool-active.png"
 import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/Select"
+import { Checkbox } from "./ui/Checkbox"
 import { Storage } from "@plasmohq/storage"
-import * as SelectPrimitive from "@radix-ui/react-select"
-
 import { urlPatternToRegex } from "~utils/pattern"
 import { useFontChange } from "~utils/useFontChange"
-
 import PopoularUrl from "./PopoularUrl"
 import { CheckedCircle, Circle, PlusIcon } from "@/assets/icons/Icons"
 
@@ -304,29 +306,16 @@ export const fonts = [
   }
 ]
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/Select"
-import { Checkbox } from "./ui/Checkbox"
-
 export default function BaseVersion() {
   const { selected, handleFontChange } = useFontChange()
   const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
   const [currentTab, setCurrentTab] = useState<string>("")
   const [boxes, setBoxes] = useState(initialBoxes)
-  const [isOpen, setIsOpen] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [hoveredFont, setHoveredFont] = useState(null);
 
 
-  const toggleDropdown = () => {
-    setIsOpen((prev) => !prev);
-    setIsActive((prev) => !prev);
-  };
+
 
   useEffect(() => {
     const checkCurrentTab = async () => {
@@ -402,16 +391,12 @@ export default function BaseVersion() {
         {/* Selector Button */}
         <div className="relative">
           <div className="flex flex-col gap-3">
-            {/* <button
-              className={`relative shadow-md select block w-full rounded-md py-1.5 pl-8 text-right text-sm/6 text-black border border-black/5 transition-all duration-300`}
-              onClick={toggleDropdown}
-            >
-              {selected.name}
-            </button> */}
+
             <Select
               onValueChange={(value) =>
                 handleFontChange(fonts.find((font) => font.name === value)!)
               }
+              onOpenChange={() => setIsActive((prev) => !prev)}
               dir="rtl"
 
             >
@@ -455,9 +440,6 @@ export default function BaseVersion() {
 
 
                       </div>
-                      {/* <SelectPrimitive.ItemIndicator>
-                        <CheckedCircle />
-                      </SelectPrimitive.ItemIndicator> */}
 
                     </SelectItem>
                     {/* Circle or CheckedCircle */}
@@ -481,52 +463,6 @@ export default function BaseVersion() {
               افزودن فونت دلخواه <PlusIcon />
             </a>
           </div>
-
-          {/* Dropdown Menu */}
-          {/* {isOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-black/5 p-1 shadow-sm shadow-black divide-y-2 overflow-auto max-h-60">
-              {fonts.map((font) => (
-                <div
-                  key={font.name}
-                  className="group flex justify-between gap-1 py-1 px-3 cursor-pointer hover:bg-black/10"
-                  onClick={() => handleFontChange(font)}
-                  onMouseEnter={() => setHoveredFont(font.name)} // Set hovered font
-                  onMouseLeave={() => setHoveredFont(null)} // Reset hovered font
-                >
-
-
-
-                  <div className="flex">
-                    <div className="flex items-center space-x-1 rtl:space-x-reverse">
-                      <span className={`font-estedad text-sm ${font.style} ${selected.name === font.name ? 'text-[#0D92F4]' : ""}`}>{font.name}</span>
-                    </div>
-
-                  </div>
-
-                  <p className={`${font.style} text-gray-400 hidden group-hover:inline text-[13px]`}>
-                    {font.svg}
-                  </p>
-
-                  <div className={clsx(
-                    "size-4 fill-black",
-                  )}>
-
-                    {hoveredFont === font.name && selected.name !== font.name ? (
-                      <Circle />
-                    ) : (
-                      selected.name === font.name && (
-                        <CheckedCircle />
-
-
-                      )
-                    )}
-                  </div>
-
-                </div>
-              ))}
-            </div>
-          )} */}
-
 
         </div>
       </div>

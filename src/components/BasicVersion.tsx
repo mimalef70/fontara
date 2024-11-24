@@ -10,7 +10,7 @@ import {
   PencilIcon
 } from "@heroicons/react/24/solid"
 import clsx from "clsx"
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import ExampleSvg from "react:../../assets/font-samples/estedad.svg"
 import crisp from "url:~assets/logos/crisp-active.png"
 import dropbox from "url:~assets/logos/dropbox-active.png"
@@ -320,7 +320,9 @@ export default function BaseVersion() {
   const [boxes, setBoxes] = useState(initialBoxes)
   const [isOpen, setIsOpen] = useState(false);
   const [isActive, setIsActive] = useState(false);
-  const [hoveredFont, setHoveredFont] = useState(null); // Track hovered font
+  const [hoveredFont, setHoveredFont] = useState(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
 
   const toggleDropdown = () => {
     setIsOpen((prev) => !prev);
@@ -394,12 +396,28 @@ export default function BaseVersion() {
     setIsCustomUrlActive((prev) => !prev)
   }
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        toggleDropdown()
+      }
+    };
+
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    // Clean up the event listener when the component unmounts
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
       <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
       <div>
         {/* Selector Button */}
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <div className="flex flex-col gap-3">
             <button
               className={`relative shadow-md select block w-full rounded-md py-1.5 pl-8 text-right text-sm/6 text-black border border-black/5 transition-all duration-300`}

@@ -317,6 +317,14 @@ export default function BaseVersion() {
   const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
   const [currentTab, setCurrentTab] = useState<string>("")
   const [boxes, setBoxes] = useState(initialBoxes)
+  const [isOpen, setIsOpen] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [hoveredFont, setHoveredFont] = useState(null); // Track hovered font
+
+  const toggleDropdown = () => {
+    setIsOpen((prev) => !prev);
+    setIsActive((prev) => !prev);
+  };
 
   useEffect(() => {
     const checkCurrentTab = async () => {
@@ -386,73 +394,95 @@ export default function BaseVersion() {
   }
 
   return (
-    <div className="flex flex-col justify-between h-full">
-      <div className="overflow-auto " style={{ direction: "rtl" }}>
-        <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
-
-        <Listbox value={selected} onChange={handleFontChange}>
-          <ListboxButton
-            className={clsx(
-              "relative select select-bordered block w-full rounded-lg bg-black/5 py-1.5 pl-8 p3-3 text-right text-sm/6 text-black",
-              "focus:outline-none data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-black/25"
-            )}>
+    <div className="flex flex-col justify-between h-full w-[85%] mx-auto">
+      <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
+      <div>
+        {/* Selector Button */}
+        <div className="relative">
+          <button
+            className={`relative shadow-md select block w-full rounded-md py-1.5 pl-8 text-right text-sm/6 text-black border border-black/5 transition-all duration-300`}
+            onClick={toggleDropdown}
+          >
             {selected.name}
-          </ListboxButton>
+          </button>
 
-          <ListboxOptions
-            anchor="bottom"
-            transition
-            className={clsx(
-              " data-[closed]:scale-95 data-[closed]:opacity-0 w-[var(--button-width)]  border border-black/5 bg-white  p-1 [--anchor-gap:var(--spacing-1)] focus:outline-none",
-              "transition duration-100 ease-out data-[leave]:data-[closed]:opacity-0 mt-1 h-60 overflow-auto shadow-sm shadow-black divide-y-2 "
-            )}>
-            {fonts.map((font) => (
-              <ListboxOption
-                key={font.name}
-                value={font}
-                className="group flex gap-2  py-1.5 px-3  data-[focus]:bg-black/10 cursor-pointer ">
-                {({ selected }) => (
-                  <>
-                    <CheckIcon
-                      className={clsx(
-                        "size-4 fill-black",
-                        selected ? "visible" : "invisible"
-                      )}
-                    />
-                    <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                      <PencilIcon className="size-4 fill-gray-400" />
-                      <span className={`font-estedad text-sm ${font.style}`}>
-                        {font.name}
-                      </span>
+          {/* Dropdown Menu */}
+          {isOpen && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-black/5 p-1 shadow-sm shadow-black divide-y-2 overflow-auto max-h-60">
+              {fonts.map((font) => (
+                <div
+                  key={font.name}
+                  className="group flex justify-between gap-1 py-1 px-3 cursor-pointer hover:bg-black/10"
+                  onClick={() => handleFontChange(font)}
+                  onMouseEnter={() => setHoveredFont(font.name)} // Set hovered font
+                  onMouseLeave={() => setHoveredFont(null)} // Reset hovered font
+                >
+
+
+
+                  <div className="flex">
+                    <div className="flex items-center space-x-1 rtl:space-x-reverse">
+                      <span className={`font-estedad text-sm ${font.style} ${selected.name === font.name ? 'text-[#0D92F4]' : ""}`}>{font.name}</span>
                     </div>
-                    <p
-                      className={`${font.style} text-gray-400 hidden group-hover:inline text-[13px]`}>
-                      {font.svg}
-                    </p>
-                  </>
-                )}
-              </ListboxOption>
-            ))}
-          </ListboxOptions>
-        </Listbox>
-        <PopoularUrl boxes={boxes} setBoxes={setBoxes} />
-      </div>
 
-      {currentTab && (
-        <div className="border border-gray-400 rounded-md p-2 flex items-center gap-2 select-none mx-auto w-[90%] ">
-          <input
-            type="checkbox"
-            name="activeUrl"
-            id="activeUrl"
-            checked={isCustomUrlActive}
-            onChange={handleCustomUrlToggle}
-            className="checkbox checkbox-success checkbox-sm"
-          />
-          <label className="text-[14px] cursor-pointer" htmlFor="activeUrl">
-            افزونه فونت آرا برای {currentTab.slice(0, -2)} شود؟
-          </label>
+                  </div>
+
+                  <p className={`${font.style} text-gray-400 hidden group-hover:inline text-[13px]`}>
+                    {font.svg}
+                  </p>
+
+                  <div className={clsx(
+                    "size-4 fill-black",
+                  )}>
+
+                    {hoveredFont === font.name && selected.name !== font.name ? (
+                      <svg className="size-5" id="Circle" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12.25 3.75098C7.69359 3.75098 4 7.44457 4 12.001C4 16.5563 7.69354 20.25 12.25 20.25C16.8065 20.25 20.5 16.5563 20.5 12.001C20.5 7.44457 16.8064 3.75098 12.25 3.75098ZM2.5 12.001C2.5 6.61614 6.86516 2.25098 12.25 2.25098C17.6348 2.25098 22 6.61614 22 12.001C22 17.3849 17.6348 21.75 12.25 21.75C6.86522 21.75 2.5 17.3849 2.5 12.001Z" fill="#000000"></path>
+                      </svg>
+                    ) : (
+                      selected.name === font.name && (
+                        <svg className="size-5" id="Check circle" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M21 12C21 7.02908 16.9709 3 12 3C7.02908 3 3 7.02908 3 12C3 16.9699 7.02908 21 12 21C16.9709 21 21 16.9699 21 12Z" stroke="#0D92F4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                          <path d="M8.53516 12.0003L10.845 14.3091L15.4627 9.69141" stroke="#0D92F4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+
+
+                      )
+                    )}
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
+      <div className={` ${isActive ? 'opacity-30' : 'opacity-90'}`} style={{ direction: "rtl" }}>
+
+        <div className="overflow-auto">
+
+
+          {/* Popular URL Section */}
+          <PopoularUrl boxes={boxes} setBoxes={setBoxes} />
+        </div>
+
+        {/* Custom URL Toggle */}
+        {currentTab && (
+          <div className="border border-gray-400 rounded-md p-1 flex items-center gap-1 select-none mx-auto w-[90%]">
+            <input
+              type="checkbox"
+              name="activeUrl"
+              id="activeUrl"
+              checked={isCustomUrlActive}
+              onChange={handleCustomUrlToggle}
+              className="checkbox checkbox-success checkbox-sm"
+            />
+            <label className="text-[14px] cursor-pointer" htmlFor="activeUrl">
+              افزونه فونت آرا برای {currentTab.slice(0, -2)} شود؟
+            </label>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

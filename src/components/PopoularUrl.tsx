@@ -55,22 +55,20 @@ function PopularUrl({ boxes, setBoxes }: Props) {
   }
 
   return (
-    <div className="mt-2 grid grid-cols-5   justify-items-center overflow-auto h-96">
+    <div className="mt-2 grid grid-cols-5 justify-items-center overflow-auto h-96">
       {boxes
         .filter((item) => item.isInUi)
         .map((box) => (
           <div
             key={box.id}
-            className={`shadow-sm border border-gray-300 rounded-md size-12 flex items-center justify-center cursor-pointer hover:shadow-xl hover:grayscale ${
-              box.isActive ? "" : "hover:grayscale "
-            }`}
+            className={`shadow-sm border border-gray-300 rounded-md size-12 flex items-center justify-center cursor-pointer hover:shadow-xl hover:grayscale ${box.isActive ? "" : "hover:grayscale "
+              }`}
             onClick={() => toggleActive(box.id)}>
             <img
               src={box.src}
               alt={`${box.id} Logo`}
-              className={`w-full h-full object-cover transition-all duration-300 ${
-                box.isActive ? "" : "grayscale opacity-25"
-              }`}
+              className={`w-full h-full object-cover transition-all duration-300 ${box.isActive ? "" : "grayscale opacity-25"
+                }`}
             />
           </div>
         ))}

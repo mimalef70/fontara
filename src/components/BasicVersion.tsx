@@ -200,7 +200,9 @@ export const initialBoxes: BoxItem[] = [
     isActive: true,
     url: "https://*.wordpress.org/*",
     isInUi: true
-  }
+  },
+
+
 ]
 
 const storage = new Storage()
@@ -314,9 +316,6 @@ export default function BaseVersion() {
   const [isActive, setIsActive] = useState(false);
   const [hoveredFont, setHoveredFont] = useState(null);
 
-
-
-
   useEffect(() => {
     const checkCurrentTab = async () => {
       try {
@@ -355,6 +354,7 @@ export default function BaseVersion() {
     checkCurrentTab()
   }, [])
 
+  // this code
   useEffect(() => {
     async function updateActiveUrls() {
       if (currentTab) {
@@ -401,7 +401,7 @@ export default function BaseVersion() {
 
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={"test value"} />
+                <SelectValue placeholder={selected.name} />
               </SelectTrigger>
               <SelectContent
 
@@ -477,14 +477,24 @@ export default function BaseVersion() {
 
         {/* Custom URL Toggle */}
         {currentTab && (
-          <div className="border border-gray-400 rounded-md p-1 flex items-center gap-1 select-none mx-auto w-[90%]">
+          <div className="border border-gray-400 rounded-md p-2 flex items-center gap-1 select-none mx-auto w-full">
             <Checkbox
               name="activeUrl"
               id="activeUrl"
+              checked={isCustomUrlActive}
               onChange={handleCustomUrlToggle}
+              onClick={() => setIsCustomUrlActive((prev) => !prev)}
             />
+            {/* <input
+              type="checkbox"
+              name="activeUrl"
+              id="activeUrl"
+              checked={isCustomUrlActive}
+              onChange={handleCustomUrlToggle}
+              className="checkbox checkbox-success checkbox-sm"
+            /> */}
             <label className="text-[14px] cursor-pointer" htmlFor="activeUrl">
-              افزونه فونت آرا برای {currentTab.slice(0, -2)} شود؟
+              افزونه فونت آرا برای {currentTab.slice(8, -2)} شود؟
             </label>
           </div>
         )}

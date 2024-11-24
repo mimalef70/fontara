@@ -311,6 +311,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/Select"
+import { Checkbox } from "./ui/Checkbox"
 
 export default function BaseVersion() {
   const { selected, handleFontChange } = useFontChange()
@@ -475,7 +476,7 @@ export default function BaseVersion() {
 
 
             <a href="#"
-              className="block flex justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative"
+              className="flex justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative"
             >
               افزودن فونت دلخواه <PlusIcon />
             </a>
@@ -541,13 +542,10 @@ export default function BaseVersion() {
         {/* Custom URL Toggle */}
         {currentTab && (
           <div className="border border-gray-400 rounded-md p-1 flex items-center gap-1 select-none mx-auto w-[90%]">
-            <input
-              type="checkbox"
+            <Checkbox
               name="activeUrl"
               id="activeUrl"
-              checked={isCustomUrlActive}
               onChange={handleCustomUrlToggle}
-              className="checkbox checkbox-success checkbox-sm"
             />
             <label className="text-[14px] cursor-pointer" htmlFor="activeUrl">
               افزونه فونت آرا برای {currentTab.slice(0, -2)} شود؟

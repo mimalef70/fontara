@@ -55,7 +55,7 @@ function PopularUrl({ boxes, setBoxes }: Props) {
   }
 
   return (
-    <div className="mt-2 grid grid-cols-5 justify-items-center overflow-auto h-96">
+    <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-80">
       {boxes
         .filter((item) => item.isInUi)
         .map((box) => (

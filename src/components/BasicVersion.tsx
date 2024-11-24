@@ -394,7 +394,7 @@ export default function BaseVersion() {
   }
 
   return (
-    <div className="flex flex-col justify-between h-full w-[85%] mx-auto">
+    <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
       <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
       <div>
         {/* Selector Button */}

@@ -24,7 +24,7 @@ export function useFontChange() {
     setSelected(font)
     await storage.set("selectedFont", font.value)
     await sendToBackground({
-      name: "changeFont",
+      name: "changeFont" as "ping", //Temporary Fix
       body: { fontName: font.value }
     })
   }

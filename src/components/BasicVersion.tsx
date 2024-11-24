@@ -1,16 +1,6 @@
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions
-} from "@headlessui/react"
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  PencilIcon
-} from "@heroicons/react/24/solid"
+
 import clsx from "clsx"
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useState } from "react"
 import ExampleSvg from "react:../../assets/font-samples/estedad.svg"
 import crisp from "url:~assets/logos/crisp-active.png"
 import dropbox from "url:~assets/logos/dropbox-active.png"
@@ -37,6 +27,7 @@ import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
 
 import { Storage } from "@plasmohq/storage"
+import * as SelectPrimitive from "@radix-ui/react-select"
 
 import { urlPatternToRegex } from "~utils/pattern"
 import { useFontChange } from "~utils/useFontChange"
@@ -313,6 +304,14 @@ export const fonts = [
   }
 ]
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/Select"
+
 export default function BaseVersion() {
   const { selected, handleFontChange } = useFontChange()
   const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
@@ -321,7 +320,6 @@ export default function BaseVersion() {
   const [isOpen, setIsOpen] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [hoveredFont, setHoveredFont] = useState(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
 
   const toggleDropdown = () => {
@@ -396,35 +394,86 @@ export default function BaseVersion() {
     setIsCustomUrlActive((prev) => !prev)
   }
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        toggleDropdown()
-      }
-    };
-
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    // Clean up the event listener when the component unmounts
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   return (
     <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
       <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
       <div>
         {/* Selector Button */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative">
           <div className="flex flex-col gap-3">
-            <button
+            {/* <button
               className={`relative shadow-md select block w-full rounded-md py-1.5 pl-8 text-right text-sm/6 text-black border border-black/5 transition-all duration-300`}
               onClick={toggleDropdown}
             >
               {selected.name}
-            </button>
+            </button> */}
+            <Select
+              onValueChange={(value) =>
+                handleFontChange(fonts.find((font) => font.name === value)!)
+              }
+              dir="rtl"
+
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={"test value"} />
+              </SelectTrigger>
+              <SelectContent
+
+
+                className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
+              >
+                {fonts.map((font) => (
+                  <div className=" flex items-center justify-between gap-2 relative">
+                    <SelectItem
+                      key={font.name}
+                      value={font.name}
+                      className="flex items-center gap-2 py-1 px-3 cursor-pointer"
+                      onMouseEnter={() => setHoveredFont(font.name)} // Highlight font on hover
+                      onMouseLeave={() => setHoveredFont(null)} // Reset hover state
+                    >
+                      {/* Font Name and Icon */}
+                      <div className="flex items-center justify-between w-full gap-2">
+                        {/* Font Name */}
+                        <span
+                          className={`font-estedad text-sm ${font.style} ${selected.name === font.name ? "text-[#0D92F4]" : ""
+                            }`}
+                        >
+                          {font.name}
+                        </span>
+
+                        {/* SVG Preview */}
+                        <span
+                          className={`${font.style
+                            } text-gray-400 text-[13px] ${hoveredFont === font.name && selected.name !== font.name
+                              ? "inline"
+                              : "hidden"
+                            }`}
+                        >
+                          {font.svg}
+                        </span>
+
+
+                      </div>
+                      {/* <SelectPrimitive.ItemIndicator>
+                        <CheckedCircle />
+                      </SelectPrimitive.ItemIndicator> */}
+
+                    </SelectItem>
+                    {/* Circle or CheckedCircle */}
+                    <div className="!size-5 fill-black absolute left-2 flex items-center justify-center">
+                      {hoveredFont === font.name && selected.name !== font.name ? (
+                        <Circle />
+                      ) : (
+                        selected.name === font.name && <CheckedCircle />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </SelectContent>
+            </Select>
+
+
+
             <a href="#"
               className="block flex justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative"
             >
@@ -433,7 +482,7 @@ export default function BaseVersion() {
           </div>
 
           {/* Dropdown Menu */}
-          {isOpen && (
+          {/* {isOpen && (
             <div className="absolute z-10 w-full mt-1 bg-white border border-black/5 p-1 shadow-sm shadow-black divide-y-2 overflow-auto max-h-60">
               {fonts.map((font) => (
                 <div
@@ -475,7 +524,9 @@ export default function BaseVersion() {
                 </div>
               ))}
             </div>
-          )}
+          )} */}
+
+
         </div>
       </div>
       <div className={` ${isActive ? 'opacity-30' : 'opacity-90'}`} style={{ direction: "rtl" }}>
@@ -505,5 +556,6 @@ export default function BaseVersion() {
         )}
       </div>
     </div>
+
   )
 }

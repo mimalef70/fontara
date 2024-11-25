@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react"
 import crisp from "url:~assets/logos/crisp-active.png"
 import dropbox from "url:~assets/logos/dropbox-active.png"
@@ -485,8 +484,56 @@ export default function BaseVersion() {
     getCurrentTabFavicon()
   }, [currentTab])
 
-  const handleCustomUrlToggle = async () => {
 
+  // ---------------------------------------------------------
+  const handleExtensionToggle = async () => {
+    setIsExtensionEnabled((prev) => !prev)
+    setIsCustomUrlActive(false)
+
+    // ----------------------------Popular----------------------------
+    const updatedBoxes = boxes.map((box) =>
+      box.id ? { ...box, isActive: box.isActive } : box
+    )
+    setBoxes(updatedBoxes)
+    // Changed storage key from "activeUrls" to "popularActiveUrls"
+    await storage.set("popularActiveUrls", updatedBoxes)
+
+    browserAPI.runtime.sendMessage({
+      action: "updatePopularActiveUrls", // Changed action name
+      popularActiveUrls: updatedBoxes // Changed payload key
+    })
+    // -------------
+    // Get current custom URLs
+    const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
+    let updatedUrls: BoxItem[]
+
+    // Remove URL or set isActive to false
+    updatedUrls = customActiveUrls.map(item =>
+      item.url === currentTab ? { ...item, isActive: false } : item
+    )
+
+    // Save to storage
+    await storage.set("customActiveUrls", updatedUrls)
+
+    // Notify background script
+    browserAPI.runtime.sendMessage({
+      action: "updateCustomUrlStatus",
+      data: updatedUrls
+    })
+
+    // Update current tab
+    const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
+    if (tabs[0]?.id) {
+      browserAPI.tabs.sendMessage(tabs[0].id, {
+        action: "setActiveStatus",
+        isActive: !isExtensionEnabled
+      })
+    }
+  }
+
+  // ---------------------------------------------------------
+
+  const handleCustomUrlToggle = async () => {
     try {
       const newIsActive = !isCustomUrlActive
       setIsCustomUrlActive(newIsActive)
@@ -494,6 +541,7 @@ export default function BaseVersion() {
       // Get current custom URLs
       const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
       let updatedUrls: BoxItem[]
+
 
       if (newIsActive) {
         // Add new URL if it doesn't exist, or update existing one
@@ -536,50 +584,7 @@ export default function BaseVersion() {
     }
   }
 
-  // ---------------------------------------------------------
-  const handleExtensionToggle = async () => {
-    setIsExtensionEnabled((prev) => !prev)
-    setIsCustomUrlActive(true)
-    setIsActive(false)
 
-    let updatedUrls: BoxItem[]
-    const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
-
-
-    updatedUrls = customActiveUrls.map(item =>
-      item.url === currentTab ? { ...item, isActive: !isExtensionEnabled } : item
-    )
-    // Save to storage
-    await storage.set("customActiveUrls", updatedUrls)
-
-    // Notify background script
-    browserAPI.runtime.sendMessage({
-      action: "updateCustomUrlStatus",
-      data: updatedUrls
-    })
-
-    // Update current tab
-    const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
-    if (tabs[0]?.id) {
-      browserAPI.tabs.sendMessage(tabs[0].id, {
-        action: "setActiveStatus",
-        isActive: !isExtensionEnabled
-      })
-    }
-
-
-    const updatedBoxes = boxes.map((box) =>
-      box.id ? { ...box, isActive: !box.isActive } : box
-    )
-    setBoxes(updatedBoxes)
-    // Changed storage key from "activeUrls" to "popularActiveUrls"
-    await storage.set("popularActiveUrls", updatedBoxes)
-
-    browserAPI.runtime.sendMessage({
-      action: "updatePopularActiveUrls", // Changed action name
-      popularActiveUrls: updatedBoxes // Changed payload key
-    })
-  }
 
   return (
     <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
@@ -647,12 +652,10 @@ export default function BaseVersion() {
                   ))}
                 </SelectContent>
               </Select>
-
-              <a href="#"
-                className={`flex justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] 
-              bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative
-              ${isExtensionEnabled ? 'pointer-events-none' : ''}`}
-              >
+              <a href='#'
+                className={`flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] 
+  bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative
+`}>
                 افزودن فونت دلخواه <PlusIcon />
               </a>
             </div>
@@ -678,14 +681,14 @@ export default function BaseVersion() {
                   disabled={!isExtensionEnabled}
                 />
                 برای سایت {" "}
-                {currentTab.slice(8, -2)} <img src={favicon} className="!size-4 object-contain" />
+                {currentTab && currentTab.slice(8, -2)} <img src={favicon} className="!size-4 object-contain" />
                 {" "} فعال باشد؟
               </label>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </div >
 
   )
 }

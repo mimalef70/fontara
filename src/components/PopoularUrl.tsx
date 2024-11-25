@@ -5,10 +5,10 @@ import { Storage } from "@plasmohq/storage"
 import { initialBoxes } from "./BasicVersion"
 
 interface BoxItem {
-  id: string
-  src: string
-  isActive: boolean
-  url: string
+  id?: string
+  src?: string
+  isActive?: boolean
+  url?: string
   isInUi?: boolean
 }
 

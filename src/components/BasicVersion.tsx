@@ -36,6 +36,7 @@ import { urlPatternToRegex } from "~utils/pattern"
 import { useFontChange } from "~utils/useFontChange"
 import PopoularUrl from "./PopoularUrl"
 import { CheckedCircle, Circle, PlusIcon } from "@/assets/icons/Icons"
+import { Switch } from "./ui/Switch"
 
 interface BoxItem {
   id?: string
@@ -310,6 +311,7 @@ export default function BaseVersion() {
   const [boxes, setBoxes] = useState(initialBoxes)
   const [isActive, setIsActive] = useState(false);
   const [hoveredFont, setHoveredFont] = useState(null);
+  const [isExtensionEnabled, setIsExtensionEnabled] = useState(false)
 
   useEffect(() => {
     const checkCurrentTab = async () => {
@@ -484,6 +486,7 @@ export default function BaseVersion() {
   }, [currentTab])
 
   const handleCustomUrlToggle = async () => {
+
     try {
       const newIsActive = !isCustomUrlActive
       setIsCustomUrlActive(newIsActive)
@@ -532,114 +535,155 @@ export default function BaseVersion() {
       setIsCustomUrlActive(!isActive)
     }
   }
+
+  // ---------------------------------------------------------
+  const handleExtensionToggle = async () => {
+    setIsExtensionEnabled((prev) => !prev)
+    setIsCustomUrlActive(true)
+    setIsActive(false)
+
+    let updatedUrls: BoxItem[]
+    const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
+
+
+    updatedUrls = customActiveUrls.map(item =>
+      item.url === currentTab ? { ...item, isActive: !isExtensionEnabled } : item
+    )
+    // Save to storage
+    await storage.set("customActiveUrls", updatedUrls)
+
+    // Notify background script
+    browserAPI.runtime.sendMessage({
+      action: "updateCustomUrlStatus",
+      data: updatedUrls
+    })
+
+    // Update current tab
+    const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
+    if (tabs[0]?.id) {
+      browserAPI.tabs.sendMessage(tabs[0].id, {
+        action: "setActiveStatus",
+        isActive: !isExtensionEnabled
+      })
+    }
+
+
+    const updatedBoxes = boxes.map((box) =>
+      box.id ? { ...box, isActive: !box.isActive } : box
+    )
+    setBoxes(updatedBoxes)
+    // Changed storage key from "activeUrls" to "popularActiveUrls"
+    await storage.set("popularActiveUrls", updatedBoxes)
+
+    browserAPI.runtime.sendMessage({
+      action: "updatePopularActiveUrls", // Changed action name
+      popularActiveUrls: updatedBoxes // Changed payload key
+    })
+  }
+
   return (
     <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
-      <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
-      <div>
-        {/* Selector Button */}
-        <div className="relative">
-          <div className="flex flex-col gap-3">
-
-            <Select
-              onValueChange={(value) =>
-                handleFontChange(fonts.find((font) => font.name === value)!)
-              }
-              onOpenChange={() => setIsActive((prev) => !prev)}
-              dir="rtl"
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={selected.name} />
-              </SelectTrigger>
-              <SelectContent
-
-
-                className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
-              >
-                {fonts.map((font) => (
-                  <div className=" flex items-center justify-between gap-2 relative">
-                    <SelectItem
-                      key={font.name}
-                      value={font.name}
-                      className="flex items-center gap-2 py-1 px-3 cursor-pointer"
-                      onMouseEnter={() => setHoveredFont(font.name)} // Highlight font on hover
-                      onMouseLeave={() => setHoveredFont(null)} // Reset hover state
-                    >
-                      {/* Font Name and Icon */}
-                      <div className="flex items-center justify-between w-full gap-2">
-                        {/* Font Name */}
-                        <span
-                          className={`font-estedad text-sm ${font.style} ${selected.name === font.name ? "text-[#0D92F4]" : ""
-                            }`}
-                        >
-                          {font.name}
-                        </span>
-
-                        {/* SVG Preview */}
-                        <span
-                          className={`${font.style
-                            } text-gray-400 text-[13px] ${hoveredFont === font.name && selected.name !== font.name
-                              ? "inline"
-                              : "hidden"
-                            }`}
-                        >
-                          {font.svg}
-                        </span>
-
-
-                      </div>
-
-                    </SelectItem>
-                    {/* Circle or CheckedCircle */}
-                    <div className="!size-5 fill-black absolute left-2 flex items-center justify-center">
-                      {hoveredFont === font.name && selected.name !== font.name ? (
-                        <Circle />
-                      ) : (
-                        selected.name === font.name && <CheckedCircle />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </SelectContent>
-            </Select>
-
-
-
-            <a href="#"
-              className="flex justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative"
-            >
-              افزودن فونت دلخواه <PlusIcon />
-            </a>
-          </div>
-
-        </div>
+      {/* Header with title and switch - always visible and active */}
+      <div className="flex justify-between relative z-10">
+        <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
+        <Switch
+          dir="ltr"
+          checked={isExtensionEnabled}
+          onCheckedChange={handleExtensionToggle}
+        />
       </div>
-      <div className={` ${isActive ? 'opacity-30' : 'opacity-90'}`} style={{ direction: "rtl" }}>
 
-        <div className="overflow-auto">
+      {/* Main content with conditional opacity and pointer-events */}
+      <div className={`
+      flex-1 flex flex-col 
+      ${!isExtensionEnabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}
+      transition-opacity duration-200
+    `}>
+        <div>
+          {/* Font Selector */}
+          <div className="relative">
+            <div className="flex flex-col gap-3">
+              <Select
+                onValueChange={(value) =>
+                  handleFontChange(fonts.find((font) => font.name === value)!)
+                }
+                onOpenChange={() => setIsActive((prev) => !prev)}
+                dir="rtl"
+                disabled={!isExtensionEnabled}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={selected.name} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+                  {fonts.map((font) => (
+                    <div key={font.name} className="flex items-center justify-between gap-2 relative">
+                      <SelectItem
+                        value={font.name}
+                        className="flex items-center gap-2 py-1 px-3 cursor-pointer"
+                        onMouseEnter={() => setHoveredFont(font.name)}
+                        onMouseLeave={() => setHoveredFont(null)}
+                      >
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <span className={`font-estedad text-sm ${font.style} ${selected.name === font.name ? "text-[#0D92F4]" : ""
+                            }`}>
+                            {font.name}
+                          </span>
+                          <span className={`${font.style} text-gray-400 text-[13px] ${hoveredFont === font.name && selected.name !== font.name
+                            ? "inline"
+                            : "hidden"
+                            }`}>
+                            {font.svg}
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <div className="!size-5 fill-black absolute left-2 flex items-center justify-center">
+                        {hoveredFont === font.name && selected.name !== font.name ? (
+                          <Circle />
+                        ) : (
+                          selected.name === font.name && <CheckedCircle />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
 
-
-          {/* Popular URL Section */}
-          <PopoularUrl boxes={boxes} setBoxes={setBoxes} />
+              <a href="#"
+                className={`flex justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] 
+              bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative
+              ${isExtensionEnabled ? 'pointer-events-none' : ''}`}
+              >
+                افزودن فونت دلخواه <PlusIcon />
+              </a>
+            </div>
+          </div>
         </div>
 
-        {/* Custom URL Toggle */}
-        {currentTab && (
-          <div className="border border-gray-400 rounded-md p-2 flex items-center gap-1 select-none mx-auto w-full">
-            <Checkbox
-              name="activeUrl"
-              id="activeUrl"
-              checked={isCustomUrlActive}
-              onCheckedChange={handleCustomUrlToggle}
+        <div className={`${isActive ? 'opacity-30' : 'opacity-90'}`} style={{ direction: "rtl" }}>
+          <div className="overflow-auto">
+            <PopoularUrl
+              boxes={boxes}
+              setBoxes={setBoxes}
             />
-
-            <label className="text-[14px] cursor-pointer flex items-center gap-1" htmlFor="activeUrl">
-              برای سایت {" "}
-              {currentTab.slice(8, -2)}
-              {" "} فعال باشد؟
-              <img src={favicon} className="!size-5 object-contain" />
-            </label>
           </div>
-        )}
+
+          {currentTab && (
+            <div className="border border-gray-400 rounded-md p-2 flex items-center gap-1 select-none mx-auto w-full">
+              <Checkbox
+                name="activeUrl"
+                id="activeUrl"
+                checked={isCustomUrlActive}
+                onCheckedChange={handleCustomUrlToggle}
+                disabled={!isExtensionEnabled}
+              />
+              <label className="text-[14px] cursor-pointer flex items-center gap-1" htmlFor="activeUrl">
+                برای سایت {" "}
+                {currentTab.slice(8, -2)} <img src={favicon} className="!size-4 object-contain" />
+                {" "} فعال باشد؟
+              </label>
+            </div>
+          )}
+        </div>
       </div>
     </div>
 

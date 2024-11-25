@@ -668,15 +668,15 @@ export default function BaseVersion() {
           </div>
 
           {currentTab && (
-            <div className="border border-gray-400 rounded-md p-2 flex items-center gap-1 select-none mx-auto w-full">
-              <Checkbox
-                name="activeUrl"
-                id="activeUrl"
-                checked={isCustomUrlActive}
-                onCheckedChange={handleCustomUrlToggle}
-                disabled={!isExtensionEnabled}
-              />
-              <label className="text-[14px] cursor-pointer flex items-center gap-1" htmlFor="activeUrl">
+            <div className="border border-gray-400 rounded-md p-2 select-none mx-auto w-full">
+              <label className="text-xs cursor-pointer flex items-center gap-1" htmlFor="activeUrl">
+                <Checkbox
+                  name="activeUrl"
+                  id="activeUrl"
+                  checked={isCustomUrlActive}
+                  onCheckedChange={handleCustomUrlToggle}
+                  disabled={!isExtensionEnabled}
+                />
                 برای سایت {" "}
                 {currentTab.slice(8, -2)} <img src={favicon} className="!size-4 object-contain" />
                 {" "} فعال باشد؟

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Storage } from "@plasmohq/storage"
 
 import { initialBoxes } from "./BasicVersion"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 
 interface BoxItem {
   id?: string
@@ -61,20 +62,32 @@ function PopularUrl({ boxes, setBoxes }: Props) {
       {boxes
         .filter((item) => item.isInUi)
         .map((box) => (
-          <div
-            key={box.id}
-            className={`shadow-sm border border-gray-300 rounded-md size-12 flex items-center justify-center cursor-pointer hover:shadow-xl hover:grayscale ${box.isActive ? "" : "hover:grayscale "
-              }`}
-            onClick={() => toggleActive(box.id)}>
-            <img
-              src={box.src}
-              alt={`${box.id} Logo`}
-              className={`w-full h-full object-cover transition-all duration-300 ${box.isActive ? "" : "grayscale opacity-25"
-                }`}
-            />
-          </div>
-        ))}
-    </div>
+
+          <TooltipProvider key={box.id} delayDuration={90}>
+            <Tooltip>
+              <TooltipTrigger
+                className="shadow-sm border border-gray-300 rounded-md size-12 flex items-center justify-center cursor-pointer hover:shadow-xl"
+                onClick={() => toggleActive(box.id)}>
+                <img
+                  src={box.src}
+                  alt={`${box.id} Logo`}
+                  className={`w-full h-full object-cover transition-all duration-300 ${box.isActive ? "" : "grayscale opacity-25"
+                    }`}
+                />
+              </TooltipTrigger>
+              <TooltipContent
+                className="bg-gray-800 text-white px-3 py-2 rounded-lg shadow-lg text-sm"
+                side="top"
+                align="center">
+                {box.id}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+
+        ))
+      }
+    </div >
   )
 }
 

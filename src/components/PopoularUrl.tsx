@@ -28,12 +28,13 @@ type Props = {
 function PopularUrl({ boxes, setBoxes }: Props) {
   useEffect(() => {
     const initializeBoxes = async () => {
-      // await storage.clear()
-      const storedUrls = await storage.get<BoxItem[]>("activeUrls")
+      // Changed storage key from "activeUrls" to "popularActiveUrls"
+      const storedUrls = await storage.get<BoxItem[]>("popularActiveUrls")
       if (storedUrls && storedUrls.length > 0) {
         setBoxes(storedUrls)
       } else {
-        await storage.set("activeUrls", initialBoxes)
+        // Changed storage key from "activeUrls" to "popularActiveUrls"
+        await storage.set("popularActiveUrls", initialBoxes)
         setBoxes(initialBoxes)
       }
     }
@@ -46,11 +47,12 @@ function PopularUrl({ boxes, setBoxes }: Props) {
       box.id === id ? { ...box, isActive: !box.isActive } : box
     )
     setBoxes(updatedBoxes)
-    await storage.set("activeUrls", updatedBoxes)
+    // Changed storage key from "activeUrls" to "popularActiveUrls"
+    await storage.set("popularActiveUrls", updatedBoxes)
 
     browserAPI.runtime.sendMessage({
-      action: "updateActiveUrls",
-      activeUrls: updatedBoxes
+      action: "updatePopularActiveUrls", // Changed action name
+      popularActiveUrls: updatedBoxes // Changed payload key
     })
   }
 

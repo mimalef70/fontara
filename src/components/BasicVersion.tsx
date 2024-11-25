@@ -206,14 +206,9 @@ export const initialBoxes: BoxItem[] = [
 ]
 
 const storage = new Storage()
-
-// Declare type for browserAPI
 declare const chrome: any
 declare const browser: any
-
-// Use browser for Firefox compatibility, fall back to chrome for Chrome
-const browserAPI: typeof chrome =
-  typeof browser !== "undefined" ? browser : chrome
+const browserAPI: typeof chrome = typeof browser !== "undefined" ? browser : chrome
 
 export const fonts = [
   {
@@ -319,6 +314,45 @@ export default function BaseVersion() {
   useEffect(() => {
     const checkCurrentTab = async () => {
       try {
+        const tabs = await new Promise<chrome.tabs.Tab[]>((resolve) =>
+          browserAPI.tabs.query({ active: true, currentWindow: true }, resolve)
+        )
+        const tab = tabs[0]
+
+        if (tab?.url) {
+          const mainUrl = new URL(tab.url).origin
+          const currentTabUrl = `${mainUrl}/*`
+          setCurrentTab(currentTabUrl)
+
+          // Check if the current URL matches any popular site
+          const matchedSite = initialBoxes.some((box) =>
+            urlPatternToRegex(box.url).test(tab.url)
+          )
+
+          if (matchedSite) {
+            setCurrentTab("")
+            return
+          }
+
+          // Get current custom URLs
+          const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
+          const isUrlActive = customActiveUrls.some(
+            (item) => item.url === currentTabUrl && item.isActive
+          )
+          setIsCustomUrlActive(isUrlActive)
+        }
+      } catch (error) {
+        console.error("Error checking current tab:", error)
+      }
+    }
+
+    checkCurrentTab()
+  }, [])
+
+  // this code
+  useEffect(() => {
+    const checkCurrentTab = async () => {
+      try {
         const tabs = await new Promise((resolve) =>
           browserAPI.tabs.query({ active: true, currentWindow: true }, resolve)
         )
@@ -339,9 +373,9 @@ export default function BaseVersion() {
             return // No need to check custom URLs if it's a popular site
           }
 
-          // Check if the current tab URL is in the list of active URLs
-          const activeUrls = (await storage.get<BoxItem[]>("activeUrls")) || []
-          const isUrlActive = activeUrls.some(
+          // Changed storage key from "activeUrls" to "customActiveUrls"
+          const customActiveUrls = (await storage.get<BoxItem[]>("customActiveUrls")) || []
+          const isUrlActive = customActiveUrls.some(
             (item) => item.url === currentTabUrl
           )
           setIsCustomUrlActive(isUrlActive)
@@ -354,25 +388,27 @@ export default function BaseVersion() {
     checkCurrentTab()
   }, [])
 
-  // this code
+  // Change this part in your custom URL toggle useEffect:
   useEffect(() => {
     async function updateActiveUrls() {
       if (currentTab) {
-        const activeUrls = (await storage.get<BoxItem[]>("activeUrls")) || []
-        let updatedUrls = activeUrls
+        // Changed storage key from "activeUrls" to "customActiveUrls"
+        const customActiveUrls = (await storage.get<BoxItem[]>("customActiveUrls")) || []
+        let updatedUrls = customActiveUrls
 
         if (isCustomUrlActive) {
-          if (!activeUrls.some((item) => item.url === currentTab)) {
-            updatedUrls = [...activeUrls, { url: currentTab, isActive: true }]
+          if (!customActiveUrls.some((item) => item.url === currentTab)) {
+            updatedUrls = [...customActiveUrls, { url: currentTab, isActive: true }]
           }
         } else {
-          updatedUrls = activeUrls.filter((item) => item.url !== currentTab)
+          updatedUrls = customActiveUrls.filter((item) => item.url !== currentTab)
         }
 
-        await storage.set("activeUrls", updatedUrls)
+        // Changed storage key from "activeUrls" to "customActiveUrls"
+        await storage.set("customActiveUrls", updatedUrls)
         browserAPI.runtime.sendMessage({
-          action: "updateActiveUrls",
-          activeUrls: updatedUrls
+          action: "updateCustomActiveUrls", // Changed action name
+          customActiveUrls: updatedUrls // Changed payload key
         })
       }
     }
@@ -380,10 +416,122 @@ export default function BaseVersion() {
     updateActiveUrls()
   }, [isCustomUrlActive, currentTab])
 
-  function handleCustomUrlToggle() {
-    setIsCustomUrlActive((prev) => !prev)
-  }
+  // Get The Logo Of The Tab
+  const [favicon, setFavicon] = useState<string>("")
 
+  useEffect(() => {
+    const getFavicon = async () => {
+      try {
+        // Get all favicon links
+        const links = document.querySelectorAll('link[rel*="icon"]')
+        const favicons: string[] = []
+
+        // Collect all potential favicon URLs
+        links.forEach(link => {
+          const href = link.getAttribute('href')
+          if (href) {
+            // Convert relative URLs to absolute
+            try {
+              const absoluteUrl = new URL(href, window.location.origin).href
+              favicons.push(absoluteUrl)
+            } catch {
+              // If URL construction fails, try using the href directly
+              favicons.push(href)
+            }
+          }
+        })
+
+        // If no icons found in link tags, try default favicon.ico
+        if (favicons.length === 0) {
+          favicons.push(new URL('/favicon.ico', window.location.origin).href)
+        }
+
+        // Check if favicon exists and is accessible
+        for (const url of favicons) {
+          try {
+            const response = await fetch(url, { method: 'HEAD' })
+            if (response.ok) {
+              setFavicon(url)
+              break
+            }
+          } catch {
+            continue
+          }
+        }
+      } catch (error) {
+        console.error("Error getting favicon:", error)
+      }
+    }
+
+    // Get current tab's favicon
+    const getCurrentTabFavicon = async () => {
+      try {
+        const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
+        const tab = tabs[0]
+
+        if (tab?.favIconUrl) {
+          setFavicon(tab.favIconUrl)
+        } else {
+          getFavicon()
+        }
+      } catch (error) {
+        console.error("Error getting tab favicon:", error)
+        getFavicon()
+      }
+    }
+
+    getCurrentTabFavicon()
+  }, [currentTab])
+
+  const handleCustomUrlToggle = async () => {
+    try {
+      const newIsActive = !isCustomUrlActive
+      setIsCustomUrlActive(newIsActive)
+
+      // Get current custom URLs
+      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
+      let updatedUrls: BoxItem[]
+
+      if (newIsActive) {
+        // Add new URL if it doesn't exist, or update existing one
+        const existingUrlIndex = customActiveUrls.findIndex(item => item.url === currentTab)
+        if (existingUrlIndex === -1) {
+          updatedUrls = [...customActiveUrls, { url: currentTab, isActive: true }]
+        } else {
+          updatedUrls = customActiveUrls.map(item =>
+            item.url === currentTab ? { ...item, isActive: true } : item
+          )
+        }
+      } else {
+        // Remove URL or set isActive to false
+        updatedUrls = customActiveUrls.map(item =>
+          item.url === currentTab ? { ...item, isActive: false } : item
+        )
+      }
+
+      // Save to storage
+      await storage.set("customActiveUrls", updatedUrls)
+
+      // Notify background script
+      browserAPI.runtime.sendMessage({
+        action: "updateCustomUrlStatus",
+        data: updatedUrls
+      })
+
+      // Update current tab
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        browserAPI.tabs.sendMessage(tabs[0].id, {
+          action: "setActiveStatus",
+          isActive: newIsActive
+        })
+      }
+    } catch (error) {
+      console.error("Error toggling custom URL:", error)
+      // Revert state if there's an error
+      setIsCustomUrlActive(!isActive)
+    }
+  }
   return (
     <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
       <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
@@ -398,7 +546,6 @@ export default function BaseVersion() {
               }
               onOpenChange={() => setIsActive((prev) => !prev)}
               dir="rtl"
-
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={selected.name} />
@@ -482,19 +629,14 @@ export default function BaseVersion() {
               name="activeUrl"
               id="activeUrl"
               checked={isCustomUrlActive}
-              onChange={handleCustomUrlToggle}
-              onClick={() => setIsCustomUrlActive((prev) => !prev)}
+              onCheckedChange={handleCustomUrlToggle}
             />
-            {/* <input
-              type="checkbox"
-              name="activeUrl"
-              id="activeUrl"
-              checked={isCustomUrlActive}
-              onChange={handleCustomUrlToggle}
-              className="checkbox checkbox-success checkbox-sm"
-            /> */}
-            <label className="text-[14px] cursor-pointer" htmlFor="activeUrl">
-              افزونه فونت آرا برای {currentTab.slice(8, -2)} شود؟
+
+            <label className="text-[14px] cursor-pointer flex items-center gap-1" htmlFor="activeUrl">
+              برای سایت {" "}
+              {currentTab.slice(8, -2)}
+              {" "} فعال باشد؟
+              <img src={favicon} className="!size-5 object-contain" />
             </label>
           </div>
         )}

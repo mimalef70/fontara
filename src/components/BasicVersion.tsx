@@ -310,7 +310,27 @@ export default function BaseVersion() {
   const [boxes, setBoxes] = useState(initialBoxes)
   const [isActive, setIsActive] = useState(false);
   const [hoveredFont, setHoveredFont] = useState(null);
-  const [isExtensionEnabled, setIsExtensionEnabled] = useState(false)
+  const [isExtensionEnabled, setIsExtensionEnabled] = useState(true)
+
+  useEffect(() => {
+    const initializeCustomUrlStatus = async () => {
+      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || [];
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+
+      if (tab?.url) {
+        const mainUrl = new URL(tab.url).origin;
+        const currentTabUrl = `${mainUrl}/*`;
+
+        // Check if current URL exists in storage and set status
+        const urlEntry = customActiveUrls.find(item => item.url === currentTabUrl);
+        setIsCustomUrlActive(urlEntry?.isActive ?? false);
+      }
+    };
+
+    initializeCustomUrlStatus();
+  }, []);
+
 
   useEffect(() => {
     const checkCurrentTab = async () => {
@@ -487,9 +507,8 @@ export default function BaseVersion() {
 
   // ---------------------------------------------------------
   const handleExtensionToggle = async () => {
-    setIsExtensionEnabled((prev) => !prev)
-    setIsCustomUrlActive(false)
 
+    setIsExtensionEnabled((prev) => !prev)
     // ----------------------------Popular----------------------------
     const updatedBoxes = boxes.map((box) =>
       box.id ? { ...box, isActive: box.isActive } : box
@@ -502,15 +521,20 @@ export default function BaseVersion() {
       action: "updatePopularActiveUrls", // Changed action name
       popularActiveUrls: updatedBoxes // Changed payload key
     })
-    // -------------
+    // --------------------------------------------------------------
     // Get current custom URLs
     const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
     let updatedUrls: BoxItem[]
 
+
+
     // Remove URL or set isActive to false
     updatedUrls = customActiveUrls.map(item =>
-      item.url === currentTab ? { ...item, isActive: false } : item
+      item.url === currentTab ? { ...item, isActive: !isExtensionEnabled === false && isCustomUrlActive === true ? false : !isExtensionEnabled === true && isCustomUrlActive === true ? true : item.isActive } : item
     )
+
+
+    // console.log(updatedUrls)
 
     // Save to storage
     await storage.set("customActiveUrls", updatedUrls)

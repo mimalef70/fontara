@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { Storage } from "@plasmohq/storage"
+
 import {
     Select,
     SelectContent,
@@ -101,22 +103,70 @@ export const fonts = [
 ]
 
 interface FontSelectorProps {
-    selected: any
-    handleFontChange: (font: any) => void
     isExtensionEnabled: boolean
 }
+const storage = new Storage()
 
-const FontSelector = ({ selected, handleFontChange, isExtensionEnabled }: FontSelectorProps) => {
+const FontSelector = ({ isExtensionEnabled }: FontSelectorProps) => {
     const [isActive, setIsActive] = useState(false)
     const [hoveredFont, setHoveredFont] = useState(null)
+    const [selected, setSelected] = useState(fonts[0]) // Default to first font
+
+    // Load initial font from storage
+    useEffect(() => {
+        const loadStoredFont = async () => {
+            try {
+                const storedFontName = await storage.get("selectedFont")
+                if (storedFontName) {
+                    const storedFont = fonts.find(font => font.value === storedFontName)
+                    if (storedFont) {
+                        setSelected(storedFont)
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading font from storage:", error)
+            }
+        }
+        loadStoredFont()
+    }, [])
+
+    const handleFontChange = async (selectedValue: string) => {
+        try {
+            // Find the font object based on the selected value
+            const newFont = fonts.find(font => font.value === selectedValue)
+            if (!newFont) {
+                console.error("Font not found:", selectedValue)
+                return
+            }
+
+            // Update local state
+            setSelected(newFont)
+
+            // Save to storage
+            await storage.set("selectedFont", newFont.value)
+
+            // Send message to background script
+            chrome.runtime.sendMessage({
+                action: "changeFont",
+                body: {
+                    fontName: newFont.value
+                }
+            }, (response) => {
+                if (!response?.success) {
+                    console.error("Error changing font:", response?.error)
+                }
+            })
+        } catch (error) {
+            console.error("Error handling font change:", error)
+        }
+    }
 
     return (
         <div className="relative">
             <div className="flex flex-col gap-3">
                 <Select
-                    onValueChange={(value) =>
-                        handleFontChange(fonts.find((font) => font.name === value)!)
-                    }
+                    value={selected.value}
+                    onValueChange={handleFontChange}
                     onOpenChange={() => setIsActive((prev) => !prev)}
                     dir="rtl"
                     disabled={!isExtensionEnabled}
@@ -126,29 +176,27 @@ const FontSelector = ({ selected, handleFontChange, isExtensionEnabled }: FontSe
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
                         {fonts.map((font) => (
-                            <div key={font.name} className="flex items-center justify-between gap-2 relative">
+                            <div key={font.value} className="flex items-center justify-between gap-2 relative">
                                 <SelectItem
-                                    value={font.name}
+                                    value={font.value}
                                     className="flex items-center gap-2 py-1 px-3 cursor-pointer"
-                                    onMouseEnter={() => setHoveredFont(font.name)}
+                                    onMouseEnter={() => setHoveredFont(font.value)}
                                     onMouseLeave={() => setHoveredFont(null)}
                                 >
                                     <div className="flex items-center justify-between w-full gap-2">
-                                        <span className={`font-estedad text-sm ${font.style} ${selected.name === font.name ? "text-[#0D92F4]" : ""
-                                            }`}>
+                                        <span className={`font-estedad text-sm ${font.style} ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>
                                             {font.name}
                                         </span>
-                                        <span className={`${font.style} text-gray-400 text-[13px] ${hoveredFont === font.name && selected.name !== font.name ? "inline" : "hidden"
-                                            }`}>
+                                        <span className={`${font.style} text-gray-400 text-[13px] ${hoveredFont === font.value && selected.value !== font.value ? "inline" : "hidden"}`}>
                                             {font.svg}
                                         </span>
                                     </div>
                                 </SelectItem>
                                 <div className="!size-5 fill-black absolute left-2 flex items-center justify-center">
-                                    {hoveredFont === font.name && selected.name !== font.name ? (
+                                    {hoveredFont === font.value && selected.value !== font.value ? (
                                         <Circle />
                                     ) : (
-                                        selected.name === font.name && <CheckedCircle />
+                                        selected.value === font.value && <CheckedCircle />
                                     )}
                                 </div>
                             </div>

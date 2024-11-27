@@ -30,6 +30,16 @@ import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
 
+
+export const fonts = [
+  {
+    value: "Estedad",
+    name: "استعداد",
+    svg: "بستد دل و دین از من",
+    style: "font-estedad"
+  },
+]
+
 export const initialBoxes: BoxItem[] = [
   { id: "crisp", src: crisp, isActive: true, url: "", isInUi: true },
   {
@@ -226,12 +236,12 @@ const browserAPI: typeof chrome = typeof browser !== "undefined" ? browser : chr
 
 export default function BaseVersion() {
   // State
-  const { selected, handleFontChange } = useFontChange()
   const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
   const [currentTab, setCurrentTab] = useState<string>("")
   const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
   const [favicon, setFavicon] = useState<string>("")
   const [isExtensionEnabled, setIsExtensionEnabled] = useState(false)
+
 
   // Initialize extension state
   useEffect(() => {
@@ -382,20 +392,28 @@ export default function BaseVersion() {
   }, [currentTab])
 
   // Handlers
+  // const handleExtensionToggle = async () => { }
   const handleExtensionToggle = async () => {
     const newIsEnabled = !isExtensionEnabled
-    try {
-      setIsExtensionEnabled(newIsEnabled)
 
-      // Update popular URLs
-      const updatedBoxes = boxes.map((box) => ({
+    try {
+
+      // First read the current boxes from storage
+      const storedBoxes = await storage.get<BoxItem[]>("popularActiveUrls")
+
+      // Update all boxes with the new enabled state
+      const updatedBoxes = storedBoxes.map((box) => ({
         ...box,
         isActive: box.id ? box.isActive : box.isActive
       }))
 
+      // Update local state
       setBoxes(updatedBoxes)
+
+      // Save to storage
       await storage.set("popularActiveUrls", updatedBoxes)
 
+      // Notify background script
       browserAPI.runtime.sendMessage({
         action: "updatePopularActiveUrls",
         popularActiveUrls: updatedBoxes
@@ -403,12 +421,10 @@ export default function BaseVersion() {
 
       // Update custom URLs
       const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
-      const updatedUrls = customActiveUrls.map(item =>
-        item.url === currentTab ? {
-          ...item,
-          isActive: newIsEnabled && isCustomUrlActive
-        } : item
-      )
+      const updatedUrls = customActiveUrls.map(item => ({
+        ...item,
+        isActive: newIsEnabled && item.isActive
+      }))
 
       await storage.set("customActiveUrls", updatedUrls)
       browserAPI.runtime.sendMessage({
@@ -438,9 +454,12 @@ export default function BaseVersion() {
         data: { isEnabled: newIsEnabled }
       })
 
+      setIsExtensionEnabled(newIsEnabled)
+
+
     } catch (error) {
       console.error("Error toggling extension:", error)
-      setIsExtensionEnabled(!newIsEnabled)
+      setIsExtensionEnabled(!newIsEnabled) // Revert on error
     }
   }
 
@@ -499,8 +518,7 @@ export default function BaseVersion() {
         transition-opacity duration-200
       `}>
         <FontSelector
-          selected={selected}
-          handleFontChange={handleFontChange}
+
           isExtensionEnabled={isExtensionEnabled}
         />
 

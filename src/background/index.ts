@@ -1,4 +1,5 @@
 import { Storage } from "@plasmohq/storage"
+import { initializeFonts, resetFontToDefault } from "~contents/plasmo"
 
 const storage = new Storage()
 
@@ -124,6 +125,7 @@ async function handleResetSettings(message: any, sendResponse: (response?: any) 
 // Handle font change messages
 async function handleFontChange(message: any, sendResponse: (response?: any) => void) {
   try {
+
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
       sendResponse({ success: false, error: "Extension is disabled" })
@@ -137,6 +139,7 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
       fontName
     })
     sendResponse({ success: true })
+
   } catch (error) {
     console.error("Error changing font:", error)
     sendResponse({ success: false, error })

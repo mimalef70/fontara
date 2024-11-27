@@ -4,7 +4,6 @@ interface CustomUrlToggleProps {
     currentTab: string
     isCustomUrlActive: boolean
     onToggle: () => void
-    isExtensionEnabled: boolean
     favicon: string
 }
 
@@ -12,7 +11,6 @@ const CustomUrlToggle = ({
     currentTab,
     isCustomUrlActive,
     onToggle,
-    isExtensionEnabled,
     favicon
 }: CustomUrlToggleProps) => {
     if (!currentTab) return null
@@ -25,7 +23,6 @@ const CustomUrlToggle = ({
                     id="activeUrl"
                     checked={isCustomUrlActive}
                     onCheckedChange={onToggle}
-                    disabled={!isExtensionEnabled}
                 />
                 برای سایت {" "}
                 {currentTab && currentTab.slice(8, -2)} <img src={favicon} className="!size-4 object-contain" />

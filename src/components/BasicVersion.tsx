@@ -394,75 +394,16 @@ export default function BaseVersion() {
   // Handlers
   // const handleExtensionToggle = async () => { }
   const handleExtensionToggle = async () => {
-    const newIsEnabled = !isExtensionEnabled
+    setIsExtensionEnabled((prev) => !prev);
 
-    try {
-
-      // First read the current boxes from storage
-      const storedBoxes = await storage.get<BoxItem[]>("popularActiveUrls")
-
-      // Update all boxes with the new enabled state
-      const updatedBoxes = storedBoxes.map((box) => ({
-        ...box,
-        isActive: box.id ? box.isActive : box.isActive
-      }))
-
-      // Update local state
-      setBoxes(updatedBoxes)
-
-      // Save to storage
-      await storage.set("popularActiveUrls", updatedBoxes)
-
-      // Notify background script
-      browserAPI.runtime.sendMessage({
-        action: "updatePopularActiveUrls",
-        popularActiveUrls: updatedBoxes
-      })
-
-      // Update custom URLs
-      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
-      const updatedUrls = customActiveUrls.map(item => ({
-        ...item,
-        isActive: newIsEnabled && item.isActive
-      }))
-
-      await storage.set("customActiveUrls", updatedUrls)
-      browserAPI.runtime.sendMessage({
-        action: "updateCustomUrlStatus",
-        data: updatedUrls
-      })
-
-      // Update current tab
-      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
-      if (tabs[0]?.id) {
-        browserAPI.tabs.sendMessage(tabs[0].id, {
-          action: "setActiveStatus",
-          isActive: newIsEnabled
-        })
-      }
-
-      // Update extension state
-      const currentState = await storage.get<ExtensionState>("extensionState") || DEFAULT_STATE
-      const newState = {
-        ...currentState,
-        isEnabled: newIsEnabled
-      }
-
-      await storage.set("extensionState", newState)
-      browserAPI.runtime.sendMessage({
-        action: "toggleExtension",
-        data: { isEnabled: newIsEnabled }
-      })
-
-      setIsExtensionEnabled(newIsEnabled)
-
-
-    } catch (error) {
-      console.error("Error toggling extension:", error)
-      setIsExtensionEnabled(!newIsEnabled) // Revert on error
+    const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]?.id) {
+      browserAPI.tabs.sendMessage(tabs[0].id, {
+        action: "toggle",
+        isExtensionEnabled: !isExtensionEnabled
+      });
     }
-  }
-
+  };
   const handleCustomUrlToggle = async () => {
     try {
       const newIsActive = !isCustomUrlActive
@@ -518,8 +459,6 @@ export default function BaseVersion() {
         transition-opacity duration-200
       `}>
         <FontSelector
-
-          isExtensionEnabled={isExtensionEnabled}
         />
 
         <div style={{ direction: "rtl" }}>
@@ -534,7 +473,6 @@ export default function BaseVersion() {
             currentTab={currentTab}
             isCustomUrlActive={isCustomUrlActive}
             onToggle={handleCustomUrlToggle}
-            isExtensionEnabled={isExtensionEnabled}
             favicon={favicon}
           />
         </div>

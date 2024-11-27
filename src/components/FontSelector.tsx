@@ -102,12 +102,9 @@ export const fonts = [
     }
 ]
 
-interface FontSelectorProps {
-    isExtensionEnabled: boolean
-}
 const storage = new Storage()
 
-const FontSelector = ({ isExtensionEnabled }: FontSelectorProps) => {
+const FontSelector = () => {
     const [isActive, setIsActive] = useState(false)
     const [hoveredFont, setHoveredFont] = useState(null)
     const [selected, setSelected] = useState(fonts[0]) // Default to first font
@@ -169,7 +166,6 @@ const FontSelector = ({ isExtensionEnabled }: FontSelectorProps) => {
                     onValueChange={handleFontChange}
                     onOpenChange={() => setIsActive((prev) => !prev)}
                     dir="rtl"
-                    disabled={!isExtensionEnabled}
                 >
                     <SelectTrigger className="w-full">
                         <SelectValue placeholder={selected.name} />

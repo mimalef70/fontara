@@ -53,8 +53,12 @@ interface ActiveStatusMessage {
   action: "setActiveStatus"
   isActive: boolean
 }
+interface ToogleStatus {
+  action: "toggle"
+  isExtensionEnabled: boolean
+}
 
-type BrowserMessage = FontUpdateMessage | PopularUrlsMessage | CustomUrlsMessage | ActiveStatusMessage
+type BrowserMessage = FontUpdateMessage | PopularUrlsMessage | CustomUrlsMessage | ActiveStatusMessage | ToogleStatus
 
 // Initialize storage and configuration
 const storage = new Storage()
@@ -210,7 +214,7 @@ function getAllElementsWithFontFamily(
   }
 }
 
-function resetFontToDefault(): void {
+export function resetFontToDefault(): void {
   const customFontElements = document.querySelectorAll<HTMLElement>("[style*='font-family']")
   customFontElements.forEach((element) => {
     const computedStyle = window.getComputedStyle(element)
@@ -225,7 +229,7 @@ function resetFontToDefault(): void {
   }
 }
 
-async function initializeFonts(): Promise<void> {
+export async function initializeFonts(): Promise<void> {
   if (document.body) {
     const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
     const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
@@ -288,11 +292,21 @@ browserAPI.runtime.onMessage.addListener(
         break
 
       case "setActiveStatus":
+
         if (message.isActive) {
           initializeFonts()
         }
         sendResponse({ success: true })
         break
+
+      case "toggle":
+        if (message.isExtensionEnabled) {
+          initializeFonts();
+        } else {
+          resetFontToDefault();
+        }
+        sendResponse({ success: true });
+        break;
     }
     return true
   }

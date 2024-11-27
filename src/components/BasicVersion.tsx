@@ -45,6 +45,27 @@ interface BoxItem {
   isInUi?: boolean
 }
 
+interface ExtensionState {
+  isEnabled: boolean
+  defaultFont: {
+    value: string
+    name: string
+    svg: string
+    style: string
+  }
+}
+
+// Initialize extension state with enabled by default
+const DEFAULT_STATE: ExtensionState = {
+  isEnabled: true,
+  defaultFont: {
+    value: "Estedad",
+    name: "استعداد",
+    svg: "بستد دل و دین از من",
+    style: "font-estedad"
+  }
+};
+
 export const initialBoxes: BoxItem[] = [
   { id: "crisp", src: crisp, isActive: true, url: "", isInUi: true },
   {
@@ -310,7 +331,22 @@ export default function BaseVersion() {
   const [boxes, setBoxes] = useState(initialBoxes)
   const [isActive, setIsActive] = useState(false);
   const [hoveredFont, setHoveredFont] = useState(null);
-  const [isExtensionEnabled, setIsExtensionEnabled] = useState(true)
+  const [isExtensionEnabled, setIsExtensionEnabled] = useState(false)
+
+  useEffect(() => {
+    const loadExtensionState = async () => {
+      try {
+        const state = await storage.get<ExtensionState>("extensionState");
+        if (state) {
+          setIsExtensionEnabled(state.isEnabled);
+        }
+      } catch (error) {
+        console.error("Error loading extension state:", error);
+      }
+    };
+
+    loadExtensionState();
+  }, []);
 
   useEffect(() => {
     const initializeCustomUrlStatus = async () => {
@@ -507,53 +543,77 @@ export default function BaseVersion() {
 
   // ---------------------------------------------------------
   const handleExtensionToggle = async () => {
+    const newIsEnabled = !isExtensionEnabled;
+    try {
 
-    setIsExtensionEnabled((prev) => !prev)
-    // ----------------------------Popular----------------------------
-    const updatedBoxes = boxes.map((box) =>
-      box.id ? { ...box, isActive: box.isActive } : box
-    )
-    setBoxes(updatedBoxes)
-    // Changed storage key from "activeUrls" to "popularActiveUrls"
-    await storage.set("popularActiveUrls", updatedBoxes)
+      // Update local state
+      setIsExtensionEnabled(newIsEnabled);
 
-    browserAPI.runtime.sendMessage({
-      action: "updatePopularActiveUrls", // Changed action name
-      popularActiveUrls: updatedBoxes // Changed payload key
-    })
-    // --------------------------------------------------------------
-    // Get current custom URLs
-    const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
-    let updatedUrls: BoxItem[]
+      // Update popular URLs
+      const updatedBoxes = boxes.map((box) => ({
+        ...box,
+        isActive: box.id ? box.isActive : box.isActive
+      }));
+
+      setBoxes(updatedBoxes);
+      await storage.set("popularActiveUrls", updatedBoxes);
+
+      browserAPI.runtime.sendMessage({
+        action: "updatePopularActiveUrls",
+        popularActiveUrls: updatedBoxes
+      });
+
+      // Update custom URLs
+      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || [];
+      const updatedUrls = customActiveUrls.map(item =>
+        item.url === currentTab ? {
+          ...item,
+          isActive: newIsEnabled && isCustomUrlActive
+        } : item
+      );
 
 
+      // Save custom URLs
+      await storage.set("customActiveUrls", updatedUrls);
 
-    // Remove URL or set isActive to false
-    updatedUrls = customActiveUrls.map(item =>
-      item.url === currentTab ? { ...item, isActive: !isExtensionEnabled === false && isCustomUrlActive === true ? false : !isExtensionEnabled === true && isCustomUrlActive === true ? true : item.isActive } : item
-    )
+      // Notify background about custom URL update
+      browserAPI.runtime.sendMessage({
+        action: "updateCustomUrlStatus",
+        data: updatedUrls
+      });
 
+      // Update current tab
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.id) {
+        browserAPI.tabs.sendMessage(tabs[0].id, {
+          action: "setActiveStatus",
+          isActive: newIsEnabled
+        });
+      }
+      // --------------------------
 
-    // console.log(updatedUrls)
+      // Get and update storage state
+      const currentState = await storage.get<ExtensionState>("extensionState") || DEFAULT_STATE;
+      const newState = {
+        ...currentState,
+        isEnabled: newIsEnabled
+      };
 
-    // Save to storage
-    await storage.set("customActiveUrls", updatedUrls)
+      // Save to storage
+      await storage.set("extensionState", newState);
 
-    // Notify background script
-    browserAPI.runtime.sendMessage({
-      action: "updateCustomUrlStatus",
-      data: updatedUrls
-    })
+      // Notify background script
+      browserAPI.runtime.sendMessage({
+        action: "toggleExtension",
+        data: { isEnabled: newIsEnabled }
+      });
 
-    // Update current tab
-    const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
-    if (tabs[0]?.id) {
-      browserAPI.tabs.sendMessage(tabs[0].id, {
-        action: "setActiveStatus",
-        isActive: !isExtensionEnabled
-      })
+    } catch (error) {
+      console.error("Error toggling extension:", error);
+      // Revert state if there's an error
+      setIsExtensionEnabled(!newIsEnabled);
     }
-  }
+  };
 
   // ---------------------------------------------------------
 

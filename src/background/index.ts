@@ -15,7 +15,7 @@ interface BoxItem {
   url: string
 }
 
-// Add extension state interface
+// Updated extension state interface
 interface ExtensionState {
   isEnabled: boolean
   defaultFont: {
@@ -26,7 +26,7 @@ interface ExtensionState {
   }
 }
 
-// Initialize extension state
+// Initialize extension state with enabled by default
 const DEFAULT_STATE: ExtensionState = {
   isEnabled: true,
   defaultFont: {
@@ -35,7 +35,7 @@ const DEFAULT_STATE: ExtensionState = {
     svg: "بستد دل و دین از من",
     style: "font-estedad"
   }
-}
+};
 
 // Store initial state
 storage.set("extensionState", DEFAULT_STATE)
@@ -121,7 +121,7 @@ async function handleResetSettings(message: any, sendResponse: (response?: any) 
   }
 }
 
-// Handle font change messages (modified)
+// Handle font change messages
 async function handleFontChange(message: any, sendResponse: (response?: any) => void) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
@@ -143,7 +143,7 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
   }
 }
 
-// Handle custom URL status updates (modified)
+// Handle custom URL status updates
 async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any) => void) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
@@ -152,7 +152,6 @@ async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any
       return
     }
 
-    console.log("Updating custom URL status:", message.data)
     await storage.set("customActiveUrls", message.data)
     notifyAllTabs({
       action: "updateCustomUrlStatus",
@@ -165,7 +164,7 @@ async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any
   }
 }
 
-// Handle popular URLs updates (modified)
+// Handle popular URLs updates
 async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: any) => void) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
@@ -174,7 +173,6 @@ async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: a
       return
     }
 
-    console.log("Updating popular URLs:", message.popularActiveUrls)
     await storage.set("popularActiveUrls", message.popularActiveUrls)
     notifyAllTabs({
       action: "updatePopularActiveUrls",
@@ -196,7 +194,6 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
       return false
     }
 
-    // Rest of your existing checkIfUrlShouldBeActive logic...
     const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls")
     if (popularActiveUrls) {
       const isPopularActive = popularActiveUrls.some(
@@ -229,7 +226,7 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
   }
 }
 
-// Utility functions remain the same
+// Utility functions
 function notifyAllTabs(message: any) {
   browserAPI.tabs.query({}, (tabs: chrome.tabs.Tab[]) => {
     tabs.forEach((tab) => {
@@ -253,7 +250,7 @@ function sendActiveStatus(tabId: number, isActive: boolean) {
     .catch((error: Error) => console.log("Error sending message (tab may not be ready):", error))
 }
 
-// Keep existing tabs listener
+// Tab update listener
 browserAPI.tabs.onUpdated.addListener(
   (
     tabId: number,

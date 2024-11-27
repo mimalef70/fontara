@@ -167,7 +167,7 @@ const FontSelector = () => {
                     onOpenChange={() => setIsActive((prev) => !prev)}
                     dir="rtl"
                 >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger>
                         <SelectValue placeholder={selected.name} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
@@ -180,10 +180,10 @@ const FontSelector = () => {
                                     onMouseLeave={() => setHoveredFont(null)}
                                 >
                                     <div className="flex items-center justify-between w-full gap-2">
-                                        <span className={`font-estedad text-sm ${font.style} ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>
+                                        <span className={`!w-[5rem] font-estedad text-sm ${font.style} ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>
                                             {font.name}
                                         </span>
-                                        <span className={`${font.style} text-gray-400 text-[13px] ${hoveredFont === font.value && selected.value !== font.value ? "inline" : "hidden"}`}>
+                                        <span className={`!w-[7rem] mx-auto ${font.style} text-gray-400 text-[13px] ${hoveredFont === font.value && selected.value !== font.value ? "inline" : "hidden"}`}>
                                             {font.svg}
                                         </span>
                                     </div>

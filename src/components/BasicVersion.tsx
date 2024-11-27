@@ -1,4 +1,11 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
+import { Storage } from "@plasmohq/storage"
+import { urlPatternToRegex } from "~utils/pattern"
+import { useFontChange } from "~utils/useFontChange"
+import PopoularUrl from "./PopoularUrl"
+import Header from "./Header"
+import FontSelector from "./FontSelector"
+import CustomUrlToggle from "./CustomUrlToggle"
 import crisp from "url:~assets/logos/crisp-active.png"
 import dropbox from "url:~assets/logos/dropbox-active.png"
 import duckduckgo from "url:~assets/logos/duckduckgo-active.png"
@@ -22,49 +29,6 @@ import virgool from "url:~assets/logos/virgool-active.png"
 import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/Select"
-import { Checkbox } from "./ui/Checkbox"
-import { Storage } from "@plasmohq/storage"
-import { urlPatternToRegex } from "~utils/pattern"
-import { useFontChange } from "~utils/useFontChange"
-import PopoularUrl from "./PopoularUrl"
-import { CheckedCircle, Circle, PlusIcon } from "@/assets/icons/Icons"
-import { Switch } from "./ui/Switch"
-
-interface BoxItem {
-  id?: string
-  src?: string
-  isActive?: boolean
-  url?: string
-  isInUi?: boolean
-}
-
-interface ExtensionState {
-  isEnabled: boolean
-  defaultFont: {
-    value: string
-    name: string
-    svg: string
-    style: string
-  }
-}
-
-// Initialize extension state with enabled by default
-const DEFAULT_STATE: ExtensionState = {
-  isEnabled: true,
-  defaultFont: {
-    value: "Estedad",
-    name: "استعداد",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  }
-};
 
 export const initialBoxes: BoxItem[] = [
   { id: "crisp", src: crisp, isActive: true, url: "", isInUi: true },
@@ -221,159 +185,93 @@ export const initialBoxes: BoxItem[] = [
     isActive: true,
     url: "https://*.wordpress.org/*",
     isInUi: true
-  },
-
-
+  }
 ]
 
+// Types
+interface BoxItem {
+  id?: string
+  src?: string
+  isActive?: boolean
+  url?: string
+  isInUi?: boolean
+}
+
+interface ExtensionState {
+  isEnabled: boolean
+  defaultFont: {
+    value: string
+    name: string
+    svg: string
+    style: string
+  }
+}
+
+// Constants
+const DEFAULT_STATE: ExtensionState = {
+  isEnabled: true,
+  defaultFont: {
+    value: "Estedad",
+    name: "استعداد",
+    svg: "بستد دل و دین از من",
+    style: "font-estedad"
+  }
+}
+
+// Browser API setup
 const storage = new Storage()
 declare const chrome: any
 declare const browser: any
 const browserAPI: typeof chrome = typeof browser !== "undefined" ? browser : chrome
 
-export const fonts = [
-  {
-    value: "Estedad",
-    name: "استعداد",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  },
-  {
-    value: "Vazirmatn",
-    name: "وزیر",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  },
-  {
-    value: "Morraba",
-    name: "مربا",
-    svg: "بستد دل و دین از من",
-    style: "font-morabba"
-  },
-  {
-    value: "Dana",
-    name: "دانا",
-    svg: "بستد دل و دین از من",
-    style: "font-dana"
-  },
-  {
-    value: "Samim",
-    name: "صمیم",
-    svg: "بستد دل و دین از من",
-    style: "font-samim"
-  },
-  {
-    value: "Shabnam",
-    name: "شبنم",
-    svg: "بستد دل و دین از من",
-    style: "font-shabnam"
-  },
-  {
-    value: "Sahel",
-    name: "ساحل",
-    svg: "بستد دل و دین از من",
-    style: "font-sahel"
-  },
-  {
-    Value: "Parastoo",
-    name: "پرستو",
-    svg: "بستد دل و دین از من",
-    style: "font-parastoo"
-  },
-  {
-    value: "Gandom",
-    name: "گندم",
-    svg: "بستد دل و دین از من",
-    style: "font-gandom"
-  },
-  {
-    value: "Tanha",
-    name: "تنها",
-    svg: "بستد دل و دین از من",
-    style: "font-tanha"
-  },
-  {
-    value: "Behdad",
-    name: "بهداد",
-    svg: "بستد دل و دین از من",
-    style: "font-behdad"
-  },
-  {
-    value: "Nika",
-    name: "نیکا",
-    svg: "بستد دل و دین از من",
-    style: "font-nika"
-  },
-  {
-    value: "Ganjname",
-    name: "گنج نامه",
-    svg: "بستد دل و دین از من",
-    style: "font-ganjname"
-  },
-  {
-    value: "Shahab",
-    name: "شهاب",
-    svg: "بستد دل و دین از من",
-    style: "font-shahab"
-  },
-  {
-    value: "Mikhak",
-    name: "میخک",
-    svg: "بستد دل و دین از من",
-    style: "font-mikhak"
-  }
-]
-
 export default function BaseVersion() {
+  // State
   const { selected, handleFontChange } = useFontChange()
   const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
   const [currentTab, setCurrentTab] = useState<string>("")
-  const [boxes, setBoxes] = useState(initialBoxes)
-  const [isActive, setIsActive] = useState(false);
-  const [hoveredFont, setHoveredFont] = useState(null);
+  const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
+  const [favicon, setFavicon] = useState<string>("")
   const [isExtensionEnabled, setIsExtensionEnabled] = useState(false)
 
+  // Initialize extension state
   useEffect(() => {
     const loadExtensionState = async () => {
       try {
-        const state = await storage.get<ExtensionState>("extensionState");
+        const state = await storage.get<ExtensionState>("extensionState")
         if (state) {
-          setIsExtensionEnabled(state.isEnabled);
+          setIsExtensionEnabled(state.isEnabled)
         }
       } catch (error) {
-        console.error("Error loading extension state:", error);
+        console.error("Error loading extension state:", error)
       }
-    };
+    }
 
-    loadExtensionState();
-  }, []);
+    loadExtensionState()
+  }, [])
 
+  // Initialize custom URL status
   useEffect(() => {
     const initializeCustomUrlStatus = async () => {
-      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || [];
-      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
-      const tab = tabs[0];
+      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
+      const tab = tabs[0]
 
       if (tab?.url) {
-        const mainUrl = new URL(tab.url).origin;
-        const currentTabUrl = `${mainUrl}/*`;
-
-        // Check if current URL exists in storage and set status
-        const urlEntry = customActiveUrls.find(item => item.url === currentTabUrl);
-        setIsCustomUrlActive(urlEntry?.isActive ?? false);
+        const mainUrl = new URL(tab.url).origin
+        const currentTabUrl = `${mainUrl}/*`
+        const urlEntry = customActiveUrls.find(item => item.url === currentTabUrl)
+        setIsCustomUrlActive(urlEntry?.isActive ?? false)
       }
-    };
+    }
 
-    initializeCustomUrlStatus();
-  }, []);
+    initializeCustomUrlStatus()
+  }, [])
 
-
+  // Check current tab
   useEffect(() => {
     const checkCurrentTab = async () => {
       try {
-        const tabs = await new Promise<chrome.tabs.Tab[]>((resolve) =>
-          browserAPI.tabs.query({ active: true, currentWindow: true }, resolve)
-        )
+        const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
         const tab = tabs[0]
 
         if (tab?.url) {
@@ -382,8 +280,8 @@ export default function BaseVersion() {
           setCurrentTab(currentTabUrl)
 
           // Check if the current URL matches any popular site
-          const matchedSite = initialBoxes.some((box) =>
-            urlPatternToRegex(box.url).test(tab.url)
+          const matchedSite = boxes.some((box) =>
+            box.url && urlPatternToRegex(box.url).test(tab.url)
           )
 
           if (matchedSite) {
@@ -404,53 +302,13 @@ export default function BaseVersion() {
     }
 
     checkCurrentTab()
-  }, [])
+  }, [boxes])
 
-  // this code
+  // Update custom URLs when toggled
   useEffect(() => {
-    const checkCurrentTab = async () => {
-      try {
-        const tabs = await new Promise((resolve) =>
-          browserAPI.tabs.query({ active: true, currentWindow: true }, resolve)
-        )
-        const tab = tabs[0]
-
-        if (tab?.url) {
-          const mainUrl = new URL(tab.url).origin
-          const currentTabUrl = `${mainUrl}/*`
-          setCurrentTab(currentTabUrl)
-
-          // Check if the current URL matches any popular site
-          const matchedSite = initialBoxes.some((box) =>
-            urlPatternToRegex(box.url).test(tab.url)
-          )
-
-          if (matchedSite) {
-            setCurrentTab("")
-            return // No need to check custom URLs if it's a popular site
-          }
-
-          // Changed storage key from "activeUrls" to "customActiveUrls"
-          const customActiveUrls = (await storage.get<BoxItem[]>("customActiveUrls")) || []
-          const isUrlActive = customActiveUrls.some(
-            (item) => item.url === currentTabUrl
-          )
-          setIsCustomUrlActive(isUrlActive)
-        }
-      } catch (error) {
-        console.error("Error checking current tab:", error)
-      }
-    }
-
-    checkCurrentTab()
-  }, [])
-
-  // Change this part in your custom URL toggle useEffect:
-  useEffect(() => {
-    async function updateActiveUrls() {
+    const updateActiveUrls = async () => {
       if (currentTab) {
-        // Changed storage key from "activeUrls" to "customActiveUrls"
-        const customActiveUrls = (await storage.get<BoxItem[]>("customActiveUrls")) || []
+        const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
         let updatedUrls = customActiveUrls
 
         if (isCustomUrlActive) {
@@ -461,11 +319,10 @@ export default function BaseVersion() {
           updatedUrls = customActiveUrls.filter((item) => item.url !== currentTab)
         }
 
-        // Changed storage key from "activeUrls" to "customActiveUrls"
         await storage.set("customActiveUrls", updatedUrls)
         browserAPI.runtime.sendMessage({
-          action: "updateCustomActiveUrls", // Changed action name
-          customActiveUrls: updatedUrls // Changed payload key
+          action: "updateCustomActiveUrls",
+          customActiveUrls: updatedUrls
         })
       }
     }
@@ -473,54 +330,8 @@ export default function BaseVersion() {
     updateActiveUrls()
   }, [isCustomUrlActive, currentTab])
 
-  // Get The Logo Of The Tab
-  const [favicon, setFavicon] = useState<string>("")
-
+  // Get favicon
   useEffect(() => {
-    const getFavicon = async () => {
-      try {
-        // Get all favicon links
-        const links = document.querySelectorAll('link[rel*="icon"]')
-        const favicons: string[] = []
-
-        // Collect all potential favicon URLs
-        links.forEach(link => {
-          const href = link.getAttribute('href')
-          if (href) {
-            // Convert relative URLs to absolute
-            try {
-              const absoluteUrl = new URL(href, window.location.origin).href
-              favicons.push(absoluteUrl)
-            } catch {
-              // If URL construction fails, try using the href directly
-              favicons.push(href)
-            }
-          }
-        })
-
-        // If no icons found in link tags, try default favicon.ico
-        if (favicons.length === 0) {
-          favicons.push(new URL('/favicon.ico', window.location.origin).href)
-        }
-
-        // Check if favicon exists and is accessible
-        for (const url of favicons) {
-          try {
-            const response = await fetch(url, { method: 'HEAD' })
-            if (response.ok) {
-              setFavicon(url)
-              break
-            }
-          } catch {
-            continue
-          }
-        }
-      } catch (error) {
-        console.error("Error getting favicon:", error)
-      }
-    }
-
-    // Get current tab's favicon
     const getCurrentTabFavicon = async () => {
       try {
         const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
@@ -529,125 +340,77 @@ export default function BaseVersion() {
         if (tab?.favIconUrl) {
           setFavicon(tab.favIconUrl)
         } else {
-          getFavicon()
+          // Fallback to searching for favicon in page
+          const links = document.querySelectorAll('link[rel*="icon"]')
+          const favicons: string[] = []
+
+          links.forEach(link => {
+            const href = link.getAttribute('href')
+            if (href) {
+              try {
+                const absoluteUrl = new URL(href, window.location.origin).href
+                favicons.push(absoluteUrl)
+              } catch {
+                favicons.push(href)
+              }
+            }
+          })
+
+          if (favicons.length === 0) {
+            favicons.push(new URL('/favicon.ico', window.location.origin).href)
+          }
+
+          // Try each favicon until one works
+          for (const url of favicons) {
+            try {
+              const response = await fetch(url, { method: 'HEAD' })
+              if (response.ok) {
+                setFavicon(url)
+                break
+              }
+            } catch {
+              continue
+            }
+          }
         }
       } catch (error) {
-        console.error("Error getting tab favicon:", error)
-        getFavicon()
+        console.error("Error getting favicon:", error)
       }
     }
 
     getCurrentTabFavicon()
   }, [currentTab])
 
-
-  // ---------------------------------------------------------
+  // Handlers
   const handleExtensionToggle = async () => {
-    const newIsEnabled = !isExtensionEnabled;
+    const newIsEnabled = !isExtensionEnabled
     try {
-
-      // Update local state
-      setIsExtensionEnabled(newIsEnabled);
+      setIsExtensionEnabled(newIsEnabled)
 
       // Update popular URLs
       const updatedBoxes = boxes.map((box) => ({
         ...box,
         isActive: box.id ? box.isActive : box.isActive
-      }));
+      }))
 
-      setBoxes(updatedBoxes);
-      await storage.set("popularActiveUrls", updatedBoxes);
+      setBoxes(updatedBoxes)
+      await storage.set("popularActiveUrls", updatedBoxes)
 
       browserAPI.runtime.sendMessage({
         action: "updatePopularActiveUrls",
         popularActiveUrls: updatedBoxes
-      });
+      })
 
       // Update custom URLs
-      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || [];
+      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
       const updatedUrls = customActiveUrls.map(item =>
         item.url === currentTab ? {
           ...item,
           isActive: newIsEnabled && isCustomUrlActive
         } : item
-      );
+      )
 
-
-      // Save custom URLs
-      await storage.set("customActiveUrls", updatedUrls);
-
-      // Notify background about custom URL update
-      browserAPI.runtime.sendMessage({
-        action: "updateCustomUrlStatus",
-        data: updatedUrls
-      });
-
-      // Update current tab
-      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]?.id) {
-        browserAPI.tabs.sendMessage(tabs[0].id, {
-          action: "setActiveStatus",
-          isActive: newIsEnabled
-        });
-      }
-      // --------------------------
-
-      // Get and update storage state
-      const currentState = await storage.get<ExtensionState>("extensionState") || DEFAULT_STATE;
-      const newState = {
-        ...currentState,
-        isEnabled: newIsEnabled
-      };
-
-      // Save to storage
-      await storage.set("extensionState", newState);
-
-      // Notify background script
-      browserAPI.runtime.sendMessage({
-        action: "toggleExtension",
-        data: { isEnabled: newIsEnabled }
-      });
-
-    } catch (error) {
-      console.error("Error toggling extension:", error);
-      // Revert state if there's an error
-      setIsExtensionEnabled(!newIsEnabled);
-    }
-  };
-
-  // ---------------------------------------------------------
-
-  const handleCustomUrlToggle = async () => {
-    try {
-      const newIsActive = !isCustomUrlActive
-      setIsCustomUrlActive(newIsActive)
-
-      // Get current custom URLs
-      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
-      let updatedUrls: BoxItem[]
-
-
-      if (newIsActive) {
-        // Add new URL if it doesn't exist, or update existing one
-        const existingUrlIndex = customActiveUrls.findIndex(item => item.url === currentTab)
-        if (existingUrlIndex === -1) {
-          updatedUrls = [...customActiveUrls, { url: currentTab, isActive: true }]
-        } else {
-          updatedUrls = customActiveUrls.map(item =>
-            item.url === currentTab ? { ...item, isActive: true } : item
-          )
-        }
-      } else {
-        // Remove URL or set isActive to false
-        updatedUrls = customActiveUrls.map(item =>
-          item.url === currentTab ? { ...item, isActive: false } : item
-        )
-      }
-
-      // Save to storage
       await storage.set("customActiveUrls", updatedUrls)
-
-      // Notify background script
       browserAPI.runtime.sendMessage({
         action: "updateCustomUrlStatus",
         data: updatedUrls
@@ -658,95 +421,90 @@ export default function BaseVersion() {
       if (tabs[0]?.id) {
         browserAPI.tabs.sendMessage(tabs[0].id, {
           action: "setActiveStatus",
+          isActive: newIsEnabled
+        })
+      }
+
+      // Update extension state
+      const currentState = await storage.get<ExtensionState>("extensionState") || DEFAULT_STATE
+      const newState = {
+        ...currentState,
+        isEnabled: newIsEnabled
+      }
+
+      await storage.set("extensionState", newState)
+      browserAPI.runtime.sendMessage({
+        action: "toggleExtension",
+        data: { isEnabled: newIsEnabled }
+      })
+
+    } catch (error) {
+      console.error("Error toggling extension:", error)
+      setIsExtensionEnabled(!newIsEnabled)
+    }
+  }
+
+  const handleCustomUrlToggle = async () => {
+    try {
+      const newIsActive = !isCustomUrlActive
+      setIsCustomUrlActive(newIsActive)
+
+      const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || []
+      let updatedUrls: BoxItem[]
+
+      if (newIsActive) {
+        const existingUrlIndex = customActiveUrls.findIndex(item => item.url === currentTab)
+        if (existingUrlIndex === -1) {
+          updatedUrls = [...customActiveUrls, { url: currentTab, isActive: true }]
+        } else {
+          updatedUrls = customActiveUrls.map(item =>
+            item.url === currentTab ? { ...item, isActive: true } : item
+          )
+        }
+      } else {
+        updatedUrls = customActiveUrls.map(item =>
+          item.url === currentTab ? { ...item, isActive: false } : item
+        )
+      }
+
+      await storage.set("customActiveUrls", updatedUrls)
+      browserAPI.runtime.sendMessage({
+        action: "updateCustomUrlStatus",
+        data: updatedUrls
+      })
+
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
+      if (tabs[0]?.id) {
+        browserAPI.tabs.sendMessage(tabs[0].id, {
+          action: "setActiveStatus",
           isActive: newIsActive
         })
       }
     } catch (error) {
       console.error("Error toggling custom URL:", error)
-      // Revert state if there's an error
-      setIsCustomUrlActive(!isActive)
+      setIsCustomUrlActive(!isCustomUrlActive)
     }
   }
 
-
-
   return (
     <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
-      {/* Header with title and switch - always visible and active */}
-      <div className="flex justify-between relative z-10">
-        <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
-        <Switch
-          dir="ltr"
-          checked={isExtensionEnabled}
-          onCheckedChange={handleExtensionToggle}
-        />
-      </div>
+      <Header
+        isExtensionEnabled={isExtensionEnabled}
+        onToggle={handleExtensionToggle}
+      />
 
-      {/* Main content with conditional opacity and pointer-events */}
       <div className={`
-      flex-1 flex flex-col 
-      ${!isExtensionEnabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}
-      transition-opacity duration-200
-    `}>
-        <div>
-          {/* Font Selector */}
-          <div className="relative">
-            <div className="flex flex-col gap-3">
-              <Select
-                onValueChange={(value) =>
-                  handleFontChange(fonts.find((font) => font.name === value)!)
-                }
-                onOpenChange={() => setIsActive((prev) => !prev)}
-                dir="rtl"
-                disabled={!isExtensionEnabled}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={selected.name} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
-                  {fonts.map((font) => (
-                    <div key={font.name} className="flex items-center justify-between gap-2 relative">
-                      <SelectItem
-                        value={font.name}
-                        className="flex items-center gap-2 py-1 px-3 cursor-pointer"
-                        onMouseEnter={() => setHoveredFont(font.name)}
-                        onMouseLeave={() => setHoveredFont(null)}
-                      >
-                        <div className="flex items-center justify-between w-full gap-2">
-                          <span className={`font-estedad text-sm ${font.style} ${selected.name === font.name ? "text-[#0D92F4]" : ""
-                            }`}>
-                            {font.name}
-                          </span>
-                          <span className={`${font.style} text-gray-400 text-[13px] ${hoveredFont === font.name && selected.name !== font.name
-                            ? "inline"
-                            : "hidden"
-                            }`}>
-                            {font.svg}
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <div className="!size-5 fill-black absolute left-2 flex items-center justify-center">
-                        {hoveredFont === font.name && selected.name !== font.name ? (
-                          <Circle />
-                        ) : (
-                          selected.name === font.name && <CheckedCircle />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </SelectContent>
-              </Select>
-              <a href='#'
-                className={`flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] 
-  bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative
-`}>
-                افزودن فونت دلخواه <PlusIcon />
-              </a>
-            </div>
-          </div>
-        </div>
+        flex-1 flex flex-col 
+        ${!isExtensionEnabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}
+        transition-opacity duration-200
+      `}>
+        <FontSelector
+          selected={selected}
+          handleFontChange={handleFontChange}
+          isExtensionEnabled={isExtensionEnabled}
+        />
 
-        <div className={`${isActive ? 'opacity-30' : 'opacity-90'}`} style={{ direction: "rtl" }}>
+        <div style={{ direction: "rtl" }}>
           <div className="overflow-auto">
             <PopoularUrl
               boxes={boxes}
@@ -754,25 +512,15 @@ export default function BaseVersion() {
             />
           </div>
 
-          {currentTab && (
-            <div className="border border-gray-400 rounded-md p-2 select-none mx-auto w-full">
-              <label className="text-xs cursor-pointer flex items-center gap-1" htmlFor="activeUrl">
-                <Checkbox
-                  name="activeUrl"
-                  id="activeUrl"
-                  checked={isCustomUrlActive}
-                  onCheckedChange={handleCustomUrlToggle}
-                  disabled={!isExtensionEnabled}
-                />
-                برای سایت {" "}
-                {currentTab && currentTab.slice(8, -2)} <img src={favicon} className="!size-4 object-contain" />
-                {" "} فعال باشد؟
-              </label>
-            </div>
-          )}
+          <CustomUrlToggle
+            currentTab={currentTab}
+            isCustomUrlActive={isCustomUrlActive}
+            onToggle={handleCustomUrlToggle}
+            isExtensionEnabled={isExtensionEnabled}
+            favicon={favicon}
+          />
         </div>
       </div>
-    </div >
-
+    </div>
   )
 }

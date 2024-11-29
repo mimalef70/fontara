@@ -477,6 +477,11 @@ export default function BaseVersion() {
           />
         </div>
       </div>
+      <footer className="w-full">
+        <p className="flex justify-center items-center text-gray-500 gap-1">
+          <span className="font-medium">  طراحی و توسعه با 💖توسط </span><a href="https://x.com/mimalef70" className="font-black text-gray-700">مصطفی الهیاری</a>
+        </p>
+      </footer>
     </div>
   )
 }

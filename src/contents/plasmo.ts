@@ -214,19 +214,23 @@ function getAllElementsWithFontFamily(
   }
 }
 
+// Enhance resetFontToDefault function
 export function resetFontToDefault(): void {
-  const customFontElements = document.querySelectorAll<HTMLElement>("[style*='font-family']")
-  customFontElements.forEach((element) => {
-    const computedStyle = window.getComputedStyle(element)
-    if (computedStyle.fontFamily.includes(currentFont)) {
-      element.style.fontFamily = ""
+  // Remove custom font styles from all elements
+  const elements = document.querySelectorAll('*')
+  elements.forEach((element) => {
+    if (element instanceof HTMLElement) {
+      const computedStyle = window.getComputedStyle(element)
+      if (computedStyle.fontFamily.includes(currentFont)) {
+        element.style.removeProperty('font-family')
+      }
     }
   })
 
-  const styleTag = document.getElementById(`${currentFont}-style`)
-  if (styleTag) {
+  // Remove any custom font style tags
+  document.querySelectorAll('style[id$="-style"]').forEach(styleTag => {
     styleTag.remove()
-  }
+  })
 }
 
 export async function initializeFonts(): Promise<void> {
@@ -300,28 +304,44 @@ browserAPI.runtime.onMessage.addListener(
         break
 
       case "toggle":
-        if (message.isExtensionEnabled) {
-          initializeFonts();
+        isExtensionEnabled = message.isExtensionEnabled
+        if (isExtensionEnabled) {
+          initialize()
         } else {
-          resetFontToDefault();
+          resetFontToDefault()
+          observer.disconnect() // Stop observing when disabled
         }
-        sendResponse({ success: true });
-        break;
+        sendResponse({ success: true })
+        break
+
     }
     return true
   }
 )
 
 // Initialization
-async function initialize(): Promise<void> {
-  const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
-  const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
+let isExtensionEnabled = true
 
-  if (storedPopularUrls) {
-    updatePopularUrls(storedPopularUrls)
+async function initialize(): Promise<void> {
+  // First check if extension is enabled
+  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
+  isExtensionEnabled = storedEnabled ?? true // Default to true if not set
+
+  if (!isExtensionEnabled) {
+    resetFontToDefault()
+    return
   }
-  if (storedCustomUrls) {
-    updateCustomUrls(storedCustomUrls)
+
+  if (document.body) {
+    const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
+    const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
+
+    if (storedPopularUrls) {
+      updatePopularUrls(storedPopularUrls)
+    }
+    if (storedCustomUrls) {
+      updateCustomUrls(storedCustomUrls)
+    }
   }
 }
 
@@ -329,6 +349,8 @@ initialize()
 
 // MutationObserver setup
 const observer = new MutationObserver((mutations: MutationRecord[]) => {
+  if (!isExtensionEnabled) return // Don't observe if extension is disabled
+
   mutations.forEach((mutation) => {
     if (mutation.type === "childList") {
       mutation.addedNodes.forEach((node) => {

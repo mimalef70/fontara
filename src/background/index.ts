@@ -57,9 +57,6 @@ browserAPI.runtime.onMessage.addListener(
       case "resetFontSettings":
         handleResetSettings(message, sendResponse)
         break
-      case "toggleExtension":
-        handleExtensionToggle(message, sendResponse)
-        break
       default:
         if (message.name === "changeFont") {
           handleFontChange(message, sendResponse)
@@ -68,31 +65,6 @@ browserAPI.runtime.onMessage.addListener(
   }
 )
 
-// Handle extension toggle
-async function handleExtensionToggle(message: any, sendResponse: (response?: any) => void) {
-  try {
-    const { isEnabled } = message.data
-    const currentState = await storage.get<ExtensionState>("extensionState")
-    const newState = { ...currentState, isEnabled }
-
-    await storage.set("extensionState", newState)
-
-    if (!isEnabled) {
-      // Reset all settings when extension is disabled
-      await handleResetSettings({ data: { font: DEFAULT_STATE.defaultFont } }, sendResponse)
-    }
-
-    notifyAllTabs({
-      action: "extensionStateChanged",
-      state: newState
-    })
-
-    sendResponse({ success: true })
-  } catch (error) {
-    console.error("Error toggling extension:", error)
-    sendResponse({ success: false, error })
-  }
-}
 
 // Handle reset settings
 async function handleResetSettings(message: any, sendResponse: (response?: any) => void) {

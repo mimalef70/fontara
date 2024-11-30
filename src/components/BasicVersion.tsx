@@ -29,6 +29,7 @@ import virgool from "url:~assets/logos/virgool-active.png"
 import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
+import { initializeFonts, resetFontToDefault } from "~contents/plasmo"
 
 
 export const fonts = [
@@ -240,24 +241,19 @@ export default function BaseVersion() {
   const [currentTab, setCurrentTab] = useState<string>("")
   const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
   const [favicon, setFavicon] = useState<string>("")
-  const [isExtensionEnabled, setIsExtensionEnabled] = useState(false)
+  const [isExtensionEnabled, setIsExtensionEnabled] = useState(true)
 
 
-  // Initialize extension state
+  // Initialize extension state from storage
   useEffect(() => {
-    const loadExtensionState = async () => {
-      try {
-        const state = await storage.get<ExtensionState>("extensionState")
-        if (state) {
-          setIsExtensionEnabled(state.isEnabled)
-        }
-      } catch (error) {
-        console.error("Error loading extension state:", error)
-      }
+    const initializeExtensionState = async () => {
+      const storedState = await storage.get<boolean>("isExtensionEnabled")
+      setIsExtensionEnabled(storedState ?? true) // Default to true if not set
     }
 
-    loadExtensionState()
+    initializeExtensionState()
   }, [])
+
 
   // Initialize custom URL status
   useEffect(() => {
@@ -391,19 +387,42 @@ export default function BaseVersion() {
     getCurrentTabFavicon()
   }, [currentTab])
 
-  // Handlers
-  // const handleExtensionToggle = async () => { }
+  // handleExtensionToggle
   const handleExtensionToggle = async () => {
-    setIsExtensionEnabled((prev) => !prev);
+    try {
+      const newState = !isExtensionEnabled
+      setIsExtensionEnabled(newState)
 
-    const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]?.id) {
-      browserAPI.tabs.sendMessage(tabs[0].id, {
-        action: "toggle",
-        isExtensionEnabled: !isExtensionEnabled
-      });
+      // Save to storage
+      await storage.set("isExtensionEnabled", newState)
+
+      // Get all tabs and update them
+      const tabs = await browserAPI.tabs.query({})
+      for (const tab of tabs) {
+        if (tab.id && tab.url && tab.url.startsWith('http')) {
+          try {
+            await browserAPI.tabs.sendMessage(tab.id, {
+              action: "toggle",
+              isExtensionEnabled: newState
+            })
+          } catch (error) {
+            console.log(`Error sending message to tab ${tab.id}:`, error)
+          }
+        }
+      }
+
+      // Reload active tab to ensure changes take effect
+      const activeTab = await browserAPI.tabs.query({ active: true, currentWindow: true })
+      if (activeTab[0]?.id) {
+        await browserAPI.tabs.reload(activeTab[0].id)
+      }
+
+    } catch (error) {
+      console.error("Error toggling extension:", error)
+      setIsExtensionEnabled(!isExtensionEnabled)
     }
-  };
+  }
+
   const handleCustomUrlToggle = async () => {
     try {
       const newIsActive = !isCustomUrlActive

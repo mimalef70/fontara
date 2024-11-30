@@ -25,7 +25,7 @@ const CustomUrlToggle = ({
                     onCheckedChange={onToggle}
                 />
                 برای سایت {" "}
-                {currentTab && currentTab.slice(8, -2)} <img src={favicon} className="!size-4 object-contain" />
+                {currentTab && currentTab.slice(8, -2)} {favicon && <img src={favicon} className="!size-4 object-contain" />}
                 {" "} فعال باشد؟
             </label>
         </div>

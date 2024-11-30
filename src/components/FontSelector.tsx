@@ -9,6 +9,7 @@ import {
     SelectValue,
 } from "./ui/Select"
 import { Circle, CheckedCircle, PlusIcon } from "@/assets/icons/Icons"
+
 export const fonts = [
     {
         value: "Estedad",
@@ -107,9 +108,8 @@ const storage = new Storage()
 const FontSelector = () => {
     const [isActive, setIsActive] = useState(false)
     const [hoveredFont, setHoveredFont] = useState(null)
-    const [selected, setSelected] = useState(fonts[0]) // Default to first font
+    const [selected, setSelected] = useState(fonts[0])
 
-    // Load initial font from storage
     useEffect(() => {
         const loadStoredFont = async () => {
             try {
@@ -129,20 +129,13 @@ const FontSelector = () => {
 
     const handleFontChange = async (selectedValue: string) => {
         try {
-            // Find the font object based on the selected value
             const newFont = fonts.find(font => font.value === selectedValue)
             if (!newFont) {
                 console.error("Font not found:", selectedValue)
                 return
             }
-
-            // Update local state
             setSelected(newFont)
-
-            // Save to storage
             await storage.set("selectedFont", newFont.value)
-
-            // Send message to background script
             chrome.runtime.sendMessage({
                 action: "changeFont",
                 body: {
@@ -168,7 +161,11 @@ const FontSelector = () => {
                     dir="rtl"
                 >
                     <SelectTrigger className="w-full">
-                        <SelectValue placeholder={selected.name} />
+                        <SelectValue>
+                            <span className={`font-estedad text-sm ${selected.style}`}>
+                                {selected.name}
+                            </span>
+                        </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
                         {fonts.map((font) => (
@@ -178,7 +175,6 @@ const FontSelector = () => {
                                     className="flex items-center gap-2 py-1 px-3 cursor-pointer"
                                     onMouseEnter={() => setHoveredFont(font.value)}
                                     onMouseLeave={() => setHoveredFont(null)}
-
                                 >
                                     <div className="flex items-center justify-between w-full gap-2">
                                         <span className={`font-estedad text-sm ${font.style} ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>

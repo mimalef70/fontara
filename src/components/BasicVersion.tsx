@@ -477,8 +477,7 @@ export default function BaseVersion() {
         ${!isExtensionEnabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}
         transition-opacity duration-200
       `}>
-        <FontSelector
-        />
+        <FontSelector />
 
         <div style={{ direction: "rtl" }}>
           <div className="overflow-auto">

@@ -231,11 +231,6 @@ export default function BaseVersion() {
         }
       }
 
-      // Reload active tab to ensure changes take effect
-      // const activeTab = await browserAPI.tabs.query({ active: true, currentWindow: true })
-      // if (activeTab[0]?.id) {
-      //   await browserAPI.tabs.reload(activeTab[0].id)
-      // }
 
     } catch (error) {
       console.error("Error toggling extension:", error)

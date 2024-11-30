@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 
 import { Storage } from "@plasmohq/storage"
 
-import { initialBoxes } from "./BasicVersion"
+import { initialBoxes } from "@/data/popularUrlData"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
 
 interface BoxItem {

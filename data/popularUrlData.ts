@@ -21,6 +21,8 @@ import virgool from "url:~assets/logos/virgool-active.png"
 import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
+import youtube from "url:~assets/logos/youtube-active.png"
+import npm from "url:~assets/logos/npm-active.png"
 
 interface BoxItem {
   id: string
@@ -184,5 +186,19 @@ export const initialBoxes: BoxItem[] = [
     isActive: true,
     url: "https://*.wordpress.org/*",
     isInUi: true
-  }
+  },
+  {
+    id: "youtube",
+    src: youtube,
+    isActive: true,
+    url: "https://www.youtube.com/*",
+    isInUi: true
+  },
+  {
+    id: "npm",
+    src: npm,
+    isActive: true,
+    url: "https://www.npmjs.com/*",
+    isInUi: true
+  },
 ]

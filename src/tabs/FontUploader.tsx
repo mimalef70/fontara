@@ -100,12 +100,18 @@ const FontUploader = () => {
         try {
             // Check for duplicate names
             if (defaultFonts.some(font => font.name === fontName || font.value === fontName)) {
-                throw new Error('این نام فونت قبلاً در لیست فونت‌های پیش‌فرض وجود دارد')
+                toast({
+                    title: 'این نام فونت قبلاً در لیست فونت‌های پیش‌فرض وجود دارد',
+                })
+                return
             }
 
             const currentFonts = await storage.get<CustomFont[]>("customFonts") || []
-            if (currentFonts.some(font => font.name === fontName)) {
-                throw new Error('فونتی با این نام قبلاً اضافه شده است')
+            if (currentFonts.some(font => font.name == fontName)) {
+                toast({
+                    title: 'فونتی با این نام قبلاً اضافه شده است',
+                })
+                return
             }
 
             // Convert file to base64
@@ -212,7 +218,7 @@ const FontUploader = () => {
     }
     return (
         <ToastProvider>
-            <div className="p-4 max-w-xl mx-auto">
+            <div className="p-4 max-w-xl mx-auto" dir="rtl">
                 <div className="bg-white rounded shadow p-6">
                     <h2 className="text-xl font-bold text-right mb-4">افزودن فونت دلخواه</h2>
 

@@ -10,7 +10,7 @@ import {
 } from "./ui/Select"
 import { Circle, CheckedCircle, PlusIcon } from "@/assets/icons/Icons"
 
-export const fonts = [
+export const defaultFonts = [
     {
         value: "Estedad",
         name: "استعداد",
@@ -108,28 +108,39 @@ const storage = new Storage()
 const FontSelector = () => {
     const [isActive, setIsActive] = useState(false)
     const [hoveredFont, setHoveredFont] = useState(null)
-    const [selected, setSelected] = useState(fonts[0])
+    const [selected, setSelected] = useState(defaultFonts[0])
+    const [allFonts, setAllFonts] = useState(defaultFonts)
+
 
     useEffect(() => {
-        const loadStoredFont = async () => {
+        const loadFonts = async () => {
             try {
+                // Load custom fonts
+                const customFonts = await storage.get("customFonts") || []
+
+                // Combine default and custom fonts
+                setAllFonts([...defaultFonts, ...customFonts])
+
+                // Load selected font
                 const storedFontName = await storage.get("selectedFont")
                 if (storedFontName) {
-                    const storedFont = fonts.find(font => font.value === storedFontName)
+                    const storedFont = [...defaultFonts, ...customFonts].find(
+                        font => font.value === storedFontName
+                    )
                     if (storedFont) {
                         setSelected(storedFont)
                     }
                 }
             } catch (error) {
-                console.error("Error loading font from storage:", error)
+                console.error("Error loading fonts:", error)
             }
         }
-        loadStoredFont()
+        loadFonts()
     }, [])
 
     const handleFontChange = async (selectedValue: string) => {
         try {
-            const newFont = fonts.find(font => font.value === selectedValue)
+            const newFont = allFonts.find(font => font.value === selectedValue)
             if (!newFont) {
                 console.error("Font not found:", selectedValue)
                 return
@@ -168,7 +179,7 @@ const FontSelector = () => {
                         </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
-                        {fonts.map((font) => (
+                        {allFonts.map((font) => (
                             <div key={font.value} className="flex items-center justify-between gap-2 relative">
                                 <SelectItem
                                     value={font.value}
@@ -197,7 +208,8 @@ const FontSelector = () => {
                     </SelectContent>
                 </Select>
                 <a
-                    href={chrome.runtime.getURL("tabs/delta-flyer.html")}
+                    href={chrome.runtime.getURL("tabs/index.html")}
+                    target="_blank"
                     className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
                     افزودن فونت دلخواه <PlusIcon />
                 </a>

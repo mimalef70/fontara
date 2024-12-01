@@ -53,12 +53,27 @@ interface ActiveStatusMessage {
   action: "setActiveStatus"
   isActive: boolean
 }
+
 interface ToogleStatus {
   action: "toggle"
   isExtensionEnabled: boolean
 }
 
-type BrowserMessage = FontUpdateMessage | PopularUrlsMessage | CustomUrlsMessage | ActiveStatusMessage | ToogleStatus
+interface addCustomFont {
+  action: "addCustomFont"
+  isExtensionEnabled: boolean
+}
+
+interface deleteCustomFont {
+  action: "deleteCustomFont"
+  isExtensionEnabled: boolean
+}
+
+interface RefreshMessage {
+  action: "refreshFonts"
+}
+
+type BrowserMessage = FontUpdateMessage | PopularUrlsMessage | CustomUrlsMessage | ActiveStatusMessage | ToogleStatus | RefreshMessage
 
 // Initialize storage and configuration
 const storage = new Storage()
@@ -115,19 +130,37 @@ export function isCurrentUrlMatched(patterns: string[]): boolean {
   })
 }
 
-// Font manipulation functions
-function loadFont(fontName: string): void {
+// Function to load custom fonts from storage
+async function loadCustomFonts(): Promise<void> {
+  const customFonts: any[] = await storage.get("customFonts") || []
+  customFonts.forEach(font => {
+    const style = document.createElement("style")
+    style.id = `custom-${font.name}-style`
+    style.textContent = `
+      @font-face {
+        font-family: '${font.name}';
+        src: url(${font.data}) format('${font.type}');
+        font-weight: ${font.weight};
+        font-display: fallback;
+      }
+    `
+    document.head.appendChild(style)
+  })
+}
+
+// Add to your loadFont function
+async function loadFont(fontName: string): Promise<void> {
   if (fontName in localFonts) {
     const style = document.createElement("style")
     style.id = `${fontName}-style`
     style.textContent = `
-      @font-face {
-        font-family: '${fontName}';
-        src: url(${localFonts[fontName]}) format('woff2');
-        font-weight: 100 1000;
-        font-display: fallback;
-      }
-    `
+          @font-face {
+              font-family: '${fontName}';
+              src: url(${localFonts[fontName]}) format('woff2');
+              font-weight: 100 1000;
+              font-display: fallback;
+          }
+      `
     document.head.appendChild(style)
   } else if (fontName in googleFonts) {
     const link = document.createElement("link")
@@ -135,7 +168,28 @@ function loadFont(fontName: string): void {
     link.rel = "stylesheet"
     document.head.appendChild(link)
   } else {
-    console.warn(`Font ${fontName} not found in local or Google fonts`)
+    // Try to load from chrome.storage.local
+    try {
+      const result = await new Promise<{ [key: string]: any }>((resolve) => {
+        chrome.storage.local.get(`font_${fontName}`, resolve)
+      })
+
+      const fontData = result[`font_${fontName}`]
+      if (fontData) {
+        const style = document.createElement("style")
+        style.id = `custom-${fontName}-style`
+        style.textContent = `
+                  @font-face {
+                      font-family: '${fontName}';
+                      src: url(data:font/${fontData.type};base64,${fontData.data});
+                      font-display: fallback;
+                  }
+              `
+        document.head.appendChild(style)
+      }
+    } catch (error) {
+      console.error(`Failed to load custom font ${fontName}:`, error)
+    }
   }
 }
 
@@ -314,6 +368,11 @@ browserAPI.runtime.onMessage.addListener(
         sendResponse({ success: true })
         break
 
+      case "refreshFonts":
+        initializeFonts()  // Re-initialize fonts when refresh message received
+        sendResponse({ success: true })
+        break
+
     }
     return true
   }
@@ -323,9 +382,8 @@ browserAPI.runtime.onMessage.addListener(
 let isExtensionEnabled = true
 
 async function initialize(): Promise<void> {
-  // First check if extension is enabled
   const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
-  isExtensionEnabled = storedEnabled ?? true // Default to true if not set
+  isExtensionEnabled = storedEnabled ?? true
 
   if (!isExtensionEnabled) {
     resetFontToDefault()
@@ -333,6 +391,9 @@ async function initialize(): Promise<void> {
   }
 
   if (document.body) {
+    // Load custom fonts first
+    await loadCustomFonts()
+
     const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
     const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
 
@@ -344,7 +405,6 @@ async function initialize(): Promise<void> {
     }
   }
 }
-
 initialize()
 
 // MutationObserver setup

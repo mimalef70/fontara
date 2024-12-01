@@ -57,6 +57,13 @@ browserAPI.runtime.onMessage.addListener(
       case "resetFontSettings":
         handleResetSettings(message, sendResponse)
         break
+      case "addCustomFont":
+        handleAddCustomFont(message, sendResponse)
+        break
+
+      case "deleteCustomFont":
+        handleDeleteCustomFont(message, sendResponse)
+        break
       default:
         if (message.name === "changeFont") {
           handleFontChange(message, sendResponse)
@@ -65,6 +72,56 @@ browserAPI.runtime.onMessage.addListener(
   }
 )
 
+
+// Handle adding custom fonts
+async function handleAddCustomFont(message: any, sendResponse: (response?: any) => void) {
+  try {
+    const extensionState = await storage.get<ExtensionState>("extensionState")
+    if (!extensionState?.isEnabled) {
+      sendResponse({ success: false, error: "Extension is disabled" })
+      return
+    }
+
+    const customFonts = await storage.get("customFonts") || []
+    const newFont = {
+      name: message.fontName,
+      data: message.fontData.data,
+      type: message.fontData.type,
+      weight: message.fontData.weight
+    }
+
+    await storage.set("customFonts", [...customFonts, newFont])
+    notifyAllTabs({
+      action: "addCustomFont",
+      fontName: message.fontName,
+      fontData: message.fontData
+    })
+
+    sendResponse({ success: true })
+  } catch (error) {
+    console.error("Error adding custom font:", error)
+    sendResponse({ success: false, error })
+  }
+}
+
+// Handle deleting custom fonts
+async function handleDeleteCustomFont(message: any, sendResponse: (response?: any) => void) {
+  try {
+    const customFonts: any = await storage.get("customFonts") || []
+    const updatedFonts = customFonts.filter(font => font.name !== message.fontName)
+    await storage.set("customFonts", updatedFonts)
+
+    notifyAllTabs({
+      action: "deleteCustomFont",
+      fontName: message.fontName
+    })
+
+    sendResponse({ success: true })
+  } catch (error) {
+    console.error("Error deleting custom font:", error)
+    sendResponse({ success: false, error })
+  }
+}
 
 // Handle reset settings
 async function handleResetSettings(message: any, sendResponse: (response?: any) => void) {

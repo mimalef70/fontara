@@ -384,7 +384,6 @@ let isExtensionEnabled = true
 async function initialize(): Promise<void> {
   const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
   isExtensionEnabled = storedEnabled ?? true
-  console.log("is extention enable")
 
   if (!isExtensionEnabled) {
     resetFontToDefault()

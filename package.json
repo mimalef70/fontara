@@ -44,6 +44,13 @@
     "typescript": "5.3.3"
   },
   "manifest": {
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "../assets/icon-16.png",
+        "32": "../assets/icon-32.png"
+      }
+    },
     "default_locale": "en",
     "web_accessible_resources": [
       {

@@ -61,6 +61,8 @@ export default function BaseVersion() {
   const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
   const [favicon, setFavicon] = useState<string>("")
   const [isExtensionEnabled, setIsExtensionEnabled] = useState(true)
+  const [isActive, setIsActive] = useState(false)
+
 
 
   // Initialize extension state from storage
@@ -279,42 +281,52 @@ export default function BaseVersion() {
       setIsCustomUrlActive(!isCustomUrlActive)
     }
   }
-
   return (
-    <div className="flex flex-col justify-between h-full w-[90%] mx-auto">
-      <Header
-        isExtensionEnabled={isExtensionEnabled}
-        onToggle={handleExtensionToggle}
-      />
+    <div className={`flex flex-col justify-between h-full w-[90%] mx-auto`}>
+      <div className={`${isActive ? 'opacity-30' : 'opacity-100'} transition-opacity duration-200`}>
+        <Header
+          isExtensionEnabled={isExtensionEnabled}
+          onToggle={handleExtensionToggle}
+        />
+      </div>
 
       <div className={`
         flex-1 flex flex-col 
         ${!isExtensionEnabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}
         transition-opacity duration-200
       `}>
-        <FontSelector />
+        {/* FontSelector is outside the dimming wrapper */}
+        <FontSelector setIsActive={setIsActive} />
 
-        <div style={{ direction: "rtl" }}>
-          <div className="overflow-auto">
-            <PopoularUrl
-              boxes={boxes}
-              setBoxes={setBoxes}
+        {/* Wrap the content to be dimmed */}
+        <div className={`${isActive ? 'opacity-30' : 'opacity-100'} transition-opacity duration-200`}>
+          <div style={{ direction: "rtl" }}>
+            <div className="overflow-auto">
+              <PopoularUrl
+                boxes={boxes}
+                setBoxes={setBoxes}
+              />
+            </div>
+
+            <CustomUrlToggle
+              currentTab={currentTab}
+              isCustomUrlActive={isCustomUrlActive}
+              onToggle={handleCustomUrlToggle}
+              favicon={favicon}
             />
           </div>
-
-          <CustomUrlToggle
-            currentTab={currentTab}
-            isCustomUrlActive={isCustomUrlActive}
-            onToggle={handleCustomUrlToggle}
-            favicon={favicon}
-          />
         </div>
       </div>
-      <footer className="w-full">
-        <p className="flex justify-center items-center text-gray-500 gap-1">
-          <span className="font-medium">  طراحی و توسعه با 💖توسط </span><a href="https://x.com/mimalef70" className="font-black text-gray-700">مصطفی الهیاری</a>
-        </p>
-      </footer>
+
+      <div className={`${isActive ? 'opacity-30' : 'opacity-100'} transition-opacity duration-200`}>
+        <footer className="w-full">
+          <p className="flex justify-center items-center text-gray-500 gap-1">
+            <span className="font-medium">  طراحی و توسعه با 💖توسط </span>
+            <a href="https://x.com/mimalef70" className="font-black text-gray-700">مصطفی الهیاری</a>
+          </p>
+        </footer>
+      </div>
     </div>
   )
+
 }

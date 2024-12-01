@@ -105,8 +105,7 @@ export const defaultFonts = [
 
 const storage = new Storage()
 
-const FontSelector = () => {
-    const [isActive, setIsActive] = useState(false)
+const FontSelector = ({ setIsActive }) => {
     const [hoveredFont, setHoveredFont] = useState(null)
     const [selected, setSelected] = useState(defaultFonts[0])
     const [allFonts, setAllFonts] = useState(defaultFonts)

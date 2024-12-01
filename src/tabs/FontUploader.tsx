@@ -3,8 +3,9 @@ import { Storage } from "@plasmohq/storage"
 import { defaultFonts } from "../components/FontSelector"
 import '../style.css';
 import { useToast } from "../components/ui/use-toast"
-import { Toast, ToastProvider } from '~components/ui/Toast';
+import { ToastProvider } from '~components/ui/Toast';
 import { Toaster } from '~components/ui/toaster';
+import logo from '../../assets/logo.png'
 
 interface CustomFont {
     value: string
@@ -100,18 +101,12 @@ const FontUploader = () => {
         try {
             // Check for duplicate names
             if (defaultFonts.some(font => font.name === fontName || font.value === fontName)) {
-                toast({
-                    title: 'این نام فونت قبلاً در لیست فونت‌های پیش‌فرض وجود دارد',
-                })
-                return
+                throw new Error('این نام فونت قبلاً در لیست فونت‌های پیش‌فرض وجود دارد')
             }
 
             const currentFonts = await storage.get<CustomFont[]>("customFonts") || []
-            if (currentFonts.some(font => font.name == fontName)) {
-                toast({
-                    title: 'فونتی با این نام قبلاً اضافه شده است',
-                })
-                return
+            if (currentFonts.some(font => font.name === fontName)) {
+                throw new Error('فونتی با این نام قبلاً اضافه شده است')
             }
 
             // Convert file to base64
@@ -218,10 +213,12 @@ const FontUploader = () => {
     }
     return (
         <ToastProvider>
-            <div className="p-4 max-w-xl mx-auto" dir="rtl">
+            <div className="p-4 max-w-xl mx-auto">
                 <div className="bg-white rounded shadow p-6">
-                    <h2 className="text-xl font-bold text-right mb-4">افزودن فونت دلخواه</h2>
-
+                    <div className='flex justify-between items-center'>
+                        <img alt='' src={logo} className='w-1/3' />
+                        <h2 className="text-xl font-bold text-right mb-4">افزودن فونت دلخواه</h2>
+                    </div>
                     <div className="space-y-4">
                         <div>
                             <label className="block text-right mb-2">انتخاب فونت</label>

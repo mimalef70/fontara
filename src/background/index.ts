@@ -253,17 +253,6 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
       )
     }
 
-    // Update icon based on active status
-    browserAPI.action.setIcon({
-      path: isActive ? {
-        "16": "../../assets/icon-active-16.png",
-
-      } : {
-        "16": "../../assets/icon-16.png",
-        "32": "../../assets/icon-32.png"
-      }
-    })
-
     // Send status to tab
     sendActiveStatus(tabId, isActive)
     browserAPI.tabs.sendMessage(tabId, {

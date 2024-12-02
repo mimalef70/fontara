@@ -101,6 +101,7 @@ export default function BaseVersion() {
         const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true })
         const tab = tabs[0]
 
+
         if (tab?.url) {
           const mainUrl = new URL(tab.url).origin
           const currentTabUrl = `${mainUrl}/*`
@@ -230,6 +231,7 @@ export default function BaseVersion() {
       await browserAPI.action.setIcon({
         path: newState ? {
           "16": "../../assets/icon-active-16.png",
+
         } : {
           "16": "../../assets/icon-16.png",
           "32": "../../assets/icon-32.png",
@@ -336,7 +338,7 @@ export default function BaseVersion() {
         </div>
       </div>
 
-      <div className={`${isActive ? 'opacity-30' : 'opacity-100'} transition-opacity duration-200`}>
+      <div className={`${isActive ? 'opacity-30' : 'opacity-100'} transition-opacity duration-200 p-4`}>
         <footer className="w-full">
           <p className="flex justify-center items-center text-gray-500 gap-1">
             <span className="font-medium">  طراحی و توسعه با 💖توسط </span>

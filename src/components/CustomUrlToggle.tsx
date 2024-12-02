@@ -1,5 +1,6 @@
 import { Checkbox } from "./ui/Checkbox"
 
+
 interface CustomUrlToggleProps {
     currentTab: string
     isCustomUrlActive: boolean
@@ -22,16 +23,25 @@ const CustomUrlToggle = ({
 
     return (
         <div className="border border-gray-400 rounded-md p-2 select-none mx-auto w-full">
-            <label className="text-xs cursor-pointer flex items-center gap-1" htmlFor="activeUrl">
-                <Checkbox
-                    name="activeUrl"
-                    id="activeUrl"
-                    checked={isCustomUrlActive}
-                    onCheckedChange={onToggle}
-                />
-                برای سایت {" "}
-                {currentTab && displayTabName()} {favicon && <img src={favicon} className="!size-4 object-contain" />}
-                {" "} فعال باشد؟
+            <label
+                className="text-xs cursor-pointer flex items-center whitespace-nowrap overflow-x-auto overflow-y-hidden"
+                htmlFor="activeUrl"
+            >
+                <div className="flex items-center gap-2 min-w-max px-1">
+                    <Checkbox
+                        name="activeUrl"
+                        id="activeUrl"
+                        checked={isCustomUrlActive}
+                        onCheckedChange={onToggle}
+                        className="shrink-0"
+                    />
+                    <span className="shrink-0">برای سایت</span>
+                    <span className="flex items-center gap-1 shrink-0">
+                        {favicon && <img src={favicon} className="!size-4 object-contain" alt="site icon" />}
+                        <span>{displayTabName()}</span>
+                    </span>
+                    <span className="shrink-0">فعال باشد؟</span>
+                </div>
             </label>
         </div>
     )

@@ -63,21 +63,20 @@ function PopularUrl({ boxes, setBoxes }: Props) {
   }
 
   return (
-    <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-80 w-full">
+    <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-[18rem] w-full">
       {boxes
         .filter((item) => item.isInUi)
         .map((box) => (
           <TooltipProvider key={box.id} delayDuration={90}>
             <Tooltip>
               <TooltipTrigger
-                className="shadow-sm border border-gray-300 rounded-md size-12 flex items-center justify-center cursor-pointer hover:shadow-xl"
+                className="p-1 shadow-xl rounded-md size-12 flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-2xl"
                 onClick={() => toggleActive(box.id)}>
                 <img
                   src={box.src}
                   alt={`${box.id} Logo`}
-                  className={`w-full h-full object-cover transition-all duration-300 ${
-                    box.isActive ? "" : "grayscale opacity-25"
-                  }`}
+                  className={`size-10 object-cover rounded-md transition-all duration-300 ${box.isActive ? "" : "grayscale opacity-25"
+                    }`}
                 />
               </TooltipTrigger>
               <TooltipContent

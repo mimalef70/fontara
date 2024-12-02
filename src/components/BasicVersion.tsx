@@ -70,6 +70,7 @@ export default function BaseVersion() {
       // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
       setIsExtensionEnabled(storedState ?? true) // Default to true if not set
+
     }
 
     initializeExtensionState()
@@ -231,11 +232,8 @@ export default function BaseVersion() {
       await browserAPI.action.setIcon({
         path: newState ? {
           "16": "../../assets/icon-active-16.png",
-
         } : {
           "16": "../../assets/icon-16.png",
-          "32": "../../assets/icon-32.png",
-          "48": "../../assets/icon-48.png"
         }
       })
 
@@ -258,6 +256,8 @@ export default function BaseVersion() {
       setIsExtensionEnabled(!isExtensionEnabled)
     }
   }
+
+
 
   const handleCustomUrlToggle = async () => {
     try {

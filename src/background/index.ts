@@ -1,5 +1,4 @@
 import { Storage } from "@plasmohq/storage"
-import { initializeFonts, resetFontToDefault } from "~contents/plasmo"
 
 const storage = new Storage()
 
@@ -71,6 +70,8 @@ browserAPI.runtime.onMessage.addListener(
     }
   }
 )
+
+
 
 
 // Handle adding custom fonts
@@ -218,40 +219,50 @@ async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: a
 }
 
 // Modified checkIfUrlShouldBeActive to respect extension state
+
 async function checkIfUrlShouldBeActive(url: string, tabId: number) {
   try {
+    // Check extension state first
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
       sendActiveStatus(tabId, false)
+      browserAPI.tabs.sendMessage(tabId, {
+        action: "toggle",
+        isExtensionEnabled: false
+      }).catch(error => console.log("Tab may not be ready:", error))
       return false
     }
 
     const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls")
-    if (popularActiveUrls) {
-      const isPopularActive = popularActiveUrls.some(
-        (item) =>
-          item.isActive && new RegExp(item.url.replace(/\*/g, ".*")).test(url)
-      )
-
-      if (isPopularActive) {
-        sendActiveStatus(tabId, true)
-        return true
-      }
-    }
-
     const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls")
-    if (customActiveUrls) {
-      const isCustomActive = customActiveUrls.some(
+
+    let isActive = false
+
+    // Check popular URLs
+    if (popularActiveUrls) {
+      isActive = popularActiveUrls.some(
         (item) =>
           item.isActive && new RegExp(item.url.replace(/\*/g, ".*")).test(url)
       )
-
-      sendActiveStatus(tabId, isCustomActive)
-      return isCustomActive
     }
 
-    sendActiveStatus(tabId, false)
-    return false
+    // Check custom URLs if not already active
+    if (!isActive && customActiveUrls) {
+      isActive = customActiveUrls.some(
+        (item) =>
+          item.isActive && new RegExp(item.url.replace(/\*/g, ".*")).test(url)
+      )
+    }
+
+    // Send status to tab
+    sendActiveStatus(tabId, isActive)
+    browserAPI.tabs.sendMessage(tabId, {
+      action: "toggle",
+      isExtensionEnabled: extensionState.isEnabled
+    }).catch(error => console.log("Tab may not be ready:", error))
+
+    return isActive
+
   } catch (error) {
     console.error("Error checking URL active status:", error)
     return false

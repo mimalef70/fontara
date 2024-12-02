@@ -381,7 +381,9 @@ browserAPI.runtime.onMessage.addListener(
 // Initialization
 let isExtensionEnabled = true
 
+
 async function initialize(): Promise<void> {
+  // Get extension state first
   const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
   isExtensionEnabled = storedEnabled ?? true
 
@@ -390,32 +392,57 @@ async function initialize(): Promise<void> {
     return
   }
 
+  // Only proceed if document.body exists
   if (document.body) {
-    // Load custom fonts first
+    // Load custom fonts
     await loadCustomFonts()
 
+    // Get stored URLs
     const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
     const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
 
+    // Update URL arrays
     if (storedPopularUrls) {
       updatePopularUrls(storedPopularUrls)
     }
     if (storedCustomUrls) {
       updateCustomUrls(storedCustomUrls)
     }
+
+    // Check if current URL matches any patterns
+    const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
+    const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
+
+    if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
+      const storedFont = await storage.get<string>("selectedFont")
+      currentFont = storedFont || "Estedad"
+      await loadFont(currentFont)
+      applyFontToAllElements(currentFont)
+    } else {
+      resetFontToDefault()
+    }
+
+    // Set up observer only if extension is enabled
+    if (isExtensionEnabled) {
+      observer.observe(document.body, { childList: true, subtree: true })
+    }
   }
 }
+
 initialize()
 
 // MutationObserver setup
 const observer = new MutationObserver((mutations: MutationRecord[]) => {
-  if (!isExtensionEnabled) return // Don't observe if extension is disabled
+  if (!isExtensionEnabled) return
+
+  const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
+  const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
 
   mutations.forEach((mutation) => {
     if (mutation.type === "childList") {
       mutation.addedNodes.forEach((node) => {
         if (node instanceof HTMLElement) {
-          if (isCurrentUrlMatched(activePopularUrls) || isCurrentUrlMatched(activeCustomUrls)) {
+          if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
             getAllElementsWithFontFamily(node, currentFont)
           }
         }

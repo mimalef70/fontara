@@ -70,7 +70,7 @@ function PopularUrl({ boxes, setBoxes }: Props) {
           <TooltipProvider key={box.id} delayDuration={90}>
             <Tooltip>
               <TooltipTrigger
-                className="p-1 shadow-xl rounded-md size-12 flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-2xl"
+                className="p-1 !shadow-lg hover:!shadow-xl rounded-md size-12 flex items-center justify-center cursor-pointer transition-all duration-300"
                 onClick={() => toggleActive(box.id)}>
                 <img
                   src={box.src}
@@ -80,7 +80,7 @@ function PopularUrl({ boxes, setBoxes }: Props) {
                 />
               </TooltipTrigger>
               <TooltipContent
-                className="bg-gray-800 text-white px-3 py-2 rounded-lg shadow-lg text-sm"
+                className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
                 side="top"
                 align="center">
                 {box.id}

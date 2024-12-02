@@ -35,6 +35,8 @@ const CustomUrlToggle = ({
                     />
                     <span className="shrink-0">برای سایت</span>
                     <span className="flex items-center gap-1 shrink-0">
+
+                        <span>{displayTabName()}</span>
                         {favicon && (
                             <img
                                 src={favicon}
@@ -42,7 +44,6 @@ const CustomUrlToggle = ({
                                 alt="site icon"
                             />
                         )}
-                        <span>{displayTabName()}</span>
                     </span>
                     <span className="shrink-0">فعال باشد؟</span>
                 </div>

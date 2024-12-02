@@ -171,15 +171,16 @@ const FontSelector = ({ setIsActive }) => {
           value={selected.value}
           onValueChange={handleFontChange}
           onOpenChange={() => setIsActive((prev) => !prev)}
-          dir="rtl">
-          <SelectTrigger className="w-full">
+          dir="rtl"
+        >
+          <SelectTrigger className="w-full !ring-0 !ring-offset-0 focus:!ring-0 focus:!ring-offset-0 !h-[3rem]">
             <SelectValue>
               <span className={`font-estedad text-sm ${selected.style}`}>
                 {selected.name}
               </span>
             </SelectValue>
           </SelectTrigger>
-          <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+          <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 !border-0 !ring-0 !ring-offset-0">
             {allFonts.map((font) => (
               <div
                 key={font.value}
@@ -202,7 +203,7 @@ const FontSelector = ({ setIsActive }) => {
                 </SelectItem>
                 <div className="!size-5 fill-black absolute left-2 flex items-center justify-center">
                   {hoveredFont === font.value &&
-                  selected.value !== font.value ? (
+                    selected.value !== font.value ? (
                     <Circle />
                   ) : (
                     selected.value === font.value && <CheckedCircle />

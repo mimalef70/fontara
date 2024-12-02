@@ -2,8 +2,13 @@ import { useEffect, useState } from "react"
 
 import { Storage } from "@plasmohq/storage"
 
-import { initialBoxes } from "@/data/popularUrlData"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@radix-ui/react-tooltip"
+import { initialBoxes } from "~data/popularUrlData"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "~src/components/ui/tooltip"
 
 interface BoxItem {
   id?: string
@@ -62,7 +67,6 @@ function PopularUrl({ boxes, setBoxes }: Props) {
       {boxes
         .filter((item) => item.isInUi)
         .map((box) => (
-
           <TooltipProvider key={box.id} delayDuration={90}>
             <Tooltip>
               <TooltipTrigger
@@ -71,8 +75,9 @@ function PopularUrl({ boxes, setBoxes }: Props) {
                 <img
                   src={box.src}
                   alt={`${box.id} Logo`}
-                  className={`w-full h-full object-cover transition-all duration-300 ${box.isActive ? "" : "grayscale opacity-25"
-                    }`}
+                  className={`w-full h-full object-cover transition-all duration-300 ${
+                    box.isActive ? "" : "grayscale opacity-25"
+                  }`}
                 />
               </TooltipTrigger>
               <TooltipContent
@@ -83,11 +88,8 @@ function PopularUrl({ boxes, setBoxes }: Props) {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-
-
-        ))
-      }
-    </div >
+        ))}
+    </div>
   )
 }
 

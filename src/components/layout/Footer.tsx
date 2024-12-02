@@ -1,9 +1,5 @@
 import React from "react"
 
-type Props = {
-  isActive: boolean
-}
-
 type IconlyIconProps = {
   size?: number;
   color?: string;
@@ -22,10 +18,10 @@ export const IconlyHeart = ({ size = 17, color = "#000000" }: IconlyIconProps) =
   )
 }
 
-function Footer({ isActive }: Props) {
+function Footer({ isExtensionEnabled }) {
   return (
     <div
-      className={`${isActive ? "opacity-30" : "opacity-100"} transition-opacity duration-200 p-4`}>
+      className={`${!isExtensionEnabled ? "opacity-30" : "opacity-100"} transition-opacity duration-200 p-4`}>
       <footer className="w-full">
         <p className="flex justify-center items-center text-gray-500 gap-1">
           <span className="font-medium flex items-center gap-2"> طراحی و توسعه با <IconlyHeart /> توسط </span>

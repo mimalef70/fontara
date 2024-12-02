@@ -334,43 +334,54 @@ export default function BaseVersion() {
   }
 
   return (
-    <div className={`flex flex-col justify-between h-full w-[90%] mx-auto`}>
-      <div
-        className={`${isActive ? "opacity-30" : "opacity-100"} transition-opacity duration-200`}>
-        <Header
-          isExtensionEnabled={isExtensionEnabled}
-          onToggle={handleExtensionToggle}
-        />
-      </div>
+    <section>
+      {isActive && (
+        <div className="absolute inset-0 bg-black/30 z-10" />
+      )}
+      <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
+        {/* Overlay layer that appears when isActive is true */}
 
-      <div
-        className={`
-        flex-1 flex flex-col 
-        ${!isExtensionEnabled ? "opacity-50 pointer-events-none" : "opacity-100"}
-        transition-opacity duration-200
-      `}>
-        {/* FontSelector is outside the dimming wrapper */}
-        <FontSelector setIsActive={setIsActive} />
 
-        {/* Wrap the content to be dimmed */}
-        <div
-          className={`${isActive ? "opacity-30" : "opacity-100"} transition-opacity duration-200`}>
-          <div style={{ direction: "rtl" }}>
-            <div className="overflow-auto">
-              <PopoularUrl boxes={boxes} setBoxes={setBoxes} />
+        {/* Main content wrapper */}
+        <div className="relative">
+          {/* Header section */}
+          <Header
+            isExtensionEnabled={isExtensionEnabled}
+            onToggle={handleExtensionToggle}
+          />
+
+          <div className={`
+          flex-1 flex flex-col 
+          ${!isExtensionEnabled ? "opacity-50 pointer-events-none" : "opacity-100"}
+          transition-opacity duration-200
+        `}>
+            {/* FontSelector with higher z-index to stay above overlay */}
+            <div className="relative z-20">
+              <FontSelector setIsActive={setIsActive} />
             </div>
 
-            <CustomUrlToggle
-              currentTab={currentTab}
-              isCustomUrlActive={isCustomUrlActive}
-              onToggle={handleCustomUrlToggle}
-              favicon={favicon}
-            />
+            {/* Main content */}
+            <div>
+              <div style={{ direction: "rtl" }}>
+                <div className="overflow-auto">
+                  <PopoularUrl boxes={boxes} setBoxes={setBoxes} />
+                </div>
+
+                <CustomUrlToggle
+                  currentTab={currentTab}
+                  isCustomUrlActive={isCustomUrlActive}
+                  onToggle={handleCustomUrlToggle}
+                  favicon={favicon}
+                />
+              </div>
+            </div>
           </div>
+
+          <Footer
+            isExtensionEnabled={isExtensionEnabled}
+          />
         </div>
       </div>
-
-      <Footer isActive={isActive} />
-    </div>
+    </section>
   )
 }

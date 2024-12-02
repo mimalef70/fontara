@@ -7,7 +7,7 @@ interface HeaderProps {
 
 const Header = ({ isExtensionEnabled, onToggle }: HeaderProps) => {
   return (
-    <div className="flex justify-between relative z-10">
+    <div className="flex justify-between relative z-9">
       <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
       <Switch
         dir="ltr"

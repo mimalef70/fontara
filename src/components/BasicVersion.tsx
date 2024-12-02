@@ -7,7 +7,6 @@ import FontSelector from "./FontSelector"
 import CustomUrlToggle from "./CustomUrlToggle"
 import { initialBoxes } from "@/data/popularUrlData"
 
-
 export const fonts = [
   {
     value: "Estedad",
@@ -217,8 +216,28 @@ export default function BaseVersion() {
 
       // Save to storage
       await storage.set("isExtensionEnabled", newState)
+      await storage.set("extensionState", {
+        ...DEFAULT_STATE,
+        isEnabled: newState
+      })
 
-      // Get all tabs and update them
+      // Send message to background script
+      browserAPI.runtime.sendMessage({
+        action: "toggleExtension",
+        isEnabled: newState
+      })
+
+      await browserAPI.action.setIcon({
+        path: newState ? {
+          "16": "../../assets/icon-active-16.png",
+        } : {
+          "16": "../../assets/icon-16.png",
+          "32": "../../assets/icon-32.png",
+          "48": "../../assets/icon-48.png"
+        }
+      })
+
+      // Update all tabs
       const tabs = await browserAPI.tabs.query({})
       for (const tab of tabs) {
         if (tab.id && tab.url && tab.url.startsWith('http')) {
@@ -232,8 +251,6 @@ export default function BaseVersion() {
           }
         }
       }
-
-
     } catch (error) {
       console.error("Error toggling extension:", error)
       setIsExtensionEnabled(!isExtensionEnabled)
@@ -281,6 +298,7 @@ export default function BaseVersion() {
       setIsCustomUrlActive(!isCustomUrlActive)
     }
   }
+
   return (
     <div className={`flex flex-col justify-between h-full w-[90%] mx-auto`}>
       <div className={`${isActive ? 'opacity-30' : 'opacity-100'} transition-opacity duration-200`}>

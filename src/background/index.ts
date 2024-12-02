@@ -63,6 +63,7 @@ browserAPI.runtime.onMessage.addListener(
       case "deleteCustomFont":
         handleDeleteCustomFont(message, sendResponse)
         break
+
       default:
         if (message.name === "changeFont") {
           handleFontChange(message, sendResponse)
@@ -70,9 +71,6 @@ browserAPI.runtime.onMessage.addListener(
     }
   }
 )
-
-
-
 
 // Handle adding custom fonts
 async function handleAddCustomFont(message: any, sendResponse: (response?: any) => void) {
@@ -226,6 +224,7 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
       sendActiveStatus(tabId, false)
+
       browserAPI.tabs.sendMessage(tabId, {
         action: "toggle",
         isExtensionEnabled: false
@@ -253,6 +252,17 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
           item.isActive && new RegExp(item.url.replace(/\*/g, ".*")).test(url)
       )
     }
+
+    // Update icon based on active status
+    browserAPI.action.setIcon({
+      path: isActive ? {
+        "16": "../../assets/icon-active-16.png",
+
+      } : {
+        "16": "../../assets/icon-16.png",
+        "32": "../../assets/icon-32.png"
+      }
+    })
 
     // Send status to tab
     sendActiveStatus(tabId, isActive)

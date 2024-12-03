@@ -30,15 +30,13 @@ const DEFAULT_STATE: ExtensionState = {
 }
 
 
-const Header = () => {
-  const [isExtensionEnabled, setIsExtensionEnabled] = useState(true)
-
+const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
 
   useEffect(() => {
     const initializeExtensionState = async () => {
       // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
-      setIsExtensionEnabled(storedState ?? true) // Default to true if not set
+      setExtentionEnabledState(storedState ?? true) // Default to true if not set
 
     }
 
@@ -48,8 +46,8 @@ const Header = () => {
 
   const handleExtensionToggle = async () => {
     try {
-      const newState = !isExtensionEnabled
-      setIsExtensionEnabled(newState)
+      const newState = !extentionEnabledState
+      setExtentionEnabledState(newState)
 
       // Save to storage
       await storage.set("isExtensionEnabled", newState)
@@ -92,7 +90,7 @@ const Header = () => {
       }
     } catch (error) {
       console.error("Error toggling extension:", error)
-      setIsExtensionEnabled(!isExtensionEnabled)
+      setExtentionEnabledState(!extentionEnabledState)
     }
   }
 
@@ -101,7 +99,7 @@ const Header = () => {
       <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
       <Switch
         dir="ltr"
-        checked={isExtensionEnabled}
+        checked={extentionEnabledState}
         onCheckedChange={handleExtensionToggle}
       />
     </div>

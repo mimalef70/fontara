@@ -43,7 +43,7 @@ export default function BaseVersion() {
   const [isActive, setIsActive] = useState(false)
 
   // ------------------------------------------
-  const [extentionEnabledState, setExtentionEnabledState] = useState(null)
+  const [extentionEnabledState, setExtentionEnabledState] = useState(true)
   // ------------------------------------------
   // Initialize extension state from storage
   useEffect(() => {
@@ -51,7 +51,6 @@ export default function BaseVersion() {
       // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
       setExtentionEnabledState(storedState)
-
     }
 
     initializeExtensionState()
@@ -216,7 +215,10 @@ export default function BaseVersion() {
       <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
         {/* Main content wrapper */}
         <div className="relative flex flex-col justify-between h-full">
-          <Header />
+          <Header
+            extentionEnabledState={extentionEnabledState}
+            setExtentionEnabledState={setExtentionEnabledState}
+          />
 
           <div className={`
           flex-1 flex flex-col 
@@ -246,7 +248,7 @@ export default function BaseVersion() {
           </div>
 
           <Footer
-            isExtensionEnabled={extentionEnabledState}
+            isExtensionEnabled={!extentionEnabledState}
           />
         </div>
       </div>

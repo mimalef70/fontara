@@ -26,16 +26,10 @@ interface BoxItem {
 
 // Browser API setup
 const storage = new Storage()
-declare const chrome: any
-declare const browser: any
-const browserAPI: typeof chrome =
-  typeof browser !== "undefined" ? browser : chrome
 
 export default function BaseVersion() {
   // State
   const [isActive, setIsActive] = useState(false)
-
-  // ------------------------------------------
   const [extentionEnabledState, setExtentionEnabledState] = useState(true)
   // ------------------------------------------
 

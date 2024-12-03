@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Switch } from "~src/components/ui/switch"
 import { Storage } from "@plasmohq/storage"
 

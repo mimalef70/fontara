@@ -1,13 +1,9 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Checkbox } from "~src/components/ui/checkbox"
 import { Storage } from "@plasmohq/storage"
+import { initialBoxes } from "~data/popularUrlData"
+import { urlPatternToRegex } from "~src/utils/pattern"
 
-interface CustomUrlToggleProps {
-    currentTab: string
-    isCustomUrlActive: boolean
-    setIsCustomUrlActive: any
-    favicon: string
-}
 
 interface BoxItem {
     id?: string
@@ -23,13 +19,11 @@ declare const browser: any
 const browserAPI: typeof chrome =
     typeof browser !== "undefined" ? browser : chrome
 
-const CustomUrlToggle = ({
-    currentTab,
-    isCustomUrlActive,
-    setIsCustomUrlActive,
-    favicon
-}: CustomUrlToggleProps) => {
-    if (!currentTab || currentTab.toLowerCase().includes('extension') || currentTab.toLowerCase().includes('newtab')) return null
+const CustomUrlToggle = () => {
+
+    const [favicon, setFavicon] = useState<string>("")
+    const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
+    const [currentTab, setCurrentTab] = useState<string>("")
 
     // Update custom URLs when toggled
     useEffect(() => {
@@ -62,6 +56,127 @@ const CustomUrlToggle = ({
 
         updateActiveUrls()
     }, [isCustomUrlActive, currentTab])
+
+    // Initialize custom URL status
+    useEffect(() => {
+        const initializeCustomUrlStatus = async () => {
+            const customActiveUrls =
+                (await storage.get<BoxItem[]>("customActiveUrls")) || []
+            const tabs = await browserAPI.tabs.query({
+                active: true,
+                currentWindow: true
+            })
+            const tab = tabs[0]
+
+            if (tab?.url) {
+                const mainUrl = new URL(tab.url).origin
+                const currentTabUrl = `${mainUrl}/*`
+                const urlEntry = customActiveUrls.find(
+                    (item) => item.url === currentTabUrl
+                )
+                setIsCustomUrlActive(urlEntry?.isActive ?? false)
+            }
+        }
+
+        initializeCustomUrlStatus()
+    }, [])
+
+    // Get favicon
+    useEffect(() => {
+        const getCurrentTabFavicon = async () => {
+            try {
+                const tabs = await browserAPI.tabs.query({
+                    active: true,
+                    currentWindow: true
+                })
+                const tab = tabs[0]
+
+                if (tab?.favIconUrl) {
+                    setFavicon(tab.favIconUrl)
+                } else {
+                    // Fallback to searching for favicon in page
+                    const links = document.querySelectorAll('link[rel*="icon"]')
+                    const favicons: string[] = []
+
+                    links.forEach((link) => {
+                        const href = link.getAttribute("href")
+                        if (href) {
+                            try {
+                                const absoluteUrl = new URL(href, window.location.origin).href
+                                favicons.push(absoluteUrl)
+                            } catch {
+                                favicons.push(href)
+                            }
+                        }
+                    })
+
+                    if (favicons.length === 0) {
+                        favicons.push(new URL("/favicon.ico", window.location.origin).href)
+                    }
+
+                    // Try each favicon until one works
+                    for (const url of favicons) {
+                        try {
+                            const response = await fetch(url, { method: "HEAD" })
+                            if (response.ok) {
+                                setFavicon(url)
+                                break
+                            }
+                        } catch {
+                            continue
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error getting favicon:", error)
+            }
+        }
+
+        getCurrentTabFavicon()
+    }, [currentTab])
+
+    // Check current tab
+    useEffect(() => {
+        const checkCurrentTab = async () => {
+            try {
+                const tabs = await browserAPI.tabs.query({
+                    active: true,
+                    currentWindow: true
+                })
+                const tab = tabs[0]
+
+                if (tab?.url) {
+                    const mainUrl = new URL(tab.url).origin
+                    const currentTabUrl = `${mainUrl}/*`
+                    setCurrentTab(currentTabUrl)
+
+                    // Check if the current URL matches any popular site
+                    const matchedSite = initialBoxes.some(
+                        (box) => box.url && urlPatternToRegex(box.url).test(tab.url)
+                    )
+
+                    if (matchedSite) {
+                        setCurrentTab("")
+                        return
+                    }
+
+                    // Get current custom URLs
+                    const customActiveUrls =
+                        (await storage.get<BoxItem[]>("customActiveUrls")) || []
+                    const isUrlActive = customActiveUrls.some(
+                        (item) => item.url === currentTabUrl && item.isActive
+                    )
+                    setIsCustomUrlActive(isUrlActive)
+                }
+            } catch (error) {
+                console.error("Error checking current tab:", error)
+            }
+        }
+
+        checkCurrentTab()
+    }, [initialBoxes])
+
+    if (!currentTab || currentTab.toLowerCase().includes('extension') || currentTab.toLowerCase().includes('newtab')) return null
 
     const displayTabName = () => {
         const tabName = currentTab.slice(8, -2)

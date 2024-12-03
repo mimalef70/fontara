@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react"
 import { Storage } from "@plasmohq/storage"
-
-import { initialBoxes } from "~data/popularUrlData"
-import { urlPatternToRegex } from "~src/utils/pattern"
-
 import CustomUrlToggle from "./CustomUrlToggle"
 import FontSelector from "./FontSelector"
 import Header from "./layout/Header"
@@ -37,14 +33,12 @@ const browserAPI: typeof chrome =
 
 export default function BaseVersion() {
   // State
-  const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
-  const [currentTab, setCurrentTab] = useState<string>("")
-  const [favicon, setFavicon] = useState<string>("")
   const [isActive, setIsActive] = useState(false)
 
   // ------------------------------------------
   const [extentionEnabledState, setExtentionEnabledState] = useState(true)
   // ------------------------------------------
+
   // Initialize extension state from storage
   useEffect(() => {
     const initializeExtensionState = async () => {
@@ -55,125 +49,6 @@ export default function BaseVersion() {
 
     initializeExtensionState()
   }, [])
-
-  // Initialize custom URL status
-  useEffect(() => {
-    const initializeCustomUrlStatus = async () => {
-      const customActiveUrls =
-        (await storage.get<BoxItem[]>("customActiveUrls")) || []
-      const tabs = await browserAPI.tabs.query({
-        active: true,
-        currentWindow: true
-      })
-      const tab = tabs[0]
-
-      if (tab?.url) {
-        const mainUrl = new URL(tab.url).origin
-        const currentTabUrl = `${mainUrl}/*`
-        const urlEntry = customActiveUrls.find(
-          (item) => item.url === currentTabUrl
-        )
-        setIsCustomUrlActive(urlEntry?.isActive ?? false)
-      }
-    }
-
-    initializeCustomUrlStatus()
-  }, [])
-
-  // Check current tab
-  useEffect(() => {
-    const checkCurrentTab = async () => {
-      try {
-        const tabs = await browserAPI.tabs.query({
-          active: true,
-          currentWindow: true
-        })
-        const tab = tabs[0]
-
-        if (tab?.url) {
-          const mainUrl = new URL(tab.url).origin
-          const currentTabUrl = `${mainUrl}/*`
-          setCurrentTab(currentTabUrl)
-
-          // Check if the current URL matches any popular site
-          const matchedSite = initialBoxes.some(
-            (box) => box.url && urlPatternToRegex(box.url).test(tab.url)
-          )
-
-          if (matchedSite) {
-            setCurrentTab("")
-            return
-          }
-
-          // Get current custom URLs
-          const customActiveUrls =
-            (await storage.get<BoxItem[]>("customActiveUrls")) || []
-          const isUrlActive = customActiveUrls.some(
-            (item) => item.url === currentTabUrl && item.isActive
-          )
-          setIsCustomUrlActive(isUrlActive)
-        }
-      } catch (error) {
-        console.error("Error checking current tab:", error)
-      }
-    }
-
-    checkCurrentTab()
-  }, [initialBoxes])
-
-  // Get favicon
-  useEffect(() => {
-    const getCurrentTabFavicon = async () => {
-      try {
-        const tabs = await browserAPI.tabs.query({
-          active: true,
-          currentWindow: true
-        })
-        const tab = tabs[0]
-
-        if (tab?.favIconUrl) {
-          setFavicon(tab.favIconUrl)
-        } else {
-          // Fallback to searching for favicon in page
-          const links = document.querySelectorAll('link[rel*="icon"]')
-          const favicons: string[] = []
-
-          links.forEach((link) => {
-            const href = link.getAttribute("href")
-            if (href) {
-              try {
-                const absoluteUrl = new URL(href, window.location.origin).href
-                favicons.push(absoluteUrl)
-              } catch {
-                favicons.push(href)
-              }
-            }
-          })
-
-          if (favicons.length === 0) {
-            favicons.push(new URL("/favicon.ico", window.location.origin).href)
-          }
-
-          // Try each favicon until one works
-          for (const url of favicons) {
-            try {
-              const response = await fetch(url, { method: "HEAD" })
-              if (response.ok) {
-                setFavicon(url)
-                break
-              }
-            } catch {
-              continue
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error getting favicon:", error)
-      }
-    }
-
-    getCurrentTabFavicon()
-  }, [currentTab])
 
   return (
     <section className="h-full">
@@ -206,10 +81,6 @@ export default function BaseVersion() {
                 </div>
 
                 <CustomUrlToggle
-                  currentTab={currentTab}
-                  isCustomUrlActive={isCustomUrlActive}
-                  setIsCustomUrlActive={setIsCustomUrlActive}
-                  favicon={favicon}
                 />
               </div>
             </div>

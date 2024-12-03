@@ -121,38 +121,6 @@ export default function BaseVersion() {
     checkCurrentTab()
   }, [initialBoxes])
 
-  // Update custom URLs when toggled
-  useEffect(() => {
-    const updateActiveUrls = async () => {
-      if (currentTab) {
-        const customActiveUrls =
-          (await storage.get<BoxItem[]>("customActiveUrls")) || []
-        let updatedUrls = customActiveUrls
-
-        if (isCustomUrlActive) {
-          if (!customActiveUrls.some((item) => item.url === currentTab)) {
-            updatedUrls = [
-              ...customActiveUrls,
-              { url: currentTab, isActive: true }
-            ]
-          }
-        } else {
-          updatedUrls = customActiveUrls.filter(
-            (item) => item.url !== currentTab
-          )
-        }
-
-        await storage.set("customActiveUrls", updatedUrls)
-        browserAPI.runtime.sendMessage({
-          action: "updateCustomActiveUrls",
-          customActiveUrls: updatedUrls
-        })
-      }
-    }
-
-    updateActiveUrls()
-  }, [isCustomUrlActive, currentTab])
-
   // Get favicon
   useEffect(() => {
     const getCurrentTabFavicon = async () => {

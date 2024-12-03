@@ -21,10 +21,10 @@ export const IconlyHeart = ({ size = 17, color = "#000000" }: IconlyIconProps) =
 function Footer({ isExtensionEnabled }) {
   return (
     <div
-      className={`${!isExtensionEnabled ? "opacity-30" : "opacity-100"} transition-opacity duration-200 p-4`}>
+      className={`${isExtensionEnabled ? "opacity-30" : "opacity-100"} transition-opacity duration-200 p-4`}>
       <footer className="w-full">
         <p className="flex justify-center items-center text-gray-500 gap-1">
-          <span className="font-medium flex items-center gap-2"> طراحی و توسعه با <IconlyHeart /> توسط </span>
+          <span className="font-medium flex items-center gap-1"> طراحی و توسعه با <IconlyHeart /> توسط </span>
           <a
             href="https://x.com/mimalef70"
             className="font-black text-gray-700">

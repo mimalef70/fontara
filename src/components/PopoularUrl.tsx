@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react"
-
 import { Storage } from "@plasmohq/storage"
-
 import { initialBoxes } from "~data/popularUrlData"
 import {
   Tooltip,
@@ -26,12 +24,10 @@ declare const browser: any
 const browserAPI: typeof chrome =
   typeof browser !== "undefined" ? browser : chrome
 
-type Props = {
-  boxes: BoxItem[]
-  setBoxes: (boxes: BoxItem[]) => void
-}
 
-function PopularUrl({ boxes, setBoxes }: Props) {
+function PopularUrl() {
+  const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
+
   useEffect(() => {
     const initializeBoxes = async () => {
       // Changed storage key from "activeUrls" to "popularActiveUrls"
@@ -48,6 +44,8 @@ function PopularUrl({ boxes, setBoxes }: Props) {
     initializeBoxes()
   }, [])
 
+
+
   const toggleActive = async (id: string) => {
     const updatedBoxes = boxes.map((box) =>
       box.id === id ? { ...box, isActive: !box.isActive } : box
@@ -61,6 +59,8 @@ function PopularUrl({ boxes, setBoxes }: Props) {
       popularActiveUrls: updatedBoxes // Changed payload key
     })
   }
+
+
 
   return (
     <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-[18rem] w-full">

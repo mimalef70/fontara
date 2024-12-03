@@ -40,7 +40,6 @@ export default function BaseVersion() {
   // State
   const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
   const [currentTab, setCurrentTab] = useState<string>("")
-  const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
   const [favicon, setFavicon] = useState<string>("")
   const [isActive, setIsActive] = useState(false)
 
@@ -99,7 +98,7 @@ export default function BaseVersion() {
           setCurrentTab(currentTabUrl)
 
           // Check if the current URL matches any popular site
-          const matchedSite = boxes.some(
+          const matchedSite = initialBoxes.some(
             (box) => box.url && urlPatternToRegex(box.url).test(tab.url)
           )
 
@@ -122,7 +121,7 @@ export default function BaseVersion() {
     }
 
     checkCurrentTab()
-  }, [boxes])
+  }, [initialBoxes])
 
   // Update custom URLs when toggled
   useEffect(() => {
@@ -288,7 +287,7 @@ export default function BaseVersion() {
             <div>
               <div style={{ direction: "rtl" }}>
                 <div className="overflow-auto">
-                  <PopoularUrl boxes={boxes} setBoxes={setBoxes} />
+                  <PopoularUrl />
                 </div>
 
                 <CustomUrlToggle

@@ -13,7 +13,7 @@ const CustomUrlToggle = ({
     onToggle,
     favicon
 }: CustomUrlToggleProps) => {
-    if (!currentTab || currentTab.toLowerCase().includes('extension')) return null
+    if (!currentTab || currentTab.toLowerCase().includes('extension') || currentTab.toLowerCase().includes('newtab')) return null
 
     const displayTabName = () => {
         const tabName = currentTab.slice(8, -2)

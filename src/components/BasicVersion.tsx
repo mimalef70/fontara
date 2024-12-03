@@ -29,27 +29,6 @@ interface BoxItem {
   isInUi?: boolean
 }
 
-interface ExtensionState {
-  isEnabled: boolean
-  defaultFont: {
-    value: string
-    name: string
-    svg: string
-    style: string
-  }
-}
-
-// Constants
-const DEFAULT_STATE: ExtensionState = {
-  isEnabled: true,
-  defaultFont: {
-    value: "Estedad",
-    name: "استعداد",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  }
-}
-
 // Browser API setup
 const storage = new Storage()
 declare const chrome: any
@@ -63,15 +42,17 @@ export default function BaseVersion() {
   const [currentTab, setCurrentTab] = useState<string>("")
   const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
   const [favicon, setFavicon] = useState<string>("")
-  const [isExtensionEnabled, setIsExtensionEnabled] = useState(true)
   const [isActive, setIsActive] = useState(false)
 
+  // ------------------------------------------
+  const [extentionEnabledState, setExtentionEnabledState] = useState(null)
+  // ------------------------------------------
   // Initialize extension state from storage
   useEffect(() => {
     const initializeExtensionState = async () => {
       // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
-      setIsExtensionEnabled(storedState ?? true) // Default to true if not set
+      setExtentionEnabledState(storedState)
 
     }
 
@@ -229,59 +210,6 @@ export default function BaseVersion() {
     getCurrentTabFavicon()
   }, [currentTab])
 
-  // handleExtensionToggle
-  const handleExtensionToggle = async () => {
-    try {
-      const newState = !isExtensionEnabled
-      setIsExtensionEnabled(newState)
-
-      // Save to storage
-      await storage.set("isExtensionEnabled", newState)
-      await storage.set("extensionState", {
-        ...DEFAULT_STATE,
-        isEnabled: newState
-      })
-
-      // Send message to background script
-      browserAPI.runtime.sendMessage({
-        action: "toggleExtension",
-        isEnabled: newState
-      })
-
-      await browserAPI.action.setIcon({
-        path: newState
-          ? {
-            "16": "../../assets/icon-active-16.png"
-          }
-          : {
-            "16": "../../assets/icon-16.png",
-            "32": "../../assets/icon-32.png",
-            "48": "../../assets/icon-48.png"
-          }
-      })
-
-      // Update all tabs
-      const tabs = await browserAPI.tabs.query({})
-      for (const tab of tabs) {
-        if (tab.id && tab.url && tab.url.startsWith("http")) {
-          try {
-            await browserAPI.tabs.sendMessage(tab.id, {
-              action: "toggle",
-              isExtensionEnabled: newState
-            })
-          } catch (error) {
-            console.log(`Error sending message to tab ${tab.id}:`, error)
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error toggling extension:", error)
-      setIsExtensionEnabled(!isExtensionEnabled)
-    }
-  }
-
-
-
   const handleCustomUrlToggle = async () => {
     try {
       const newIsActive = !isCustomUrlActive
@@ -334,7 +262,7 @@ export default function BaseVersion() {
   }
 
   return (
-    <section>
+    <section className="h-full">
       {isActive && (
         <div className="absolute inset-0 bg-black/30 z-10" />
       )}
@@ -343,16 +271,12 @@ export default function BaseVersion() {
 
 
         {/* Main content wrapper */}
-        <div className="relative">
-          {/* Header section */}
-          <Header
-            isExtensionEnabled={isExtensionEnabled}
-            onToggle={handleExtensionToggle}
-          />
+        <div className="relative flex flex-col justify-between h-full">
+          <Header />
 
           <div className={`
           flex-1 flex flex-col 
-          ${!isExtensionEnabled ? "opacity-50 pointer-events-none" : "opacity-100"}
+          ${!extentionEnabledState ? "opacity-50 pointer-events-none" : "opacity-100"}
           transition-opacity duration-200
         `}>
             {/* FontSelector with higher z-index to stay above overlay */}
@@ -378,7 +302,7 @@ export default function BaseVersion() {
           </div>
 
           <Footer
-            isExtensionEnabled={isExtensionEnabled}
+            isExtensionEnabled={extentionEnabledState}
           />
         </div>
       </div>

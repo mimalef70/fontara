@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-
 import { Storage } from "@plasmohq/storage"
 
 import { initialBoxes } from "~data/popularUrlData"
@@ -209,66 +208,12 @@ export default function BaseVersion() {
     getCurrentTabFavicon()
   }, [currentTab])
 
-  const handleCustomUrlToggle = async () => {
-    try {
-      const newIsActive = !isCustomUrlActive
-      setIsCustomUrlActive(newIsActive)
-
-      const customActiveUrls =
-        (await storage.get<BoxItem[]>("customActiveUrls")) || []
-      let updatedUrls: BoxItem[]
-
-      if (newIsActive) {
-        const existingUrlIndex = customActiveUrls.findIndex(
-          (item) => item.url === currentTab
-        )
-        if (existingUrlIndex === -1) {
-          updatedUrls = [
-            ...customActiveUrls,
-            { url: currentTab, isActive: true }
-          ]
-        } else {
-          updatedUrls = customActiveUrls.map((item) =>
-            item.url === currentTab ? { ...item, isActive: true } : item
-          )
-        }
-      } else {
-        updatedUrls = customActiveUrls.map((item) =>
-          item.url === currentTab ? { ...item, isActive: false } : item
-        )
-      }
-
-      await storage.set("customActiveUrls", updatedUrls)
-      browserAPI.runtime.sendMessage({
-        action: "updateCustomUrlStatus",
-        data: updatedUrls
-      })
-
-      const tabs = await browserAPI.tabs.query({
-        active: true,
-        currentWindow: true
-      })
-      if (tabs[0]?.id) {
-        browserAPI.tabs.sendMessage(tabs[0].id, {
-          action: "setActiveStatus",
-          isActive: newIsActive
-        })
-      }
-    } catch (error) {
-      console.error("Error toggling custom URL:", error)
-      setIsCustomUrlActive(!isCustomUrlActive)
-    }
-  }
-
   return (
     <section className="h-full">
       {isActive && (
         <div className="absolute inset-0 bg-black/30 z-10" />
       )}
       <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
-        {/* Overlay layer that appears when isActive is true */}
-
-
         {/* Main content wrapper */}
         <div className="relative flex flex-col justify-between h-full">
           <Header />
@@ -293,7 +238,7 @@ export default function BaseVersion() {
                 <CustomUrlToggle
                   currentTab={currentTab}
                   isCustomUrlActive={isCustomUrlActive}
-                  onToggle={handleCustomUrlToggle}
+                  setIsCustomUrlActive={setIsCustomUrlActive}
                   favicon={favicon}
                 />
               </div>

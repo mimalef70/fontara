@@ -142,7 +142,7 @@ async function loadCustomFonts(): Promise<void> {
         src: url(${font.data}) format('${font.type}');
         font-weight: ${font.weight};
         font-display: fallback;
-  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+  /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
 
       }
     `
@@ -161,7 +161,7 @@ async function loadFont(fontName: string): Promise<void> {
               src: url(${localFonts[fontName]}) format('woff2');
               font-weight: 100 1000;
               font-display: fallback;
-  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+  /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
 
           }
       `
@@ -187,7 +187,7 @@ async function loadFont(fontName: string): Promise<void> {
                       font-family: '${fontName}';
                       src: url(data:font/${fontData.type};base64,${fontData.data});
                       font-display: fallback;
-  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+  /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
 
                   }
               `

@@ -274,7 +274,81 @@ function getAllElementsWithFontFamily(
   }
 }
 
+// font chnage just for elements that have text (string , context) in them.
+// function getAllElementsWithFontFamily( 
+//   rootNode: HTMLElement,
+//   customFont: string
+// ): void {
+//   const treeWalker = document.createTreeWalker(
+//     rootNode,
+//     NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT
+//   )
+
+//   const iconClasses = [
+//     "fa",
+//     "fas",
+//     "far",
+//     "fal",
+//     "fad",
+//     "fab",
+//     "material-icons",
+//     "material-icons-outlined",
+//     "material-icons-round",
+//     "material-icons-sharp",
+//     "glyphicon",
+//     "icon"
+//   ]
+
+//   const processedElements = new Set()
+
+//   let node = treeWalker.nextNode()
+//   while (node) {
+//     if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+//       // Get the parent element of the text node
+//       const parentElement = node.parentElement
+
+//       if (parentElement && !processedElements.has(parentElement)) {
+//         const computedStyle = window.getComputedStyle(parentElement)
+//         let fontFamily = computedStyle.fontFamily
+
+//         const isIcon = iconClasses.some((className) =>
+//           parentElement.classList.contains(className) ||
+//           parentElement.closest(`.${className}`) !== null
+//         )
+
+//         const isIconFont =
+//           fontFamily.toLowerCase().startsWith("fontawesome") ||
+//           fontFamily.toLowerCase().startsWith("material icons") ||
+//           fontFamily.toLowerCase().includes("icon")
+
+//         const isInput = parentElement.tagName === "INPUT" &&
+//           (parentElement.getAttribute("type") === "text" ||
+//             parentElement.getAttribute("type") === "search" ||
+//             parentElement.getAttribute("placeholder"))
+
+//         if (!isIcon && !isIconFont) {
+//           const customFonts = [...Object.keys(localFonts), ...Object.keys(googleFonts)]
+//           customFonts.forEach((font) => {
+//             fontFamily = fontFamily.replace(
+//               new RegExp(`${font},?\\s*`, "i"),
+//               ""
+//             )
+//           })
+
+//           // Only apply font to the direct parent of text nodes or input elements
+//           if (isInput || node.textContent.trim() !== '') {
+//             parentElement.style.fontFamily = `${customFont}, ${fontFamily.trim()}`
+//             processedElements.add(parentElement)
+//           }
+//         }
+//       }
+//     }
+//     node = treeWalker.nextNode()
+//   }
+// }
+
 // Enhance resetFontToDefault function
+
 export function resetFontToDefault(): void {
   // Remove custom font styles from all elements
   const elements = document.querySelectorAll('*')

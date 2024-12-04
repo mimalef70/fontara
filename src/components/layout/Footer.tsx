@@ -5,7 +5,7 @@ type IconlyIconProps = {
   color?: string;
 }
 
-export const IconlyHeart = ({ size = 17, color = "#000000" }: IconlyIconProps) => {
+export const IconlyHeart = ({ size = 17, color = "#ff0000" }: IconlyIconProps) => {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink">
       <title>Iconly/Bold/Heart</title>

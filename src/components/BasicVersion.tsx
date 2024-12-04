@@ -38,7 +38,7 @@ export default function BaseVersion() {
     const initializeExtensionState = async () => {
       // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
-      setExtentionEnabledState(storedState)
+      setExtentionEnabledState(storedState ?? true)
     }
 
     initializeExtensionState()

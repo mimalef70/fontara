@@ -115,6 +115,18 @@ let currentFont = "Estedad"
 let activePopularUrls: string[] = []
 let activeCustomUrls: string[] = []
 
+const rootStyle = document.createElement('style')
+rootStyle.id = 'fontara-root-styles'
+document.head.appendChild(rootStyle)
+
+function updateRootVariables(fontName: string): void {
+  rootStyle.textContent = `
+    :root {
+      --fontara-font: "${fontName}";
+    }
+  `
+}
+
 // Utility functions
 export function patternToRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&")
@@ -138,12 +150,10 @@ async function loadCustomFonts(): Promise<void> {
     style.id = `custom-${font.name}-style`
     style.textContent = `
       @font-face {
-        font-family: '${font.name}';
+        font-family: "${font.name}";
         src: url(${font.data}) format('${font.type}');
         font-weight: ${font.weight};
         font-display: fallback;
-  /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
       }
     `
     document.head.appendChild(style)
@@ -156,15 +166,13 @@ async function loadFont(fontName: string): Promise<void> {
     const style = document.createElement("style")
     style.id = `${fontName}-style`
     style.textContent = `
-          @font-face {
-              font-family: '${fontName}';
-              src: url(${localFonts[fontName]}) format('woff2');
-              font-weight: 100 1000;
-              font-display: fallback;
-  /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
-          }
-      `
+      @font-face {
+        font-family: "${fontName}";
+        src: url(${localFonts[fontName]}) format('woff2');
+        font-weight: 100 1000;
+        font-display: fallback;
+      }
+    `
     document.head.appendChild(style)
   } else if (fontName in googleFonts) {
     const link = document.createElement("link")
@@ -172,7 +180,6 @@ async function loadFont(fontName: string): Promise<void> {
     link.rel = "stylesheet"
     document.head.appendChild(link)
   } else {
-    // Try to load from chrome.storage.local
     try {
       const result = await new Promise<{ [key: string]: any }>((resolve) => {
         chrome.storage.local.get(`font_${fontName}`, resolve)
@@ -183,20 +190,19 @@ async function loadFont(fontName: string): Promise<void> {
         const style = document.createElement("style")
         style.id = `custom-${fontName}-style`
         style.textContent = `
-                  @font-face {
-                      font-family: '${fontName}';
-                      src: url(data:font/${fontData.type};base64,${fontData.data});
-                      font-display: fallback;
-  /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
-                  }
-              `
+          @font-face {
+            font-family: "${fontName}";
+            src: url(data:font/${fontData.type};base64,${fontData.data});
+            font-display: fallback;
+          }
+        `
         document.head.appendChild(style)
       }
     } catch (error) {
       console.error(`Failed to load custom font ${fontName}:`, error)
     }
   }
+  updateRootVariables(fontName)
 }
 
 function updateFont(fontName: string): void {
@@ -221,18 +227,10 @@ function getAllElementsWithFontFamily(
   )
 
   const iconClasses = [
-    "fa",
-    "fas",
-    "far",
-    "fal",
-    "fad",
-    "fab",
-    "material-icons",
-    "material-icons-outlined",
-    "material-icons-round",
-    "material-icons-sharp",
-    "glyphicon",
-    "icon"
+    "fa", "fas", "far", "fal", "fad", "fab",
+    "material-icons", "material-icons-outlined",
+    "material-icons-round", "material-icons-sharp",
+    "glyphicon", "icon"
   ]
 
   let node = treeWalker.nextNode()
@@ -266,7 +264,7 @@ function getAllElementsWithFontFamily(
             )
           })
 
-          node.style.fontFamily = `${customFont}, ${fontFamily.trim()}`
+          node.style.fontFamily = `var(--fontara-font), ${fontFamily.trim()}`
         }
       }
     }
@@ -355,7 +353,7 @@ export function resetFontToDefault(): void {
   elements.forEach((element) => {
     if (element instanceof HTMLElement) {
       const computedStyle = window.getComputedStyle(element)
-      if (computedStyle.fontFamily.includes(currentFont)) {
+      if (computedStyle.fontFamily.includes('var(--fontara-font)')) {
         element.style.removeProperty('font-family')
       }
     }
@@ -365,8 +363,10 @@ export function resetFontToDefault(): void {
   document.querySelectorAll('style[id$="-style"]').forEach(styleTag => {
     styleTag.remove()
   })
-}
 
+  // Reset root variables
+  rootStyle.textContent = ''
+}
 export async function initializeFonts(): Promise<void> {
   if (document.body) {
     const isPopularMatch = isCurrentUrlMatched(activePopularUrls)

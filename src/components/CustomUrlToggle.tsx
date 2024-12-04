@@ -81,58 +81,69 @@ const CustomUrlToggle = () => {
         initializeCustomUrlStatus()
     }, [])
 
-    // Get favicon
-    useEffect(() => {
-        const getCurrentTabFavicon = async () => {
-            try {
-                const tabs = await browserAPI.tabs.query({
-                    active: true,
-                    currentWindow: true
-                })
-                const tab = tabs[0]
+    const getFavicon = async () => {
+        try {
+            const tabs = await browserAPI.tabs.query({
+                active: true,
+                currentWindow: true
+            })
+            const tab = tabs[0]
 
-                if (tab?.favIconUrl) {
-                    setFavicon(tab.favIconUrl)
-                } else {
-                    // Fallback to searching for favicon in page
-                    const links = document.querySelectorAll('link[rel*="icon"]')
-                    const favicons: string[] = []
+            if (tab?.favIconUrl) {
+                setFavicon(tab.favIconUrl)
+                return
+            }
 
-                    links.forEach((link) => {
-                        const href = link.getAttribute("href")
-                        if (href) {
-                            try {
-                                const absoluteUrl = new URL(href, window.location.origin).href
-                                favicons.push(absoluteUrl)
-                            } catch {
-                                favicons.push(href)
-                            }
+            // If no direct favicon, try getting it from the tab's URL
+            if (tab?.url) {
+                const url = new URL(tab.url)
+                const possibleFavicons = [
+                    `${url.origin}/favicon.ico`,
+                    `${url.origin}/favicon.png`,
+                    `${url.origin}/apple-touch-icon.png`,
+                    `${url.origin}/apple-touch-icon-precomposed.png`
+                ]
+
+                // Try each possible favicon URL
+                for (const faviconUrl of possibleFavicons) {
+                    try {
+                        const response = await fetch(faviconUrl, { method: "HEAD" })
+                        if (response.ok) {
+                            setFavicon(faviconUrl)
+                            return
                         }
-                    })
-
-                    if (favicons.length === 0) {
-                        favicons.push(new URL("/favicon.ico", window.location.origin).href)
-                    }
-
-                    // Try each favicon until one works
-                    for (const url of favicons) {
-                        try {
-                            const response = await fetch(url, { method: "HEAD" })
-                            if (response.ok) {
-                                setFavicon(url)
-                                break
-                            }
-                        } catch {
-                            continue
-                        }
+                    } catch {
+                        continue
                     }
                 }
-            } catch (error) {
-                console.error("Error getting favicon:", error)
+
+                // If no favicon found, use Google's favicon service as fallback
+                const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
+                setFavicon(googleFaviconUrl)
+            }
+        } catch (error) {
+            console.error("Error fetching favicon:", error)
+            // Set a default icon or leave empty
+            setFavicon("")
+        }
+    }
+
+    // Update favicon when tab changes
+    useEffect(() => {
+        getFavicon()
+
+        // Listen for tab updates to refresh favicon
+        const handleTabUpdate = (tabId, changeInfo, tab) => {
+            if (changeInfo.favIconUrl) {
+                getFavicon()
             }
         }
 
-        getCurrentTabFavicon()
+        browserAPI.tabs.onUpdated.addListener(handleTabUpdate)
+
+        return () => {
+            browserAPI.tabs.onUpdated.removeListener(handleTabUpdate)
+        }
     }, [currentTab])
 
     // Check current tab

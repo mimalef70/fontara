@@ -1,7 +1,8 @@
 import { useEffect } from "react"
 import { Switch } from "~src/components/ui/switch"
 import { Storage } from "@plasmohq/storage"
-
+import logo from 'url:~assets/newlogo.svg'
+import { Badge } from "../ui/badge"
 
 const storage = new Storage()
 declare const chrome: any
@@ -28,7 +29,6 @@ const DEFAULT_STATE: ExtensionState = {
     style: "font-estedad"
   }
 }
-
 
 const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
 
@@ -95,8 +95,11 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
   }
 
   return (
-    <div className="flex justify-between relative z-9">
-      <p className="text-center mb-2 text-xl text-blue-800">v2فونت آرا</p>
+    <div className="flex justify-between z-9 pb-3">
+      <div className="relative">
+        <Badge className="absolute -top-2 left-[8px] z-10">V4</Badge>
+        <img src={logo} alt="" className="relative w-[85%]" />
+      </div>
       <Switch
         dir="ltr"
         checked={extentionEnabledState}

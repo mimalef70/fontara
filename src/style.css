@@ -7,6 +7,8 @@
   src: url("~assets/fonts/estedad/variable/Estedad[KSHD,wght].woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -14,6 +16,8 @@
   src: url("~assets/fonts/morraba/variable/MorabbaVF.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -21,6 +25,8 @@
   src: url("~assets/fonts/samim/variable/Samim-WOL.woff") format("woff");
   font-weight: normal;
   font-style: normal;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -28,6 +34,8 @@
   src: url("~assets/fonts/shabnam/variable/Shabnam-WOL.woff") format("woff");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -35,6 +43,8 @@
   src: url("~assets/fonts/sahel/variable/Sahel-WOL.woff") format("woff");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -42,6 +52,8 @@
   src: url("~assets/fonts/parastoo/variable/Parastoo-WOL.woff") format("woff");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -49,6 +61,8 @@
   src: url("~assets/fonts/gandom/variable/Gandom-WOL.woff") format("woff");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -56,6 +70,8 @@
   src: url("~assets/fonts/tanha/variable/Tanha-WOL.woff") format("woff");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -63,6 +79,8 @@
   src: url("~assets/fonts/behdad/variable/Behdad-Regular.woff") format("woff");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -70,6 +88,8 @@
   src: url("~assets/fonts/nika/variable/Nika-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -77,6 +97,8 @@
   src: url("~assets/fonts/ganjname/variable/GanjNamehSans-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -84,6 +106,8 @@
   src: url("~assets/fonts/shahab/variable/Shahab-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @font-face {
@@ -91,6 +115,8 @@
   src: url("~assets/fonts/mikhak/variable/Mikhak-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+    unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+
 }
 
 @layer base {

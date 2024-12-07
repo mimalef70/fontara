@@ -251,64 +251,46 @@ function getAllElementsWithFontFamily(
     "glyphicon", "icon"
   ]
 
-  const excludedTags = ['SCRIPT', 'STYLE', 'SVG', 'PATH']
-
-  function hasDirectTextContent(element: HTMLElement): boolean {
-    for (let node of element.childNodes) {
-      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '') {
-        return true
-      }
-    }
-    return false
-  }
-
   let node = treeWalker.nextNode()
   while (node) {
-    if (node instanceof HTMLElement && node !== document.body) {
-      if (excludedTags.includes(node.tagName)) {
-        node = treeWalker.nextNode()
-        continue
+    if (node instanceof HTMLElement) {
+      // if (
+      //   (node.textContent && node.textContent.trim() !== "") ||
+      //   node.tagName === "INPUT"
+      // ) {
+      const computedStyle = window.getComputedStyle(node)
+      let fontFamily = computedStyle.fontFamily
+
+      const isIcon = iconClasses.some((className) =>
+        node instanceof Element
+          ? node.classList.contains(className) ||
+          node.closest(`.${className}`) !== null
+          : false
+      )
+
+      const isIconFont =
+        fontFamily.toLowerCase().startsWith("fontawesome") ||
+        fontFamily.toLowerCase().startsWith("material icons") ||
+        fontFamily.toLowerCase().includes("icon")
+
+      if (!isIcon && !isIconFont) {
+        const customFonts = [...Object.keys(localFonts), ...Object.keys(googleFonts)]
+        customFonts.forEach((font) => {
+          fontFamily = fontFamily.replace(
+            new RegExp(`${font},?\\s*`, "i"),
+            ""
+          )
+        })
+
+        node.style.fontFamily = `${customFont}, ${fontFamily.trim()}`
       }
-
-      const isTextInput = node.tagName === "INPUT" &&
-        (node.getAttribute("type") === "text" ||
-          node.getAttribute("type") === "search" ||
-          node.hasAttribute("placeholder"))
-
-      if (isTextInput || hasDirectTextContent(node)) {
-        const computedStyle = window.getComputedStyle(node)
-        let fontFamily = computedStyle.fontFamily
-
-        const isIcon = iconClasses.some((className) =>
-          node instanceof Element
-            ? node.classList.contains(className) ||
-            node.closest(`.${className}`) !== null
-            : false
-        )
-
-        const isIconFont =
-          fontFamily.toLowerCase().startsWith("fontawesome") ||
-          fontFamily.toLowerCase().startsWith("material icons") ||
-          fontFamily.toLowerCase().includes("icon")
-
-        if (!isIcon && !isIconFont) {
-          const customFonts = [...Object.keys(localFonts), ...Object.keys(googleFonts)]
-          customFonts.forEach((font) => {
-            fontFamily = fontFamily.replace(
-              new RegExp(`${font},?\\s*`, "i"),
-              ""
-            )
-          })
-
-          node.style.fontFamily = `${customFont}, ${fontFamily.trim()}`
-        }
-      }
+      // }
     }
     node = treeWalker.nextNode()
   }
 }
 
-// font chnage just for elements that have text (string , context) in them👇.
+// font chnage just for elements that have text (string , context) in them.
 // function getAllElementsWithFontFamily( 
 //   rootNode: HTMLElement,
 //   customFont: string

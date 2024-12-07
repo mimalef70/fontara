@@ -47,7 +47,7 @@ export default function BaseVersion() {
   return (
     <section className="h-full">
       {isActive && (
-        <div className="absolute inset-0 bg-black/30 z-10" />
+        <div className="absolute inset-0 bg-black/30 z-20" />
       )}
       <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
         {/* Main content wrapper */}

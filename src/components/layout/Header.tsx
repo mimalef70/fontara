@@ -97,7 +97,7 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
   return (
     <div className="flex justify-between z-9 pb-3">
       <div className="relative">
-        <Badge className="absolute -top-2 left-[8px] z-10">V4</Badge>
+        <Badge className="absolute -top-2 left-[8px] z-10 !text-[10px] !py-[2px]">V4</Badge>
         <img src={logo} alt="" className="relative w-[85%]" />
       </div>
       <Switch

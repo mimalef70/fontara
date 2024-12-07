@@ -127,6 +127,42 @@ function updateRootVariables(fontName: string): void {
   `
 }
 
+async function handleInitialSetup(): Promise<void> {
+  // Set default values for first-time installation
+  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
+  const storedFont = await storage.get<string>("selectedFont")
+  const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
+  const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
+
+  // If these values don't exist, it's likely a first-time installation
+  if (storedEnabled === undefined) {
+    await storage.set("isExtensionEnabled", true)
+  }
+
+  if (!storedFont) {
+    await storage.set("selectedFont", "Estedad")
+  }
+
+  // Set default popular URLs if none exist
+  if (!storedPopularUrls || storedPopularUrls.length === 0) {
+    const defaultPopularUrls: UrlItem[] = [
+      { url: "*://*/*", isActive: true } // Default to all URLs
+    ]
+    await storage.set("popularActiveUrls", defaultPopularUrls)
+    updatePopularUrls(defaultPopularUrls)
+  } else {
+    updatePopularUrls(storedPopularUrls)
+  }
+
+  // Initialize custom URLs if none exist
+  if (!storedCustomUrls) {
+    await storage.set("customActiveUrls", [])
+  } else {
+    updateCustomUrls(storedCustomUrls)
+  }
+}
+
+
 // Utility functions
 export function patternToRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&")
@@ -484,49 +520,68 @@ let isExtensionEnabled = true
 
 
 async function initialize(): Promise<void> {
-  // Get extension state first
-  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
-  isExtensionEnabled = storedEnabled ?? true
+  try {
+    // Handle first-time setup
+    await handleInitialSetup()
 
-  if (!isExtensionEnabled) {
-    resetFontToDefault()
-    return
+    // Get current extension state
+    const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
+    isExtensionEnabled = storedEnabled ?? true
+
+    if (!isExtensionEnabled) {
+      resetFontToDefault()
+      return
+    }
+
+    // Wait for document.body to be available
+    if (!document.body) {
+      const observer = new MutationObserver((mutations, obs) => {
+        if (document.body) {
+          obs.disconnect()
+          initializeAfterBodyLoads()
+        }
+      })
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+      })
+    } else {
+      await initializeAfterBodyLoads()
+    }
+  } catch (error) {
+    console.error("Initialization error:", error)
+  }
+}
+
+async function initializeAfterBodyLoads(): Promise<void> {
+  // Load custom fonts
+  await loadCustomFonts()
+
+  // Get the current URLs
+  const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
+  const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
+
+  // Update URL arrays
+  if (storedPopularUrls) {
+    updatePopularUrls(storedPopularUrls)
+  }
+  if (storedCustomUrls) {
+    updateCustomUrls(storedCustomUrls)
   }
 
-  // Only proceed if document.body exists
-  if (document.body) {
-    // Load custom fonts
-    await loadCustomFonts()
+  // Check if current URL matches any patterns
+  const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
+  const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
 
-    // Get stored URLs
-    const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
-    const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
+  if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
+    const storedFont = await storage.get<string>("selectedFont")
+    currentFont = storedFont || "Estedad"
+    await loadFont(currentFont)
+    applyFontToAllElements(currentFont)
 
-    // Update URL arrays
-    if (storedPopularUrls) {
-      updatePopularUrls(storedPopularUrls)
-    }
-    if (storedCustomUrls) {
-      updateCustomUrls(storedCustomUrls)
-    }
-
-    // Check if current URL matches any patterns
-    const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
-    const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
-
-    if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
-      const storedFont = await storage.get<string>("selectedFont")
-      currentFont = storedFont || "Estedad"
-      await loadFont(currentFont)
-      applyFontToAllElements(currentFont)
-    } else {
-      resetFontToDefault()
-    }
-
-    // Set up observer only if extension is enabled
-    if (isExtensionEnabled) {
-      observer.observe(document.body, { childList: true, subtree: true })
-    }
+    // Set up observer
+    observer.observe(document.body, { childList: true, subtree: true })
   }
 }
 

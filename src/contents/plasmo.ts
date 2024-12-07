@@ -202,20 +202,38 @@ async function loadFont(fontName: string): Promise<void> {
       console.error(`Failed to load custom font ${fontName}:`, error)
     }
   }
-  updateRootVariables(fontName)
 }
 
 function updateFont(fontName: string): void {
   currentFont = fontName
-  loadFont(currentFont)
-  applyFontToAllElements(currentFont)
+  loadFont(currentFont).then(() => {
+    applyFontToAllElements(currentFont)
+  })
 }
+
+
 
 function applyFontToAllElements(customFont: string): void {
   if (document.body) {
+    // Apply font to body tag first
+    const computedBodyStyle = window.getComputedStyle(document.body)
+    let bodyFontFamily = computedBodyStyle.fontFamily
+
+    const customFonts = [...Object.keys(localFonts), ...Object.keys(googleFonts)]
+    customFonts.forEach((font) => {
+      bodyFontFamily = bodyFontFamily.replace(
+        new RegExp(`${font},?\\s*`, "i"),
+        ""
+      )
+    })
+
+    document.body.style.fontFamily = `${customFont}, ${bodyFontFamily.trim()}`
+
+    // Then proceed with existing functionality for all other elements
     getAllElementsWithFontFamily(document.body, customFont)
   }
 }
+
 
 function getAllElementsWithFontFamily(
   rootNode: HTMLElement,
@@ -236,7 +254,6 @@ function getAllElementsWithFontFamily(
   const excludedTags = ['SCRIPT', 'STYLE', 'SVG', 'PATH']
 
   function hasDirectTextContent(element: HTMLElement): boolean {
-    // Check direct text nodes only (not nested elements)
     for (let node of element.childNodes) {
       if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '') {
         return true
@@ -247,14 +264,12 @@ function getAllElementsWithFontFamily(
 
   let node = treeWalker.nextNode()
   while (node) {
-    if (node instanceof HTMLElement) {
-      // Skip excluded tags
+    if (node instanceof HTMLElement && node !== document.body) {
       if (excludedTags.includes(node.tagName)) {
         node = treeWalker.nextNode()
         continue
       }
 
-      // Check if element is an input with text or has direct text content
       const isTextInput = node.tagName === "INPUT" &&
         (node.getAttribute("type") === "text" ||
           node.getAttribute("type") === "search" ||
@@ -285,7 +300,7 @@ function getAllElementsWithFontFamily(
             )
           })
 
-          node.style.fontFamily = `var(--fontara-font), ${fontFamily.trim()}`
+          node.style.fontFamily = `${customFont}, ${fontFamily.trim()}`
         }
       }
     }
@@ -369,25 +384,28 @@ function getAllElementsWithFontFamily(
 // Enhance resetFontToDefault function
 
 export function resetFontToDefault(): void {
-  // Remove custom font styles from all elements
-  const elements = document.querySelectorAll('*')
-  elements.forEach((element) => {
-    if (element instanceof HTMLElement) {
-      const computedStyle = window.getComputedStyle(element)
-      if (computedStyle.fontFamily.includes('var(--fontara-font)')) {
-        element.style.removeProperty('font-family')
+  if (document.body) {
+    // Reset body font family
+    document.body.style.removeProperty('font-family')
+
+    // Reset all elements
+    const elements = document.querySelectorAll('*')
+    elements.forEach((element) => {
+      if (element instanceof HTMLElement) {
+        // Check if the element has a custom font family style
+        if (element.style.fontFamily) {
+          element.style.removeProperty('font-family')
+        }
       }
-    }
-  })
+    })
 
-  // Remove any custom font style tags
-  document.querySelectorAll('style[id$="-style"]').forEach(styleTag => {
-    styleTag.remove()
-  })
-
-  // Reset root variables
-  rootStyle.textContent = ''
+    // Remove any custom font style tags
+    document.querySelectorAll('style[id$="-style"]').forEach(styleTag => {
+      styleTag.remove()
+    })
+  }
 }
+
 export async function initializeFonts(): Promise<void> {
   if (document.body) {
     const isPopularMatch = isCurrentUrlMatched(activePopularUrls)

@@ -233,13 +233,34 @@ function getAllElementsWithFontFamily(
     "glyphicon", "icon"
   ]
 
+  const excludedTags = ['SCRIPT', 'STYLE', 'SVG', 'PATH']
+
+  function hasDirectTextContent(element: HTMLElement): boolean {
+    // Check direct text nodes only (not nested elements)
+    for (let node of element.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim() !== '') {
+        return true
+      }
+    }
+    return false
+  }
+
   let node = treeWalker.nextNode()
   while (node) {
     if (node instanceof HTMLElement) {
-      if (
-        (node.textContent && node.textContent.trim() !== "") ||
-        node.tagName === "INPUT"
-      ) {
+      // Skip excluded tags
+      if (excludedTags.includes(node.tagName)) {
+        node = treeWalker.nextNode()
+        continue
+      }
+
+      // Check if element is an input with text or has direct text content
+      const isTextInput = node.tagName === "INPUT" &&
+        (node.getAttribute("type") === "text" ||
+          node.getAttribute("type") === "search" ||
+          node.hasAttribute("placeholder"))
+
+      if (isTextInput || hasDirectTextContent(node)) {
         const computedStyle = window.getComputedStyle(node)
         let fontFamily = computedStyle.fontFamily
 
@@ -272,7 +293,7 @@ function getAllElementsWithFontFamily(
   }
 }
 
-// font chnage just for elements that have text (string , context) in them.
+// font chnage just for elements that have text (string , context) in them👇.
 // function getAllElementsWithFontFamily( 
 //   rootNode: HTMLElement,
 //   customFont: string

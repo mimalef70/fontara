@@ -1,6 +1,6 @@
 import "~src/style.css"
 
-import BasicVersion from "~components/BasicVersion"
+import BasicVersion from "~src/components/BasicVersion"
 
 function IndexPopup() {
   return (

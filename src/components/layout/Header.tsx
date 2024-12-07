@@ -37,12 +37,10 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
       // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
       setExtentionEnabledState(storedState ?? true) // Default to true if not set
-
     }
 
     initializeExtensionState()
   }, [])
-
 
   const handleExtensionToggle = async () => {
     try {
@@ -96,9 +94,9 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
 
   return (
     <div className="flex justify-between z-9 pb-3">
-      <div className="relative">
-        <Badge className="absolute -top-2 left-[8px] z-10 !text-[10px] !py-[2px]">V4</Badge>
-        <img src={logo} alt="" className="relative w-[85%]" />
+      <div className="flex items-center gap-2">
+        <img src={logo} alt="" className="relative w-[65%]" />
+        <Badge className="z-10 !text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">ورژن ۴</Badge>
       </div>
       <Switch
         dir="ltr"

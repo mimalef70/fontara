@@ -98,7 +98,7 @@ async function handleAddCustomFont(message: any, sendResponse: (response?: any) 
 
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error adding custom font:", error)
+    // console.error("Error adding custom font:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -117,7 +117,7 @@ async function handleDeleteCustomFont(message: any, sendResponse: (response?: an
 
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error deleting custom font:", error)
+    // console.error("Error deleting custom font:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -145,7 +145,7 @@ async function handleResetSettings(message: any, sendResponse: (response?: any) 
 
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error resetting settings:", error)
+    // console.error("Error resetting settings:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -169,7 +169,7 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
     sendResponse({ success: true })
 
   } catch (error) {
-    console.error("Error changing font:", error)
+    // console.error("Error changing font:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -190,7 +190,7 @@ async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any
     })
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error updating custom URLs:", error)
+    // console.error("Error updating custom URLs:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -211,7 +211,7 @@ async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: a
     })
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error updating popular URLs:", error)
+    // console.error("Error updating popular URLs:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -228,7 +228,7 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
       browserAPI.tabs.sendMessage(tabId, {
         action: "toggle",
         isExtensionEnabled: false
-      }).catch(error => console.log("Tab may not be ready:", error))
+      })
       return false
     }
 
@@ -258,12 +258,11 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
     browserAPI.tabs.sendMessage(tabId, {
       action: "toggle",
       isExtensionEnabled: extensionState.isEnabled
-    }).catch(error => console.log("Tab may not be ready:", error))
-
+    })
     return isActive
 
   } catch (error) {
-    console.error("Error checking URL active status:", error)
+    // console.error("Error checking URL active status:", error)
     return false
   }
 }
@@ -275,9 +274,7 @@ function notifyAllTabs(message: any) {
       if (tab.id !== undefined) {
         browserAPI.tabs
           .sendMessage(tab.id, message)
-          .catch((error: Error) =>
-            console.log("Error sending message (tab may not be ready):", error)
-          )
+
       }
     })
   })
@@ -289,7 +286,7 @@ function sendActiveStatus(tabId: number, isActive: boolean) {
       action: "setActiveStatus",
       isActive: isActive
     })
-    .catch((error: Error) => console.log("Error sending message (tab may not be ready):", error))
+
 }
 
 // Tab update listener

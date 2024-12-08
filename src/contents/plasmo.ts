@@ -16,7 +16,6 @@ import fontSamim from "data-base64:../../assets/fonts/samim/variable/Samim-WOL.w
 import fontShabnam from "data-base64:../../assets/fonts/shabnam/variable/Shabnam-WOL.woff"
 import fontShahab from "data-base64:../../assets/fonts/shahab/variable/Shahab-Regular.woff2"
 import fontTanha from "data-base64:../../assets/fonts/tanha/variable/Tanha-WOL.woff"
-import { initialBoxes } from "~data/popularUrlData"
 
 // TypeScript interfaces
 interface FontRecord {
@@ -120,23 +119,16 @@ const rootStyle = document.createElement('style')
 rootStyle.id = 'fontara-root-styles'
 document.head.appendChild(rootStyle)
 
-function updateRootVariables(fontName: string): void {
-  rootStyle.textContent = `
-    :root {
-      --fontara-font: "${fontName}";
-    }
-  `
-}
-
+// function updateRootVariables(fontName: string): void {
+//   rootStyle.textContent = `
+//     :root {
+//       --fontara-font: "${fontName}";
+//     }
+//   `
+// }
 
 async function handleInitialSetup(): Promise<void> {
   try {
-    // Set default values directly
-    await storage.set("selectedFont", "Estedad")
-    await storage.set("isExtensionEnabled", true)
-    await storage.set("popularActiveUrls", initialBoxes)
-    await storage.set("customActiveUrls", [])
-
     // Update active URLs arrays
     activePopularUrls = ["*://*/*"]
     activeCustomUrls = []
@@ -149,7 +141,7 @@ async function handleInitialSetup(): Promise<void> {
       throw new Error("Failed to set initial values")
     }
   } catch (error) {
-    console.error("Error in initial setup:", error)
+    // console.error("Error in initial setup:", error)
   }
 }
 

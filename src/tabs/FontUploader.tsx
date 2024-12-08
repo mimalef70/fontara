@@ -44,7 +44,7 @@ const FontUploader = () => {
       const fonts = (await storage.get<CustomFont[]>("customFonts")) || []
       setSavedFonts(fonts)
     } catch (error) {
-      console.error("Error loading fonts:", error)
+      // console.error("Error loading fonts:", error)
       toast({
         title: "خطا در بارگذاری فونت‌ها"
       })
@@ -176,7 +176,7 @@ const FontUploader = () => {
         window.close()
       }
     } catch (error) {
-      console.error("Error processing font:", error)
+      // console.error("Error processing font:", error)
       toast({
         title: "خطا در پردازش فونت"
       })
@@ -219,7 +219,7 @@ const FontUploader = () => {
         window.opener.postMessage({ type: "FONT_DELETED", fontName }, "*")
       }
     } catch (error) {
-      console.error("Error deleting font:", error)
+      // console.error("Error deleting font:", error)
       toast({
         title: "خطا در حذف فونت"
       })

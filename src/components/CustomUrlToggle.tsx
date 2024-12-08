@@ -89,13 +89,21 @@ const CustomUrlToggle = () => {
             })
             const tab = tabs[0]
 
-            if (tab?.favIconUrl) {
+            // Special case: Handle chrome:// and extension:// URLs
+            if (tab?.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('extension://'))) {
+                // For chrome:// and extension:// pages, use a default icon or leave empty
+                setFavicon("")
+                return
+            }
+
+            // If tab has a direct favicon, use it
+            if (tab?.favIconUrl && !tab.favIconUrl.startsWith('chrome://')) {
                 setFavicon(tab.favIconUrl)
                 return
             }
 
-            // If no direct favicon, try getting it from the tab's URL
-            if (tab?.url) {
+            // Only proceed with favicon fetching for regular URLs
+            if (tab?.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('extension://')) {
                 const url = new URL(tab.url)
                 const possibleFavicons = [
                     `${url.origin}/favicon.ico`,
@@ -122,7 +130,6 @@ const CustomUrlToggle = () => {
                 setFavicon(googleFaviconUrl)
             }
         } catch (error) {
-            console.error("Error fetching favicon:", error)
             // Set a default icon or leave empty
             setFavicon("")
         }
@@ -180,7 +187,7 @@ const CustomUrlToggle = () => {
                     setIsCustomUrlActive(isUrlActive)
                 }
             } catch (error) {
-                console.error("Error checking current tab:", error)
+                // console.error("Error checking current tab:", error)
             }
         }
 
@@ -240,7 +247,7 @@ const CustomUrlToggle = () => {
                 })
             }
         } catch (error) {
-            console.error("Error toggling custom URL:", error)
+            // console.error("Error toggling custom URL:", error)
             setIsCustomUrlActive(!isCustomUrlActive)
         }
     }

@@ -16,6 +16,7 @@ import fontSamim from "data-base64:../../assets/fonts/samim/variable/Samim-WOL.w
 import fontShabnam from "data-base64:../../assets/fonts/shabnam/variable/Shabnam-WOL.woff"
 import fontShahab from "data-base64:../../assets/fonts/shahab/variable/Shahab-Regular.woff2"
 import fontTanha from "data-base64:../../assets/fonts/tanha/variable/Tanha-WOL.woff"
+import { initialBoxes } from "~data/popularUrlData"
 
 // TypeScript interfaces
 interface FontRecord {
@@ -129,42 +130,27 @@ function updateRootVariables(fontName: string): void {
 
 
 async function handleInitialSetup(): Promise<void> {
-
-  // Set default values for first-time installation
-  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
-  const storedFont = await storage.get<string>("selectedFont")
-  const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
-  const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
-
-  // If these values don't exist, it's likely a first-time installation
-  if (storedEnabled === undefined) {
-    await storage.set("isExtensionEnabled", true)
-  }
-
-  if (!storedFont) {
+  try {
+    // Set default values directly
     await storage.set("selectedFont", "Estedad")
-  }
-
-  // Set default popular URLs if none exist
-  if (!storedPopularUrls || storedPopularUrls.length === 0) {
-    const defaultPopularUrls: UrlItem[] = [
-      { url: "*://*/*", isActive: true } // Default to all URLs
-    ]
-    await storage.set("popularActiveUrls", defaultPopularUrls)
-    updatePopularUrls(defaultPopularUrls)
-  } else {
-    updatePopularUrls(storedPopularUrls)
-  }
-
-  // Initialize custom URLs if none exist
-  if (!storedCustomUrls) {
+    await storage.set("isExtensionEnabled", true)
+    await storage.set("popularActiveUrls", initialBoxes)
     await storage.set("customActiveUrls", [])
-  } else {
-    updateCustomUrls(storedCustomUrls)
-  }
 
-  // Verify storage after setup
-  const verifyPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
+    // Update active URLs arrays
+    activePopularUrls = ["*://*/*"]
+    activeCustomUrls = []
+
+    // Double check our values were set
+    const verifyFont = await storage.get("selectedFont")
+    const verifyUrls = await storage.get("popularActiveUrls")
+
+    if (!verifyFont || !verifyUrls) {
+      throw new Error("Failed to set initial values")
+    }
+  } catch (error) {
+    console.error("Error in initial setup:", error)
+  }
 }
 
 
@@ -523,11 +509,12 @@ let isExtensionEnabled = true
 
 
 async function initialize(): Promise<void> {
+  await handleInitialSetup()
 
   // Get extension state first
   const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
   isExtensionEnabled = storedEnabled ?? true
-  await handleInitialSetup()
+
 
   if (!isExtensionEnabled) {
     resetFontToDefault()
@@ -538,7 +525,8 @@ async function initialize(): Promise<void> {
   if (document.body) {
     // Load custom fonts
     await loadCustomFonts()
-
+    await loadFont("Estedad")
+    applyFontToAllElements("Estedad")
     // Get stored URLs
     const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
     const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")

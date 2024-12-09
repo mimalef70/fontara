@@ -55,9 +55,10 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
       setExtentionEnabledState(newState)
 
       // Save to storage
+      const currentFont = await storage.get("selectedFont")
       await storage.set("isExtensionEnabled", newState)
       await storage.set("extensionState", {
-        ...DEFAULT_STATE,
+        defaultFont: currentFont,
         isEnabled: newState
       })
 

@@ -439,6 +439,51 @@ function updateCustomUrls(newActiveUrls: UrlItem[]): void {
   initializeFonts()
 }
 
+async function initialize(): Promise<void> {
+  await handleInitialSetup()
+
+  // Get extension state first
+  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
+  isExtensionEnabled = storedEnabled ?? true
+
+  // Only proceed if document.body exists
+  if (document.body) {
+    // Load custom fonts
+    await loadCustomFonts()
+    await loadFont("Estedad")
+    // applyFontToAllElements("Estedad")
+    // Get stored URLs
+    const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
+    const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
+
+    // Update URL arrays
+    if (storedPopularUrls) {
+      updatePopularUrls(storedPopularUrls)
+    }
+    if (storedCustomUrls) {
+      updateCustomUrls(storedCustomUrls)
+    }
+
+    // Check if current URL matches any patterns
+    const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
+    const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
+
+    if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
+      const storedFont = await storage.get<string>("selectedFont")
+      currentFont = storedFont || "Estedad"
+      await loadFont(currentFont)
+      applyFontToAllElements(currentFont)
+    } else {
+      resetFontToDefault()
+    }
+
+    // Set up observer only if extension is enabled
+    if (isExtensionEnabled) {
+      observer.observe(document.body, { childList: true, subtree: true })
+    }
+  }
+}
+
 // Message handling
 browserAPI.runtime.onMessage.addListener(
   (message: BrowserMessage, sender: any, sendResponse: (response: MessageResponse) => void) => {
@@ -496,62 +541,10 @@ browserAPI.runtime.onMessage.addListener(
   }
 )
 
+initialize()
+
 // Initialization
 let isExtensionEnabled = true
-
-
-async function initialize(): Promise<void> {
-  await handleInitialSetup()
-
-  // Get extension state first
-  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
-  isExtensionEnabled = storedEnabled ?? true
-
-
-  if (!isExtensionEnabled) {
-    resetFontToDefault()
-    return
-  }
-
-  // Only proceed if document.body exists
-  if (document.body) {
-    // Load custom fonts
-    await loadCustomFonts()
-    await loadFont("Estedad")
-    applyFontToAllElements("Estedad")
-    // Get stored URLs
-    const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
-    const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
-
-    // Update URL arrays
-    if (storedPopularUrls) {
-      updatePopularUrls(storedPopularUrls)
-    }
-    if (storedCustomUrls) {
-      updateCustomUrls(storedCustomUrls)
-    }
-
-    // Check if current URL matches any patterns
-    const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
-    const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
-
-    if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
-      const storedFont = await storage.get<string>("selectedFont")
-      currentFont = storedFont || "Estedad"
-      await loadFont(currentFont)
-      applyFontToAllElements(currentFont)
-    } else {
-      resetFontToDefault()
-    }
-
-    // Set up observer only if extension is enabled
-    if (isExtensionEnabled) {
-      observer.observe(document.body, { childList: true, subtree: true })
-    }
-  }
-}
-
-initialize()
 
 // MutationObserver setup
 const observer = new MutationObserver((mutations: MutationRecord[]) => {

@@ -5,10 +5,10 @@ import logo from 'url:~assets/newlogo.svg'
 import { Badge } from "../ui/badge"
 
 const storage = new Storage()
+
 declare const chrome: any
 declare const browser: any
-const browserAPI: typeof chrome =
-  typeof browser !== "undefined" ? browser : chrome
+const browserAPI: typeof chrome = typeof browser !== "undefined" ? browser : chrome
 
 interface ExtensionState {
   isEnabled: boolean
@@ -31,12 +31,19 @@ const DEFAULT_STATE: ExtensionState = {
 }
 
 const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
-
   useEffect(() => {
     const initializeExtensionState = async () => {
-      // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
-      setExtentionEnabledState(storedState ?? true) // Default to true if not set
+      setExtentionEnabledState(storedState ?? true)
+      await browserAPI.action.setIcon({
+        path:
+        {
+          "16": "assets/icon-active-16.png",
+          "32": "assets/icon-active-32.png",
+          "48": "assets/icon-active-48.png",
+        }
+
+      })
     }
 
     initializeExtensionState()
@@ -60,15 +67,18 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
         isEnabled: newState
       })
 
+      // Update icon with correct paths relative to extension root
       await browserAPI.action.setIcon({
         path: newState
           ? {
-            "16": "../../assets/icon-active-16.png"
+            "16": "assets/icon-active-16.png",
+            "32": "assets/icon-active-32.png",
+            "48": "assets/icon-active-48.png",
           }
           : {
-            "16": "../../assets/icon-16.png",
-            "32": "../../assets/icon-32.png",
-            "48": "../../assets/icon-48.png"
+            "16": "assets/icon-16.png",
+            "32": "assets/icon-32.png",
+            "48": "assets/icon-48.png"
           }
       })
 
@@ -82,7 +92,7 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
               isExtensionEnabled: newState
             })
           } catch (error) {
-            console.log(`Error sending message to tab ${tab.id}:`, error)
+            // Silent catch for inactive tabs
           }
         }
       }
@@ -96,7 +106,9 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
     <div className="flex justify-between z-9 pb-3">
       <div className="flex items-center gap-2">
         <img src={logo} alt="" className="relative w-[65%]" />
-        <Badge className="z-10 !text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">ورژن ۴</Badge>
+        <Badge className="z-10 !text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
+          ورژن ۴
+        </Badge>
       </div>
       <Switch
         dir="ltr"

@@ -286,7 +286,6 @@ function sendActiveStatus(tabId: number, isActive: boolean) {
       action: "setActiveStatus",
       isActive: isActive
     })
-
 }
 
 // Tab update listener

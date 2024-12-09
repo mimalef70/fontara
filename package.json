@@ -44,10 +44,7 @@
   },
   "manifest": {
     "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "../assets/icon-active-16.png"
-      }
+      "default_popup": "popup.html"
     },
     "default_locale": "en",
     "web_accessible_resources": [

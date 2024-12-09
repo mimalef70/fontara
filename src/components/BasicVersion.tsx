@@ -15,15 +15,6 @@ export const fonts = [
   }
 ]
 
-// Types
-interface BoxItem {
-  id?: string
-  src?: string
-  isActive?: boolean
-  url?: string
-  isInUi?: boolean
-}
-
 // Browser API setup
 const storage = new Storage()
 
@@ -39,6 +30,7 @@ export default function BaseVersion() {
       // await storage.clear()
       const storedState = await storage.get<boolean>("isExtensionEnabled")
       setExtentionEnabledState(storedState ?? true)
+
     }
 
     initializeExtensionState()

@@ -15,7 +15,6 @@ interface BoxItem {
   url: string
 }
 
-// Updated extension state interface
 interface ExtensionState {
   isEnabled: boolean
   defaultFont: {
@@ -26,7 +25,6 @@ interface ExtensionState {
   }
 }
 
-// Initialize extension state with enabled by default
 const DEFAULT_STATE: ExtensionState = {
   isEnabled: true,
   defaultFont: {
@@ -35,7 +33,7 @@ const DEFAULT_STATE: ExtensionState = {
     svg: "بستد دل و دین از من",
     style: "font-estedad"
   }
-};
+}
 
 // Store initial state
 storage.set("extensionState", DEFAULT_STATE)
@@ -59,20 +57,18 @@ browserAPI.runtime.onMessage.addListener(
       case "addCustomFont":
         handleAddCustomFont(message, sendResponse)
         break
-
       case "deleteCustomFont":
         handleDeleteCustomFont(message, sendResponse)
         break
-
       default:
         if (message.name === "changeFont") {
           handleFontChange(message, sendResponse)
         }
     }
+    return true // Will respond asynchronously
   }
 )
 
-// Handle adding custom fonts
 async function handleAddCustomFont(message: any, sendResponse: (response?: any) => void) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
@@ -90,7 +86,7 @@ async function handleAddCustomFont(message: any, sendResponse: (response?: any) 
     }
 
     await storage.set("customFonts", [...customFonts, newFont])
-    notifyAllTabs({
+    await notifyAllTabs({
       action: "addCustomFont",
       fontName: message.fontName,
       fontData: message.fontData
@@ -98,62 +94,54 @@ async function handleAddCustomFont(message: any, sendResponse: (response?: any) 
 
     sendResponse({ success: true })
   } catch (error) {
-    // console.error("Error adding custom font:", error)
+    console.error("Error adding custom font:", error)
     sendResponse({ success: false, error })
   }
 }
 
-// Handle deleting custom fonts
 async function handleDeleteCustomFont(message: any, sendResponse: (response?: any) => void) {
   try {
     const customFonts: any = await storage.get("customFonts") || []
     const updatedFonts = customFonts.filter(font => font.name !== message.fontName)
     await storage.set("customFonts", updatedFonts)
 
-    notifyAllTabs({
+    await notifyAllTabs({
       action: "deleteCustomFont",
       fontName: message.fontName
     })
 
     sendResponse({ success: true })
   } catch (error) {
-    // console.error("Error deleting custom font:", error)
+    console.error("Error deleting custom font:", error)
     sendResponse({ success: false, error })
   }
 }
 
-// Handle reset settings
 async function handleResetSettings(message: any, sendResponse: (response?: any) => void) {
   try {
-    // Reset font
     await storage.set("selectedFont", DEFAULT_STATE.defaultFont)
-
-    // Reset custom URLs
     await storage.set("customActiveUrls", [])
 
-    // Reset popular URLs to default state (all active)
     const popularUrls = await storage.get<BoxItem[]>("popularActiveUrls")
     if (popularUrls) {
       const resetPopularUrls = popularUrls.map(url => ({ ...url, isActive: true }))
       await storage.set("popularActiveUrls", resetPopularUrls)
     }
 
-    notifyAllTabs({
+    await notifyAllTabs({
       action: "settingsReset",
       defaultFont: DEFAULT_STATE.defaultFont
     })
 
     sendResponse({ success: true })
   } catch (error) {
-    // console.error("Error resetting settings:", error)
+    console.error("Error resetting settings:", error)
     sendResponse({ success: false, error })
   }
 }
 
-// Handle font change messages
 async function handleFontChange(message: any, sendResponse: (response?: any) => void) {
   try {
-
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
       sendResponse({ success: false, error: "Extension is disabled" })
@@ -162,19 +150,17 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
 
     const fontName = message.body?.fontName || message.font
     await storage.set("selectedFont", fontName)
-    notifyAllTabs({
+    await notifyAllTabs({
       action: "updateFont",
       fontName
     })
     sendResponse({ success: true })
-
   } catch (error) {
-    // console.error("Error changing font:", error)
+    console.error("Error changing font:", error)
     sendResponse({ success: false, error })
   }
 }
 
-// Handle custom URL status updates
 async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any) => void) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
@@ -184,18 +170,17 @@ async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any
     }
 
     await storage.set("customActiveUrls", message.data)
-    notifyAllTabs({
+    await notifyAllTabs({
       action: "updateCustomUrlStatus",
       data: message.data
     })
     sendResponse({ success: true })
   } catch (error) {
-    // console.error("Error updating custom URLs:", error)
+    console.error("Error updating custom URLs:", error)
     sendResponse({ success: false, error })
   }
 }
 
-// Handle popular URLs updates
 async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: any) => void) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
@@ -205,30 +190,25 @@ async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: a
     }
 
     await storage.set("popularActiveUrls", message.popularActiveUrls)
-    notifyAllTabs({
+    await notifyAllTabs({
       action: "updatePopularActiveUrls",
       popularActiveUrls: message.popularActiveUrls
     })
     sendResponse({ success: true })
   } catch (error) {
-    // console.error("Error updating popular URLs:", error)
+    console.error("Error updating popular URLs:", error)
     sendResponse({ success: false, error })
   }
 }
 
-// Modified checkIfUrlShouldBeActive to respect extension state
-
 async function checkIfUrlShouldBeActive(url: string, tabId: number) {
   try {
-    // Check extension state first
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
-      sendActiveStatus(tabId, false)
-
-      browserAPI.tabs.sendMessage(tabId, {
-        action: "toggle",
-        isExtensionEnabled: false
-      })
+      await Promise.all([
+        sendActiveStatus(tabId, false),
+        sendToggleStatus(tabId, false)
+      ])
       return false
     }
 
@@ -237,7 +217,6 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
 
     let isActive = false
 
-    // Check popular URLs
     if (popularActiveUrls) {
       isActive = popularActiveUrls.some(
         (item) =>
@@ -245,7 +224,6 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
       )
     }
 
-    // Check custom URLs if not already active
     if (!isActive && customActiveUrls) {
       isActive = customActiveUrls.some(
         (item) =>
@@ -253,39 +231,60 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
       )
     }
 
-    // Send status to tab
-    sendActiveStatus(tabId, isActive)
-    browserAPI.tabs.sendMessage(tabId, {
-      action: "toggle",
-      isExtensionEnabled: extensionState.isEnabled
-    })
-    return isActive
+    await Promise.all([
+      sendActiveStatus(tabId, isActive),
+      sendToggleStatus(tabId, extensionState.isEnabled)
+    ])
 
+    return isActive
   } catch (error) {
-    // console.error("Error checking URL active status:", error)
+    console.error("Error checking URL active status:", error)
     return false
   }
 }
 
-// Utility functions
-function notifyAllTabs(message: any) {
-  browserAPI.tabs.query({}, (tabs: chrome.tabs.Tab[]) => {
-    tabs.forEach((tab) => {
-      if (tab.id !== undefined) {
-        browserAPI.tabs
-          .sendMessage(tab.id, message)
-
+// Utility functions with error handling
+async function notifyAllTabs(message: any) {
+  const tabs = await browserAPI.tabs.query({})
+  const messagePromises = tabs.map(async (tab) => {
+    if (tab.id !== undefined) {
+      try {
+        await browserAPI.tabs.sendMessage(tab.id, message)
+      } catch (error) {
+        // Ignore "receiving end does not exist" errors
+        if (!error.message.includes("Receiving end does not exist")) {
+          console.error(`Error sending message to tab ${tab.id}:`, error)
+        }
       }
-    })
+    }
   })
+  await Promise.all(messagePromises)
 }
 
-function sendActiveStatus(tabId: number, isActive: boolean) {
-  browserAPI.tabs
-    .sendMessage(tabId, {
+async function sendActiveStatus(tabId: number, isActive: boolean) {
+  try {
+    await browserAPI.tabs.sendMessage(tabId, {
       action: "setActiveStatus",
       isActive: isActive
     })
+  } catch (error) {
+    if (!error.message.includes("Receiving end does not exist")) {
+      console.error(`Error sending active status to tab ${tabId}:`, error)
+    }
+  }
+}
+
+async function sendToggleStatus(tabId: number, isEnabled: boolean) {
+  try {
+    await browserAPI.tabs.sendMessage(tabId, {
+      action: "toggle",
+      isExtensionEnabled: isEnabled
+    })
+  } catch (error) {
+    if (!error.message.includes("Receiving end does not exist")) {
+      console.error(`Error sending toggle status to tab ${tabId}:`, error)
+    }
+  }
 }
 
 // Tab update listener

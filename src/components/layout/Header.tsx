@@ -69,19 +69,19 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
       })
 
       // Update icon with correct paths relative to extension root
-      await browserAPI.action.setIcon({
-        path: newState
-          ? {
-            "16": "assets/icon-active-16.png",
-            "32": "assets/icon-active-32.png",
-            "48": "assets/icon-active-48.png",
-          }
-          : {
-            "16": "assets/icon-16.png",
-            "32": "assets/icon-32.png",
-            "48": "assets/icon-48.png"
-          }
-      })
+      // await browserAPI.action.setIcon({
+      //   path: newState
+      //     ? {
+      //       "16": "assets/icon-active-16.png",
+      //       "32": "assets/icon-active-32.png",
+      //       "48": "assets/icon-active-48.png",
+      //     }
+      //     : {
+      //       "16": "assets/icon-16.png",
+      //       "32": "assets/icon-32.png",
+      //       "48": "assets/icon-48.png"
+      //     }
+      // })
 
       // Update all tabs
       const tabs = await browserAPI.tabs.query({})

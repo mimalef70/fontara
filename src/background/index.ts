@@ -1,4 +1,5 @@
 import { Storage } from "@plasmohq/storage"
+import { urlPatternToRegex } from "~src/utils/pattern"
 
 const storage = new Storage()
 
@@ -286,6 +287,94 @@ async function sendToggleStatus(tabId: number, isEnabled: boolean) {
     }
   }
 }
+// -----------------------------------------------------------------------------
+browserAPI.storage.onChanged.addListener(async (changes, namespace) => {
+  for (let key in changes) {
+    const storageChange = changes[key];
+
+    // Handle extensionState changes
+    if (key === "extensionState") {
+      const newState: ExtensionState = typeof storageChange.newValue === 'string'
+        ? JSON.parse(storageChange.newValue)
+        : storageChange.newValue;
+
+      const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls")
+
+      chrome.windows.getCurrent(w => {
+        chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
+          // console.log(popularActiveUrls)
+          const changedItem = popularActiveUrls.find((item) => urlPatternToRegex(item.url).test(tabs[0].url))
+          console.log(changedItem, "extensionState")
+
+
+          if (!newState.isEnabled) {
+            browserAPI.action.setIcon({
+              path: {
+                "16": "../../assets/icon-16.png",
+                "32": "../../assets/icon-32.png",
+                "48": "../../assets/icon-48.png"
+              }
+            });
+          } else if (newState.isEnabled && changedItem.isActive) {
+            browserAPI.action.setIcon({
+              path: {
+                "16": "../../assets/icon-active-16.png",
+                "32": "../../assets/icon-active-32.png",
+                "48": "../../assets/icon-active-48.png"
+              }
+            });
+          } else {
+            browserAPI.action.setIcon({
+              path: {
+                "16": "../../assets/icon-16.png",
+                "32": "../../assets/icon-32.png",
+                "48": "../../assets/icon-48.png"
+              }
+            });
+          }
+        });
+      });
+      continue; // Skip the URL comparison logic for extensionState
+    }
+
+
+
+    // Handle popularActiveUrls changes
+    if (key === "popularActiveUrls") {
+      const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls")
+
+      chrome.windows.getCurrent(w => {
+        chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
+          const changedItem = popularActiveUrls.find((item) => urlPatternToRegex(item.url).test(tabs[0].url))
+          console.log(changedItem, "popularActiveUrls")
+
+          if (changedItem && !changedItem.isActive) {
+            browserAPI.action.setIcon({
+              path: {
+                "16": "../../assets/icon-16.png",
+                "32": "../../assets/icon-32.png",
+                "48": "../../assets/icon-48.png"
+              }
+            });
+          } else {
+            browserAPI.action.setIcon({
+              path: {
+                "16": "../../assets/icon-active-16.png",
+                "32": "../../assets/icon-active-32.png",
+                "48": "../../assets/icon-active-48.png"
+              }
+            });
+          }
+        });
+      });
+    }
+
+
+  }
+});
+
+// Initialize monitoring
+// -----------------------------------------------------------------------------
 
 // Tab update listener
 browserAPI.tabs.onUpdated.addListener(

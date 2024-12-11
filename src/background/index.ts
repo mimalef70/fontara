@@ -288,20 +288,13 @@ async function sendToggleStatus(tabId: number, isEnabled: boolean) {
   }
 }
 
-// -----------------------------------------------------------------------------
-const extensionStateIcon = async () => {
-
-}
-
-const popularActiveUrlsIcon = async () => {
-
-}
 
 // -----------------------------------------------------------------------------
 async function updateExtensionIcon() {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState") || DEFAULT_STATE;
     const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls") || [];
+    const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || [];
 
     chrome.windows.getCurrent(w => {
       chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
@@ -326,16 +319,23 @@ async function updateExtensionIcon() {
         // Default to the default icon
         let iconToShow = defaultIcon;
 
-        // Only try to find matching URL if popularActiveUrls exists and has items
-        if (Array.isArray(popularActiveUrls) && popularActiveUrls.length > 0) {
-          const matchingUrl = popularActiveUrls.find((item) =>
+        // Handle customActiveUrls completely independently
+        const matchingCustomUrl = Array.isArray(customActiveUrls) && customActiveUrls.length > 0
+          ? customActiveUrls.find((item) =>
             urlPatternToRegex(item.url).test(tabs[0].url)
-          );
+          )
+          : null;
 
-          // Update icon only if extension is enabled and we have a matching active URL
-          if (extensionState?.isEnabled && matchingUrl?.isActive) {
-            iconToShow = activeIcon;
-          }
+        // Handle popularActiveUrls based on extension state
+        const matchingPopularUrl = Array.isArray(popularActiveUrls) && popularActiveUrls.length > 0 && extensionState?.isEnabled
+          ? popularActiveUrls.find((item) =>
+            urlPatternToRegex(item.url).test(tabs[0].url)
+          )
+          : null;
+
+        // Set icon based on matches - customActiveUrls take precedence
+        if (matchingCustomUrl?.isActive && extensionState?.isEnabled || (matchingPopularUrl?.isActive && extensionState?.isEnabled)) {
+          iconToShow = activeIcon;
         }
 
         browserAPI.action.setIcon(iconToShow).catch(error => {
@@ -355,6 +355,15 @@ async function updateExtensionIcon() {
     }).catch(console.error);
   }
 }
+
+// Update the storage listener to handle changes separately
+browserAPI.storage.onChanged.addListener(async (changes, namespace) => {
+  if (changes.customActiveUrls) {
+    await updateExtensionIcon();
+  } else if (changes.extensionState || changes.popularActiveUrls) {
+    await updateExtensionIcon();
+  }
+});
 
 // Initialize storage with default values if not already set
 browserAPI.runtime.onInstalled.addListener(async () => {

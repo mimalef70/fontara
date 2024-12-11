@@ -20,30 +20,12 @@ interface ExtensionState {
   }
 }
 
-const DEFAULT_STATE: ExtensionState = {
-  isEnabled: true,
-  defaultFont: {
-    value: "Estedad",
-    name: "استعداد",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  }
-}
 
 const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
   useEffect(() => {
     const initializeExtensionState = async () => {
       const storedState = await storage.get<boolean>("isExtensionEnabled")
       setExtentionEnabledState(storedState ?? true)
-      await browserAPI.action.setIcon({
-        path:
-        {
-          "16": "assets/icon-active-16.png",
-          "32": "assets/icon-active-32.png",
-          "48": "assets/icon-active-48.png",
-        }
-
-      })
     }
 
     initializeExtensionState()

@@ -287,93 +287,78 @@ async function sendToggleStatus(tabId: number, isEnabled: boolean) {
     }
   }
 }
+
 // -----------------------------------------------------------------------------
+async function updateExtensionIcon() {
+  const extensionState = await storage.get<ExtensionState>("extensionState");
+  const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls");
+
+  chrome.windows.getCurrent(w => {
+    chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
+      if (!tabs[0]?.url) return;
+
+      const matchingUrl = popularActiveUrls.find((item) =>
+        urlPatternToRegex(item.url).test(tabs[0].url)
+      );
+
+      const defaultIcon = {
+        path: {
+          "16": "../../assets/icon-16.png",
+          "32": "../../assets/icon-32.png",
+          "48": "../../assets/icon-48.png"
+        }
+      };
+
+      const activeIcon = {
+        path: {
+          "16": "../../assets/icon-active-16.png",
+          "32": "../../assets/icon-active-32.png",
+          "48": "../../assets/icon-active-48.png"
+        }
+      };
+
+      // Determine which icon to show based on conditions
+      let iconToShow = defaultIcon;
+
+      if (extensionState.isEnabled && matchingUrl?.isActive) {
+        iconToShow = activeIcon;
+      }
+
+      browserAPI.action.setIcon(iconToShow);
+    });
+  });
+}
+
+// Listen for storage changes
 browserAPI.storage.onChanged.addListener(async (changes, namespace) => {
-  for (let key in changes) {
-    const storageChange = changes[key];
-
-    // Handle extensionState changes
-    if (key === "extensionState") {
-      const newState: ExtensionState = typeof storageChange.newValue === 'string'
-        ? JSON.parse(storageChange.newValue)
-        : storageChange.newValue;
-
-      const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls")
-
-      chrome.windows.getCurrent(w => {
-        chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
-          // console.log(popularActiveUrls)
-          const changedItem = popularActiveUrls.find((item) => urlPatternToRegex(item.url).test(tabs[0].url))
-          console.log(changedItem, "extensionState")
-
-
-          if (!newState.isEnabled) {
-            browserAPI.action.setIcon({
-              path: {
-                "16": "../../assets/icon-16.png",
-                "32": "../../assets/icon-32.png",
-                "48": "../../assets/icon-48.png"
-              }
-            });
-          } else if (newState.isEnabled && changedItem.isActive) {
-            browserAPI.action.setIcon({
-              path: {
-                "16": "../../assets/icon-active-16.png",
-                "32": "../../assets/icon-active-32.png",
-                "48": "../../assets/icon-active-48.png"
-              }
-            });
-          } else {
-            browserAPI.action.setIcon({
-              path: {
-                "16": "../../assets/icon-16.png",
-                "32": "../../assets/icon-32.png",
-                "48": "../../assets/icon-48.png"
-              }
-            });
-          }
-        });
-      });
-      continue; // Skip the URL comparison logic for extensionState
-    }
-
-
-
-    // Handle popularActiveUrls changes
-    if (key === "popularActiveUrls") {
-      const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls")
-
-      chrome.windows.getCurrent(w => {
-        chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
-          const changedItem = popularActiveUrls.find((item) => urlPatternToRegex(item.url).test(tabs[0].url))
-          console.log(changedItem, "popularActiveUrls")
-
-          if (changedItem && !changedItem.isActive) {
-            browserAPI.action.setIcon({
-              path: {
-                "16": "../../assets/icon-16.png",
-                "32": "../../assets/icon-32.png",
-                "48": "../../assets/icon-48.png"
-              }
-            });
-          } else {
-            browserAPI.action.setIcon({
-              path: {
-                "16": "../../assets/icon-active-16.png",
-                "32": "../../assets/icon-active-32.png",
-                "48": "../../assets/icon-active-48.png"
-              }
-            });
-          }
-        });
-      });
-    }
-
-
+  // If either extensionState or popularActiveUrls changes, update the icon
+  if (changes.extensionState || changes.popularActiveUrls) {
+    await updateExtensionIcon();
   }
 });
 
-// Initialize monitoring
+// Listen for tab updates to check URL changes
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  await updateExtensionIcon();
+});
+
+// Listen for tab URL changes
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.url) {
+    await updateExtensionIcon();
+  }
+});
+
+// Check conditions when extension loads
+chrome.runtime.onStartup.addListener(async () => {
+  await updateExtensionIcon();
+});
+
+// Check conditions when extension is installed or updated
+chrome.runtime.onInstalled.addListener(async () => {
+  await updateExtensionIcon();
+});
+
 // -----------------------------------------------------------------------------
 
 // Tab update listener

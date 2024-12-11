@@ -289,45 +289,93 @@ async function sendToggleStatus(tabId: number, isEnabled: boolean) {
 }
 
 // -----------------------------------------------------------------------------
-async function updateExtensionIcon() {
-  const extensionState = await storage.get<ExtensionState>("extensionState");
-  const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls");
+const extensionStateIcon = async () => {
 
-  chrome.windows.getCurrent(w => {
-    chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
-      if (!tabs[0]?.url) return;
-
-      const matchingUrl = popularActiveUrls.find((item) =>
-        urlPatternToRegex(item.url).test(tabs[0].url)
-      );
-
-      const defaultIcon = {
-        path: {
-          "16": "../../assets/icon-16.png",
-          "32": "../../assets/icon-32.png",
-          "48": "../../assets/icon-48.png"
-        }
-      };
-
-      const activeIcon = {
-        path: {
-          "16": "../../assets/icon-active-16.png",
-          "32": "../../assets/icon-active-32.png",
-          "48": "../../assets/icon-active-48.png"
-        }
-      };
-
-      // Determine which icon to show based on conditions
-      let iconToShow = defaultIcon;
-
-      if (extensionState.isEnabled && matchingUrl?.isActive) {
-        iconToShow = activeIcon;
-      }
-
-      browserAPI.action.setIcon(iconToShow);
-    });
-  });
 }
+
+const popularActiveUrlsIcon = async () => {
+
+}
+
+// -----------------------------------------------------------------------------
+async function updateExtensionIcon() {
+  try {
+    const extensionState = await storage.get<ExtensionState>("extensionState") || DEFAULT_STATE;
+    const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls") || [];
+
+    chrome.windows.getCurrent(w => {
+      chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
+        if (!tabs[0]?.url) return;
+
+        const defaultIcon = {
+          path: {
+            "16": "../../assets/icon-16.png",
+            "32": "../../assets/icon-32.png",
+            "48": "../../assets/icon-48.png"
+          }
+        };
+
+        const activeIcon = {
+          path: {
+            "16": "../../assets/icon-active-16.png",
+            "32": "../../assets/icon-active-32.png",
+            "48": "../../assets/icon-active-48.png"
+          }
+        };
+
+        // Default to the default icon
+        let iconToShow = defaultIcon;
+
+        // Only try to find matching URL if popularActiveUrls exists and has items
+        if (Array.isArray(popularActiveUrls) && popularActiveUrls.length > 0) {
+          const matchingUrl = popularActiveUrls.find((item) =>
+            urlPatternToRegex(item.url).test(tabs[0].url)
+          );
+
+          // Update icon only if extension is enabled and we have a matching active URL
+          if (extensionState?.isEnabled && matchingUrl?.isActive) {
+            iconToShow = activeIcon;
+          }
+        }
+
+        browserAPI.action.setIcon(iconToShow).catch(error => {
+          console.error('Error setting extension icon:', error);
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in updateExtensionIcon:', error);
+    // Set default icon in case of error
+    browserAPI.action.setIcon({
+      path: {
+        "16": "../../assets/icon-16.png",
+        "32": "../../assets/icon-32.png",
+        "48": "../../assets/icon-48.png"
+      }
+    }).catch(console.error);
+  }
+}
+
+// Initialize storage with default values if not already set
+browserAPI.runtime.onInstalled.addListener(async () => {
+  try {
+    // Initialize extension state if not exists
+    const existingState = await storage.get<ExtensionState>("extensionState");
+    if (!existingState) {
+      await storage.set("extensionState", DEFAULT_STATE);
+    }
+
+    // Initialize popularActiveUrls if not exists
+    const existingUrls = await storage.get<BoxItem[]>("popularActiveUrls");
+    if (!existingUrls) {
+      await storage.set("popularActiveUrls", []);
+    }
+
+    await updateExtensionIcon();
+  } catch (error) {
+    console.error('Error initializing extension:', error);
+  }
+});
 
 // Listen for storage changes
 browserAPI.storage.onChanged.addListener(async (changes, namespace) => {

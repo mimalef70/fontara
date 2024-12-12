@@ -113,28 +113,53 @@ document.head.appendChild(rootStyle)
 
 // Function to update CSS variable
 function updateRootVariable(fontName: string): void {
+  const fontValue = typeof fontName === 'object' ? fontName.value : fontName
   rootStyle.textContent = `
     :root {
-      --fontara-font: "${fontName}";
+      --fontara-font: "${fontValue}";
     }
   `
 }
 
 async function handleInitialSetup(): Promise<void> {
   try {
-    // Update active URLs arrays
-    activePopularUrls = ["*://*/*"]
-    activeCustomUrls = []
+    // Set default active URLs
+    activePopularUrls = ["*://*/*"];
+    activeCustomUrls = [];
 
-    // Double check our values were set
-    const verifyFont = await storage.get("selectedFont")
-    const verifyUrls = await storage.get("popularActiveUrls")
+    // Get or set the initial font
+    const storedFont = await storage.get("selectedFont");
+    if (!storedFont) {
+      await storage.set("selectedFont", "Estedad");
+    }
+
+    // Get or set popularActiveUrls with default state
+    const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls");
+    if (!storedPopularUrls) {
+      const defaultPopularUrls: UrlItem[] = [{
+        url: "*://*/*",
+        isActive: true
+      }];
+      await storage.set("popularActiveUrls", defaultPopularUrls);
+      updatePopularUrls(defaultPopularUrls);
+    } else {
+      updatePopularUrls(storedPopularUrls);
+    }
+
+    // Verify our values were set
+    const verifyFont = await storage.get("selectedFont");
+    const verifyUrls = await storage.get("popularActiveUrls");
 
     if (!verifyFont || !verifyUrls) {
-      throw new Error("Failed to set initial values")
+      throw new Error("Failed to set initial values");
+    }
+
+    // Apply fonts immediately if we're on a matching URL
+    if (isCurrentUrlMatched(activePopularUrls) || isCurrentUrlMatched(activeCustomUrls)) {
+      await initializeFonts();
     }
   } catch (error) {
-    // console.error("Error in initial setup:", error)
+    console.error("Error in initial setup:", error);
   }
 }
 
@@ -171,47 +196,29 @@ async function loadCustomFonts(): Promise<void> {
 }
 
 async function loadFont(fontName: string): Promise<void> {
-  if (fontName in localFonts) {
+  // Ensure fontName is a string
+  const fontValue = typeof fontName === 'object' ? fontName.value : fontName
+
+  if (fontValue in localFonts) {
     const style = document.createElement("style")
-    style.id = `${fontName}-style`
+    style.id = `${fontValue}-style`
     style.textContent = `
       @font-face {
-        font-family: "${fontName}";
-        src: url(${localFonts[fontName]}) format('woff2');
+        font-family: "${fontValue}";
+        src: url(${localFonts[fontValue]}) format('woff2');
         font-weight: 100 1000;
         font-display: fallback;
       }
     `
     document.head.appendChild(style)
-  } else if (fontName in googleFonts) {
+  } else if (fontValue in googleFonts) {
     const link = document.createElement("link")
-    link.href = googleFonts[fontName]
+    link.href = googleFonts[fontValue]
     link.rel = "stylesheet"
     document.head.appendChild(link)
-  } else {
-    try {
-      const result = await new Promise<{ [key: string]: any }>((resolve) => {
-        chrome.storage.local.get(`font_${fontName}`, resolve)
-      })
-
-      const fontData = result[`font_${fontName}`]
-      if (fontData) {
-        const style = document.createElement("style")
-        style.id = `custom-${fontName}-style`
-        style.textContent = `
-          @font-face {
-            font-family: "${fontName}";
-            src: url(data:font/${fontData.type};base64,${fontData.data});
-            font-display: fallback;
-          }
-        `
-        document.head.appendChild(style)
-      }
-    } catch (error) {
-      // Handle error
-    }
   }
 }
+
 
 function applyFontToAllElements(): void {
   if (document.body) {
@@ -365,45 +372,6 @@ function updateCustomUrls(newActiveUrls: UrlItem[]): void {
   initializeFonts()
 }
 
-async function initialize(): Promise<void> {
-  await handleInitialSetup()
-
-  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
-  isExtensionEnabled = storedEnabled ?? true
-
-  if (document.body) {
-    await loadCustomFonts()
-    await loadFont("Estedad")
-
-    const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
-    const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
-
-    if (storedPopularUrls) {
-      updatePopularUrls(storedPopularUrls)
-    }
-    if (storedCustomUrls) {
-      updateCustomUrls(storedCustomUrls)
-    }
-
-    const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
-    const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
-
-    if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
-      const storedFont = await storage.get<string>("selectedFont")
-      currentFont = storedFont || "Estedad"
-      await loadFont(currentFont)
-      updateRootVariable(currentFont)
-      applyFontToAllElements()
-    } else {
-      resetFontToDefault()
-    }
-
-    if (isExtensionEnabled) {
-      observer.observe(document.body, { childList: true, subtree: true })
-    }
-  }
-}
-
 // Message handling
 browserAPI.runtime.onMessage.addListener(
   (message: BrowserMessage, sender: any, sendResponse: (response: MessageResponse) => void) => {
@@ -458,3 +426,49 @@ browserAPI.runtime.onMessage.addListener(
     return true
   }
 )
+
+
+async function initialize(): Promise<void> {
+  await handleInitialSetup()
+
+  const storedEnabled = await storage.get<boolean>("isExtensionEnabled")
+  isExtensionEnabled = storedEnabled ?? true
+
+  if (document.body) {
+    await loadCustomFonts()
+    await loadFont("Estedad")
+
+    const storedPopularUrls = await storage.get<UrlItem[]>("popularActiveUrls")
+    const storedCustomUrls = await storage.get<UrlItem[]>("customActiveUrls")
+
+    if (storedPopularUrls) {
+      updatePopularUrls(storedPopularUrls)
+    }
+    if (storedCustomUrls) {
+      updateCustomUrls(storedCustomUrls)
+    }
+
+    const isPopularMatch = isCurrentUrlMatched(activePopularUrls)
+    const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
+
+    if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
+      const storedFont = await storage.get<string>("selectedFont")
+      // Handle potential object in stored font
+      currentFont = typeof storedFont === 'object' ? storedFont.value : (storedFont || "Estedad")
+      await loadFont(currentFont)
+      updateRootVariable(currentFont)
+      applyFontToAllElements()
+    } else {
+      resetFontToDefault()
+    }
+
+    if (isExtensionEnabled) {
+      observer.observe(document.body, { childList: true, subtree: true })
+    }
+  }
+}
+
+// Call initialize immediately when the script loads
+initialize();
+
+observer.observe(document.body, { childList: true, subtree: true })

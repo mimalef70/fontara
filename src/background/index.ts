@@ -149,8 +149,11 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
       return
     }
 
-    const fontName = message.body?.fontName || message.font
-    await storage.set("selectedFont", fontName)
+    // Extract just the font value if an object is passed
+    const fontName = typeof message.font === 'object' ? message.font.value :
+      message.body?.fontName || message.font || "Estedad"
+
+    await storage.set("selectedFont", fontName) // Store just the string value
     await notifyAllTabs({
       action: "updateFont",
       fontName
@@ -368,23 +371,31 @@ browserAPI.storage.onChanged.addListener(async (changes, namespace) => {
 // Initialize storage with default values if not already set
 browserAPI.runtime.onInstalled.addListener(async () => {
   try {
-    // Initialize extension state if not exists
-    const existingState = await storage.get<ExtensionState>("extensionState");
+    const existingState = await storage.get<ExtensionState>("extensionState")
     if (!existingState) {
-      await storage.set("extensionState", DEFAULT_STATE);
+      await storage.set("extensionState", DEFAULT_STATE)
     }
 
-    // Initialize popularActiveUrls if not exists
-    const existingUrls = await storage.get<BoxItem[]>("popularActiveUrls");
+    // Store just the font value string, not the entire object
+    const existingFont = await storage.get("selectedFont")
+    if (!existingFont) {
+      await storage.set("selectedFont", DEFAULT_STATE.defaultFont.value)
+    }
+
+    const existingUrls = await storage.get<BoxItem[]>("popularActiveUrls")
     if (!existingUrls) {
-      await storage.set("popularActiveUrls", []);
+      const defaultPopularUrls: BoxItem[] = [{
+        url: "*://*/*",
+        isActive: true
+      }]
+      await storage.set("popularActiveUrls", defaultPopularUrls)
     }
 
-    await updateExtensionIcon();
+    await updateExtensionIcon()
   } catch (error) {
-    console.error('Error initializing extension:', error);
+    console.error('Error initializing extension:', error)
   }
-});
+})
 
 // Listen for storage changes
 browserAPI.storage.onChanged.addListener(async (changes, namespace) => {

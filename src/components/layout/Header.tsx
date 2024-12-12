@@ -10,17 +10,6 @@ declare const chrome: any
 declare const browser: any
 const browserAPI: typeof chrome = typeof browser !== "undefined" ? browser : chrome
 
-interface ExtensionState {
-  isEnabled: boolean
-  defaultFont: {
-    value: string
-    name: string
-    svg: string
-    style: string
-  }
-}
-
-
 const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
   useEffect(() => {
     const initializeExtensionState = async () => {

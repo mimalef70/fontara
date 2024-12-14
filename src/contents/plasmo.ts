@@ -112,14 +112,17 @@ rootStyle.id = 'fontara-root-styles'
 document.head.appendChild(rootStyle)
 
 // Function to update CSS variable
-function updateRootVariable(fontName: string): void {
+function updateRootVariable(fontName: string | { value: string } | null): void {
+  if (!fontName) {
+    return;
+  }
+
   const fontValue = typeof fontName === 'object' ? fontName.value : fontName
   rootStyle.textContent = `
     :root {
       --fontara-font: "${fontValue}";
     }
-  `
-}
+  `}
 
 async function handleInitialSetup(): Promise<void> {
   try {
@@ -195,7 +198,11 @@ async function loadCustomFonts(): Promise<void> {
   })
 }
 
-async function loadFont(fontName: string): Promise<void> {
+async function loadFont(fontName: string | { value: string } | null): Promise<void> {
+  if (!fontName) {
+    return;
+  }
+
   // Ensure fontName is a string
   const fontValue = typeof fontName === 'object' ? fontName.value : fontName
 
@@ -452,7 +459,8 @@ async function initialize(): Promise<void> {
     const isCustomMatch = isCurrentUrlMatched(activeCustomUrls)
 
     if ((isPopularMatch || isCustomMatch) && isExtensionEnabled) {
-      const storedFont = await storage.get<string>("selectedFont")
+      const storedFont = await storage.get<string | { value: string }>("selectedFont")
+
       // Handle potential object in stored font
       currentFont = typeof storedFont === 'object' ? storedFont.value : (storedFont || "Estedad")
       await loadFont(currentFont)

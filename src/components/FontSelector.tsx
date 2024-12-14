@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Storage } from "@plasmohq/storage"
-import { CheckedCircle, Circle, PlusIcon } from "~assets/icons/Icons"
+import { CheckedCircle, Circle, PlusIcon } from "~assets/icons/index"
 import {
   Select,
   SelectContent,
@@ -113,6 +113,7 @@ const FontSelector = ({ setIsActive }) => {
     const loadFonts = async () => {
       try {
         const customFonts = (await storage.get("customFonts")) || []
+
         setAllFonts([...defaultFonts, ...customFonts])
 
         const storedFontName = await storage.get("selectedFont")
@@ -131,7 +132,7 @@ const FontSelector = ({ setIsActive }) => {
     loadFonts()
   }, [])
 
-  const handleFontChange = async (selectedValue: string) => {
+  const handleFontChange = async (selectedValue) => {
     try {
       const newFont = allFonts.find((font) => font.value === selectedValue)
       if (!newFont) return
@@ -155,6 +156,7 @@ const FontSelector = ({ setIsActive }) => {
       // console.error("Error handling font change:", error)
     }
   }
+
   return (
     <div className="relative">
       <div className="flex flex-col gap-3">
@@ -164,16 +166,17 @@ const FontSelector = ({ setIsActive }) => {
           onOpenChange={() => setIsActive((prev) => !prev)}
           dir="rtl"
         >
-          <SelectTrigger className="w-full !ring-0 !ring-offset-0 focus:!ring-0 focus:!ring-offset-0 !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)]">            <SelectValue>
-            <span className={`font-estedad text-sm ${selected.style}`}>
-              {selected.name}
-            </span>
-          </SelectValue>
+          <SelectTrigger className="w-full !ring-0 !ring-offset-0 focus:!ring-0 focus:!ring-offset-0 !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)]">
+            <SelectValue>
+              <span className={`font-estedad text-sm ${selected.style}`}>
+                {selected.name}
+              </span>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 !border-0 !ring-0 !ring-offset-0">
             {allFonts.map((font) => (
               <div
-                key={font.value}
+                key={`${font.value}-${font.name}`}
                 className="flex items-center justify-between gap-2 relative">
                 <SelectItem
                   value={font.value}

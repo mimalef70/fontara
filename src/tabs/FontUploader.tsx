@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from "react"
-
 import { Storage } from "@plasmohq/storage"
-
 import { defaultFonts } from "../components/FontSelector"
-
+import logo from 'url:~assets/newlogo.svg'
 import "../style.css"
-
-import logo from "url:~assets/logo.png"
 
 import { ToastProvider } from "~src/components/ui/toast"
 import { Toaster } from "~src/components/ui/toaster"
@@ -108,7 +104,7 @@ const FontUploader = () => {
       // Check for duplicate names
       if (
         defaultFonts.some(
-          (font) => font.name === fontName || font.value === fontName
+          (font) => font.name == fontName || font.value == fontName
         )
       ) {
         throw new Error("این نام فونت قبلاً در لیست فونت‌های پیش‌فرض وجود دارد")
@@ -116,7 +112,7 @@ const FontUploader = () => {
 
       const currentFonts =
         (await storage.get<CustomFont[]>("customFonts")) || []
-      if (currentFonts.some((font) => font.name === fontName)) {
+      if (currentFonts.some((font) => font.name == fontName)) {
         throw new Error("فونتی با این نام قبلاً اضافه شده است")
       }
 

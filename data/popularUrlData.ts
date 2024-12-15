@@ -24,14 +24,13 @@ import wordpress from "url:~assets/logos/wordpress-active.png"
 import youtube from "url:~assets/logos/youtube-active.png"
 import npm from "url:~assets/logos/npm-active.png"
 
-export interface BoxItem {
+interface BoxItem {
   id: string
   src: string
   isActive: boolean
   url: string
-  isInUi: boolean
+  isInUi?: boolean
 }
-
 export const initialBoxes: BoxItem[] = [
   { id: "crisp", src: crisp, isActive: true, url: "", isInUi: true },
   {

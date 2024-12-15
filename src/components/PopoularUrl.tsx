@@ -1,4 +1,3 @@
-import type { FC } from "react"
 import { useEffect, useState } from "react"
 import { Storage } from "@plasmohq/storage"
 import { initialBoxes } from "~data/popularUrlData"
@@ -9,118 +8,81 @@ import {
   TooltipTrigger
 } from "~src/components/ui/tooltip"
 
-// Types
-export interface BoxItem {
-  id: string
-  src: string
-  isActive: boolean
-  url: string
-  isInUi: boolean
+interface BoxItem {
+  id?: string
+  src?: string
+  isActive?: boolean
+  url?: string
+  isInUi?: boolean
 }
 
-type MessagePayload = {
-  action: "updatePopularActiveUrls"
-  popularActiveUrls: BoxItem[]
-}
-
-// Constants
 const storage = new Storage()
+declare const chrome: any
+declare const browser: any
 
-// Browser API setup
-declare const chrome: typeof browser
-declare const browser: {
-  runtime: {
-    sendMessage: (message: MessagePayload) => Promise<void>
-  }
-}
+// Use browser for Firefox compatibility, fall back to chrome for Chrome
+const browserAPI: typeof chrome =
+  typeof browser !== "undefined" ? browser : chrome
 
-const browserAPI = typeof browser !== "undefined" ? browser : chrome
 
-// Component
-const PopularUrl: FC = () => {
-  const [boxes, setBoxes] = useState<BoxItem[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+function PopularUrl() {
+  const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
 
   useEffect(() => {
-    const initializeBoxes = async (): Promise<void> => {
-      try {
-        setIsLoading(true)
-        const storedUrls = await storage.get<BoxItem[]>("popularActiveUrls")
-
-        const mergedBoxes = storedUrls && storedUrls.length > 0
-          ? initialBoxes.map(initialBox => ({
-            ...initialBox,
-            isActive: storedUrls.find(stored => stored.id === initialBox.id)?.isActive ?? initialBox.isActive
-          }))
-          : initialBoxes
-
-        setBoxes(mergedBoxes)
-        await storage.set("popularActiveUrls", mergedBoxes)
-
-        await browserAPI.runtime.sendMessage({
-          action: "updatePopularActiveUrls",
-          popularActiveUrls: mergedBoxes
-        })
-      } catch (error) {
-        console.error("Error initializing boxes:", error)
+    const initializeBoxes = async () => {
+      // Changed storage key from "activeUrls" to "popularActiveUrls"
+      const storedUrls = await storage.get<BoxItem[]>("popularActiveUrls")
+      if (storedUrls && storedUrls.length > 0) {
+        setBoxes(storedUrls)
+      } else {
+        // Changed storage key from "activeUrls" to "popularActiveUrls"
+        await storage.set("popularActiveUrls", initialBoxes)
         setBoxes(initialBoxes)
-      } finally {
-        setIsLoading(false)
       }
     }
 
-    void initializeBoxes()
+    initializeBoxes()
   }, [])
 
-  const toggleActive = async (id: string): Promise<void> => {
-    try {
-      const updatedBoxes = boxes.map((box) =>
-        box.id === id ? { ...box, isActive: !box.isActive } : box
-      )
-      setBoxes(updatedBoxes)
 
-      await storage.set("popularActiveUrls", updatedBoxes)
-      await browserAPI.runtime.sendMessage({
-        action: "updatePopularActiveUrls",
-        popularActiveUrls: updatedBoxes
-      })
-    } catch (error) {
-      console.error("Error toggling active state:", error)
-      setBoxes(boxes) // Revert on error
-    }
+
+  const toggleActive = async (id: string) => {
+    const updatedBoxes = boxes.map((box) =>
+      box.id === id ? { ...box, isActive: !box.isActive } : box
+    )
+    setBoxes(updatedBoxes)
+    // Changed storage key from "activeUrls" to "popularActiveUrls"
+    await storage.set("popularActiveUrls", updatedBoxes)
+
+    browserAPI.runtime.sendMessage({
+      action: "updatePopularActiveUrls", // Changed action name
+      popularActiveUrls: updatedBoxes // Changed payload key
+    })
   }
 
-  if (isLoading) {
-    return <div className="mt-2 flex justify-center">Loading...</div>
-  }
+
 
   return (
     <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-[18rem] w-full">
       {boxes
-        .filter((item): item is BoxItem => item.isInUi)
+        .filter((item) => item.isInUi)
         .map((box) => (
           <TooltipProvider key={box.id} delayDuration={90}>
             <Tooltip>
               <TooltipTrigger
-                className="p-1 shadow-md hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)] 
-                          rounded-md size-12 flex items-center justify-center 
-                          cursor-pointer transition-all duration-300 
-                          border border-gray-100"
-                onClick={() => void toggleActive(box.id)}
-              >
+                className="p-1 shadow-md hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)] rounded-md size-12 flex items-center justify-center cursor-pointer transition-all duration-300 border border-gray-100"
+                onClick={() => toggleActive(box.id)}>
                 <img
                   src={box.src}
                   alt={`${box.id} Logo`}
-                  className={`size-10 object-cover rounded-md 
-                            transition-all duration-300 
-                            ${box.isActive ? "" : "grayscale opacity-25"}`}
+                  className={`size-10 object-cover rounded-md transition-all duration-300 ${box.isActive ? "" : "grayscale opacity-25"
+                    }`}
                 />
               </TooltipTrigger>
               <TooltipContent
                 className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
                 side="top"
-                align="center"
-              >
+                align="center">
                 {box.id}
               </TooltipContent>
             </Tooltip>

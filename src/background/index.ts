@@ -1,4 +1,5 @@
 import { Storage } from "@plasmohq/storage"
+import { initialBoxes } from "~data/popularUrlData"
 import { urlPatternToRegex } from "~src/utils/pattern"
 
 const storage = new Storage()
@@ -38,6 +39,45 @@ const DEFAULT_STATE: ExtensionState = {
 
 // Store initial state
 storage.set("extensionState", DEFAULT_STATE)
+
+browserAPI.runtime.onInstalled.addListener(async (details) => {
+  try {
+    if (details.reason === "install") {
+      // Set initial state
+      await Promise.all([
+        storage.set("extensionState", DEFAULT_STATE),
+        storage.set("popularActiveUrls", initialBoxes),
+        storage.set("customActiveUrls", []),
+        storage.set("selectedFont", DEFAULT_STATE.defaultFont.value)
+      ])
+
+      // Notify all tabs about the popularActiveUrls
+      const tabs = await browserAPI.tabs.query({})
+      for (const tab of tabs) {
+        if (tab.id) {
+          try {
+            // Send the popularActiveUrls to each tab
+            await browserAPI.tabs.sendMessage(tab.id, {
+              action: "updatePopularActiveUrls",
+              popularActiveUrls: initialBoxes
+            })
+            // Reload the tab to apply changes
+            await browserAPI.tabs.reload(tab.id)
+          } catch (error) {
+            // Ignore "receiving end does not exist" errors
+            if (!error.message?.includes("Receiving end does not exist")) {
+              console.error(`Error updating tab ${tab.id}:`, error)
+            }
+          }
+        }
+      }
+    }
+
+    await updateExtensionIcon()
+  } catch (error) {
+    console.error('Error initializing extension:', error)
+  }
+})
 
 // Unified message listener for all actions
 browserAPI.runtime.onMessage.addListener(
@@ -149,11 +189,8 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
       return
     }
 
-    // Extract just the font value if an object is passed
-    const fontName = typeof message.font === 'object' ? message.font.value :
-      message.body?.fontName || message.font || "Estedad"
-
-    await storage.set("selectedFont", fontName) // Store just the string value
+    const fontName = message.body?.fontName || message.font
+    await storage.set("selectedFont", fontName)
     await notifyAllTabs({
       action: "updateFont",
       fontName
@@ -371,31 +408,23 @@ browserAPI.storage.onChanged.addListener(async (changes, namespace) => {
 // Initialize storage with default values if not already set
 browserAPI.runtime.onInstalled.addListener(async () => {
   try {
-    const existingState = await storage.get<ExtensionState>("extensionState")
+    // Initialize extension state if not exists
+    const existingState = await storage.get<ExtensionState>("extensionState");
     if (!existingState) {
-      await storage.set("extensionState", DEFAULT_STATE)
+      await storage.set("extensionState", DEFAULT_STATE);
     }
 
-    // Store just the font value string, not the entire object
-    const existingFont = await storage.get("selectedFont")
-    if (!existingFont) {
-      await storage.set("selectedFont", DEFAULT_STATE.defaultFont.value)
-    }
-
-    const existingUrls = await storage.get<BoxItem[]>("popularActiveUrls")
+    // Initialize popularActiveUrls if not exists
+    const existingUrls = await storage.get<BoxItem[]>("popularActiveUrls");
     if (!existingUrls) {
-      const defaultPopularUrls: BoxItem[] = [{
-        url: "*://*/*",
-        isActive: true
-      }]
-      await storage.set("popularActiveUrls", defaultPopularUrls)
+      await storage.set("popularActiveUrls", []);
     }
 
-    await updateExtensionIcon()
+    await updateExtensionIcon();
   } catch (error) {
-    console.error('Error initializing extension:', error)
+    console.error('Error initializing extension:', error);
   }
-})
+});
 
 // Listen for storage changes
 browserAPI.storage.onChanged.addListener(async (changes, namespace) => {

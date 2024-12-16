@@ -65,7 +65,6 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
         }
       }
     } catch (error) {
-      console.error("Error toggling extension:", error)
       setExtentionEnabledState(!extentionEnabledState)
     }
   }

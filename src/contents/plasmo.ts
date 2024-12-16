@@ -1,117 +1,25 @@
-import type { PlasmoCSConfig } from "plasmo"
 import { Storage } from "@plasmohq/storage"
+import { googleFonts, localFonts } from "./plasmoContent/fonts"
+import type { BrowserMessage, MessageResponse, UrlItem } from "./plasmoContent/types"
+import { isCurrentUrlMatched } from "./plasmoContent/urlUtils"
+import { loadFont, updateRootVariable } from "./plasmoContent/fontFunc"
 
-// Font imports
-import fontBehdad from "data-base64:../../assets/fonts/behdad/variable/Behdad-Regular.woff"
-import fontDana from "data-base64:../../assets/fonts/dana/variable/Dana-Regular.woff2"
-import fontEstedad from "data-base64:../../assets/fonts/estedad/variable/Estedad[KSHD,wght].woff2"
-import fontGandom from "data-base64:../../assets/fonts/gandom/variable/Gandom-WOL.woff"
-import fontGanjname from "data-base64:../../assets/fonts/ganjname/variable/GanjNamehSans-Regular.woff2"
-import fontMikhak from "data-base64:../../assets/fonts/mikhak/variable/Mikhak-Regular.woff2"
-import fontMorraba from "data-base64:../../assets/fonts/morraba/variable/MorabbaVF.woff2"
-import fontNika from "data-base64:../../assets/fonts/nika/variable/Nika-Regular.woff2"
-import fontParastoo from "data-base64:../../assets/fonts/parastoo/variable/Parastoo-WOL.woff"
-import fontSahel from "data-base64:../../assets/fonts/sahel/variable/Sahel-WOL.woff"
-import fontSamim from "data-base64:../../assets/fonts/samim/variable/Samim-WOL.woff"
-import fontShabnam from "data-base64:../../assets/fonts/shabnam/variable/Shabnam-WOL.woff"
-import fontShahab from "data-base64:../../assets/fonts/shahab/variable/Shahab-Regular.woff2"
-import fontTanha from "data-base64:../../assets/fonts/tanha/variable/Tanha-WOL.woff"
-
-// TypeScript interfaces
-interface FontRecord {
-  [key: string]: string
-}
-
-interface UrlItem {
-  id?: string
-  src?: string
-  isActive: boolean
-  url: string
-}
-
-interface MessageResponse {
-  success: boolean
-  error?: string
-}
-
-interface FontUpdateMessage {
-  action: "updateFont"
-  fontName: string
-}
-
-interface PopularUrlsMessage {
-  action: "updatePopularActiveUrls"
-  popularActiveUrls: UrlItem[]
-}
-
-interface CustomUrlsMessage {
-  action: "updateCustomUrlStatus"
-  data: UrlItem[]
-}
-
-interface ActiveStatusMessage {
-  action: "setActiveStatus"
-  isActive: boolean
-}
-
-interface ToogleStatus {
-  action: "toggle"
-  isExtensionEnabled: boolean
-}
-
-interface RefreshMessage {
-  action: "refreshFonts"
-}
-
-type BrowserMessage = FontUpdateMessage | PopularUrlsMessage | CustomUrlsMessage | ActiveStatusMessage | ToogleStatus | RefreshMessage
-
-// Initialize storage and configuration
 const storage = new Storage()
 
-export const config: PlasmoCSConfig = {
-  matches: ["<all_urls>"],
-  all_frames: true
-}
-
-// Font definitions
-const localFonts: FontRecord = {
-  Behdad: fontBehdad,
-  Dana: fontDana,
-  Estedad: fontEstedad,
-  Gandom: fontGandom,
-  Ganjname: fontGanjname,
-  Mikhak: fontMikhak,
-  Morraba: fontMorraba,
-  Nika: fontNika,
-  Parastoo: fontParastoo,
-  Sahel: fontSahel,
-  Samim: fontSamim,
-  Shabnam: fontShabnam,
-  Shahab: fontShahab,
-  Tanha: fontTanha
-}
-
-const googleFonts: FontRecord = {
-  Vazirmatn: "https://fonts.googleapis.com/css2?family=Vazirmatn&display=swap"
-}
-
-// Browser API setup
 declare const chrome: any
 declare const browser: any
 const browserAPI: typeof chrome = typeof browser !== "undefined" ? browser : chrome
 
-// Global variables
 let currentFont = "Estedad"
 let activePopularUrls: string[] = []
 let activeCustomUrls: string[] = []
 let isExtensionEnabled = true
 
-// Create and append root style element
 const rootStyle = document.createElement('style')
 rootStyle.id = 'fontara-root-styles'
 document.head.appendChild(rootStyle)
 
-async function shouldApplyFonts(): Promise<boolean> {
+export async function shouldApplyFonts(): Promise<boolean> {
   if (!isExtensionEnabled) {
     return false
   }
@@ -131,15 +39,6 @@ async function shouldApplyFonts(): Promise<boolean> {
   return isCurrentUrlMatched(activePopularUrls) || isCurrentUrlMatched(activeCustomUrls)
 }
 
-
-// Function to update CSS variable
-function updateRootVariable(fontName: string): void {
-  rootStyle.textContent = `
-    :root {
-      --fontara-font: "${fontName}";
-    }
-  `}
-
 async function handleInitialSetup(): Promise<void> {
   try {
     // Update active URLs arrays
@@ -154,65 +53,6 @@ async function handleInitialSetup(): Promise<void> {
       throw new Error("Failed to set initial values")
     }
   } catch (error) {
-    // console.error("Error in initial setup:", error)
-  }
-}
-
-// Utility functions
-export function patternToRegex(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&")
-  const regexString = `^${escaped.replace(/\*/g, ".*").replace(/\/$/, "")}(\\/[^\\/]+)?$`
-  return new RegExp(regexString, "i")
-}
-
-export function isCurrentUrlMatched(patterns: string[]): boolean {
-  const currentUrl = window.location.href
-  return patterns.some((pattern) => {
-    const regex = patternToRegex(pattern)
-    return regex.test(currentUrl)
-  })
-}
-
-async function loadFont(fontName: string): Promise<void> {
-  if (fontName in localFonts) {
-    const style = document.createElement("style")
-    style.id = `${fontName}-style`
-    style.textContent = `
-      @font-face {
-        font-family: "${fontName}";
-        src: url(${localFonts[fontName]}) format('woff2');
-        font-weight: 100 1000;
-        font-display: fallback;
-      }
-    `
-    document.head.appendChild(style)
-  } else if (fontName in googleFonts) {
-    const link = document.createElement("link")
-    link.href = googleFonts[fontName]
-    link.rel = "stylesheet"
-    document.head.appendChild(link)
-  } else {
-    try {
-      const result = await new Promise<{ [key: string]: any }>((resolve) => {
-        chrome.storage.local.get(`font_${fontName}`, resolve)
-      })
-
-      const fontData = result[`font_${fontName}`]
-      if (fontData) {
-        const style = document.createElement("style")
-        style.id = `custom-${fontName}-style`
-        style.textContent = `
-          @font-face {
-            font-family: "${fontName}";
-            src: url(data:font/${fontData.type};base64,${fontData.data});
-            font-display: fallback;
-          }
-        `
-        document.head.appendChild(style)
-      }
-    } catch (error) {
-      // Handle error
-    }
   }
 }
 
@@ -246,9 +86,7 @@ function applyFontToAllElements(): void {
   }
 }
 
-
-
-function getAllElementsWithFontFamily(rootNode: HTMLElement): void {
+export function getAllElementsWithFontFamily(rootNode: HTMLElement): void {
   const excludedTags = [
     'script', 'style', 'img', 'svg', 'path', 'circle', 'rect',
     'polygon', 'canvas', 'video', 'audio'
@@ -404,6 +242,89 @@ async function initializeFonts(): Promise<void> {
   }
 }
 
+async function initialize(): Promise<void> {
+  await handleInitialSetup()
+
+  const shouldApply = await shouldApplyFonts()
+
+  if (shouldApply && document.body) {
+    const storedFont = await storage.get<string>("selectedFont")
+    currentFont = storedFont || "Estedad"
+    await loadFont(currentFont)
+    updateRootVariable(currentFont)
+    applyFontToAllElements()
+  }
+
+  // Only observe if extension is enabled
+  if (isExtensionEnabled) {
+    observer.observe(document.body, { childList: true, subtree: true })
+  }
+}
+
+browserAPI.runtime.onMessage.addListener(
+  (message: BrowserMessage, sender: any, sendResponse: (response: MessageResponse) => void) => {
+    // Create an async wrapper function to handle the message
+    (async () => {
+      try {
+        switch (message.action) {
+          case "updatePopularActiveUrls":
+            activePopularUrls = message.popularActiveUrls
+              .filter(item => item.isActive)
+              .map(item => item.url)
+            await initializeFonts()
+            sendResponse({ success: true })
+            break
+
+          case "updateCustomUrlStatus":
+            activeCustomUrls = message.data
+              .filter(item => item.isActive)
+              .map(item => item.url)
+            await initializeFonts()
+            sendResponse({ success: true })
+            break
+
+          case "updateFont":
+            const shouldApply = await shouldApplyFonts()
+            if (shouldApply) {
+              updateFont(message.fontName)
+              await storage.set("selectedFont", message.fontName)
+              sendResponse({ success: true })
+            } else {
+              sendResponse({ success: false, error: "URL not matched or extension disabled." })
+            }
+            break
+
+          case "setActiveStatus":
+            if (message.isActive) {
+              await initializeFonts()
+            }
+            sendResponse({ success: true })
+            break
+
+          case "toggle":
+            isExtensionEnabled = message.isExtensionEnabled
+            if (isExtensionEnabled) {
+              await initialize()
+            } else {
+              resetFontToDefault()
+              observer.disconnect()
+            }
+            sendResponse({ success: true })
+            break
+
+          case "refreshFonts":
+            await initializeFonts()
+            sendResponse({ success: true })
+            break
+        }
+      } catch (error) {
+        sendResponse({ success: false, error: String(error) })
+      }
+    })()
+    return true // Keep the message channel open
+  }
+)
+
 const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
   const shouldApply = await shouldApplyFonts()
 
@@ -425,98 +346,3 @@ const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
     }
   })
 })
-
-// URL management functions
-function updatePopularUrls(newActiveUrls: UrlItem[]): void {
-  activePopularUrls = newActiveUrls
-    .filter(item => item.isActive)
-    .map(item => item.url)
-  initializeFonts()
-}
-
-function updateCustomUrls(newActiveUrls: UrlItem[]): void {
-  activeCustomUrls = newActiveUrls
-    .filter(item => item.isActive)
-    .map(item => item.url)
-  initializeFonts()
-}
-
-async function initialize(): Promise<void> {
-  await handleInitialSetup()
-
-  const shouldApply = await shouldApplyFonts()
-
-  if (shouldApply && document.body) {
-    const storedFont = await storage.get<string>("selectedFont")
-    currentFont = storedFont || "Estedad"
-    await loadFont(currentFont)
-    updateRootVariable(currentFont)
-    applyFontToAllElements()
-  }
-
-  // Only observe if extension is enabled
-  if (isExtensionEnabled) {
-    observer.observe(document.body, { childList: true, subtree: true })
-  }
-}
-
-browserAPI.runtime.onMessage.addListener(
-  async (message: BrowserMessage, sender: any, sendResponse: (response: MessageResponse) => void) => {
-    switch (message.action) {
-      case "updatePopularActiveUrls":
-        activePopularUrls = message.popularActiveUrls
-          .filter(item => item.isActive)
-          .map(item => item.url)
-        await initializeFonts()
-        sendResponse({ success: true })
-        break
-
-      case "updateCustomUrlStatus":
-        activeCustomUrls = message.data
-          .filter(item => item.isActive)
-          .map(item => item.url)
-        await initializeFonts()
-        sendResponse({ success: true })
-        break
-
-      case "updateFont":
-        const shouldApply = await shouldApplyFonts()
-        if (shouldApply) {
-          updateFont(message.fontName)
-          try {
-            await storage.set("selectedFont", message.fontName)
-            sendResponse({ success: true })
-          } catch (error) {
-            sendResponse({ success: false, error: String(error) })
-          }
-        } else {
-          sendResponse({ success: false, error: "URL not matched or extension disabled." })
-        }
-        break
-
-      case "setActiveStatus":
-        if (message.isActive) {
-          await initializeFonts()
-        }
-        sendResponse({ success: true })
-        break
-
-      case "toggle":
-        isExtensionEnabled = message.isExtensionEnabled
-        if (isExtensionEnabled) {
-          await initialize()
-        } else {
-          resetFontToDefault()
-          observer.disconnect()
-        }
-        sendResponse({ success: true })
-        break
-
-      case "refreshFonts":
-        await initializeFonts()
-        sendResponse({ success: true })
-        break
-    }
-    return true
-  }
-)

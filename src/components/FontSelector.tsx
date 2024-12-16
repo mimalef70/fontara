@@ -126,7 +126,6 @@ const FontSelector = ({ setIsActive }) => {
           }
         }
       } catch (error) {
-        // console.error("Error loading fonts:", error)
       }
     }
     loadFonts()
@@ -148,12 +147,10 @@ const FontSelector = ({ setIsActive }) => {
         },
         (response) => {
           if (!response?.success) {
-            // console.error("Error changing font:", response?.error)
           }
         }
       )
     } catch (error) {
-      // console.error("Error handling font change:", error)
     }
   }
 

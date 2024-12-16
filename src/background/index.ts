@@ -65,9 +65,6 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
             await browserAPI.tabs.reload(tab.id)
           } catch (error) {
             // Ignore "receiving end does not exist" errors
-            if (!error.message?.includes("Receiving end does not exist")) {
-              console.error(`Error updating tab ${tab.id}:`, error)
-            }
           }
         }
       }
@@ -75,7 +72,6 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
 
     await updateExtensionIcon()
   } catch (error) {
-    console.error('Error initializing extension:', error)
   }
 })
 
@@ -135,7 +131,6 @@ async function handleAddCustomFont(message: any, sendResponse: (response?: any) 
 
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error adding custom font:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -153,7 +148,6 @@ async function handleDeleteCustomFont(message: any, sendResponse: (response?: an
 
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error deleting custom font:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -176,7 +170,6 @@ async function handleResetSettings(message: any, sendResponse: (response?: any) 
 
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error resetting settings:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -197,7 +190,6 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
     })
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error changing font:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -217,7 +209,6 @@ async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any
     })
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error updating custom URLs:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -237,7 +228,6 @@ async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: a
     })
     sendResponse({ success: true })
   } catch (error) {
-    console.error("Error updating popular URLs:", error)
     sendResponse({ success: false, error })
   }
 }
@@ -279,7 +269,6 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
 
     return isActive
   } catch (error) {
-    console.error("Error checking URL active status:", error)
     return false
   }
 }
@@ -293,9 +282,6 @@ async function notifyAllTabs(message: any) {
         await browserAPI.tabs.sendMessage(tab.id, message)
       } catch (error) {
         // Ignore "receiving end does not exist" errors
-        if (!error.message.includes("Receiving end does not exist")) {
-          console.error(`Error sending message to tab ${tab.id}:`, error)
-        }
       }
     }
   })
@@ -309,9 +295,7 @@ async function sendActiveStatus(tabId: number, isActive: boolean) {
       isActive: isActive
     })
   } catch (error) {
-    if (!error.message.includes("Receiving end does not exist")) {
-      console.error(`Error sending active status to tab ${tabId}:`, error)
-    }
+
   }
 }
 
@@ -322,9 +306,7 @@ async function sendToggleStatus(tabId: number, isEnabled: boolean) {
       isExtensionEnabled: isEnabled
     })
   } catch (error) {
-    if (!error.message.includes("Receiving end does not exist")) {
-      console.error(`Error sending toggle status to tab ${tabId}:`, error)
-    }
+
   }
 }
 
@@ -379,12 +361,10 @@ async function updateExtensionIcon() {
         }
 
         browserAPI.action.setIcon(iconToShow).catch(error => {
-          console.error('Error setting extension icon:', error);
         });
       });
     });
   } catch (error) {
-    console.error('Error in updateExtensionIcon:', error);
     // Set default icon in case of error
     browserAPI.action.setIcon({
       path: {
@@ -392,7 +372,7 @@ async function updateExtensionIcon() {
         "32": "../../assets/icon-32.png",
         "48": "../../assets/icon-48.png"
       }
-    }).catch(console.error);
+    })
   }
 }
 
@@ -422,7 +402,6 @@ browserAPI.runtime.onInstalled.addListener(async () => {
 
     await updateExtensionIcon();
   } catch (error) {
-    console.error('Error initializing extension:', error);
   }
 });
 

@@ -187,7 +187,6 @@ const CustomUrlToggle = () => {
                     setIsCustomUrlActive(isUrlActive)
                 }
             } catch (error) {
-                // console.error("Error checking current tab:", error)
             }
         }
 
@@ -247,7 +246,6 @@ const CustomUrlToggle = () => {
                 })
             }
         } catch (error) {
-            // console.error("Error toggling custom URL:", error)
             setIsCustomUrlActive(!isCustomUrlActive)
         }
     }

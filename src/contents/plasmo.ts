@@ -207,20 +207,47 @@ export function resetFontToDefault(): void {
     // Remove the CSS variable definition
     rootStyle.textContent = '';
 
-    // Reset body font family
-    document.body.style.removeProperty('font-family');
-    if (document.body.style.length === 0) {
-      document.body.removeAttribute('style');
-    }
+    const resetElementStyles = (node: HTMLElement) => {
+      // Reset font family
+      node.style.removeProperty('font-family');
+      if (node.style.length === 0) {
+        node.removeAttribute('style');
+      }
 
-    // Reset all elements
+      // Handle Shadow DOM
+      if (node.shadowRoot) {
+        const shadowElements = node.shadowRoot.querySelectorAll('*');
+        shadowElements.forEach((element) => {
+          if (element instanceof HTMLElement) {
+            element.style.removeProperty('font-family');
+            if (element.style.length === 0) {
+              element.removeAttribute('style');
+            }
+          }
+        });
+      }
+
+      // Handle iframes
+      if (node instanceof HTMLIFrameElement) {
+        try {
+          const iframeDoc = node.contentDocument || node.contentWindow?.document;
+          if (iframeDoc?.body) {
+            resetElementStyles(iframeDoc.body);
+          }
+        } catch (e) {
+          // Handle cross-origin iframe errors silently
+        }
+      }
+    };
+
+    // Reset body
+    resetElementStyles(document.body);
+
+    // Reset all elements in main document
     const elements = document.querySelectorAll('*');
     elements.forEach((element) => {
       if (element instanceof HTMLElement) {
-        element.style.removeProperty('font-family');
-        if (element.style.length === 0) {
-          element.removeAttribute('style');
-        }
+        resetElementStyles(element);
       }
     });
   }

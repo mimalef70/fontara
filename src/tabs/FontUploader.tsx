@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react"
+import logo from "url:~assets/newlogo.svg"
+
 import { Storage } from "@plasmohq/storage"
+
 import { defaultFonts } from "../components/FontSelector"
-import logo from 'url:~assets/newlogo.svg'
+
 import "../style.css"
 
 import { ToastProvider } from "~src/components/ui/toast"
@@ -36,7 +39,6 @@ const FontUploader = () => {
   const { toast } = useToast()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-
   useEffect(() => {
     loadCustomFonts()
   }, [])
@@ -54,16 +56,18 @@ const FontUploader = () => {
 
   const generateFileHash = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer()
-    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
+    const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer)
     const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    const hashHex = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
     return hashHex
   }
 
   const isFileContentDuplicate = async (fileHash: string): Promise<boolean> => {
     const allFonts: any = await chrome.storage.local.get(null)
     for (const key in allFonts) {
-      if (key.startsWith('font_')) {
+      if (key.startsWith("font_")) {
         const fontData = allFonts[key] as FontData
         if (fontData.fileHash === fileHash) {
           return true
@@ -73,7 +77,9 @@ const FontUploader = () => {
     return false
   }
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0]
     if (file) {
       const validTypes = [".ttf", ".woff", ".woff2", ".otf"]
@@ -141,18 +147,22 @@ const FontUploader = () => {
       const normalizedNewName = fontName.toLowerCase().trim()
 
       const isDuplicateDefault = defaultFonts.some((font) => {
-        const defaultName = font.name?.toLowerCase()?.trim() || ''
-        const defaultValue = font.value?.toLowerCase()?.trim() || ''
-        return defaultName === normalizedNewName || defaultValue === normalizedNewName
+        const defaultName = font.name?.toLowerCase()?.trim() || ""
+        const defaultValue = font.value?.toLowerCase()?.trim() || ""
+        return (
+          defaultName === normalizedNewName ||
+          defaultValue === normalizedNewName
+        )
       })
 
       if (isDuplicateDefault) {
         throw new Error("این نام فونت قبلاً در لیست فونت‌های پیش‌فرض وجود دارد")
       }
 
-      const currentFonts = (await storage.get<CustomFont[]>("customFonts")) || []
+      const currentFonts =
+        (await storage.get<CustomFont[]>("customFonts")) || []
       const isDuplicateCustom = currentFonts.some((font) => {
-        const customName = font.name?.toLowerCase()?.trim() || ''
+        const customName = font.name?.toLowerCase()?.trim() || ""
         return customName === normalizedNewName
       })
 
@@ -245,7 +255,8 @@ const FontUploader = () => {
       })
 
       // Remove from metadata storage
-      const currentFonts = (await storage.get<CustomFont[]>("customFonts")) || []
+      const currentFonts =
+        (await storage.get<CustomFont[]>("customFonts")) || []
       const updatedFonts = currentFonts.filter(
         (font) => font.value !== fontName
       )
@@ -273,9 +284,9 @@ const FontUploader = () => {
     <ToastProvider>
       <div className="p-4 max-w-xl mx-auto">
         <div className="bg-white rounded shadow p-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
             <img alt="" src={logo} className="w-1/3" />
-            <h2 className="text-xl font-bold text-right mb-4">
+            <h2 className="text-xl font-bold text-right ">
               افزودن فونت دلخواه
             </h2>
           </div>

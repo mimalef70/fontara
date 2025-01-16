@@ -1,14 +1,18 @@
 import { useEffect } from "react"
-import { Switch } from "~src/components/ui/switch"
+import logo from "url:~assets/newlogo.svg"
+
 import { Storage } from "@plasmohq/storage"
-import logo from 'url:~assets/newlogo.svg'
+
+import { Switch } from "~src/components/ui/switch"
+
 import { Badge } from "../ui/badge"
 
 const storage = new Storage()
 
 declare const chrome: any
 declare const browser: any
-const browserAPI: typeof chrome = typeof browser !== "undefined" ? browser : chrome
+const browserAPI: typeof chrome =
+  typeof browser !== "undefined" ? browser : chrome
 
 interface ExtensionState {
   isEnabled: boolean
@@ -20,16 +24,15 @@ interface ExtensionState {
   }
 }
 
-
 const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
-  useEffect(() => {
-    const initializeExtensionState = async () => {
-      const storedState = await storage.get<boolean>("isExtensionEnabled")
-      setExtentionEnabledState(storedState ?? true)
-    }
+  // useEffect(() => {
+  //   const initializeExtensionState = async () => {
+  //     const storedState = await storage.get<boolean>("isExtensionEnabled")
+  //     setExtentionEnabledState(storedState ?? true)
+  //   }
 
-    initializeExtensionState()
-  }, [])
+  //   initializeExtensionState()
+  // }, [])
 
   const handleExtensionToggle = async () => {
     try {

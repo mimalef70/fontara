@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react"
+
 import { Storage } from "@plasmohq/storage"
+
 import { CheckedCircle, Circle, PlusIcon } from "~assets/icons/index"
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
-} from "~src/components/ui/select"
+} from "./ui/Select"
 
 export const defaultFonts = [
   {
@@ -125,8 +128,7 @@ const FontSelector = ({ setIsActive }) => {
             setSelected(storedFont)
           }
         }
-      } catch (error) {
-      }
+      } catch (error) {}
     }
     loadFonts()
   }, [])
@@ -150,8 +152,7 @@ const FontSelector = ({ setIsActive }) => {
           }
         }
       )
-    } catch (error) {
-    }
+    } catch (error) {}
   }
 
   return (
@@ -161,8 +162,7 @@ const FontSelector = ({ setIsActive }) => {
           value={selected.value}
           onValueChange={handleFontChange}
           onOpenChange={() => setIsActive((prev) => !prev)}
-          dir="rtl"
-        >
+          dir="rtl">
           <SelectTrigger className="w-full !ring-0 !ring-offset-0 focus:!ring-0 focus:!ring-offset-0 !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)]">
             <SelectValue>
               <span className={`font-estedad text-sm ${selected.style}`}>
@@ -193,7 +193,7 @@ const FontSelector = ({ setIsActive }) => {
                 </SelectItem>
                 <div className="!size-5 fill-black absolute left-2 flex items-center justify-center">
                   {hoveredFont === font.value &&
-                    selected.value !== font.value ? (
+                  selected.value !== font.value ? (
                     <Circle />
                   ) : (
                     selected.value === font.value && <CheckedCircle />

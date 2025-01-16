@@ -3,9 +3,8 @@ import logo from "url:~assets/newlogo.svg"
 
 import { Storage } from "@plasmohq/storage"
 
-import { Switch } from "~src/components/ui/switch"
-
 import { Badge } from "../ui/badge"
+import { Switch } from "../ui/Switch"
 
 const storage = new Storage()
 

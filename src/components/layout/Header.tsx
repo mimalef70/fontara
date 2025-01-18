@@ -24,15 +24,6 @@ interface ExtensionState {
 }
 
 const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
-  // useEffect(() => {
-  //   const initializeExtensionState = async () => {
-  //     const storedState = await storage.get<boolean>("isExtensionEnabled")
-  //     setExtentionEnabledState(storedState ?? true)
-  //   }
-
-  //   initializeExtensionState()
-  // }, [])
-
   const handleExtensionToggle = async () => {
     try {
       const newState = !extentionEnabledState

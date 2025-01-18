@@ -22,8 +22,8 @@ export const fonts = [
 const storage = new Storage()
 
 export default function BaseVersion() {
-  // State
-  const [isActive, setIsActive] = useState(false)
+  // overlay while Select is open we set a overlay into full popup d
+  const [isOverlayActive, setIsOverlayActive] = useState(false)
 
   const [extentionEnabledState, setExtentionEnabledState] = useStorage(
     "isExtensionEnabled",
@@ -32,7 +32,7 @@ export default function BaseVersion() {
 
   return (
     <section className="h-full">
-      {isActive && <div className="absolute inset-0 bg-black/30 z-20" />}
+      {isOverlayActive && <div className="absolute inset-0 bg-black/30 z-20" />}
       <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
         {/* Main content wrapper */}
         <div className="relative flex flex-col justify-between h-full">
@@ -49,7 +49,7 @@ export default function BaseVersion() {
         `}>
             {/* FontSelector with higher z-index to stay above overlay */}
             <div className="relative z-20">
-              <FontSelector setIsActive={setIsActive} />
+              <FontSelector setIsOverlayActive={setIsOverlayActive} />
             </div>
 
             {/* Main content */}

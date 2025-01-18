@@ -107,7 +107,11 @@ export const defaultFonts = [
 
 const storage = new Storage()
 
-const FontSelector = ({ setIsActive }) => {
+const FontSelector = ({
+  setIsOverlayActive
+}: {
+  setIsOverlayActive: (value: boolean) => void
+}) => {
   const [hoveredFont, setHoveredFont] = useState(null)
   const [selected, setSelected] = useState(defaultFonts[0])
   const [allFonts, setAllFonts] = useState(defaultFonts)
@@ -161,7 +165,9 @@ const FontSelector = ({ setIsActive }) => {
         <Select
           value={selected.value}
           onValueChange={handleFontChange}
-          onOpenChange={() => setIsActive((prev) => !prev)}
+          onOpenChange={(open: boolean) => {
+            setIsOverlayActive(open)
+          }}
           dir="rtl">
           <SelectTrigger className="w-full !ring-0 !ring-offset-0 focus:!ring-0 focus:!ring-offset-0 !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)]">
             <SelectValue>

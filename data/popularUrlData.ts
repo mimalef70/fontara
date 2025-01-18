@@ -13,6 +13,7 @@ import instagram from "url:~assets/logos/instagram-active.png"
 import linkedin from "url:~assets/logos/linkedin-active.png"
 import medium from "url:~assets/logos/medium-active.png"
 import messagesandroid from "url:~assets/logos/messagesandroid-active.png"
+import npm from "url:~assets/logos/npm-active.png"
 import slack from "url:~assets/logos/slack-active.png"
 import telegram from "url:~assets/logos/telegram-active.png"
 import trello from "url:~assets/logos/trello-active.png"
@@ -22,7 +23,6 @@ import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
 import youtube from "url:~assets/logos/youtube-active.png"
-import npm from "url:~assets/logos/npm-active.png"
 
 interface BoxItem {
   id: string
@@ -200,5 +200,5 @@ export const initialBoxes: BoxItem[] = [
     isActive: true,
     url: "https://www.npmjs.com/*",
     isInUi: true
-  },
+  }
 ]

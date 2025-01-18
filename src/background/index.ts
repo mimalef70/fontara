@@ -1,4 +1,5 @@
 import { Storage } from "@plasmohq/storage"
+
 import { initialBoxes } from "~data/popularUrlData"
 import { urlPatternToRegex } from "~src/utils/pattern"
 
@@ -71,8 +72,7 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
     }
 
     await updateExtensionIcon()
-  } catch (error) {
-  }
+  } catch (error) {}
 })
 
 // Unified message listener for all actions
@@ -106,7 +106,10 @@ browserAPI.runtime.onMessage.addListener(
   }
 )
 
-async function handleAddCustomFont(message: any, sendResponse: (response?: any) => void) {
+async function handleAddCustomFont(
+  message: any,
+  sendResponse: (response?: any) => void
+) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
@@ -114,7 +117,7 @@ async function handleAddCustomFont(message: any, sendResponse: (response?: any) 
       return
     }
 
-    const customFonts = await storage.get("customFonts") || []
+    const customFonts = (await storage.get("customFonts")) || []
     const newFont = {
       name: message.fontName,
       data: message.fontData.data,
@@ -135,10 +138,15 @@ async function handleAddCustomFont(message: any, sendResponse: (response?: any) 
   }
 }
 
-async function handleDeleteCustomFont(message: any, sendResponse: (response?: any) => void) {
+async function handleDeleteCustomFont(
+  message: any,
+  sendResponse: (response?: any) => void
+) {
   try {
-    const customFonts: any = await storage.get("customFonts") || []
-    const updatedFonts = customFonts.filter(font => font.name !== message.fontName)
+    const customFonts: any = (await storage.get("customFonts")) || []
+    const updatedFonts = customFonts.filter(
+      (font) => font.name !== message.fontName
+    )
     await storage.set("customFonts", updatedFonts)
 
     await notifyAllTabs({
@@ -152,14 +160,20 @@ async function handleDeleteCustomFont(message: any, sendResponse: (response?: an
   }
 }
 
-async function handleResetSettings(message: any, sendResponse: (response?: any) => void) {
+async function handleResetSettings(
+  message: any,
+  sendResponse: (response?: any) => void
+) {
   try {
     await storage.set("selectedFont", DEFAULT_STATE.defaultFont)
     await storage.set("customActiveUrls", [])
 
     const popularUrls = await storage.get<BoxItem[]>("popularActiveUrls")
     if (popularUrls) {
-      const resetPopularUrls = popularUrls.map(url => ({ ...url, isActive: true }))
+      const resetPopularUrls = popularUrls.map((url) => ({
+        ...url,
+        isActive: true
+      }))
       await storage.set("popularActiveUrls", resetPopularUrls)
     }
 
@@ -174,7 +188,10 @@ async function handleResetSettings(message: any, sendResponse: (response?: any) 
   }
 }
 
-async function handleFontChange(message: any, sendResponse: (response?: any) => void) {
+async function handleFontChange(
+  message: any,
+  sendResponse: (response?: any) => void
+) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
@@ -194,7 +211,10 @@ async function handleFontChange(message: any, sendResponse: (response?: any) => 
   }
 }
 
-async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any) => void) {
+async function handleCustomUrlUpdate(
+  message: any,
+  sendResponse: (response?: any) => void
+) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
@@ -213,7 +233,10 @@ async function handleCustomUrlUpdate(message: any, sendResponse: (response?: any
   }
 }
 
-async function handlePopularUrlsUpdate(message: any, sendResponse: (response?: any) => void) {
+async function handlePopularUrlsUpdate(
+  message: any,
+  sendResponse: (response?: any) => void
+) {
   try {
     const extensionState = await storage.get<ExtensionState>("extensionState")
     if (!extensionState?.isEnabled) {
@@ -274,7 +297,7 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
 }
 
 // Utility functions with error handling
-async function notifyAllTabs(message: any) {
+export async function notifyAllTabs(message: any) {
   const tabs = await browserAPI.tabs.query({})
   const messagePromises = tabs.map(async (tab) => {
     if (tab.id !== undefined) {
@@ -294,9 +317,7 @@ async function sendActiveStatus(tabId: number, isActive: boolean) {
       action: "setActiveStatus",
       isActive: isActive
     })
-  } catch (error) {
-
-  }
+  } catch (error) {}
 }
 
 async function sendToggleStatus(tabId: number, isEnabled: boolean) {
@@ -305,22 +326,22 @@ async function sendToggleStatus(tabId: number, isEnabled: boolean) {
       action: "toggle",
       isExtensionEnabled: isEnabled
     })
-  } catch (error) {
-
-  }
+  } catch (error) {}
 }
-
 
 // -----------------------------------------------------------------------------
 async function updateExtensionIcon() {
   try {
-    const extensionState = await storage.get<ExtensionState>("extensionState") || DEFAULT_STATE;
-    const popularActiveUrls = await storage.get<BoxItem[]>("popularActiveUrls") || [];
-    const customActiveUrls = await storage.get<BoxItem[]>("customActiveUrls") || [];
+    const extensionState =
+      (await storage.get<ExtensionState>("extensionState")) || DEFAULT_STATE
+    const popularActiveUrls =
+      (await storage.get<BoxItem[]>("popularActiveUrls")) || []
+    const customActiveUrls =
+      (await storage.get<BoxItem[]>("customActiveUrls")) || []
 
-    chrome.windows.getCurrent(w => {
-      chrome.tabs.query({ active: true, windowId: w.id }, tabs => {
-        if (!tabs[0]?.url) return;
+    chrome.windows.getCurrent((w) => {
+      chrome.tabs.query({ active: true, windowId: w.id }, (tabs) => {
+        if (!tabs[0]?.url) return
 
         const defaultIcon = {
           path: {
@@ -328,7 +349,7 @@ async function updateExtensionIcon() {
             "32": "../../assets/icon-32.png",
             "48": "../../assets/icon-48.png"
           }
-        };
+        }
 
         const activeIcon = {
           path: {
@@ -336,34 +357,40 @@ async function updateExtensionIcon() {
             "32": "../../assets/icon-active-32.png",
             "48": "../../assets/icon-active-48.png"
           }
-        };
-
-        // Default to the default icon
-        let iconToShow = defaultIcon;
-
-        // Handle customActiveUrls completely independently
-        const matchingCustomUrl = Array.isArray(customActiveUrls) && customActiveUrls.length > 0
-          ? customActiveUrls.find((item) =>
-            urlPatternToRegex(item.url).test(tabs[0].url)
-          )
-          : null;
-
-        // Handle popularActiveUrls based on extension state
-        const matchingPopularUrl = Array.isArray(popularActiveUrls) && popularActiveUrls.length > 0 && extensionState?.isEnabled
-          ? popularActiveUrls.find((item) =>
-            urlPatternToRegex(item.url).test(tabs[0].url)
-          )
-          : null;
-
-        // Set icon based on matches - customActiveUrls take precedence
-        if (matchingCustomUrl?.isActive && extensionState?.isEnabled || (matchingPopularUrl?.isActive && extensionState?.isEnabled)) {
-          iconToShow = activeIcon;
         }
 
-        browserAPI.action.setIcon(iconToShow).catch(error => {
-        });
-      });
-    });
+        // Default to the default icon
+        let iconToShow = defaultIcon
+
+        // Handle customActiveUrls completely independently
+        const matchingCustomUrl =
+          Array.isArray(customActiveUrls) && customActiveUrls.length > 0
+            ? customActiveUrls.find((item) =>
+                urlPatternToRegex(item.url).test(tabs[0].url)
+              )
+            : null
+
+        // Handle popularActiveUrls based on extension state
+        const matchingPopularUrl =
+          Array.isArray(popularActiveUrls) &&
+          popularActiveUrls.length > 0 &&
+          extensionState?.isEnabled
+            ? popularActiveUrls.find((item) =>
+                urlPatternToRegex(item.url).test(tabs[0].url)
+              )
+            : null
+
+        // Set icon based on matches - customActiveUrls take precedence
+        if (
+          (matchingCustomUrl?.isActive && extensionState?.isEnabled) ||
+          (matchingPopularUrl?.isActive && extensionState?.isEnabled)
+        ) {
+          iconToShow = activeIcon
+        }
+
+        browserAPI.action.setIcon(iconToShow).catch((error) => {})
+      })
+    })
   } catch (error) {
     // Set default icon in case of error
     browserAPI.action.setIcon({
@@ -378,62 +405,61 @@ async function updateExtensionIcon() {
 
 // Update the storage listener to handle changes separately
 browserAPI.storage.onChanged.addListener(async (changes, namespace) => {
-  if (changes.customActiveUrls) {
-    await updateExtensionIcon();
+  if (changes.customActiveUrls || changes.popularActiveUrls) {
+    await updateExtensionIcon()
   } else if (changes.extensionState || changes.popularActiveUrls) {
-    await updateExtensionIcon();
+    await updateExtensionIcon()
   }
-});
+})
 
 // Initialize storage with default values if not already set
 browserAPI.runtime.onInstalled.addListener(async () => {
   try {
     // Initialize extension state if not exists
-    const existingState = await storage.get<ExtensionState>("extensionState");
+    const existingState = await storage.get<ExtensionState>("extensionState")
     if (!existingState) {
-      await storage.set("extensionState", DEFAULT_STATE);
+      await storage.set("extensionState", DEFAULT_STATE)
     }
 
     // Initialize popularActiveUrls if not exists
-    const existingUrls = await storage.get<BoxItem[]>("popularActiveUrls");
+    const existingUrls = await storage.get<BoxItem[]>("popularActiveUrls")
     if (!existingUrls) {
-      await storage.set("popularActiveUrls", []);
+      await storage.set("popularActiveUrls", [])
     }
 
-    await updateExtensionIcon();
-  } catch (error) {
-  }
-});
+    await updateExtensionIcon()
+  } catch (error) {}
+})
 
 // Listen for storage changes
 browserAPI.storage.onChanged.addListener(async (changes, namespace) => {
   // If either extensionState or popularActiveUrls changes, update the icon
   if (changes.extensionState || changes.popularActiveUrls) {
-    await updateExtensionIcon();
+    await updateExtensionIcon()
   }
-});
+})
 
 // Listen for tab updates to check URL changes
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  await updateExtensionIcon();
-});
+  await updateExtensionIcon()
+})
 
 // Listen for tab URL changes
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.url) {
-    await updateExtensionIcon();
+    await updateExtensionIcon()
   }
-});
+})
 
 // Check conditions when extension loads
 chrome.runtime.onStartup.addListener(async () => {
-  await updateExtensionIcon();
-});
+  await updateExtensionIcon()
+})
 
 // Check conditions when extension is installed or updated
 chrome.runtime.onInstalled.addListener(async () => {
-  await updateExtensionIcon();
-});
+  await updateExtensionIcon()
+})
 
 // -----------------------------------------------------------------------------
 

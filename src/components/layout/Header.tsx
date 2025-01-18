@@ -1,4 +1,3 @@
-import { useEffect } from "react"
 import logo from "url:~assets/newlogo.svg"
 
 import { Storage } from "@plasmohq/storage"

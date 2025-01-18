@@ -7,7 +7,7 @@ import { defaultFonts } from "../components/FontSelector"
 
 import "../style.css"
 
-import { ToastProvider } from "~src/components/ui/toast"
+import { ToastProvider } from "~src/components/ui/Toast"
 import { Toaster } from "~src/components/ui/toaster"
 import { useToast } from "~src/hooks/use-toast"
 

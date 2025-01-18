@@ -25,8 +25,10 @@ export default function BaseVersion() {
   // State
   const [isActive, setIsActive] = useState(false)
 
-  const [extentionEnabledState, setExtentionEnabledState] =
-    useStorage("isExtensionEnabled")
+  const [extentionEnabledState, setExtentionEnabledState] = useStorage(
+    "isExtensionEnabled",
+    true
+  )
 
   return (
     <section className="h-full">

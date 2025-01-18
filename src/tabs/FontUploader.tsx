@@ -7,6 +7,8 @@ import { defaultFonts } from "../components/FontSelector"
 
 import "../style.css"
 
+import { useStorage } from "@plasmohq/storage/hook"
+
 import { ToastProvider } from "~src/components/ui/Toast"
 import { Toaster } from "~src/components/ui/toaster"
 import { useToast } from "~src/hooks/use-toast"
@@ -34,25 +36,15 @@ const storage = new Storage()
 const FontUploader = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fontName, setFontName] = useState("")
-  const [savedFonts, setSavedFonts] = useState<CustomFont[]>([])
+  // const [savedFonts, setSavedFonts] = useState<CustomFont[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    loadCustomFonts()
-  }, [])
-
-  const loadCustomFonts = async () => {
-    try {
-      const fonts = (await storage.get<CustomFont[]>("customFonts")) || []
-      setSavedFonts(fonts)
-    } catch (error) {
-      toast({
-        title: "خطا در بارگذاری فونت‌ها"
-      })
-    }
-  }
+  const [savedFonts, setSavedFonts] = useStorage<CustomFont[]>(
+    "customFonts",
+    []
+  )
 
   const generateFileHash = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer()

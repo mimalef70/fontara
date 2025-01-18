@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react"
+
+import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
+import { useStorage } from "@plasmohq/storage/hook"
+
 import { initialBoxes } from "~data/popularUrlData"
 import {
   Tooltip,
@@ -24,43 +28,28 @@ declare const browser: any
 const browserAPI: typeof chrome =
   typeof browser !== "undefined" ? browser : chrome
 
-
 function PopularUrl() {
-  const [boxes, setBoxes] = useState<BoxItem[]>(initialBoxes)
-
-  useEffect(() => {
-    const initializeBoxes = async () => {
-      // Changed storage key from "activeUrls" to "popularActiveUrls"
-      const storedUrls = await storage.get<BoxItem[]>("popularActiveUrls")
-      if (storedUrls && storedUrls.length > 0) {
-        setBoxes(storedUrls)
-      } else {
-        // Changed storage key from "activeUrls" to "popularActiveUrls"
-        await storage.set("popularActiveUrls", initialBoxes)
-        setBoxes(initialBoxes)
-      }
-    }
-
-    initializeBoxes()
-  }, [])
-
-
+  //? useStorage to get the boxes from the storage(like useState)
+  const [boxes, setBoxes] = useStorage<BoxItem[]>(
+    "popularActiveUrls",
+    initialBoxes
+  )
 
   const toggleActive = async (id: string) => {
     const updatedBoxes = boxes.map((box) =>
       box.id === id ? { ...box, isActive: !box.isActive } : box
     )
     setBoxes(updatedBoxes)
-    // Changed storage key from "activeUrls" to "popularActiveUrls"
-    await storage.set("popularActiveUrls", updatedBoxes)
 
     browserAPI.runtime.sendMessage({
-      action: "updatePopularActiveUrls", // Changed action name
-      popularActiveUrls: updatedBoxes // Changed payload key
+      action: "updatePopularActiveUrls",
+      popularActiveUrls: updatedBoxes
+    })
+    await sendToBackground({
+      name: "updatePopularActiveUrls",
+      body: updatedBoxes
     })
   }
-
-
 
   return (
     <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-[18rem] w-full">
@@ -75,8 +64,9 @@ function PopularUrl() {
                 <img
                   src={box.src}
                   alt={`${box.id} Logo`}
-                  className={`size-10 object-cover rounded-md transition-all duration-300 ${box.isActive ? "" : "grayscale opacity-25"
-                    }`}
+                  className={`size-10 object-cover rounded-md transition-all duration-300 ${
+                    box.isActive ? "" : "grayscale opacity-25"
+                  }`}
                 />
               </TooltipTrigger>
               <TooltipContent

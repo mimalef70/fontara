@@ -3,6 +3,8 @@ import { Storage } from "@plasmohq/storage"
 import { initialBoxes } from "~data/popularUrlData"
 import { urlPatternToRegex } from "~src/utils/pattern"
 
+import { type BoxItem } from "./messages/resetFontSettings"
+
 const storage = new Storage()
 
 declare const chrome: any
@@ -10,13 +12,6 @@ declare const browser: any
 
 const browserAPI: typeof chrome =
   typeof browser !== "undefined" ? browser : chrome
-
-interface BoxItem {
-  id?: string
-  src?: string
-  isActive: boolean
-  url: string
-}
 
 interface ExtensionState {
   isEnabled: boolean
@@ -74,107 +69,6 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
     await updateExtensionIcon()
   } catch (error) {}
 })
-
-// Unified message listener for all actions
-browserAPI.runtime.onMessage.addListener(
-  (message: any, sender: any, sendResponse: (response?: any) => void) => {
-    switch (message.action) {
-      case "resetFontSettings":
-        handleResetSettings(message, sendResponse)
-        break
-      case "addCustomFont":
-        handleAddCustomFont(message, sendResponse)
-        break
-      case "deleteCustomFont":
-        handleDeleteCustomFont(message, sendResponse)
-        break
-      default:
-    }
-    return true // Will respond asynchronously
-  }
-)
-
-async function handleAddCustomFont(
-  message: any,
-  sendResponse: (response?: any) => void
-) {
-  try {
-    const extensionState = await storage.get<ExtensionState>("extensionState")
-    if (!extensionState?.isEnabled) {
-      sendResponse({ success: false, error: "Extension is disabled" })
-      return
-    }
-
-    const customFonts = (await storage.get("customFonts")) || []
-    const newFont = {
-      name: message.fontName,
-      data: message.fontData.data,
-      type: message.fontData.type,
-      weight: message.fontData.weight
-    }
-
-    await storage.set("customFonts", [...customFonts, newFont])
-    await notifyAllTabs({
-      action: "addCustomFont",
-      fontName: message.fontName,
-      fontData: message.fontData
-    })
-
-    sendResponse({ success: true })
-  } catch (error) {
-    sendResponse({ success: false, error })
-  }
-}
-
-async function handleDeleteCustomFont(
-  message: any,
-  sendResponse: (response?: any) => void
-) {
-  try {
-    const customFonts: any = (await storage.get("customFonts")) || []
-    const updatedFonts = customFonts.filter(
-      (font) => font.name !== message.fontName
-    )
-    await storage.set("customFonts", updatedFonts)
-
-    await notifyAllTabs({
-      action: "deleteCustomFont",
-      fontName: message.fontName
-    })
-
-    sendResponse({ success: true })
-  } catch (error) {
-    sendResponse({ success: false, error })
-  }
-}
-
-async function handleResetSettings(
-  message: any,
-  sendResponse: (response?: any) => void
-) {
-  try {
-    await storage.set("selectedFont", DEFAULT_STATE.defaultFont)
-    await storage.set("customActiveUrls", [])
-
-    const popularUrls = await storage.get<BoxItem[]>("popularActiveUrls")
-    if (popularUrls) {
-      const resetPopularUrls = popularUrls.map((url) => ({
-        ...url,
-        isActive: true
-      }))
-      await storage.set("popularActiveUrls", resetPopularUrls)
-    }
-
-    await notifyAllTabs({
-      action: "settingsReset",
-      defaultFont: DEFAULT_STATE.defaultFont
-    })
-
-    sendResponse({ success: true })
-  } catch (error) {
-    sendResponse({ success: false, error })
-  }
-}
 
 async function checkIfUrlShouldBeActive(url: string, tabId: number) {
   try {

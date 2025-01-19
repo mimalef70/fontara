@@ -180,29 +180,6 @@ async function handleResetSettings(
   }
 }
 
-// async function handleFontChange(
-//   message: any,
-//   sendResponse: (response?: any) => void
-// ) {
-//   try {
-//     const extensionState = await storage.get<ExtensionState>("extensionState")
-//     if (!extensionState?.isEnabled) {
-//       sendResponse({ success: false, error: "Extension is disabled" })
-//       return
-//     }
-
-//     const fontName = message.body?.fontName || message.font
-//     await storage.set("selectedFont", fontName)
-//     await notifyAllTabs({
-//       action: "updateFont",
-//       fontName
-//     })
-//     sendResponse({ success: true })
-//   } catch (error) {
-//     sendResponse({ success: false, error })
-//   }
-// }
-
 async function handleCustomUrlUpdate(
   message: any,
   sendResponse: (response?: any) => void

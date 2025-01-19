@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 
+import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
 import { initialBoxes } from "~data/popularUrlData"
@@ -241,9 +242,10 @@ const CustomUrlToggle = () => {
       }
 
       await storage.set("customActiveUrls", updatedUrls)
-      browserAPI.runtime.sendMessage({
-        action: "updateCustomUrlStatus",
-        data: updatedUrls
+
+      await sendToBackground({
+        name: "updateCustomUrlStatus",
+        body: updatedUrls
       })
 
       const tabs = await browserAPI.tabs.query({

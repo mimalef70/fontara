@@ -79,10 +79,6 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
 browserAPI.runtime.onMessage.addListener(
   (message: any, sender: any, sendResponse: (response?: any) => void) => {
     switch (message.action) {
-      case "updateCustomUrlStatus":
-        handleCustomUrlUpdate(message, sendResponse)
-        break
-
       case "resetFontSettings":
         handleResetSettings(message, sendResponse)
         break
@@ -174,28 +170,6 @@ async function handleResetSettings(
       defaultFont: DEFAULT_STATE.defaultFont
     })
 
-    sendResponse({ success: true })
-  } catch (error) {
-    sendResponse({ success: false, error })
-  }
-}
-
-async function handleCustomUrlUpdate(
-  message: any,
-  sendResponse: (response?: any) => void
-) {
-  try {
-    const extensionState = await storage.get<ExtensionState>("extensionState")
-    if (!extensionState?.isEnabled) {
-      sendResponse({ success: false, error: "Extension is disabled" })
-      return
-    }
-
-    await storage.set("customActiveUrls", message.data)
-    await notifyAllTabs({
-      action: "updateCustomUrlStatus",
-      data: message.data
-    })
     sendResponse({ success: true })
   } catch (error) {
     sendResponse({ success: false, error })

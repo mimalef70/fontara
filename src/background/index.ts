@@ -79,9 +79,6 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
 browserAPI.runtime.onMessage.addListener(
   (message: any, sender: any, sendResponse: (response?: any) => void) => {
     switch (message.action) {
-      case "changeFont":
-        handleFontChange(message, sendResponse)
-        break
       case "updateCustomUrlStatus":
         handleCustomUrlUpdate(message, sendResponse)
         break
@@ -96,9 +93,6 @@ browserAPI.runtime.onMessage.addListener(
         handleDeleteCustomFont(message, sendResponse)
         break
       default:
-        if (message.name === "changeFont") {
-          handleFontChange(message, sendResponse)
-        }
     }
     return true // Will respond asynchronously
   }
@@ -186,28 +180,28 @@ async function handleResetSettings(
   }
 }
 
-async function handleFontChange(
-  message: any,
-  sendResponse: (response?: any) => void
-) {
-  try {
-    const extensionState = await storage.get<ExtensionState>("extensionState")
-    if (!extensionState?.isEnabled) {
-      sendResponse({ success: false, error: "Extension is disabled" })
-      return
-    }
+// async function handleFontChange(
+//   message: any,
+//   sendResponse: (response?: any) => void
+// ) {
+//   try {
+//     const extensionState = await storage.get<ExtensionState>("extensionState")
+//     if (!extensionState?.isEnabled) {
+//       sendResponse({ success: false, error: "Extension is disabled" })
+//       return
+//     }
 
-    const fontName = message.body?.fontName || message.font
-    await storage.set("selectedFont", fontName)
-    await notifyAllTabs({
-      action: "updateFont",
-      fontName
-    })
-    sendResponse({ success: true })
-  } catch (error) {
-    sendResponse({ success: false, error })
-  }
-}
+//     const fontName = message.body?.fontName || message.font
+//     await storage.set("selectedFont", fontName)
+//     await notifyAllTabs({
+//       action: "updateFont",
+//       fontName
+//     })
+//     sendResponse({ success: true })
+//   } catch (error) {
+//     sendResponse({ success: false, error })
+//   }
+// }
 
 async function handleCustomUrlUpdate(
   message: any,

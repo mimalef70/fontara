@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 
+import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
 import { CheckedCircle, Circle, PlusIcon } from "~assets/icons/index"
@@ -144,18 +145,13 @@ const FontSelector = ({
 
       setSelected(newFont)
       await storage.set("selectedFont", newFont.value)
-      chrome.runtime.sendMessage(
-        {
-          action: "changeFont",
-          body: {
-            fontName: newFont.value
-          }
-        },
-        (response) => {
-          if (!response?.success) {
-          }
+
+      await sendToBackground({
+        name: "changeFont",
+        body: {
+          fontName: newFont.value
         }
-      )
+      })
     } catch (error) {}
   }
 

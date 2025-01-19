@@ -2,16 +2,8 @@ import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
 import { notifyAllTabs } from ".."
+import type { ExtensionState } from "../types/type"
 
-interface ExtensionState {
-  isEnabled: boolean
-  defaultFont: {
-    value: string
-    name: string
-    svg: string
-    style: string
-  }
-}
 const storage = new Storage()
 export default async function handler(
   req: PlasmoMessaging.Request,

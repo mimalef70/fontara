@@ -39,10 +39,6 @@ function PopularUrl() {
     )
     setBoxes(updatedBoxes)
 
-    browserAPI.runtime.sendMessage({
-      action: "updatePopularActiveUrls",
-      popularActiveUrls: updatedBoxes
-    })
     await sendToBackground({
       name: "updatePopularActiveUrls",
       body: updatedBoxes

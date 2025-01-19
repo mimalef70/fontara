@@ -2,15 +2,12 @@ import logo from "url:~assets/newlogo.svg"
 
 import { Storage } from "@plasmohq/storage"
 
+import { browserAPI } from "~src/utils/utils"
+
 import { Badge } from "../ui/badge"
 import { Switch } from "../ui/Switch"
 
 const storage = new Storage()
-
-declare const chrome: any
-declare const browser: any
-const browserAPI: typeof chrome =
-  typeof browser !== "undefined" ? browser : chrome
 
 interface ExtensionState {
   isEnabled: boolean

@@ -1,5 +1,4 @@
 import { sendToBackground } from "@plasmohq/messaging"
-import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { initialBoxes } from "~data/popularUrlData"
@@ -17,14 +16,6 @@ interface BoxItem {
   url?: string
   isInUi?: boolean
 }
-
-const storage = new Storage()
-declare const chrome: any
-declare const browser: any
-
-// Use browser for Firefox compatibility, fall back to chrome for Chrome
-const browserAPI: typeof chrome =
-  typeof browser !== "undefined" ? browser : chrome
 
 function PopularUrl() {
   //? useStorage to get the boxes from the storage(like useState)

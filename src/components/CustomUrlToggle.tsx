@@ -6,6 +6,7 @@ import { Storage } from "@plasmohq/storage"
 import { initialBoxes } from "~data/popularUrlData"
 import { Checkbox } from "~src/components/ui/Checkbox"
 import { urlPatternToRegex } from "~src/utils/pattern"
+import { browserAPI } from "~src/utils/utils"
 
 interface BoxItem {
   id?: string
@@ -16,10 +17,6 @@ interface BoxItem {
 }
 
 const storage = new Storage()
-declare const chrome: any
-declare const browser: any
-const browserAPI: typeof chrome =
-  typeof browser !== "undefined" ? browser : chrome
 
 const CustomUrlToggle = () => {
   const [favicon, setFavicon] = useState<string>("")

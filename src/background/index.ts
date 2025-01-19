@@ -85,9 +85,7 @@ browserAPI.runtime.onMessage.addListener(
       case "updateCustomUrlStatus":
         handleCustomUrlUpdate(message, sendResponse)
         break
-      case "updatePopularActiveUrls":
-        handlePopularUrlsUpdate(message, sendResponse)
-        break
+
       case "resetFontSettings":
         handleResetSettings(message, sendResponse)
         break
@@ -226,28 +224,6 @@ async function handleCustomUrlUpdate(
     await notifyAllTabs({
       action: "updateCustomUrlStatus",
       data: message.data
-    })
-    sendResponse({ success: true })
-  } catch (error) {
-    sendResponse({ success: false, error })
-  }
-}
-
-async function handlePopularUrlsUpdate(
-  message: any,
-  sendResponse: (response?: any) => void
-) {
-  try {
-    const extensionState = await storage.get<ExtensionState>("extensionState")
-    if (!extensionState?.isEnabled) {
-      sendResponse({ success: false, error: "Extension is disabled" })
-      return
-    }
-
-    await storage.set("popularActiveUrls", message.popularActiveUrls)
-    await notifyAllTabs({
-      action: "updatePopularActiveUrls",
-      popularActiveUrls: message.popularActiveUrls
     })
     sendResponse({ success: true })
   } catch (error) {

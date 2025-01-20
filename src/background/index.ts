@@ -1,8 +1,7 @@
 import { Storage } from "@plasmohq/storage"
 
 import { initialBoxes } from "~data/popularUrlData"
-import { urlPatternToRegex } from "~src/utils/pattern"
-import { browserAPI } from "~src/utils/utils"
+import { browserAPI, urlPatternToRegex } from "~src/utils/utils"
 
 import { DEFAULT_STATE, ICON_PATHS } from "./constants/constant"
 import type { BoxItem, ExtensionState } from "./types/type"

@@ -5,8 +5,7 @@ import { Storage } from "@plasmohq/storage"
 
 import { initialBoxes } from "~data/popularUrlData"
 import { Checkbox } from "~src/components/ui/Checkbox"
-import { urlPatternToRegex } from "~src/utils/pattern"
-import { browserAPI } from "~src/utils/utils"
+import { browserAPI, urlPatternToRegex } from "~src/utils/utils"
 
 interface BoxItem {
   id?: string

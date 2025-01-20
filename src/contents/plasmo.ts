@@ -2,7 +2,7 @@ import { Storage } from "@plasmohq/storage"
 
 import { excludedTags, iconClasses } from "~src/utils/constants"
 import type { BrowserMessage, MessageResponse, UrlItem } from "~src/utils/types"
-import { browserAPI } from "~src/utils/utils"
+import { browserAPI, isCurrentUrlMatched } from "~src/utils/utils"
 
 import {
   getState,
@@ -14,7 +14,6 @@ import {
 } from "../store/fontStore"
 import { loadFont, updateRootVariable } from "./plasmoContent/fontFunc"
 import { googleFonts, localFonts } from "./plasmoContent/fonts"
-import { isCurrentUrlMatched } from "./plasmoContent/urlUtils"
 
 const storage = new Storage()
 

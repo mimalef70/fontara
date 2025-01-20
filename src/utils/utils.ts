@@ -9,3 +9,23 @@ declare const chrome: any
 declare const browser: any
 export const browserAPI: typeof chrome =
   typeof browser !== "undefined" ? browser : chrome
+
+export function patternToRegex(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&")
+  const regexString = `^${escaped.replace(/\*/g, ".*").replace(/\/$/, "")}(\\/[^\\/]+)?$`
+  return new RegExp(regexString, "i")
+}
+
+export function isCurrentUrlMatched(patterns: string[]): boolean {
+  const currentUrl = window.location.href
+  return patterns.some((pattern) => {
+    const regex = patternToRegex(pattern)
+    return regex.test(currentUrl)
+  })
+}
+
+export function urlPatternToRegex(pattern: string): RegExp {
+  return new RegExp(
+    "^" + pattern.replace(/\*/g, ".*").replace(/\//g, "\\/") + "$"
+  )
+}

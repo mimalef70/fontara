@@ -4,6 +4,7 @@ import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
 import { CheckedCircle, Circle, PlusIcon } from "~assets/icons/index"
+import { defaultFonts } from "~src/utils/fonts"
 
 import {
   Select,
@@ -12,99 +13,6 @@ import {
   SelectTrigger,
   SelectValue
 } from "./ui/Select"
-
-export const defaultFonts = [
-  {
-    value: "Estedad",
-    name: "استعداد",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  },
-  {
-    value: "Vazirmatn",
-    name: "وزیر",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  },
-  {
-    value: "Morraba",
-    name: "مربا",
-    svg: "بستد دل و دین از من",
-    style: "font-morabba"
-  },
-  {
-    value: "Dana",
-    name: "دانا",
-    svg: "بستد دل و دین از من",
-    style: "font-dana"
-  },
-  {
-    value: "Samim",
-    name: "صمیم",
-    svg: "بستد دل و دین از من",
-    style: "font-samim"
-  },
-  {
-    value: "Shabnam",
-    name: "شبنم",
-    svg: "بستد دل و دین از من",
-    style: "font-shabnam"
-  },
-  {
-    value: "Sahel",
-    name: "ساحل",
-    svg: "بستد دل و دین از من",
-    style: "font-sahel"
-  },
-  {
-    Value: "Parastoo",
-    name: "پرستو",
-    svg: "بستد دل و دین از من",
-    style: "font-parastoo"
-  },
-  {
-    value: "Gandom",
-    name: "گندم",
-    svg: "بستد دل و دین از من",
-    style: "font-gandom"
-  },
-  {
-    value: "Tanha",
-    name: "تنها",
-    svg: "بستد دل و دین از من",
-    style: "font-tanha"
-  },
-  {
-    value: "Behdad",
-    name: "بهداد",
-    svg: "بستد دل و دین از من",
-    style: "font-behdad"
-  },
-  {
-    value: "Nika",
-    name: "نیکا",
-    svg: "بستد دل و دین از من",
-    style: "font-nika"
-  },
-  {
-    value: "Ganjname",
-    name: "گنج نامه",
-    svg: "بستد دل و دین از من",
-    style: "font-ganjname"
-  },
-  {
-    value: "Shahab",
-    name: "شهاب",
-    svg: "بستد دل و دین از من",
-    style: "font-shahab"
-  },
-  {
-    value: "Mikhak",
-    name: "میخک",
-    svg: "بستد دل و دین از من",
-    style: "font-mikhak"
-  }
-]
 
 const storage = new Storage()
 

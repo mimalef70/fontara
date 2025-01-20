@@ -3,7 +3,7 @@ import logo from "url:~assets/newlogo.svg"
 
 import { Storage } from "@plasmohq/storage"
 
-import { defaultFonts } from "../components/FontSelector"
+import { defaultFonts } from "~src/utils/fonts"
 
 import "../style.css"
 

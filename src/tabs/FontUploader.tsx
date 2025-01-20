@@ -12,6 +12,7 @@ import { useStorage } from "@plasmohq/storage/hook"
 import { ToastProvider } from "~src/components/ui/Toast"
 import { Toaster } from "~src/components/ui/toaster"
 import { useToast } from "~src/hooks/use-toast"
+import { browserAPI } from "~src/utils/utils"
 
 interface CustomFont {
   value: string
@@ -57,7 +58,7 @@ const FontUploader = () => {
   }
 
   const isFileContentDuplicate = async (fileHash: string): Promise<boolean> => {
-    const allFonts: any = await chrome.storage.local.get(null)
+    const allFonts: any = await browserAPI.storage.local.get(null)
     for (const key in allFonts) {
       if (key.startsWith("font_")) {
         const fontData = allFonts[key] as FontData
@@ -180,11 +181,11 @@ const FontUploader = () => {
         originalFileName: selectedFile.name
       }
 
-      // Save to chrome.storage.local
+      // Save to browserAPI.storage.local
       await new Promise<void>((resolve, reject) => {
-        chrome.storage.local.set({ [`font_${fontName}`]: fontData }, () => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError)
+        browserAPI.storage.local.set({ [`font_${fontName}`]: fontData }, () => {
+          if (browserAPI.runtime.lastError) {
+            reject(browserAPI.runtime.lastError)
           } else {
             resolve()
           }
@@ -235,11 +236,11 @@ const FontUploader = () => {
 
   const handleDeleteFont = async (fontName: string) => {
     try {
-      // Remove from chrome.storage.local
+      // Remove from browserAPI.storage.local
       await new Promise<void>((resolve, reject) => {
-        chrome.storage.local.remove(`font_${fontName}`, () => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError)
+        browserAPI.storage.local.remove(`font_${fontName}`, () => {
+          if (browserAPI.runtime.lastError) {
+            reject(browserAPI.runtime.lastError)
           } else {
             resolve()
           }

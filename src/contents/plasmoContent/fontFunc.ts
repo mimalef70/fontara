@@ -1,6 +1,7 @@
-import { googleFonts, localFonts } from "./fonts"
-const rootStyle = document.createElement('style')
-rootStyle.id = 'fontara-root-styles'
+import { googleFonts, localFonts } from "../../utils/fonts"
+
+const rootStyle = document.createElement("style")
+rootStyle.id = "fontara-root-styles"
 document.head.appendChild(rootStyle)
 
 export function updateRootVariable(fontName: string): void {
@@ -8,7 +9,8 @@ export function updateRootVariable(fontName: string): void {
     :root {
       --fontara-font: "${fontName}";
     }
-  `}
+  `
+}
 
 export async function loadFont(fontName: string): Promise<void> {
   if (fontName in localFonts) {

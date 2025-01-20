@@ -12,8 +12,8 @@ import {
   setCurrentFont,
   setExtensionEnabled
 } from "../store/fontStore"
+import { googleFonts, localFonts } from "../utils/fonts"
 import { loadFont, updateRootVariable } from "./plasmoContent/fontFunc"
-import { googleFonts, localFonts } from "./plasmoContent/fonts"
 
 const storage = new Storage()
 

@@ -1,5 +1,6 @@
 import { Storage } from "@plasmohq/storage"
 
+import { excludedTags, iconClasses } from "~src/utils/constants"
 import { browserAPI } from "~src/utils/utils"
 
 import {
@@ -102,38 +103,6 @@ function applyFontToAllElements(): void {
 
 export function getAllElementsWithFontFamily(rootNode: HTMLElement): void {
   const state = getState()
-  const excludedTags = [
-    "script",
-    "style",
-    "img",
-    "svg",
-    "path",
-    "circle",
-    "rect",
-    "polygon",
-    "canvas",
-    "video",
-    "audio"
-  ]
-
-  const iconClasses = [
-    "fa",
-    "fas",
-    "far",
-    "fal",
-    "fad",
-    "fab",
-    "material-icons",
-    "material-icons-outlined",
-    "material-icons-round",
-    "material-icons-sharp",
-    "glyphicon",
-    "icon",
-    "iconfont",
-    "mui-icon",
-    "dashicons",
-    "wp-menu-image"
-  ]
 
   const processNode = (node: HTMLElement) => {
     if (excludedTags.includes(node.tagName.toLowerCase())) {

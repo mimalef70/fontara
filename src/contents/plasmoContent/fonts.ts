@@ -13,24 +13,26 @@ import fontSamim from "data-base64:../../../assets/fonts/samim/variable/Samim-WO
 import fontShabnam from "data-base64:../../../assets/fonts/shabnam/variable/Shabnam-WOL.woff"
 import fontShahab from "data-base64:../../../assets/fonts/shahab/variable/Shahab-Regular.woff2"
 import fontTanha from "data-base64:../../../assets/fonts/tanha/variable/Tanha-WOL.woff"
-import type { FontRecord } from "./types"
+
+import type { FontRecord } from "~src/utils/types"
+
 export const googleFonts: FontRecord = {
-    Vazirmatn: "https://fonts.googleapis.com/css2?family=Vazirmatn&display=swap"
+  Vazirmatn: "https://fonts.googleapis.com/css2?family=Vazirmatn&display=swap"
 }
 // Font definitions
 export const localFonts: FontRecord = {
-    Behdad: fontBehdad,
-    Dana: fontDana,
-    Estedad: fontEstedad,
-    Gandom: fontGandom,
-    Ganjname: fontGanjname,
-    Mikhak: fontMikhak,
-    Morraba: fontMorraba,
-    Nika: fontNika,
-    Parastoo: fontParastoo,
-    Sahel: fontSahel,
-    Samim: fontSamim,
-    Shabnam: fontShabnam,
-    Shahab: fontShahab,
-    Tanha: fontTanha
+  Behdad: fontBehdad,
+  Dana: fontDana,
+  Estedad: fontEstedad,
+  Gandom: fontGandom,
+  Ganjname: fontGanjname,
+  Mikhak: fontMikhak,
+  Morraba: fontMorraba,
+  Nika: fontNika,
+  Parastoo: fontParastoo,
+  Sahel: fontSahel,
+  Samim: fontSamim,
+  Shabnam: fontShabnam,
+  Shahab: fontShahab,
+  Tanha: fontTanha
 }

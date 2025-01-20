@@ -6,15 +6,16 @@ function IndexOptions() {
   return (
     <div
       style={{
+        height: "100vh",
+        width: "100vw",
         display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         flexDirection: "column",
-        padding: 16
+        backgroundColor: "#f3f4f6"
       }}>
-      <h1>
-        Welcome to your <a href="https://www.plasmo.com">Plasmo</a> Extension!
-      </h1>
-      <input onChange={(e) => setData(e.target.value)} value={data} />
-      <footer>Crafted by @PlasmoHQ</footer>{" "}
+      <p style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>فونت آرا</p>
+      <p style={{ fontSize: "1.25rem" }}>ساخته شده با ❤️‍🔥 توسط مصطفی الهیاری</p>
     </div>
   )
 }

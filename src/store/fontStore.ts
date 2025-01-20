@@ -1,7 +1,7 @@
 // store/fontStore.ts
 import { Storage } from "@plasmohq/storage"
 
-import type { UrlItem } from "../contents/plasmoContent/types"
+import type { UrlItem } from "~src/utils/types"
 
 interface FontState {
   currentFont: string

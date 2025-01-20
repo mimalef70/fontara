@@ -1,8 +1,9 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
+import type { ExtensionState } from "~src/utils/types"
+
 import { notifyAllTabs } from ".."
-import type { ExtensionState } from "../types/type"
 
 const storage = new Storage()
 export default async function handler(

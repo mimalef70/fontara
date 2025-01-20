@@ -5,15 +5,8 @@ import { Storage } from "@plasmohq/storage"
 
 import { initialBoxes } from "~data/popularUrlData"
 import { Checkbox } from "~src/components/ui/Checkbox"
+import type { BoxItem } from "~src/utils/types"
 import { browserAPI, urlPatternToRegex } from "~src/utils/utils"
-
-interface BoxItem {
-  id?: string
-  src?: string
-  isActive?: boolean
-  url?: string
-  isInUi?: boolean
-}
 
 const storage = new Storage()
 

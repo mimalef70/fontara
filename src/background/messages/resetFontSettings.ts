@@ -1,9 +1,10 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
+import { DEFAULT_STATE } from "~src/utils/constants"
+import type { BoxItem } from "~src/utils/types"
+
 import { notifyAllTabs } from ".."
-import { DEFAULT_STATE } from "../constants/constant"
-import type { BoxItem } from "../types/type"
 
 const storage = new Storage()
 

@@ -67,3 +67,27 @@ export interface BoxItem {
   isActive: boolean
   url: string
 }
+
+export interface FontState {
+  currentFont: string
+  activePopularUrls: string[]
+  activeCustomUrls: string[]
+  isExtensionEnabled: boolean
+}
+export interface CustomFont {
+  value: string
+  name: string
+  svg: string
+  style: string
+  type: string
+  fileHash?: string
+  originalFileName?: string
+}
+
+export interface FontData {
+  name: string
+  data: string
+  type: string
+  fileHash: string
+  originalFileName: string
+}

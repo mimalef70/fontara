@@ -1,14 +1,7 @@
 // store/fontStore.ts
 import { Storage } from "@plasmohq/storage"
 
-import type { UrlItem } from "~src/utils/types"
-
-interface FontState {
-  currentFont: string
-  activePopularUrls: string[]
-  activeCustomUrls: string[]
-  isExtensionEnabled: boolean
-}
+import type { FontState, UrlItem } from "~src/utils/types"
 
 const storage = new Storage()
 

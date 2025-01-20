@@ -12,25 +12,8 @@ import { useStorage } from "@plasmohq/storage/hook"
 import { ToastProvider } from "~src/components/ui/Toast"
 import { Toaster } from "~src/components/ui/toaster"
 import { useToast } from "~src/hooks/use-toast"
+import type { CustomFont, FontData } from "~src/utils/types"
 import { browserAPI } from "~src/utils/utils"
-
-interface CustomFont {
-  value: string
-  name: string
-  svg: string
-  style: string
-  type: string
-  fileHash?: string
-  originalFileName?: string
-}
-
-interface FontData {
-  name: string
-  data: string
-  type: string
-  fileHash: string
-  originalFileName: string
-}
 
 const storage = new Storage()
 

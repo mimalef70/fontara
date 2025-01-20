@@ -1,6 +1,5 @@
 import { useState } from "react"
 
-import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import CustomUrlToggle from "./CustomUrlToggle"
@@ -8,18 +7,6 @@ import FontSelector from "./FontSelector"
 import Footer from "./layout/Footer"
 import Header from "./layout/Header"
 import PopoularUrl from "./PopoularUrl"
-
-export const fonts = [
-  {
-    value: "Estedad",
-    name: "استعداد",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  }
-]
-
-// Browser API setup
-const storage = new Storage()
 
 export default function BaseVersion() {
   // overlay while Select is open we set a overlay into full popup d

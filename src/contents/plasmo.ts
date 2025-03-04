@@ -36,6 +36,13 @@ const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
   })
 })
 
+// Initialize MutationObserver
+observer.observe(document.body, {
+  subtree: true,
+  childList: true,
+  attributes: true
+})
+
 // Message listener(For handling messages from background script )
 browserAPI.runtime.onMessage.addListener(
   (

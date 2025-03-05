@@ -13,7 +13,7 @@ import {
   setCurrentFont,
   setExtensionEnabled
 } from "../store/fontStore"
-import { googleFonts, localFonts } from "../utils/fonts"
+import { localFonts } from "../utils/fonts"
 
 const storage = new Storage()
 
@@ -64,8 +64,8 @@ export function applyFontToAllElements(): void {
 
     // Clean up any previous instances of our fonts AND the current font
     const customFonts = [
-      ...Object.keys(localFonts),
-      ...Object.keys(googleFonts)
+      ...Object.keys(localFonts)
+      // ...Object.keys(googleFonts)
     ]
     customFonts.forEach((font) => {
       bodyFontFamily = bodyFontFamily.replace(
@@ -118,8 +118,8 @@ export function getAllElementsWithFontFamily(rootNode: HTMLElement): void {
     if (!isIcon && !isIconFont) {
       // Clean up any previous instances of our fonts AND the current font
       const customFonts = [
-        ...Object.keys(localFonts),
-        ...Object.keys(googleFonts)
+        ...Object.keys(localFonts)
+        // ...Object.keys(googleFonts)
       ]
 
       customFonts.forEach((font) => {
@@ -304,16 +304,17 @@ export async function loadFont(fontName: string): Promise<void> {
           }
         `
     document.head.appendChild(style)
-  } else if (fontName in googleFonts) {
-    const link = document.createElement("link")
-    link.href = googleFonts[fontName]
-    link.rel = "stylesheet"
-    document.head.appendChild(link)
   } else {
     try {
       const result = await new Promise<{ [key: string]: any }>((resolve) => {
         chrome.storage.local.get(`font_${fontName}`, resolve)
       })
+      //  else if (fontName in googleFonts) {
+      //   const link = document.createElement("link")
+      //   link.href = googleFonts[fontName]
+      //   link.rel = "stylesheet"
+      //   document.head.appendChild(link)
+      // }
 
       const fontData = result[`font_${fontName}`]
       if (fontData) {

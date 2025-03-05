@@ -4,11 +4,11 @@
 
 @font-face {
   font-family: "estedad";
-  src: url("~assets/fonts/estedad/variable/Estedad[KSHD,wght].woff2") format("woff2");
+  src: url("~assets/fonts/estedad/variable/Estedad[KSHD,wght].woff2")
+    format("woff2");
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -17,7 +17,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -26,7 +25,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -35,7 +33,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -44,7 +41,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -53,7 +49,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -62,7 +57,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -71,8 +65,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
-
 }
 
 @font-face {
@@ -81,7 +73,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -90,16 +81,15 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
   font-family: "ganjname";
-  src: url("~assets/fonts/ganjname/variable/GanjNamehSans-Regular.woff2") format("woff2");
+  src: url("~assets/fonts/ganjname/variable/GanjNamehSans-Regular.woff2")
+    format("woff2");
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -108,7 +98,6 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
 @font-face {
@@ -117,11 +106,16 @@
   font-weight: normal;
   font-style: normal;
   /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
-
 }
 
+@font-face {
+  font-family: "vazirmatn";
+  src: url("~assets/fonts/vazir/Vazirmatn-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  /* unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; */
+}
 @layer base {
-
   :root {
     --sb-track-color: #232e33;
     --sb-thumb-color: #286396;

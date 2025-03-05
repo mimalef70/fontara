@@ -13,6 +13,7 @@ import fontSamim from "data-base64:../../assets/fonts/samim/variable/Samim-WOL.w
 import fontShabnam from "data-base64:../../assets/fonts/shabnam/variable/Shabnam-WOL.woff"
 import fontShahab from "data-base64:../../assets/fonts/shahab/variable/Shahab-Regular.woff2"
 import fontTanha from "data-base64:../../assets/fonts/tanha/variable/Tanha-WOL.woff"
+import fontVazirmatn from "data-base64:../../assets/fonts/vazir/Vazirmatn-Regular.woff2"
 
 import type { FontRecord } from "~src/utils/types"
 
@@ -34,7 +35,8 @@ export const localFonts: FontRecord = {
   Samim: fontSamim,
   Shabnam: fontShabnam,
   Shahab: fontShahab,
-  Tanha: fontTanha
+  Tanha: fontTanha,
+  Vazirmatn: fontVazirmatn
 }
 
 export const defaultFonts = [
@@ -48,7 +50,7 @@ export const defaultFonts = [
     value: "Vazirmatn",
     name: "وزیر",
     svg: "بستد دل و دین از من",
-    style: "font-estedad"
+    style: "font-vazirmatn"
   },
   {
     value: "Morraba",

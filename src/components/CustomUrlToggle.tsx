@@ -189,13 +189,6 @@ const CustomUrlToggle = () => {
     checkCurrentTab()
   }, [initialBoxes])
 
-  if (
-    !currentTab ||
-    currentTab.toLowerCase().includes("extension") ||
-    currentTab.toLowerCase().includes("newtab")
-  )
-    return null
-
   const displayTabName = () => {
     const tabName = currentTab.slice(8, -2)
     return tabName.length > 20 ? `${tabName.slice(0, 20)}...` : tabName
@@ -251,6 +244,13 @@ const CustomUrlToggle = () => {
       setIsCustomUrlActive(!isCustomUrlActive)
     }
   }
+
+  if (
+    !currentTab ||
+    currentTab.toLowerCase().includes("extension") ||
+    currentTab.toLowerCase().includes("newtab")
+  )
+    return null
 
   return (
     <div className="border border-gray-400 rounded-md p-2 select-none mx-auto w-full mt-3">

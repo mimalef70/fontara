@@ -1,23 +1,14 @@
-import { useState } from "react"
+import { useEffect } from "react"
 
-function IndexOptions() {
-  const [data, setData] = useState("")
+import { browserAPI } from "./utils/utils"
 
-  return (
-    <div
-      style={{
-        height: "100vh",
-        width: "100vw",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        backgroundColor: "#f3f4f6"
-      }}>
-      <p style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>فونت آرا</p>
-      <p style={{ fontSize: "1.25rem" }}>ساخته شده با ❤️‍🔥 توسط مصطفی الهیاری</p>
-    </div>
-  )
+function OptionsPage() {
+  useEffect(() => {
+    const url = browserAPI.runtime.getURL("tabs/font-uploader.html")
+    window.location.replace(url)
+  }, [])
+
+  return null
 }
 
-export default IndexOptions
+export default OptionsPage

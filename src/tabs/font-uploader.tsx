@@ -17,7 +17,7 @@ import { browserAPI } from "~src/utils/utils"
 
 const storage = new Storage()
 
-const FontUploader = () => {
+const FontUploaderPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fontName, setFontName] = useState("")
   // const [savedFonts, setSavedFonts] = useState<CustomFont[]>([])
@@ -339,4 +339,4 @@ const FontUploader = () => {
   )
 }
 
-export default FontUploader
+export default FontUploaderPage

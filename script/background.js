@@ -1,22 +1,19 @@
 'use strict';
 
-window.browser = (function() {
-  return window.msBrowser || window.browser || window.chrome;
-})();
+const browserAPI = chrome || browser;
 
-browser.storage.local.get('font', function(data) {
-  if (typeof data.font === 'undefined') {
-    browser.storage.local.set({ font: 'Vazir' });
-  }
-});
+browserAPI.runtime.onInstalled.addListener(() => {
+  browserAPI.storage.local.get(['font'], (result) => {
+    if (result.font === undefined) {
+      browserAPI.storage.local.set({ font: 'Vazir' });
+    }
+  });
 
-browser.runtime.onInstalled.addListener(function() {
-  chrome.tabs.create(
-    { url: 'https://mimalef70.github.io/fontara#changelogs' },
-    function() {}
+  browserAPI.tabs.create({
+    url: 'https://mimalef70.github.io/fontara#changelogs'
+  });
+
+  browserAPI.runtime.setUninstallURL(
+    'https://docs.google.com/forms/d/e/1FAIpQLSdkUvCG9vfASEits6qeAuH1UdtdAGlLp6I5QfJ4_jbsaKorLQ/viewform'
   );
 });
-
-browser.runtime.setUninstallURL(
-  'https://docs.google.com/forms/d/e/1FAIpQLSdkUvCG9vfASEits6qeAuH1UdtdAGlLp6I5QfJ4_jbsaKorLQ/viewform'
-);

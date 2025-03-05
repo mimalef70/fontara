@@ -12,51 +12,25 @@ const storage = new Storage()
 
 const CustomUrlToggle = () => {
   const [favicon, setFavicon] = useState<string>("")
-  const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false)
-  const [currentTab, setCurrentTab] = useState<string>("")
+  const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false) // rename to isCurrentTabActive
+  const [hostName, setHostName] = useState<string>("") // rename to currentTabUrl
 
-  // Update custom URLs when toggled
-  useEffect(() => {
-    const updateActiveUrls = async () => {
-      if (currentTab) {
-        const customActiveUrls =
-          (await storage.get<BoxItem[]>("customActiveUrls")) || []
-        let updatedUrls = customActiveUrls
-
-        if (isCustomUrlActive) {
-          if (!customActiveUrls.some((item) => item.url === currentTab)) {
-            updatedUrls = [
-              ...customActiveUrls,
-              { url: currentTab, isActive: true }
-            ]
-          }
-        } else {
-          updatedUrls = customActiveUrls.filter(
-            (item) => item.url !== currentTab
-          )
-        }
-
-        await storage.set("customActiveUrls", updatedUrls)
-        browserAPI.runtime.sendMessage({
-          action: "updateCustomActiveUrls",
-          customActiveUrls: updatedUrls
-        })
-      }
+  const useActiveTab = async () => {
+    const tabs = await browserAPI.tabs.query({
+      active: true,
+      currentWindow: true
+    })
+    return {
+      tab: tabs[0]
     }
-
-    updateActiveUrls()
-  }, [isCustomUrlActive, currentTab])
+  }
 
   // Initialize custom URL status
   useEffect(() => {
     const initializeCustomUrlStatus = async () => {
       const customActiveUrls =
         (await storage.get<BoxItem[]>("customActiveUrls")) || []
-      const tabs = await browserAPI.tabs.query({
-        active: true,
-        currentWindow: true
-      })
-      const tab = tabs[0]
+      const { tab } = await useActiveTab()
 
       if (tab?.url) {
         const mainUrl = new URL(tab.url).origin
@@ -71,99 +45,34 @@ const CustomUrlToggle = () => {
     initializeCustomUrlStatus()
   }, [])
 
-  const getFavicon = async () => {
-    try {
-      const tabs = await browserAPI.tabs.query({
-        active: true,
-        currentWindow: true
-      })
-      const tab = tabs[0]
-
-      // Special case: Handle chrome:// and extension:// URLs
-      if (
-        tab?.url &&
-        (tab.url.startsWith("chrome://") || tab.url.startsWith("extension://"))
-      ) {
-        // For chrome:// and extension:// pages, use a default icon or leave empty
-        setFavicon("")
-        return
-      }
-
-      // If tab has a direct favicon, use it
-      if (tab?.favIconUrl && !tab.favIconUrl.startsWith("chrome://")) {
-        setFavicon(tab.favIconUrl)
-        return
-      }
-
-      // Only proceed with favicon fetching for regular URLs
-      if (
-        tab?.url &&
-        !tab.url.startsWith("chrome://") &&
-        !tab.url.startsWith("extension://")
-      ) {
-        const url = new URL(tab.url)
-        const possibleFavicons = [
-          `${url.origin}/favicon.ico`,
-          `${url.origin}/favicon.png`,
-          `${url.origin}/apple-touch-icon.png`,
-          `${url.origin}/apple-touch-icon-precomposed.png`
-        ]
-
-        // Try each possible favicon URL
-        for (const faviconUrl of possibleFavicons) {
-          try {
-            const response = await fetch(faviconUrl, { method: "HEAD" })
-            if (response.ok) {
-              setFavicon(faviconUrl)
-              return
-            }
-          } catch {
-            continue
-          }
-        }
-
-        // If no favicon found, use Google's favicon service as fallback
-        const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`
-        setFavicon(googleFaviconUrl)
-      }
-    } catch (error) {
-      // Set a default icon or leave empty
-      setFavicon("")
-    }
-  }
-
-  // Update favicon when tab changes
   useEffect(() => {
-    getFavicon()
-
-    // Listen for tab updates to refresh favicon
-    const handleTabUpdate = (tabId, changeInfo, tab) => {
-      if (changeInfo.favIconUrl) {
-        getFavicon()
+    const getFavicon = async () => {
+      try {
+        const { tab } = await useActiveTab()
+        if (tab?.favIconUrl) {
+          setFavicon(tab.favIconUrl)
+          return
+        } else {
+          setFavicon("")
+        }
+      } catch (error) {
+        setFavicon("")
       }
     }
 
-    browserAPI.tabs.onUpdated.addListener(handleTabUpdate)
-
-    return () => {
-      browserAPI.tabs.onUpdated.removeListener(handleTabUpdate)
-    }
-  }, [currentTab])
+    getFavicon()
+  }, [hostName])
 
   // Check current tab
   useEffect(() => {
     const checkCurrentTab = async () => {
       try {
-        const tabs = await browserAPI.tabs.query({
-          active: true,
-          currentWindow: true
-        })
-        const tab = tabs[0]
+        const { tab } = await useActiveTab()
 
         if (tab?.url) {
           const mainUrl = new URL(tab.url).origin
           const currentTabUrl = `${mainUrl}/*`
-          setCurrentTab(currentTabUrl)
+          setHostName(currentTabUrl)
 
           // Check if the current URL matches any popular site
           const matchedSite = initialBoxes.some(
@@ -171,7 +80,7 @@ const CustomUrlToggle = () => {
           )
 
           if (matchedSite) {
-            setCurrentTab("")
+            setHostName("")
             return
           }
 
@@ -189,11 +98,6 @@ const CustomUrlToggle = () => {
     checkCurrentTab()
   }, [initialBoxes])
 
-  const displayTabName = () => {
-    const tabName = currentTab.slice(8, -2)
-    return tabName.length > 20 ? `${tabName.slice(0, 20)}...` : tabName
-  }
-
   const handleCustomUrlToggle = async () => {
     try {
       const newIsActive = !isCustomUrlActive
@@ -205,21 +109,18 @@ const CustomUrlToggle = () => {
 
       if (newIsActive) {
         const existingUrlIndex = customActiveUrls.findIndex(
-          (item) => item.url === currentTab
+          (item) => item.url === hostName
         )
         if (existingUrlIndex === -1) {
-          updatedUrls = [
-            ...customActiveUrls,
-            { url: currentTab, isActive: true }
-          ]
+          updatedUrls = [...customActiveUrls, { url: hostName, isActive: true }]
         } else {
           updatedUrls = customActiveUrls.map((item) =>
-            item.url === currentTab ? { ...item, isActive: true } : item
+            item.url === hostName ? { ...item, isActive: true } : item
           )
         }
       } else {
         updatedUrls = customActiveUrls.map((item) =>
-          item.url === currentTab ? { ...item, isActive: false } : item
+          item.url === hostName ? { ...item, isActive: false } : item
         )
       }
 
@@ -246,28 +147,29 @@ const CustomUrlToggle = () => {
   }
 
   if (
-    !currentTab ||
-    currentTab.toLowerCase().includes("extension") ||
-    currentTab.toLowerCase().includes("newtab")
+    !hostName ||
+    hostName.toLowerCase().includes("extension") ||
+    hostName.toLowerCase().includes("newtab")
   )
     return null
 
   return (
     <div className="border border-gray-400 rounded-md p-2 select-none mx-auto w-full mt-3">
       <label
-        className="text-xs cursor-pointer flex items-center whitespace-nowrap overflow-x-auto overflow-y-hidden"
+        className="text-xs cursor-pointer overflow-y-hidden"
         htmlFor="activeUrl">
-        <div className="flex items-center gap-2 min-w-max px-1">
+        <div className="flex items-center w-full gap-1">
           <Checkbox
             name="activeUrl"
             id="activeUrl"
             checked={isCustomUrlActive}
             onCheckedChange={handleCustomUrlToggle}
-            className="shrink-0"
           />
-          <span className="shrink-0">برای سایت</span>
-          <span className="flex items-center gap-1 shrink-0">
-            <span>{displayTabName()}</span>
+          <div className="flex items-center justify-around ">
+            <span className="shrink-0">برای سایت</span>
+            <span className="truncate" dir="ltr">
+              {hostName.slice(8, -2)}
+            </span>
             {favicon && (
               <img
                 src={favicon}
@@ -275,8 +177,8 @@ const CustomUrlToggle = () => {
                 alt="site icon"
               />
             )}
-          </span>
-          <span className="shrink-0">فعال باشد؟</span>
+            <span className="shrink-0">فعال باشد؟</span>
+          </div>
         </div>
       </label>
     </div>

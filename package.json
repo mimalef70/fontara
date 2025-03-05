@@ -67,11 +67,6 @@
     ],
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
-    },
-    "browser_specific_settings": {
-      "gecko": {
-        "id": "{03c6bd86-18fd-3664-87e7-90e1edbb85a0}"
-      }
     }
   }
 }

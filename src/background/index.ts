@@ -102,7 +102,6 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
       storage.set("customActiveUrls", []),
       storage.set("selectedFont", DEFAULT_STATE.defaultFont.value)
     ])
-
     const tabs = await browserAPI.tabs.query({})
     await Promise.all(
       tabs.map(async (tab) => {
@@ -117,9 +116,24 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
         }
       })
     )
+
+    chrome.tabs.create({
+      url: "https://mimalef70.github.io/fontara"
+    })
   }
+
+  if (details.reason === "update") {
+    chrome.tabs.create({
+      url: "https://mimalef70.github.io/fontara#changelogs"
+    })
+  }
+
   await updateExtensionIcon()
 })
+
+browserAPI.runtime.setUninstallURL(
+  "https://docs.google.com/forms/d/e/1FAIpQLSdkUvCG9vfASEits6qeAuH1UdtdAGlLp6I5QfJ4_jbsaKorLQ/viewform"
+)
 
 // Combined storage change listener
 browserAPI.storage.onChanged.addListener(async (changes) => {

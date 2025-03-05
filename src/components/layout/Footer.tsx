@@ -50,7 +50,7 @@ function Footer({ isExtensionEnabled }) {
             onClick={() => {
               window.open("https://x.com/mimalef70", "_blank")
             }}
-            className="font-black text-gray-700">
+            className="font-black text-gray-700 cursor-pointer">
             مصطفی الهیاری
           </a>
         </p>

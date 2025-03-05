@@ -165,7 +165,7 @@ const CustomUrlToggle = () => {
             checked={isCustomUrlActive}
             onCheckedChange={handleCustomUrlToggle}
           />
-          <div className="flex items-center justify-around ">
+          <div className="flex items-center justify-around gap-1 ">
             <span className="shrink-0">برای سایت</span>
             <span className="truncate" dir="ltr">
               {hostName.slice(8, -2)}

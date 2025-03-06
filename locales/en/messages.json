@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "FontARA",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "With FontARA Persian(Farsi,Dari,Kurdish) users can change the font on most popular sites such as Facebook, Twitter, etc.",
+    "description": "Description of the extension."
+  },
+  "popup": {
+    "message": "Logic is the beginning of wisdom, not the end.",
+    "description": "Popup message."
+  }
+}

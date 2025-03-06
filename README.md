@@ -1,6 +1,6 @@
 ![](https://mimalef70.github.io/fontara/images/demo/logo.svg)
 
-# FontARA Version 3.0 
+# FontARA Version 4.0 
 
 
 ![](https://mimalef70.github.io/fontara/images/demo/screens/Version4.jpg)

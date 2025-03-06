@@ -36,10 +36,10 @@ export const iconClasses = [
 export const DEFAULT_STATE: ExtensionState = {
   isEnabled: true,
   defaultFont: {
-    value: "Estedad",
-    name: "استعداد",
+    value: "Vazirmatn",
+    name: "وزیر",
     svg: "بستد دل و دین از من",
-    style: "font-estedad"
+    style: "font-vazirmatn"
   }
 }
 

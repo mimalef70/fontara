@@ -41,16 +41,16 @@ export const localFonts: FontRecord = {
 
 export const defaultFonts = [
   {
-    value: "Estedad",
-    name: "استعداد",
-    svg: "بستد دل و دین از من",
-    style: "font-estedad"
-  },
-  {
     value: "Vazirmatn",
     name: "وزیر",
     svg: "بستد دل و دین از من",
     style: "font-vazirmatn"
+  },
+  {
+    value: "Estedad",
+    name: "استعداد",
+    svg: "بستد دل و دین از من",
+    style: "font-estedad"
   },
   {
     value: "Morraba",

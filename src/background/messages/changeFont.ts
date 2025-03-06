@@ -8,7 +8,6 @@ export default async function handler(
   req: PlasmoMessaging.Request,
   res: PlasmoMessaging.Response
 ) {
-  console.log("changeFont message", req)
   handleFontChange(req, res.send)
 
   return { success: true }

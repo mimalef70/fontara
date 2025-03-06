@@ -123,9 +123,39 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
   }
 
   if (details.reason === "update") {
-    chrome.tabs.create({
-      url: "https://mimalef70.github.io/fontara#changelogs"
-    })
+    // Check for missing storage fields and add them if needed
+    try {
+      const extensionState = await storage.get("extensionState")
+      if (!extensionState) {
+        await storage.set("extensionState", DEFAULT_STATE)
+        console.log("1-Added missing during update")
+      }
+
+      const popularActiveUrls = await storage.get("popularActiveUrls")
+      if (!popularActiveUrls) {
+        await storage.set("popularActiveUrls", initialBoxes)
+        console.log("2-Added missing during update")
+      }
+
+      const customActiveUrls = await storage.get("customActiveUrls")
+      if (!customActiveUrls) {
+        await storage.set("customActiveUrls", [])
+        console.log("3-Added missing during update")
+      }
+
+      const selectedFont = await storage.get("selectedFont")
+      if (!selectedFont) {
+        await storage.set("selectedFont", DEFAULT_STATE.defaultFont.value)
+        console.log("4-Added missing during update")
+      }
+
+      // Open the changelog page
+      chrome.tabs.create({
+        url: "https://mimalef70.github.io/fontara#changelogs"
+      })
+    } catch (error) {
+      console.error("Error during extension update:", error)
+    }
   }
 
   await updateExtensionIcon()

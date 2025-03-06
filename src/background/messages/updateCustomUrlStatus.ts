@@ -9,7 +9,6 @@ export default async function handler(
   req: PlasmoMessaging.Request,
   res: PlasmoMessaging.Response
 ) {
-  console.log("updateCustomUrlStatus", req)
   handleCustomUrlUpdate(req, res.send)
   return { success: true }
 }

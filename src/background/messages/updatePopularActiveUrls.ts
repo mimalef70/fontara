@@ -12,7 +12,6 @@ export default async function handler(
 ) {
   handlePopularUrlsUpdate(req, res.send)
 
-  console.log("Background received updatePopularActiveUrls message:", req)
   return { success: true }
 }
 

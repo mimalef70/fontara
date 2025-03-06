@@ -2,7 +2,7 @@
   "name": "font-ara",
   "displayName": "__MSG_extensionName__",
   "short_name": "FontARA",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "__MSG_extensionDescription__",
   "author": "Mostafa Alahyari",
   "scripts": {

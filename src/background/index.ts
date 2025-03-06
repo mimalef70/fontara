@@ -132,7 +132,7 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
 })
 
 browserAPI.runtime.setUninstallURL(
-  "https://docs.google.com/forms/d/e/1FAIpQLSdkUvCG9vfASEits6qeAuH1UdtdAGlLp6I5QfJ4_jbsaKorLQ/viewform"
+  "https://app.mu.chat/forms/cm7x2dyjo0ajl01lfci211xev"
 )
 
 // Combined storage change listener

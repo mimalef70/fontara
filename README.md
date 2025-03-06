@@ -3,7 +3,7 @@
 # FontARA Version 3.0 
 
 
-![](https://mimalef70.github.io/fontara/images/demo/screens/TwitterBanner.jpg)
+![](https://mimalef70.github.io/fontara/images/demo/screens/Version4.jpg)
 
 ![](https://mimalef70.github.io/fontara/images/demo/screens/Banner1.jpg)
 ![](https://mimalef70.github.io/fontara/images/demo/screens/Banner2.jpg)

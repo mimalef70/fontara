@@ -114,7 +114,7 @@ const FontSelector = ({
           </SelectContent>
         </Select>
         <a
-          href={chrome.runtime.getURL("tabs/index.html")}
+          href={chrome.runtime.getURL("tabs/font-uploader.html")}
           target="_blank"
           className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
           <PlusIcon />

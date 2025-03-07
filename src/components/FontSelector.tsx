@@ -97,7 +97,7 @@ const FontSelector = ({
                     </span>
                     <span
                       className={`!w-full mx-auto ${font.style} text-gray-400 text-[13px] ${hoveredFont === font.value ? "inline" : "hidden"}`}>
-                      {font.svg}
+                      بستد دل و دین از من
                     </span>
                   </div>
                 </SelectItem>

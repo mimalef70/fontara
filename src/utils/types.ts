@@ -67,7 +67,6 @@ export interface FontState {
 export interface CustomFont {
   value: string
   name: string
-  svg: string
   style: string
   type: string
   fileHash?: string

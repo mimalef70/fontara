@@ -179,7 +179,6 @@ const FontUploaderPage = () => {
       const newFont: CustomFont = {
         value: fontName,
         name: fontName,
-        svg: "بستد دل و دین از من",
         style: `font-${fontName.toLowerCase()}`,
         type: extension,
         fileHash,

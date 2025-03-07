@@ -1,6 +1,8 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
+import { STORAGE_KEYS } from "~src/lib/constants"
+
 import { notifyAllTabs } from ".."
 
 const storage = new Storage()
@@ -18,8 +20,10 @@ async function handleCustomUrlUpdate(
   sendResponse: (response?: any) => void
 ) {
   try {
-    const extensionState = await storage.get<any>("extensionState")
-    if (!extensionState?.isEnabled) {
+    const isExtensionEnabled = await storage.get<boolean>(
+      STORAGE_KEYS.EXTENSION_ENABLED
+    )
+    if (!isExtensionEnabled) {
       sendResponse({ success: false, error: "Extension is disabled" })
       return
     }

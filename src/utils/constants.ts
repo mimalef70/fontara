@@ -1,5 +1,3 @@
-import type { ExtensionState } from "./types"
-
 export const excludedTags = [
   "script",
   "style",
@@ -32,16 +30,6 @@ export const iconClasses = [
   "dashicons",
   "wp-menu-image"
 ]
-
-export const DEFAULT_STATE: ExtensionState = {
-  isEnabled: true,
-  defaultFont: {
-    value: "Vazirmatn",
-    name: "وزیر",
-    svg: "بستد دل و دین از من",
-    style: "font-vazirmatn"
-  }
-}
 
 export const ICON_PATHS = {
   default: {

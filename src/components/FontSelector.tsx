@@ -92,7 +92,7 @@ const FontSelector = ({
                   onMouseLeave={() => setHoveredFont(null)}>
                   <div className="flex items-center justify-between w-full gap-2">
                     <span
-                      className={`!w-[7rem] font-estedad text-sm ${font.style} ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>
+                      className={`!w-[7rem] text-sm ${font.style}  ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>
                       {font.name}
                     </span>
                     <span

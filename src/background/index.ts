@@ -1,20 +1,21 @@
 import { Storage } from "@plasmohq/storage"
 
 import { initialBoxes } from "~data/popularUrlData"
-import { DEFAULT_STATE, ICON_PATHS } from "~src/utils/constants"
-import type { BoxItem, ExtensionState } from "~src/utils/types"
+import { STORAGE_KEYS } from "~src/lib/constants"
+import { ICON_PATHS } from "~src/utils/constants"
+import type { BoxItem } from "~src/utils/types"
 import { browserAPI, urlPatternToRegex } from "~src/utils/utils"
 
 const storage = new Storage()
 
 async function getStorageData() {
-  const [extensionState, popularActiveUrls, customActiveUrls] =
+  const [isExtensionEnabled, popularActiveUrls, customActiveUrls] =
     await Promise.all([
-      storage.get<ExtensionState>("extensionState") || DEFAULT_STATE,
+      storage.get<boolean>(STORAGE_KEYS.EXTENSION_ENABLED),
       storage.get<BoxItem[]>("popularActiveUrls") || [],
       storage.get<BoxItem[]>("customActiveUrls") || []
     ])
-  return { extensionState, popularActiveUrls, customActiveUrls }
+  return { isExtensionEnabled, popularActiveUrls, customActiveUrls }
 }
 
 async function sendTabMessage(tabId: number, message: any) {
@@ -25,7 +26,7 @@ async function sendTabMessage(tabId: number, message: any) {
 
 async function updateExtensionIcon() {
   try {
-    const { extensionState, popularActiveUrls, customActiveUrls } =
+    const { isExtensionEnabled, popularActiveUrls, customActiveUrls } =
       await getStorageData()
 
     chrome.windows.getCurrent((w) => {
@@ -41,7 +42,7 @@ async function updateExtensionIcon() {
         )
 
         const iconToShow =
-          (isCustomMatch || isPopularMatch) && extensionState.isEnabled
+          (isCustomMatch || isPopularMatch) && isExtensionEnabled
             ? ICON_PATHS.active
             : ICON_PATHS.default
 
@@ -55,10 +56,10 @@ async function updateExtensionIcon() {
 
 async function checkIfUrlShouldBeActive(url: string, tabId: number) {
   try {
-    const { extensionState, popularActiveUrls, customActiveUrls } =
+    const { isExtensionEnabled, popularActiveUrls, customActiveUrls } =
       await getStorageData()
 
-    if (!extensionState.isEnabled) {
+    if (!isExtensionEnabled) {
       await Promise.all([
         sendTabMessage(tabId, { action: "setActiveStatus", isActive: false }),
         sendTabMessage(tabId, { action: "toggle", isExtensionEnabled: false })
@@ -78,7 +79,7 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
       sendTabMessage(tabId, { action: "setActiveStatus", isActive }),
       sendTabMessage(tabId, {
         action: "toggle",
-        isExtensionEnabled: extensionState.isEnabled
+        isExtensionEnabled: isExtensionEnabled
       })
     ])
 
@@ -88,19 +89,14 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
   }
 }
 
-async function initializeExtension() {
-  await storage.set("extensionState", DEFAULT_STATE)
-  await updateExtensionIcon()
-}
-
 // Event Listeners in first install
 browserAPI.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {
     await Promise.all([
-      storage.set("extensionState", DEFAULT_STATE),
+      storage.set(STORAGE_KEYS.EXTENSION_ENABLED, true),
       storage.set("popularActiveUrls", initialBoxes),
       storage.set("customActiveUrls", []),
-      storage.set("selectedFont", DEFAULT_STATE.defaultFont.value)
+      storage.set("selectedFont", "Vazirmatn")
     ])
     const tabs = await browserAPI.tabs.query({})
     await Promise.all(
@@ -125,28 +121,26 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "update") {
     // Check for missing storage fields and add them if needed
     try {
-      const extensionState = await storage.get("extensionState")
-      if (!extensionState) {
-        await storage.set("extensionState", DEFAULT_STATE)
-        console.log("1-Added missing during update")
+      const isExtensionEnabled = await storage.get(
+        STORAGE_KEYS.EXTENSION_ENABLED
+      )
+      if (!isExtensionEnabled) {
+        await storage.set(STORAGE_KEYS.EXTENSION_ENABLED, true)
       }
 
       const popularActiveUrls = await storage.get("popularActiveUrls")
       if (!popularActiveUrls) {
         await storage.set("popularActiveUrls", initialBoxes)
-        console.log("2-Added missing during update")
       }
 
       const customActiveUrls = await storage.get("customActiveUrls")
       if (!customActiveUrls) {
         await storage.set("customActiveUrls", [])
-        console.log("3-Added missing during update")
       }
 
       const selectedFont = await storage.get("selectedFont")
       if (!selectedFont) {
-        await storage.set("selectedFont", DEFAULT_STATE.defaultFont.value)
-        console.log("4-Added missing during update")
+        await storage.set("selectedFont", "Vazirmatn")
       }
 
       // Open the changelog page
@@ -170,7 +164,7 @@ browserAPI.storage.onChanged.addListener(async (changes) => {
   if (
     changes.customActiveUrls ||
     changes.popularActiveUrls ||
-    changes.extensionState
+    changes.isExtensionEnabled
   ) {
     await updateExtensionIcon()
   }

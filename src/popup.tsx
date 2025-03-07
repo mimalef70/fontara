@@ -10,58 +10,50 @@ import FontSelector from "~src/components/FontSelector"
 import Footer from "~src/components/layout/Footer"
 import Header from "~src/components/layout/Header"
 import PopoularUrl from "~src/components/PopoularUrl"
+import { STORAGE_KEYS } from "~src/lib/constants"
+
+import { cn } from "./lib/utils"
 
 function IndexPopup() {
-  // overlay while Select is open we set a overlay into full popup d
-  const [isOverlayActive, setIsOverlayActive] = useState(false)
+  const [showOverlay, setShowOverlay] = useState(false)
 
-  const [extentionEnabledState, setExtentionEnabledState] = useStorage(
-    "isExtensionEnabled",
-    true
-  )
+  const [extensionActive] = useStorage(STORAGE_KEYS.EXTENSION_ENABLED)
+
   return (
-    <div dir="rtl" className="font-estedad">
-      <div className="w-[20rem] h-[570px] py-4">
-        <section className="h-full">
-          {isOverlayActive && (
-            <div className="absolute inset-0 bg-black/30 z-20" />
-          )}
-          <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
-            {/* Main content wrapper */}
-            <div className="relative flex flex-col justify-between h-full">
-              <Header
-                extentionEnabledState={extentionEnabledState}
-                setExtentionEnabledState={setExtentionEnabledState}
-              />
+    <div className="w-[20rem] h-[570px] py-4">
+      <section className="h-full">
+        {showOverlay && <div className="absolute inset-0 bg-black/30 z-20" />}
+        <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
+          <div className="relative flex flex-col justify-between h-full">
+            <Header />
 
-              <div
-                className={`  
-          flex-1 flex flex-col 
-          ${!extentionEnabledState ? "opacity-50 pointer-events-none" : "opacity-100"}
-          transition-opacity duration-200
-        `}>
-                {/* FontSelector with higher z-index to stay above overlay */}
-                <div className="relative z-20">
-                  <FontSelector setIsOverlayActive={setIsOverlayActive} />
-                </div>
-
-                {/* Main content */}
-                <div>
-                  <div style={{ direction: "rtl" }}>
-                    <div className="overflow-auto">
-                      <PopoularUrl />
-                    </div>
-
-                    <CustomUrlToggle />
-                  </div>
-                </div>
+            <div
+              className={cn(
+                "flex-1 flex flex-col transition-opacity duration-200",
+                {
+                  "opacity-50 pointer-events-none": !extensionActive,
+                  "opacity-100": extensionActive
+                }
+              )}>
+              <div className="relative z-20">
+                <FontSelector setIsOverlayActive={setShowOverlay} />
               </div>
 
-              <Footer isExtensionEnabled={!extentionEnabledState} />
+              <div>
+                <div style={{ direction: "rtl" }}>
+                  <div className="overflow-auto">
+                    <PopoularUrl />
+                  </div>
+
+                  <CustomUrlToggle />
+                </div>
+              </div>
             </div>
+
+            <Footer />
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   )
 }

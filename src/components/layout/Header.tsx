@@ -1,7 +1,9 @@
 import logo from "url:~assets/newlogo.svg"
 
 import { Storage } from "@plasmohq/storage"
+import { useStorage } from "@plasmohq/storage/hook"
 
+import { STORAGE_KEYS } from "~src/lib/constants"
 import { browserAPI } from "~src/utils/utils"
 
 import { Badge } from "../ui/badge"
@@ -9,34 +11,27 @@ import { Switch } from "../ui/Switch"
 
 const storage = new Storage()
 
-interface ExtensionState {
-  isEnabled: boolean
-  defaultFont: {
-    value: string
-    name: string
-    svg: string
-    style: string
-  }
-}
+const Header = () => {
+  const [extensionActive, setExtensionActive] = useStorage(
+    STORAGE_KEYS.EXTENSION_ENABLED,
+    (v) => (v === undefined ? true : v)
+  )
 
-const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
-  const handleExtensionToggle = async () => {
+  const handleExtensionToggle = async (checked: boolean) => {
     try {
-      const newState = !extentionEnabledState
-      setExtentionEnabledState(newState)
+      setExtensionActive(checked)
 
       // Save to storage
-      const currentFont = await storage.get("selectedFont")
-      await storage.set("isExtensionEnabled", newState)
-      await storage.set("extensionState", {
-        defaultFont: currentFont,
-        isEnabled: newState
-      })
+      // const currentFont = await storage.get("selectedFont")
+      // await storage.set("extensionState", {
+      //   defaultFont: currentFont,
+      //   isEnabled: checked
+      // })
 
       // Send message to background script
       browserAPI.runtime.sendMessage({
         action: "toggleExtension",
-        isEnabled: newState
+        isEnabled: checked
       })
 
       // Update all tabs
@@ -46,7 +41,7 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
           try {
             await browserAPI.tabs.sendMessage(tab.id, {
               action: "toggle",
-              isExtensionEnabled: newState
+              isExtensionEnabled: checked
             })
           } catch (error) {
             // Silent catch for inactive tabs
@@ -54,7 +49,7 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
         }
       }
     } catch (error) {
-      setExtentionEnabledState(!extentionEnabledState)
+      setExtensionActive(checked)
     }
   }
 
@@ -68,7 +63,7 @@ const Header = ({ extentionEnabledState, setExtentionEnabledState }) => {
       </div>
       <Switch
         dir="ltr"
-        checked={extentionEnabledState}
+        checked={extensionActive}
         onCheckedChange={handleExtensionToggle}
       />
     </div>

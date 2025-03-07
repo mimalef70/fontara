@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
-import { CheckedCircle, Circle, PlusIcon } from "~assets/icons/index"
+import { CheckCircle, Circle, PlusCircle } from "~src/components/icons"
 import { defaultFonts } from "~src/utils/fonts"
 
 import {
@@ -106,7 +106,7 @@ const FontSelector = ({
                   selected.value !== font.value ? (
                     <Circle />
                   ) : (
-                    selected.value === font.value && <CheckedCircle />
+                    selected.value === font.value && <CheckCircle />
                   )}
                 </div>
               </div>
@@ -117,7 +117,7 @@ const FontSelector = ({
           href={chrome.runtime.getURL("tabs/font-uploader.html")}
           target="_blank"
           className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
-          <PlusIcon />
+          <PlusCircle />
           افزودن فونت دلخواه
         </a>
       </div>

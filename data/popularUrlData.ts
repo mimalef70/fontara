@@ -29,176 +29,151 @@ interface BoxItem {
   src: string
   isActive: boolean
   url: string
-  isInUi?: boolean
 }
 export const initialBoxes: BoxItem[] = [
-  { id: "crisp", src: crisp, isActive: true, url: "", isInUi: true },
+  { id: "crisp", src: crisp, isActive: true, url: "https://app.crisp.chat/*" },
   {
     id: "dropbox",
     src: dropbox,
     isActive: true,
-    url: "https://www.*dropbox.com/*",
-    isInUi: true
+    url: "https://www.*dropbox.com/*"
   },
   {
     id: "duckduckgo",
     src: duckduckgo,
     isActive: true,
-    url: "https://duckduckgo.com/*",
-    isInUi: true
+    url: "https://duckduckgo.com/*"
   },
   {
     id: "facebook",
     src: facebook,
     isActive: true,
-    url: "https://www.facebook.com/*",
-    isInUi: true
+    url: "https://www.facebook.com/*"
   },
   {
     id: "feedly",
     src: feedly,
     isActive: true,
-    url: "https://feedly.com/*",
-    isInUi: true
+    url: "https://feedly.com/*"
   },
   {
     id: "getpocket",
     src: getpocket,
     isActive: true,
-    url: "https://getpocket.com/*",
-    isInUi: true
+    url: "https://getpocket.com/*"
   },
   {
     id: "github",
     src: github,
     isActive: true,
-    url: "https://github.com/*",
-    isInUi: true
+    url: "https://github.com/*"
   },
   {
     id: "gmail",
     src: gmail,
     isActive: true,
-    url: "https://mail.google.com/*",
-    isInUi: true
+    url: "https://mail.google.com/*"
   },
   {
     id: "goodreads",
     src: goodreads,
     isActive: true,
-    url: "https://www.goodreads.com/*",
-    isInUi: true
+    url: "https://www.goodreads.com/*"
   },
   {
     id: "google",
     src: google,
     isActive: true,
-    url: "https://www.google.com/*",
-    isInUi: true
+    url: "https://www.google.com/*"
   },
   {
     id: "inoreader",
     src: inoreader,
     isActive: true,
-    url: "https://www.inoreader.com/*",
-    isInUi: true
+    url: "https://www.inoreader.com/*"
   },
   {
     id: "instagram",
     src: instagram,
     isActive: true,
-    url: "https://www.instagram.com/*",
-    isInUi: true
+    url: "https://www.instagram.com/*"
   },
   {
     id: "linkedin",
     src: linkedin,
     isActive: true,
-    url: "https://*linkedin.com/*",
-    isInUi: true
+    url: "https://*linkedin.com/*"
   },
   {
     id: "medium",
     src: medium,
     isActive: true,
-    url: "https://medium.com/*",
-    isInUi: true
+    url: "https://medium.com/*"
   },
   {
     id: "messagesandroid",
     src: messagesandroid,
     isActive: true,
-    url: "https://messages.google.com/*",
-    isInUi: true
+    url: "https://messages.google.com/*"
   },
   {
     id: "slack",
     src: slack,
     isActive: true,
-    url: "https://slack.com/*",
-    isInUi: true
+    url: "https://slack.com/*"
   },
   {
     id: "telegram",
     src: telegram,
     isActive: true,
-    url: "https://web.telegram.org/*",
-    isInUi: true
+    url: "https://web.telegram.org/*"
   },
   {
     id: "trello",
     src: trello,
     isActive: true,
-    url: "https://trello.com/*",
-    isInUi: true
+    url: "https://trello.com/*"
   },
   {
     id: "twitter",
     src: twitter,
     isActive: true,
-    url: "https://x.com/*",
-    isInUi: true
+    url: "https://x.com/*"
   },
   {
     id: "virgool",
     src: virgool,
     isActive: true,
-    url: "https://virgool.io/*",
-    isInUi: true
+    url: "https://virgool.io/*"
   },
   {
     id: "whatsapp",
     src: whatsapp,
     isActive: true,
-    url: "https://web.whatsapp.com/*",
-    isInUi: true
+    url: "https://web.whatsapp.com/*"
   },
   {
     id: "wikipedia",
     src: wikipedia,
     isActive: true,
-    url: "https://*.wikipedia.org/*",
-    isInUi: true
+    url: "https://*.wikipedia.org/*"
   },
   {
     id: "wordpress",
     src: wordpress,
     isActive: true,
-    url: "https://*.wordpress.org/*",
-    isInUi: true
+    url: "https://*.wordpress.org/*"
   },
   {
     id: "youtube",
     src: youtube,
     isActive: true,
-    url: "https://www.youtube.com/*",
-    isInUi: true
+    url: "https://www.youtube.com/*"
   },
   {
     id: "npm",
     src: npm,
     isActive: true,
-    url: "https://www.npmjs.com/*",
-    isInUi: true
+    url: "https://www.npmjs.com/*"
   }
 ]

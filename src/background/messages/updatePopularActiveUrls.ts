@@ -6,35 +6,26 @@ import { STORAGE_KEYS } from "~src/lib/constants"
 import { notifyAllTabs } from ".."
 
 const storage = new Storage()
-export default async function handler(
-  req: PlasmoMessaging.Request,
-  res: PlasmoMessaging.Response
-) {
-  handlePopularUrlsUpdate(req, res.send)
 
-  return { success: true }
-}
-
-async function handlePopularUrlsUpdate(
-  message: PlasmoMessaging.Request,
-  sendResponse: (response?: any) => void
-) {
+const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
   try {
     const isExtensionEnabled = await storage.get<boolean>(
       STORAGE_KEYS.EXTENSION_ENABLED
     )
     if (!isExtensionEnabled) {
-      sendResponse({ success: false, error: "Extension is disabled" })
+      res.send({ success: false, error: "Extension is disabled" })
       return
     }
 
-    await storage.set("popularActiveUrls", message.body)
+    await storage.set("popularActiveUrls", req.body)
     await notifyAllTabs({
       action: "updatePopularActiveUrls",
-      popularActiveUrls: message.body
+      popularActiveUrls: req.body
     })
-    sendResponse({ success: true })
+    res.send({ success: true })
   } catch (error) {
-    sendResponse({ success: false, error })
+    res.send({ success: false, error })
   }
 }
+
+export default handler

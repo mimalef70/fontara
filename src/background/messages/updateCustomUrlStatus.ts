@@ -7,34 +7,25 @@ import { notifyAllTabs } from ".."
 
 const storage = new Storage()
 
-export default async function handler(
-  req: PlasmoMessaging.Request,
-  res: PlasmoMessaging.Response
-) {
-  handleCustomUrlUpdate(req, res.send)
-  return { success: true }
-}
-
-async function handleCustomUrlUpdate(
-  message: PlasmoMessaging.Request,
-  sendResponse: (response?: any) => void
-) {
+const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
   try {
     const isExtensionEnabled = await storage.get<boolean>(
       STORAGE_KEYS.EXTENSION_ENABLED
     )
     if (!isExtensionEnabled) {
-      sendResponse({ success: false, error: "Extension is disabled" })
+      res.send({ success: false, error: "Extension is disabled" })
       return
     }
 
-    await storage.set("customActiveUrls", message.body)
+    await storage.set("customActiveUrls", req.body)
     await notifyAllTabs({
       action: "updateCustomUrlStatus",
-      data: message.body
+      data: req.body
     })
-    sendResponse({ success: true })
+    res.send({ success: true })
   } catch (error) {
-    sendResponse({ success: false, error })
+    res.send({ success: false, error })
   }
 }
+
+export default handler

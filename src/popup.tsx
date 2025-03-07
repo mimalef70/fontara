@@ -1,4 +1,5 @@
 import "~src/style.css"
+import "~src/fonts.css"
 
 import { useState } from "react"
 

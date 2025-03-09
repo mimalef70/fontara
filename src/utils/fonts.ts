@@ -48,92 +48,62 @@ export const localFonts: FontRecord = {
 export const defaultFonts = [
   {
     value: "Vazirmatn",
-    name: "وزیر",
-
-    style: "font-vazirmatn"
+    name: "وزیر"
   },
   {
     value: "Estedad",
-    name: "استعداد",
-
-    style: "font-estedad"
+    name: "استعداد"
   },
   {
     value: "Samim",
-    name: "صمیم",
-
-    style: "font-samim"
+    name: "صمیم"
   },
   {
     value: "Shabnam",
-    name: "شبنم",
-
-    style: "font-shabnam"
+    name: "شبنم"
   },
   {
     value: "Sahel",
-    name: "ساحل",
-
-    style: "font-sahel"
+    name: "ساحل"
   },
   {
     Value: "Parastoo",
-    name: "پرستو",
-
-    style: "font-parastoo"
+    name: "پرستو"
   },
   {
     value: "Gandom",
-    name: "گندم",
-
-    style: "font-gandom"
+    name: "گندم"
   },
   {
     value: "Tanha",
-    name: "تنها",
-
-    style: "font-tanha"
+    name: "تنها"
   },
   {
     value: "Behdad",
-    name: "بهداد",
-
-    style: "font-behdad"
+    name: "بهداد"
   },
   {
     value: "Nika",
-    name: "نیکا",
-
-    style: "font-nika"
+    name: "نیکا"
   },
   {
     value: "Ganjname",
-    name: "گنج نامه",
-
-    style: "font-ganjname"
+    name: "گنج نامه"
   },
   {
     value: "Shahab",
-    name: "شهاب",
-
-    style: "font-shahab"
+    name: "شهاب"
   },
   {
     value: "Mikhak",
-    name: "میخک",
-
-    style: "font-mikhak"
+    name: "میخک"
   },
   {
     value: "Nahid",
-    name: "ناهید",
-
-    style: "font-nahid"
+    name: "ناهید"
   },
   {
     value: "Azarmehr",
-    name: "آذرمهر",
-
-    style: "font-azarmehr"
+    name: "آذرمهر"
   }
 ]

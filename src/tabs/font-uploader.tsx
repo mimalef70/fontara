@@ -318,7 +318,7 @@ const FontUploaderPage = () => {
                           disabled={isLoading}>
                           حذف
                         </button>
-                        <span className={font.style}>{font.name}</span>
+                        <span>{font.name}</span>
                       </div>
                       {font.originalFileName && (
                         <div className="text-sm text-gray-500 text-right w-full border-t pt-1 mt-1">

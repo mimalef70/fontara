@@ -1,6 +1,6 @@
 import { Storage } from "@plasmohq/storage"
 
-import { rootStyle } from "~src/contents/plasmo"
+// import { rootStyle } from "~src/contents/plasmo"
 import { excludedTags, iconClasses } from "~src/utils/constants"
 import type { UrlItem } from "~src/utils/types"
 import { isCurrentUrlMatched } from "~src/utils/utils"
@@ -202,7 +202,7 @@ export function updateFont(fontName: string): void {
 export function resetFontToDefault(): void {
   if (document.body) {
     // Remove the CSS variable definition
-    rootStyle.textContent = ""
+    // rootStyle.textContent = ""
 
     const resetElementStyles = (node: HTMLElement) => {
       // Reset font family
@@ -284,11 +284,11 @@ export async function initialize(): Promise<void> {
 }
 
 export function updateRootVariable(fontName: string): void {
-  rootStyle.textContent = `
-      :root {
-        --fontara-font: "${fontName}";
-      }
-    `
+  // rootStyle.textContent = `
+  //     :root {
+  //       --fontara-font: "${fontName}";
+  //     }
+  //   `
 }
 
 export async function loadFont(fontName: string): Promise<void> {

@@ -75,9 +75,7 @@ const FontSelector = ({
           dir="rtl">
           <SelectTrigger className="w-full !ring-0 !ring-offset-0 focus:!ring-0 focus:!ring-offset-0 !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)]">
             <SelectValue>
-              <span className={`font-estedad text-sm ${selected.style}`}>
-                {selected.name}
-              </span>
+              <span className={`font-estedad text-sm`}>{selected.name}</span>
             </SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 !border-0 !ring-0 !ring-offset-0">
@@ -92,11 +90,11 @@ const FontSelector = ({
                   onMouseLeave={() => setHoveredFont(null)}>
                   <div className="flex items-center justify-between w-full gap-2">
                     <span
-                      className={`!w-[7rem] text-sm ${font.style}  ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>
+                      className={`!w-[7rem] text-sm  ${selected.value === font.value ? "text-[#0D92F4]" : ""}`}>
                       {font.name}
                     </span>
                     <span
-                      className={`!w-full mx-auto ${font.style} text-gray-400 text-[13px] ${hoveredFont === font.value ? "inline" : "hidden"}`}>
+                      className={`!w-full mx-auto  text-gray-400 text-[13px] ${hoveredFont === font.value ? "inline" : "hidden"}`}>
                       بستد دل و دین از من
                     </span>
                   </div>

@@ -18,12 +18,6 @@ async function getStorageData() {
   return { isExtensionEnabled, popularActiveUrls, customActiveUrls }
 }
 
-async function sendTabMessage(tabId: number, message: any) {
-  try {
-    await browserAPI.tabs.sendMessage(tabId, message)
-  } catch (error) {}
-}
-
 async function updateExtensionIcon() {
   try {
     const { isExtensionEnabled, popularActiveUrls, customActiveUrls } =
@@ -61,8 +55,14 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
 
     if (!isExtensionEnabled) {
       await Promise.all([
-        sendTabMessage(tabId, { action: "setActiveStatus", isActive: false }),
-        sendTabMessage(tabId, { action: "toggle", isExtensionEnabled: false })
+        browserAPI.tabs.sendMessage(tabId, {
+          action: "setActiveStatus",
+          isActive: false
+        }),
+        browserAPI.tabs.sendMessage(tabId, {
+          action: "toggle",
+          isExtensionEnabled: false
+        })
       ])
       return false
     }
@@ -76,8 +76,11 @@ async function checkIfUrlShouldBeActive(url: string, tabId: number) {
     )
 
     await Promise.all([
-      sendTabMessage(tabId, { action: "setActiveStatus", isActive }),
-      sendTabMessage(tabId, {
+      browserAPI.tabs.sendMessage(tabId, {
+        action: "setActiveStatus",
+        isActive
+      }),
+      browserAPI.tabs.sendMessage(tabId, {
         action: "toggle",
         isExtensionEnabled: isExtensionEnabled
       })
@@ -103,15 +106,27 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
       tabs.map(async (tab) => {
         if (tab.id) {
           try {
-            await sendTabMessage(tab.id, {
+            await browserAPI.tabs.sendMessage(tab.id, {
               action: "updatePopularActiveUrls",
               popularActiveUrls: initialBoxes
             })
+
             await browserAPI.tabs.reload(tab.id)
           } catch (error) {}
         }
       })
     )
+
+    const activeUrls = await storage.get("activeUrls")
+    if (!activeUrls) {
+      await storage.set(
+        "activeUrls",
+        initialBoxes.map((item) => ({
+          url: item.url,
+          regex: item.url
+        }))
+      )
+    }
 
     chrome.tabs.create({
       url: "https://mimalef70.github.io/fontara"
@@ -143,10 +158,21 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
         await storage.set("selectedFont", "Vazirmatn")
       }
 
+      const activeUrls = await storage.get("activeUrls")
+      if (!activeUrls) {
+        await storage.set(
+          "activeUrls",
+          initialBoxes.map((item) => ({
+            url: item.url,
+            regex: item.url
+          }))
+        )
+      }
+
       // Open the changelog page
-      chrome.tabs.create({
-        url: "https://mimalef70.github.io/fontara#changelogs"
-      })
+      // chrome.tabs.create({
+      //   url: "https://mimalef70.github.io/fontara#changelogs"
+      // })
     } catch (error) {
       console.error("Error during extension update:", error)
     }
@@ -204,4 +230,12 @@ export async function notifyAllTabs(message: any) {
     }
   })
   await Promise.all(messagePromises)
+}
+
+function sendToAllTabs(message) {
+  chrome.tabs.query({}, function (tabs) {
+    for (let i = 0; i < tabs.length; i++) {
+      chrome.tabs.sendMessage(tabs[i].id, message)
+    }
+  })
 }

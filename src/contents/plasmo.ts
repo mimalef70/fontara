@@ -114,7 +114,7 @@ function processElement(node: HTMLElement): void {
   const fontFamilies = fontFamily
     .split(",")
     .map((f) => f.trim().replace(/^["']+|["']+$/g, "")) // Remove quotes
-    .filter((f) => !f.includes("-fontara") && Boolean(f)) // Remove fontara fonts and empty entries
+    .filter((f) => !f.includes("-Fontara") && Boolean(f)) // Remove fontara fonts and empty entries
 
   const cleanFontFamily = fontFamilies.join(", ")
 
@@ -154,7 +154,6 @@ export async function getAllElementsWithFontFamily(
 
 const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
   for (const mutation of mutations) {
-    console.log(mutation)
     if (mutation.type === "childList") {
       for (const node of mutation.addedNodes) {
         if (node instanceof HTMLElement) {
@@ -186,6 +185,42 @@ if (document.body) {
     // attributeFilter: ["value"] // Monitor value attribute for inputs
   })
 }
+
+function updateFontVariable(fontName: string) {
+  if (!fontName) return
+
+  // Check if the style element already exists
+  let styleElement = document.getElementById("fontara-dynamic-font")
+
+  // If not, create it
+  if (!styleElement) {
+    styleElement = document.createElement("style")
+    styleElement.id = "fontara-dynamic-font"
+    document.head.appendChild(styleElement)
+  }
+
+  // Update the CSS variable definition
+  styleElement.textContent = `
+    :root {
+      --fontara-font: "${fontName}";
+    }
+  `
+
+  console.log(`Font updated to: ${fontName}`)
+}
+async function initializeFontVariable() {
+  const selectedFont = await storage.get("selectedFont")
+  if (selectedFont) {
+    updateFontVariable(selectedFont)
+  }
+}
+initializeFontVariable()
+
+storage.watch({
+  selectedFont: (change) => {
+    updateFontVariable(change.newValue)
+  }
+})
 
 // Message listener(For handling messages from background script )
 // browserAPI.runtime.onMessage.addListener(

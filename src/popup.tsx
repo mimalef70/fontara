@@ -7,6 +7,7 @@ import { useStorage } from "@plasmohq/storage/hook"
 
 import CustomUrlToggle from "~src/components/CustomUrlToggle"
 import FontSelector from "~src/components/FontSelector"
+import { CheckCircle, Circle, PlusCircle } from "~src/components/icons"
 import Footer from "~src/components/layout/Footer"
 import Header from "~src/components/layout/Header"
 import PopoularUrl from "~src/components/PopoularUrl"
@@ -36,7 +37,18 @@ function IndexPopup() {
                 }
               )}>
               <div className="relative z-20">
-                <FontSelector setIsOverlayActive={setShowOverlay} />
+                <div className="relative">
+                  <div className="flex flex-col gap-3">
+                    <FontSelector setIsOverlayActive={setShowOverlay} />
+                    <a
+                      href={chrome.runtime.getURL("tabs/font-uploader.html")}
+                      target="_blank"
+                      className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
+                      <PlusCircle />
+                      افزودن فونت دلخواه
+                    </a>
+                  </div>
+                </div>
               </div>
 
               <div>

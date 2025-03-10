@@ -99,7 +99,7 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
       storage.set(STORAGE_KEYS.EXTENSION_ENABLED, true),
       storage.set("popularActiveUrls", initialBoxes),
       storage.set("customActiveUrls", []),
-      storage.set("selectedFont", "Vazirmatn")
+      storage.set("selectedFont", "Vazirmatn-Fontara")
     ])
     const tabs = await browserAPI.tabs.query({})
     await Promise.all(
@@ -155,7 +155,7 @@ browserAPI.runtime.onInstalled.addListener(async (details) => {
 
       const selectedFont = await storage.get("selectedFont")
       if (!selectedFont) {
-        await storage.set("selectedFont", "Vazirmatn")
+        await storage.set("selectedFont", "Vazirmatn-Fontara")
       }
 
       const activeUrls = await storage.get("activeUrls")

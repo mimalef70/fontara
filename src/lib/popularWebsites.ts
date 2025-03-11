@@ -1,3 +1,4 @@
+import chatgpt from "url:~assets/logos/chatgpt-active.png"
 import crisp from "url:~assets/logos/crisp-active.png"
 import dropbox from "url:~assets/logos/dropbox-active.png"
 import duckduckgo from "url:~assets/logos/duckduckgo-active.png"
@@ -13,7 +14,6 @@ import instagram from "url:~assets/logos/instagram-active.png"
 import linkedin from "url:~assets/logos/linkedin-active.png"
 import medium from "url:~assets/logos/medium-active.png"
 import messagesandroid from "url:~assets/logos/messagesandroid-active.png"
-import npm from "url:~assets/logos/npm-active.png"
 import slack from "url:~assets/logos/slack-active.png"
 import telegram from "url:~assets/logos/telegram-active.png"
 import trello from "url:~assets/logos/trello-active.png"
@@ -31,150 +31,175 @@ export const popularWebsites: WebsiteItem[] = [
     url: "https://app.crisp.chat",
     regex: "^https://app\\.crisp\\.chat/.*$",
     icon: crisp,
-    pattern: "https://app.crisp.chat/*"
+    pattern: "https://app.crisp.chat/*",
+    siteName: "Crisp"
   },
   {
     url: "https://www.dropbox.com",
     regex: "^https://www\\.[^/]*dropbox\\.com/.*$",
     icon: dropbox,
-    pattern: "https://www.*dropbox.com/*"
+    pattern: "https://www.*dropbox.com/*",
+    siteName: "Dropbox"
   },
   {
     url: "https://duckduckgo.com",
     regex: "^https://duckduckgo\\.com/.*$",
     icon: duckduckgo,
-    pattern: "https://duckduckgo.com/*"
+    pattern: "https://duckduckgo.com/*",
+    siteName: "DuckDuckGo"
   },
   {
     url: "https://www.facebook.com",
     regex: "^https://www\\.facebook\\.com/.*$",
     icon: facebook,
-    pattern: "https://www.facebook.com/*"
+    pattern: "https://www.facebook.com/*",
+    siteName: "Facebook"
   },
   {
-    url: "https://feedly.com",
-    regex: "^https://feedly\\.com/.*$",
-    icon: feedly,
-    pattern: "https://feedly.com/*"
+    url: "https://chatgpt.com",
+    regex: "^https://chatgpt\\.com/.*$",
+    icon: chatgpt,
+    pattern: "https://chatgpt.com/*",
+    siteName: "ChatGPT"
   },
   {
     url: "https://getpocket.com",
     regex: "^https://getpocket\\.com/.*$",
     icon: getpocket,
-    pattern: "https://getpocket.com/*"
+    pattern: "https://getpocket.com/*",
+    siteName: "Pocket"
   },
   {
     url: "https://github.com",
     regex: "^https://github\\.com/.*$",
     icon: github,
-    pattern: "https://github.com/*"
+    pattern: "https://github.com/*",
+    siteName: "GitHub"
   },
   {
     url: "https://mail.google.com",
     regex: "^https://mail\\.google\\.com/.*$",
     icon: gmail,
-    pattern: "https://mail.google.com/*"
+    pattern: "https://mail.google.com/*",
+    siteName: "Gmail"
   },
   {
     url: "https://www.goodreads.com",
     regex: "^https://www\\.goodreads\\.com/.*$",
     icon: goodreads,
-    pattern: "https://www.goodreads.com/*"
+    pattern: "https://www.goodreads.com/*",
+    siteName: "Goodreads"
   },
   {
     url: "https://www.google.com",
     regex: "^https://www\\.google\\.com/.*$",
     icon: google,
-    pattern: "https://www.google.com/*"
+    pattern: "https://www.google.com/*",
+    siteName: "Google"
   },
   {
     url: "https://www.inoreader.com",
     regex: "^https://www\\.inoreader\\.com/.*$",
     icon: inoreader,
-    pattern: "https://www.inoreader.com/*"
+    pattern: "https://www.inoreader.com/*",
+    siteName: "Inoreader"
   },
   {
     url: "https://www.instagram.com",
     regex: "^https://www\\.instagram\\.com/.*$",
     icon: instagram,
-    pattern: "https://www.instagram.com/*"
+    pattern: "https://www.instagram.com/*",
+    siteName: "Instagram"
   },
   {
     url: "https://www.linkedin.com",
     regex: "^https://[^/]*linkedin\\.com/.*$",
     icon: linkedin,
-    pattern: "https://*linkedin.com/*"
+    pattern: "https://*linkedin.com/*",
+    siteName: "LinkedIn"
   },
   {
     url: "https://medium.com",
     regex: "^https://medium\\.com/.*$",
     icon: medium,
-    pattern: "https://medium.com/*"
+    pattern: "https://medium.com/*",
+    siteName: "Medium"
   },
   {
     url: "https://messages.google.com",
     regex: "^https://messages\\.google\\.com/.*$",
     icon: messagesandroid,
-    pattern: "https://messages.google.com/*"
+    pattern: "https://messages.google.com/*",
+    siteName: "Messages"
   },
   {
     url: "https://slack.com",
     regex: "^https://slack\\.com/.*$",
     icon: slack,
-    pattern: "https://slack.com/*"
+    pattern: "https://slack.com/*",
+    siteName: "Slack"
   },
   {
     url: "https://web.telegram.org",
     regex: "^https://web\\.telegram\\.org/.*$",
     icon: telegram,
-    pattern: "https://web.telegram.org/*"
+    pattern: "https://web.telegram.org/*",
+    siteName: "Telegram"
   },
   {
     url: "https://trello.com",
     regex: "^https://trello\\.com/.*$",
     icon: trello,
-    pattern: "https://trello.com/*"
+    pattern: "https://trello.com/*",
+    siteName: "Trello"
   },
   {
     url: "https://x.com",
     regex: "^https://x\\.com/.*$",
     icon: twitter,
-    pattern: "https://x.com/*"
+    pattern: "https://x.com/*",
+    siteName: "Twitter"
   },
   {
     url: "https://virgool.io",
     regex: "^https://virgool\\.io/.*$",
     icon: virgool,
-    pattern: "https://virgool.io/*"
+    pattern: "https://virgool.io/*",
+    siteName: "Virgool"
   },
   {
     url: "https://web.whatsapp.com",
     regex: "^https://web\\.whatsapp\\.com/.*$",
     icon: whatsapp,
-    pattern: "https://web.whatsapp.com/*"
+    pattern: "https://web.whatsapp.com/*",
+    siteName: "WhatsApp"
   },
   {
     url: "https://www.wikipedia.org",
     regex: "^https://[^/]*\\.wikipedia\\.org/.*$",
     icon: wikipedia,
-    pattern: "https://*.wikipedia.org/*"
+    pattern: "https://*.wikipedia.org/*",
+    siteName: "Wikipedia"
   },
   {
     url: "https://wordpress.org",
     regex: "^https://[^/]*\\.wordpress\\.org/.*$",
     icon: wordpress,
-    pattern: "https://*.wordpress.org/*"
+    pattern: "https://*.wordpress.org/*",
+    siteName: "WordPress"
   },
   {
     url: "https://www.youtube.com",
     regex: "^https://www\\.youtube\\.com/.*$",
     icon: youtube,
-    pattern: "https://www.youtube.com/*"
+    pattern: "https://www.youtube.com/*",
+    siteName: "YouTube"
   },
   {
-    url: "https://www.npmjs.com",
-    regex: "^https://www\\.npmjs\\.com/.*$",
-    icon: npm,
-    pattern: "https://www.npmjs.com/*"
+    url: "https://feedly.com",
+    regex: "^https://feedly\\.com/.*$",
+    icon: feedly,
+    pattern: "https://feedly.com/*",
+    siteName: "Feedly"
   }
 ]

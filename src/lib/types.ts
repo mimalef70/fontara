@@ -4,6 +4,7 @@ export interface WebsiteItem {
   icon?: string
   pattern?: string
   isActive?: boolean
+  siteName?: string
 }
 
 export interface CustomFont {

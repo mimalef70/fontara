@@ -64,7 +64,7 @@ function PopularUrl() {
               className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
               side="top"
               align="center">
-              {website.url}
+              {website.siteName || website.url}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

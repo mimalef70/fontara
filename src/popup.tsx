@@ -41,11 +41,7 @@ function IndexPopup() {
                   <div className="flex flex-col gap-3">
                     <FontSelector setIsOverlayActive={setShowOverlay} />
                     <a
-                      onClick={() =>
-                        chrome.tabs.create({
-                          url: "./tabs/font-uploader.html"
-                        })
-                      }
+                      onClick={() => chrome.runtime.openOptionsPage()}
                       target="_blank"
                       className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
                       <PlusCircle />

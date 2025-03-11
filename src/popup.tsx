@@ -3,6 +3,7 @@ import "~src/fonts.css"
 
 import { useState } from "react"
 
+import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import CustomUrlToggle from "~src/components/CustomUrlToggle"
@@ -14,12 +15,16 @@ import PopularSection from "~src/components/PopularSection"
 import { STORAGE_KEYS } from "~src/lib/constants"
 
 import { cn } from "./lib/utils"
-import { browserAPI } from "./utils/utils"
 
 function IndexPopup() {
   const [showOverlay, setShowOverlay] = useState(false)
 
-  const [extensionActive] = useStorage(STORAGE_KEYS.EXTENSION_ENABLED)
+  const [extensionActive] = useStorage({
+    key: STORAGE_KEYS.EXTENSION_ENABLED,
+    instance: new Storage({
+      area: "local"
+    })
+  })
 
   return (
     <div className="w-[20rem] h-[570px] py-4">
@@ -42,7 +47,7 @@ function IndexPopup() {
                   <div className="flex flex-col gap-3">
                     <FontSelector setIsOverlayActive={setShowOverlay} />
                     <a
-                      onClick={() => browserAPI.runtime.openOptionsPage()}
+                      onClick={() => chrome.runtime.openOptionsPage()}
                       target="_blank"
                       className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
                       <PlusCircle />

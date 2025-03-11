@@ -1,3 +1,4 @@
+import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import {
@@ -12,9 +13,12 @@ import type { WebsiteItem } from "~src/lib/types"
 import { cn } from "~src/lib/utils"
 
 function PopularUrl() {
-  const [websiteList, setWebsiteList] = useStorage<WebsiteItem[]>(
-    STORAGE_KEYS.WEBSITE_LIST
-  )
+  const [websiteList, setWebsiteList] = useStorage<WebsiteItem[]>({
+    key: STORAGE_KEYS.WEBSITE_LIST,
+    instance: new Storage({
+      area: "local"
+    })
+  })
 
   const toggleActive = async (website: WebsiteItem) => {
     let updatedUrls

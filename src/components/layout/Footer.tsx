@@ -1,5 +1,6 @@
 import React from "react"
 
+import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { HeartBold } from "~src/components/icons"
@@ -7,7 +8,12 @@ import { STORAGE_KEYS } from "~src/lib/constants"
 import { cn } from "~src/lib/utils"
 
 function Footer() {
-  const [extensionActive] = useStorage(STORAGE_KEYS.EXTENSION_ENABLED)
+  const [extensionActive] = useStorage({
+    key: STORAGE_KEYS.EXTENSION_ENABLED,
+    instance: new Storage({
+      area: "local"
+    })
+  })
 
   return (
     <div

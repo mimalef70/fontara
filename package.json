@@ -79,6 +79,11 @@
     ],
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
+    },
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "font-ara@example.com"
+      }
     }
   }
 }

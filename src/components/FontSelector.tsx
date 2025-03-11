@@ -18,8 +18,6 @@ import {
   SelectValue
 } from "./ui/Select"
 
-const storage = new Storage()
-
 const FontSelector = ({
   setIsOverlayActive
 }: {
@@ -27,7 +25,12 @@ const FontSelector = ({
 }) => {
   const [hoveredFont, setHoveredFont] = useState(null)
   const [allFonts, setAllFonts] = useState(defaultFonts)
-  const [selectedFont, setSelectedFont] = useStorage(STORAGE_KEYS.SELECTED_FONT)
+  const [selectedFont, setSelectedFont] = useStorage({
+    key: STORAGE_KEYS.SELECTED_FONT,
+    instance: new Storage({
+      area: "local"
+    })
+  })
   const [customFontList] = useStorage({
     key: "customFontList",
     instance: new Storage({

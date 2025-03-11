@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react"
 
+import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { STORAGE_KEYS } from "~src/lib/constants"
 import { popularWebsites } from "~src/lib/popularWebsites"
-import { browserAPI } from "~src/utils/utils"
 
 import { Checkbox } from "./ui/Checkbox"
 
@@ -12,7 +12,12 @@ type Props = {}
 
 const CustomUrlToggle = (props: Props) => {
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null)
-  const [websiteList, setWebsiteList] = useStorage(STORAGE_KEYS.WEBSITE_LIST)
+  const [websiteList, setWebsiteList] = useStorage({
+    key: STORAGE_KEYS.WEBSITE_LIST,
+    instance: new Storage({
+      area: "local"
+    })
+  })
 
   const createRegexFromUrl = (url: string): string => {
     try {
@@ -67,7 +72,7 @@ const CustomUrlToggle = (props: Props) => {
 
   useEffect(() => {
     const getActiveTab = async () => {
-      const tabs = await browserAPI.tabs.query({
+      const tabs = await chrome.tabs.query({
         active: true,
         currentWindow: true
       })

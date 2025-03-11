@@ -7,14 +7,13 @@ import {
   URLS
 } from "~src/lib/constants"
 import { isUrlActive } from "~src/lib/utils"
-import { browserAPI } from "~src/utils/utils"
 
-const storage = new Storage()
+const storage = new Storage({ area: "local" })
 
 async function updateIconStatus() {
   try {
     // Get the current active tab
-    const tabs = await browserAPI.tabs.query({
+    const tabs = await chrome.tabs.query({
       active: true,
       currentWindow: true
     })
@@ -30,9 +29,9 @@ async function updateIconStatus() {
       iconToShow = ICON_PATHS.default
     }
 
-    await browserAPI.action.setIcon({ path: iconToShow })
+    await chrome.action.setIcon({ path: iconToShow })
   } catch (error) {
-    await browserAPI.action.setIcon({ path: ICON_PATHS.default })
+    await chrome.action.setIcon({ path: ICON_PATHS.default })
     console.error("Error updating icon status:", error)
   }
 }
@@ -42,8 +41,8 @@ storage.watch({
   isExtensionEnabled: () => updateIconStatus(),
   websiteList: () => updateIconStatus()
 })
-browserAPI.tabs.onActivated.addListener(updateIconStatus)
-browserAPI.tabs.onUpdated.addListener((tabId, changeInfo) => {
+chrome.tabs.onActivated.addListener(updateIconStatus)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url) {
     updateIconStatus()
   }
@@ -71,20 +70,20 @@ async function ensureStorageValues(keysToCheck = Object.keys(STORAGE_KEYS)) {
 }
 
 // Event Listeners in first install
-browserAPI.runtime.onInstalled.addListener(async (details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   try {
     if (details.reason === "install") {
       await ensureStorageValues()
-      browserAPI.tabs.create({ url: URLS.WELCOME_PAGE })
+      chrome.tabs.create({ url: URLS.WELCOME_PAGE })
     } else if (details.reason === "update") {
       await ensureStorageValues()
-      browserAPI.tabs.create({ url: URLS.CHANGELOG })
+      chrome.tabs.create({ url: URLS.CHANGELOG })
     }
   } catch (error) {
     console.error("Error during extension installation/update:", error)
   }
 })
 
-browserAPI.runtime.setUninstallURL(
+chrome.runtime.setUninstallURL(
   "https://app.mu.chat/forms/cm7x2dyjo0ajl01lfci211xev"
 )

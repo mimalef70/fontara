@@ -11,7 +11,9 @@ export const config: PlasmoCSConfig = {
   all_frames: true
 }
 
-const storage = new Storage()
+const storage = new Storage({
+  area: "local"
+})
 const storageLocal = new Storage({
   area: "local"
 })
@@ -152,7 +154,6 @@ function processElement(node: HTMLElement): void {
 
   const computedStyle = window.getComputedStyle(node)
   let fontFamily = computedStyle.fontFamily
-
   const isIconFont =
     fontFamily.toLowerCase().includes("fontawesome") ||
     fontFamily.toLowerCase().includes("material") ||
@@ -172,7 +173,12 @@ function processElement(node: HTMLElement): void {
   const cleanFontFamily = fontFamilies.join(", ")
 
   // Apply the new font-family without duplicating
-  node.style.fontFamily = `var(--fontara-font), ${cleanFontFamily} !important`
+  // node.style.fontFamily = `var(--fontara-font), ${cleanFontFamily} !important`
+  // node.style.fontFamily = `var(--fontara-font), ${cleanFontFamily}`
+  node.setAttribute(
+    "style",
+    `font-family: var(--fontara-font), ${cleanFontFamily} !important; ${node.getAttribute("style") || ""}`
+  )
 }
 
 export async function getAllElementsWithFontFamily(

@@ -12,7 +12,6 @@ import { ToastProvider } from "~src/components/ui/Toast"
 import { Toaster } from "~src/components/ui/toaster"
 import { useToast } from "~src/hooks/use-toast"
 import type { CustomFont, FontData } from "~src/utils/types"
-import { browserAPI } from "~src/utils/utils"
 
 function OptionsPage() {
   const [customFontList, setCustomFontList] = useStorage(

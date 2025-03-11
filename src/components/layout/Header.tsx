@@ -4,16 +4,18 @@ import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { STORAGE_KEYS } from "~src/lib/constants"
-import { browserAPI } from "~src/utils/utils"
 
 import { Badge } from "../ui/badge"
 import { Switch } from "../ui/Switch"
 
-const storage = new Storage()
-
 const Header = () => {
   const [extensionActive, setExtensionActive] = useStorage(
-    STORAGE_KEYS.EXTENSION_ENABLED,
+    {
+      key: STORAGE_KEYS.EXTENSION_ENABLED,
+      instance: new Storage({
+        area: "local"
+      })
+    },
     (v) => (v === undefined ? true : v)
   )
 
@@ -29,17 +31,17 @@ const Header = () => {
       // })
 
       // Send message to background script
-      browserAPI.runtime.sendMessage({
+      chrome.runtime.sendMessage({
         action: "toggleExtension",
         isEnabled: checked
       })
 
       // Update all tabs
-      const tabs = await browserAPI.tabs.query({})
+      const tabs = await chrome.tabs.query({})
       for (const tab of tabs) {
         if (tab.id && tab.url && tab.url.startsWith("http")) {
           try {
-            await browserAPI.tabs.sendMessage(tab.id, {
+            await chrome.tabs.sendMessage(tab.id, {
               action: "toggle",
               isExtensionEnabled: checked
             })

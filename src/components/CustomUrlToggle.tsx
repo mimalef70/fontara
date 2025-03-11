@@ -92,6 +92,7 @@ const CustomUrlToggle = (props: Props) => {
         <div className="flex items-center w-full gap-1">
           <Checkbox
             name="customUrl"
+            id="customUrl"
             checked={isUrlActive()}
             onCheckedChange={handleUrlToggle}
           />

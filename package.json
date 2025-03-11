@@ -12,6 +12,7 @@
     "debug:firefox": "plasmo dev --target=firefox-mv3 --verbose",
     "build": "plasmo build",
     "build:firefox": "plasmo build --target=firefox-mv3",
+    "build:safari": "plasmo build --target=safari-mv3",
     "package": "plasmo package",
     "package:firefox": "plasmo package --target=firefox-mv3",
     "start": "web-ext run --source-dir ./build/chrome-mv3-dev -t chromium --start-url chrome://newtab",

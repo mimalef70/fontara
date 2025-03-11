@@ -1,10 +1,9 @@
+import { popularWebsites } from "./popularWebsites"
+
 export const STORAGE_KEYS = {
   EXTENSION_ENABLED: "isExtensionEnabled",
-  SELECTED_FONT: "selectedFont"
-}
-
-export const ExtensionEvent = {
-  UPDATE_POPULAR_ACTIVE_URLS: "updatePopularActiveUrls"
+  SELECTED_FONT: "selectedFont",
+  WEBSITE_LIST: "websiteList"
 }
 
 export const defaultFonts = [
@@ -86,29 +85,29 @@ export const defaultFonts = [
   }
 ]
 
-// const addFurigana = async () => {
-//   const tabs = await Browser.tabs.query({ active: true, currentWindow: true })
-//   sendMessage(tabs[0]!.id!, ExtensionEvent.AddFurigana)
-// }
+export const ICON_PATHS = {
+  default: {
+    "16": "../../assets/icon-16.png",
+    "32": "../../assets/icon-32.png",
+    "48": "../../assets/icon-48.png"
+  },
+  active: {
+    "16": "../../assets/icon-active-16.png",
+    "32": "../../assets/icon-active-32.png",
+    "48": "../../assets/icon-active-48.png"
+  }
+}
 
-// Content.ts
-// Browser.runtime.onMessage.addListener((event: ExtensionEvent) => {
-//   switch (event) {
-//     ...
-//   }
-// })
+export const DEFAULT_VALUES = {
+  EXTENSION_ENABLED: true,
+  SELECTED_FONT: "Vazirmatn-Fontara",
+  WEBSITE_LIST: popularWebsites.map((website) => ({
+    ...website,
+    isActive: true
+  }))
+}
 
-// calling it in chrome://newtab raises a "Could not establish connection. Receiving end does not exist." runtime error.
-// export const sendMessage = async (id: number, event: ExtensionEvent) => {
-//   try {
-//     await Browser.tabs.sendMessage(id, event)
-//   } catch (error) {
-//     if (
-//       !(error instanceof Error) ||
-//       error.message !== 'Could not establish connection. Receiving end does not exist.'
-//     ) {
-//       throw error
-//     }
-//   }
-// }
-// Avoid using tabs.query with the url parameter to determine if a page registers event listeners, as it need tab or activeTab permissions, potentially causing issues with Chrome's approval process.
+export const URLS = {
+  WELCOME_PAGE: "https://mimalef70.github.io/fontara",
+  CHANGELOG: "https://mimalef70.github.io/fontara#changelogs"
+}

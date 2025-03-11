@@ -10,7 +10,7 @@ import FontSelector from "~src/components/FontSelector"
 import { CheckCircle, Circle, PlusCircle } from "~src/components/icons"
 import Footer from "~src/components/layout/Footer"
 import Header from "~src/components/layout/Header"
-import PopoularUrl from "~src/components/PopoularUrl"
+import PopularSection from "~src/components/PopularSection"
 import { STORAGE_KEYS } from "~src/lib/constants"
 
 import { cn } from "./lib/utils"
@@ -41,7 +41,11 @@ function IndexPopup() {
                   <div className="flex flex-col gap-3">
                     <FontSelector setIsOverlayActive={setShowOverlay} />
                     <a
-                      href={chrome.runtime.getURL("tabs/font-uploader.html")}
+                      onClick={() =>
+                        chrome.tabs.create({
+                          url: "./tabs/font-uploader.html"
+                        })
+                      }
                       target="_blank"
                       className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
                       <PlusCircle />
@@ -54,7 +58,7 @@ function IndexPopup() {
               <div>
                 <div style={{ direction: "rtl" }}>
                   <div className="overflow-auto">
-                    <PopoularUrl />
+                    <PopularSection />
                   </div>
 
                   <CustomUrlToggle />

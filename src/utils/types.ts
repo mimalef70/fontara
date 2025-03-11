@@ -51,16 +51,6 @@ export type BrowserMessage =
   | ToogleStatus
   | RefreshMessage
 
-export interface ExtensionState {
-  isEnabled: boolean
-  defaultFont: {
-    value: string
-    name: string
-    svg: string
-    style: string
-  }
-}
-
 export interface BoxItem {
   id?: string
   src?: string
@@ -77,7 +67,6 @@ export interface FontState {
 export interface CustomFont {
   value: string
   name: string
-  svg: string
   style: string
   type: string
   fileHash?: string
@@ -85,9 +74,10 @@ export interface CustomFont {
 }
 
 export interface FontData {
+  value: string
   name: string
   data: string
   type: string
-  fileHash: string
+  // fileHash: string
   originalFileName: string
 }

@@ -1,121 +1,311 @@
+import styleText from "data-text:../fonts.css"
+import type { PlasmoCSConfig } from "plasmo"
+
 import { Storage } from "@plasmohq/storage"
 
-import * as FontManager from "~src/utils/function"
-import type { BrowserMessage, MessageResponse } from "~src/utils/types"
-import { browserAPI } from "~src/utils/utils"
+import { isUrlActive } from "~src/lib/utils"
+import { excludedTags, iconClasses } from "~src/utils/constants"
+
+export const config: PlasmoCSConfig = {
+  matches: ["<all_urls>"],
+  all_frames: true
+}
 
 const storage = new Storage()
+const storageLocal = new Storage({
+  area: "local"
+})
 
-//? Root style setup(For setting font-family in root element)
-const rootStyle = document.createElement("style")
-rootStyle.id = "fontara-root-styles"
-document.head.appendChild(rootStyle)
+let observer: MutationObserver | null = null
 
-//? Observer setup for tracking DOM changes(EX: New elements load while scrolling)
-const observer = new MutationObserver(async (mutations: MutationRecord[]) => {
-  const shouldApply = await FontManager.shouldApplyFonts()
+async function injectFontStyles() {
+  try {
+    // Check if styles are already injected
+    const existingStyles = document.getElementById("fontara-font-styles")
+    if (existingStyles) return
 
-  if (!shouldApply) {
+    // Create style element for built-in fonts
+    const style = document.createElement("style")
+    style.id = "fontara-font-styles"
+    style.textContent = styleText
+    document.head.appendChild(style)
+
+    // Create a separate style element for custom fonts
+    const customStyle = document.createElement("style")
+    customStyle.id = "fontara-custom-font-styles"
+
+    const customFontList = await storageLocal.get("customFontList")
+
+    if (
+      customFontList &&
+      Array.isArray(customFontList) &&
+      customFontList.length > 0
+    ) {
+      let customFontFaces = ""
+      customFontList.forEach((font) => {
+        if (font.value && font.data) {
+          const fontName = font.value
+          const fontData = font.data
+
+          // Create the font-face declaration. Determine format based on data
+          // This assumes the data is base64 encoded font data
+          let format = "truetype" // Default format
+
+          if (fontData.includes("data:font/woff2")) {
+            format = "woff2"
+          } else if (fontData.includes("data:font/woff")) {
+            format = "woff"
+          } else if (fontData.includes("data:font/otf")) {
+            format = "opentype"
+          } else if (fontData.includes("data:font/ttf")) {
+            format = "truetype"
+          }
+
+          customFontFaces += `
+            @font-face {
+              font-family: "${fontName}";
+              src: url("${fontData}") format("${format}");
+              font-weight: normal;
+              font-style: normal;
+              font-display: swap;
+            }
+          `
+        }
+      })
+
+      // Set the style content with all the custom font faces
+      customStyle.textContent = customFontFaces
+      document.head.appendChild(customStyle)
+      console.log("Custom font styles injected successfully")
+    }
+
+    console.log("Font styles injected successfully")
+  } catch (err) {
+    console.error("Failed to inject font styles:", err)
+  }
+}
+
+function removeFontStyles() {
+  try {
+    // Remove the font styles
+    const fontStyles = document.getElementById("fontara-font-styles")
+    if (fontStyles) {
+      fontStyles.remove()
+      console.log("Font styles removed successfully")
+    }
+
+    // Remove the dynamic font variable
+    const dynamicFont = document.getElementById("fontara-dynamic-font")
+    if (dynamicFont) {
+      dynamicFont.remove()
+      console.log("Dynamic font variable removed successfully")
+    }
+
+    // Remove the dynamic font variable
+    const customFont = document.getElementById("fontara-custom-font-styles")
+    if (customFont) {
+      customFont.remove()
+      console.log("Custom font variable removed successfully")
+    }
+
+    // Remove the applied styles from all elements
+    const allElements = document.querySelectorAll("[style*='fontara-font']")
+    allElements.forEach((element) => {
+      if (element instanceof HTMLElement) {
+        // Simply remove the inline style to revert to original style
+        element.style.fontFamily = ""
+        if (element.style.length === 0) {
+          element.removeAttribute("style")
+        }
+      }
+    })
+
+    console.log("Removed fontara styles from all elements")
+  } catch (err) {
+    console.error("Failed to remove font styles:", err)
+  }
+}
+
+function processElement(node: HTMLElement): void {
+  // node.setAttribute("data-fontara-processed", "true")
+
+  if (excludedTags.includes(node.tagName.toLowerCase())) {
     return
   }
 
-  mutations.forEach((mutation) => {
-    if (mutation.type === "childList") {
-      mutation.addedNodes.forEach((node) => {
-        if (node instanceof HTMLElement) {
-          FontManager.getAllElementsWithFontFamily(node)
+  // Check if the node has visible text content (excluding child elements)
+  // const hasText = Array.from(node.childNodes).some(
+  //   (child) =>
+  //     child.nodeType === Node.TEXT_NODE && child.textContent.trim().length > 0
+  // )
+
+  // // If node doesn't have text content, don't change its font
+  // if (!hasText) {
+  //   return
+  // }
+
+  const isIcon = iconClasses.some(
+    (className) =>
+      node.classList.contains(className) ||
+      node.closest(`.${className}`) !== null
+  )
+
+  const computedStyle = window.getComputedStyle(node)
+  let fontFamily = computedStyle.fontFamily
+
+  const isIconFont =
+    fontFamily.toLowerCase().includes("fontawesome") ||
+    fontFamily.toLowerCase().includes("material") ||
+    fontFamily.toLowerCase().includes("icon") ||
+    fontFamily.toLowerCase().includes("glyphicon")
+
+  if (isIcon || isIconFont) {
+    return
+  }
+
+  // Parse the font family correctly, handling quotes properly
+  const fontFamilies = fontFamily
+    .split(",")
+    .map((f) => f.trim().replace(/^["']+|["']+$/g, "")) // Remove quotes
+    .filter((f) => !f.includes("-Fontara") && Boolean(f)) // Remove fontara fonts and empty entries
+
+  const cleanFontFamily = fontFamilies.join(", ")
+
+  // Apply the new font-family without duplicating
+  node.style.fontFamily = `var(--fontara-font), ${cleanFontFamily} !important`
+}
+
+export async function getAllElementsWithFontFamily(
+  rootNode: HTMLElement
+): Promise<void> {
+  if (!rootNode) return
+
+  const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT)
+  let node = walker.nextNode()
+  while (node) {
+    if (node instanceof HTMLElement) {
+      processElement(node as HTMLElement)
+    }
+    node = walker.nextNode()
+  }
+}
+
+async function applyFontsIfActive() {
+  const currentUrl = window.location.href
+  const isActive = await isUrlActive(currentUrl)
+
+  if (isActive) {
+    // Site is active, apply fonts
+    console.log("Site is active, applying fonts")
+    injectFontStyles()
+    await initializeFontVariable()
+
+    if (document.body) {
+      await getAllElementsWithFontFamily(document.body)
+      startObserving()
+    }
+  } else {
+    // Site is not active, remove fonts
+    console.log("Site is not active, removing fonts")
+    stopObserving()
+    removeFontStyles()
+  }
+}
+
+function startObserving() {
+  if (observer) {
+    // If already observing, disconnect first to avoid multiple observers
+    stopObserving()
+  }
+
+  observer = new MutationObserver(async (mutations: MutationRecord[]) => {
+    for (const mutation of mutations) {
+      if (mutation.type === "childList") {
+        for (const node of mutation.addedNodes) {
+          if (node instanceof HTMLElement) {
+            getAllElementsWithFontFamily(node)
+          }
         }
-      })
-    } else if (
-      mutation.type === "attributes" &&
-      mutation.target instanceof HTMLElement &&
-      mutation.attributeName === "style"
-    ) {
-      FontManager.getAllElementsWithFontFamily(mutation.target)
+      }
+      // else if (
+      //   mutation.type === "characterData" &&
+      //   mutation.target.parentElement instanceof HTMLElement
+      // ) {
+      //   getAllElementsWithFontFamily(mutation.target.parentElement)
+      // }
+      // else if (mutation.target instanceof HTMLElement) {
+      //   // For input/textarea values and other element changes
+      //   getAllElementsWithFontFamily(mutation.target)
+      // }
     }
   })
-})
 
-// Initialize MutationObserver
-observer.observe(document.body, {
-  subtree: true,
-  childList: true,
-  attributes: true
-})
-
-// Message listener(For handling messages from background script )
-browserAPI.runtime.onMessage.addListener(
-  (
-    message: BrowserMessage,
-    sender: any,
-    sendResponse: (response: MessageResponse) => void
-  ) => {
-    ;(async () => {
-      try {
-        switch (message.action) {
-          case "updatePopularActiveUrls":
-            FontManager.setActivePopularUrls(
-              message.popularActiveUrls
-                .filter((item) => item.isActive)
-                .map((item) => item.url)
-            )
-            await FontManager.initializeFonts()
-            sendResponse({ success: true })
-            break
-
-          case "updateCustomUrlStatus":
-            FontManager.setActiveCustomUrls(
-              message.data
-                .filter((item) => item.isActive)
-                .map((item) => item.url)
-            )
-            await FontManager.initializeFonts()
-            sendResponse({ success: true })
-            break
-
-          case "updateFont":
-            const shouldApply = await FontManager.shouldApplyFonts()
-            if (shouldApply) {
-              FontManager.updateFont(message.fontName)
-              await storage.set("selectedFont", message.fontName)
-              sendResponse({ success: true })
-            } else {
-              sendResponse({
-                success: false,
-                error: "URL not matched or extension disabled."
-              })
-            }
-            break
-
-          case "setActiveStatus":
-            if (message.isActive) {
-              await FontManager.initializeFonts()
-            }
-            sendResponse({ success: true })
-            break
-
-          case "toggle":
-            FontManager.setExtensionEnabled(message.isExtensionEnabled)
-            if (message.isExtensionEnabled) {
-              await FontManager.initialize()
-            } else {
-              FontManager.resetFontToDefault()
-              observer.disconnect()
-            }
-            sendResponse({ success: true })
-            break
-
-          case "refreshFonts":
-            await FontManager.initializeFonts()
-            sendResponse({ success: true })
-            break
-        }
-      } catch (error) {
-        sendResponse({ success: false, error: String(error) })
-      }
-    })()
-    return true
+  if (document.body) {
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true
+    })
+    console.log("Started observing DOM mutations")
   }
-)
+}
 
-export { rootStyle, observer }
+function stopObserving() {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+    console.log("Stopped observing DOM mutations")
+  }
+}
+
+function updateFontVariable(fontName: string) {
+  if (!fontName) return
+
+  // Check if the style element already exists
+  let styleElement = document.getElementById("fontara-dynamic-font")
+
+  // If not, create it
+  if (!styleElement) {
+    styleElement = document.createElement("style")
+    styleElement.id = "fontara-dynamic-font"
+    document.head.appendChild(styleElement)
+  }
+
+  // Update the CSS variable definition
+  styleElement.textContent = `
+    :root {
+      --fontara-font: "${fontName}";
+    }
+  `
+
+  console.log(`Font updated to: ${fontName}`)
+}
+
+async function initializeFontVariable() {
+  const selectedFont = await storage.get("selectedFont")
+  if (selectedFont) {
+    updateFontVariable(selectedFont)
+  }
+}
+
+// Initial setup when content script loads
+if (document.body) {
+  applyFontsIfActive()
+}
+
+// Watch for storage changes
+storage.watch({
+  selectedFont: (change) => {
+    updateFontVariable(change.newValue)
+  },
+  isExtensionEnabled: async (change) => {
+    console.log("isExtensionEnabled changed:", change.newValue)
+    applyFontsIfActive()
+  },
+  websiteList: async (change) => {
+    console.log("websiteList changed:", change.newValue)
+    applyFontsIfActive()
+  }
+  // customFontList: async (change) => {
+  //   console.log("customFontList changed:", change.newValue)
+  // }
+})

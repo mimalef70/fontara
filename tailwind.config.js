@@ -7,19 +7,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        estedad: ["estedad", "sans-serif"],
-        mikhak: ["mikhak", "sans-serif"],
-        morabba: ["morabba", "sans-serif"],
-        samim: ["samim", "sans-serif"],
-        shabnam: ["shabnam", "sans-serif"],
-        sahel: ["sahel", "sans-serif"],
-        parastoo: ["parastoo", "sans-serif"],
-        gandom: ["gandom", "sans-serif"],
-        tanha: ["tanha", "sans-serif"],
-        behdad: ["behdad", "sans-serif"],
-        nika: ["nika", "sans-serif"],
-        ganjname: ["ganjname", "sans-serif"],
-        shahab: ["shahab", "sans-serif"]
+        estedad: ["estedad-fontara", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

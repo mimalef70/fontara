@@ -101,6 +101,13 @@ function removeFontStyles() {
       console.log("Dynamic font variable removed successfully")
     }
 
+    // Remove the dynamic font variable
+    const customFont = document.getElementById("fontara-custom-font-styles")
+    if (customFont) {
+      customFont.remove()
+      console.log("Custom font variable removed successfully")
+    }
+
     // Remove the applied styles from all elements
     const allElements = document.querySelectorAll("[style*='fontara-font']")
     allElements.forEach((element) => {

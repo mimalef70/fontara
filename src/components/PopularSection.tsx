@@ -16,13 +16,29 @@ function PopularUrl() {
     STORAGE_KEYS.WEBSITE_LIST
   )
 
-  // const toggleActive = async (popularUrl: any) => {
-  //   const updatedUrls = activeUrls.some((url) => url.url === popularUrl.url)
-  //     ? activeUrls.filter((url) => url.url !== popularUrl.url)
-  //     : [...activeUrls, { ...popularUrl }]
-  //   setActiveUrls(updatedUrls)
-  // }
+  const toggleActive = async (website: WebsiteItem) => {
+    let updatedUrls
 
+    const existingWebsiteIndex = websiteList.findIndex(
+      (item) => item.url === website.url
+    )
+
+    if (existingWebsiteIndex === -1) {
+      // Website doesn't exist, add it with isActive: true
+      updatedUrls = [...websiteList, { ...website, isActive: true }]
+    } else {
+      // Website exists, toggle isActive property
+      updatedUrls = websiteList.map((item, index) =>
+        index === existingWebsiteIndex
+          ? { ...item, isActive: !item.isActive }
+          : item
+      )
+    }
+
+    setWebsiteList(updatedUrls)
+  }
+
+  console.log(websiteList)
   return (
     <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-[18rem] w-full">
       {popularWebsites.map((website) => (
@@ -30,15 +46,16 @@ function PopularUrl() {
           <Tooltip>
             <TooltipTrigger
               className="p-1 shadow-md hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)] rounded-md size-12 flex items-center justify-center cursor-pointer transition-all duration-300 border border-gray-100"
-              // onClick={() => toggleActive(popularUrl)}
-            >
+              onClick={() => toggleActive(website)}>
               <img
                 src={website.icon}
                 alt={`${website.url} Logo`}
                 className={cn(
                   "size-10 object-cover rounded-md transition-all duration-300",
                   {
-                    // "grayscale opacity-25": activeUrls?.some((url) => url.url === popularUrl.url)
+                    "grayscale opacity-25": !websiteList?.find(
+                      (item) => item.url === website.url
+                    )?.isActive
                   }
                 )}
               />

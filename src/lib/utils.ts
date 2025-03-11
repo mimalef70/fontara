@@ -27,7 +27,7 @@ export async function isUrlActive(currentUrl: string): Promise<boolean> {
     const regex = new RegExp(website.regex, "i")
     // Test if current URL matches the pattern
     if (regex.test(currentUrl.trim())) {
-      return true
+      return website.isActive
     }
   }
 

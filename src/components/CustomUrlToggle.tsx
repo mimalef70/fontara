@@ -108,11 +108,13 @@ const CustomUrlToggle = (props: Props) => {
             <span className="truncate" dir="ltr">
               {currentTab?.url && new URL(currentTab.url).hostname.slice(0, 25)}
             </span>
-            <img
-              src={currentTab?.favIconUrl}
-              className="!size-4 object-contain"
-              alt="site icon"
-            />
+            {currentTab?.favIconUrl && (
+              <img
+                src={currentTab.favIconUrl}
+                className="!size-4 object-contain"
+                alt="site icon"
+              />
+            )}
             <span className="shrink-0">فعال باشد؟</span>
           </div>
         </div>

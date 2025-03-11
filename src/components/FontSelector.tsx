@@ -28,44 +28,18 @@ const FontSelector = ({
   const [hoveredFont, setHoveredFont] = useState(null)
   const [allFonts, setAllFonts] = useState(defaultFonts)
   const [selectedFont, setSelectedFont] = useStorage(STORAGE_KEYS.SELECTED_FONT)
+  const [customFontList] = useStorage({
+    key: "customFontList",
+    instance: new Storage({
+      area: "local"
+    })
+  })
 
-  // useEffect(() => {
-  //   const loadFonts = async () => {
-  //     try {
-  //       const customFonts = (await storage.get("customFonts")) || []
-
-  //       setAllFonts([...defaultFonts, ...customFonts])
-
-  //       const storedFontName = await storage.get("selectedFont")
-  //       if (storedFontName) {
-  //         const storedFont = [...defaultFonts, ...customFonts].find(
-  //           (font) => font.value === storedFontName
-  //         )
-  //         if (storedFont) {
-  //           setSelected(storedFont)
-  //         }
-  //       }
-  //     } catch (error) {}
-  //   }
-  //   loadFonts()
-  // }, [])
-
-  // const handleFontChange = async (selectedValue) => {
-  //   try {
-  //     const newFont = allFonts.find((font) => font.value === selectedValue)
-  //     if (!newFont) return
-
-  //     setSelected(newFont)
-  //     await storage.set("selectedFont", newFont.value)
-
-  //     await sendToBackground({
-  //       name: "changeFont",
-  //       body: {
-  //         fontName: newFont.value
-  //       }
-  //     })
-  //   } catch (error) {}
-  // }
+  useEffect(() => {
+    if (customFontList) {
+      setAllFonts([...defaultFonts, ...customFontList])
+    }
+  }, [customFontList])
 
   const fontsByAuthor = allFonts.reduce((acc, font) => {
     if (!acc[font.author]) {
@@ -94,7 +68,7 @@ const FontSelector = ({
         {Object.entries(fontsByAuthor).map(([author, fonts]) => (
           <SelectGroup key={author} className="mt-2 mb-1">
             <SelectLabel className="text-gray-400 text-xs font-semibold">
-              فونت های {author}
+              فونت های {author === "undefined" ? "دلخواه" : author}
             </SelectLabel>
             {(fonts as any).map((font) => (
               <div

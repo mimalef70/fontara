@@ -12,18 +12,73 @@ export const config: PlasmoCSConfig = {
 }
 
 const storage = new Storage()
+const storageLocal = new Storage({
+  area: "local"
+})
+
 let observer: MutationObserver | null = null
 
-function injectFontStyles() {
+async function injectFontStyles() {
   try {
     // Check if styles are already injected
     const existingStyles = document.getElementById("fontara-font-styles")
     if (existingStyles) return
 
+    // Create style element for built-in fonts
     const style = document.createElement("style")
     style.id = "fontara-font-styles"
     style.textContent = styleText
     document.head.appendChild(style)
+
+    // Create a separate style element for custom fonts
+    const customStyle = document.createElement("style")
+    customStyle.id = "fontara-custom-font-styles"
+
+    const customFontList = await storageLocal.get("customFontList")
+
+    if (
+      customFontList &&
+      Array.isArray(customFontList) &&
+      customFontList.length > 0
+    ) {
+      let customFontFaces = ""
+      customFontList.forEach((font) => {
+        if (font.value && font.data) {
+          const fontName = font.value
+          const fontData = font.data
+
+          // Create the font-face declaration. Determine format based on data
+          // This assumes the data is base64 encoded font data
+          let format = "truetype" // Default format
+
+          if (fontData.includes("data:font/woff2")) {
+            format = "woff2"
+          } else if (fontData.includes("data:font/woff")) {
+            format = "woff"
+          } else if (fontData.includes("data:font/otf")) {
+            format = "opentype"
+          } else if (fontData.includes("data:font/ttf")) {
+            format = "truetype"
+          }
+
+          customFontFaces += `
+            @font-face {
+              font-family: "${fontName}";
+              src: url("${fontData}") format("${format}");
+              font-weight: normal;
+              font-style: normal;
+              font-display: swap;
+            }
+          `
+        }
+      })
+
+      // Set the style content with all the custom font faces
+      customStyle.textContent = customFontFaces
+      document.head.appendChild(customStyle)
+      console.log("Custom font styles injected successfully")
+    }
+
     console.log("Font styles injected successfully")
   } catch (err) {
     console.error("Failed to inject font styles:", err)
@@ -243,4 +298,7 @@ storage.watch({
     console.log("websiteList changed:", change.newValue)
     applyFontsIfActive()
   }
+  // customFontList: async (change) => {
+  //   console.log("customFontList changed:", change.newValue)
+  // }
 })

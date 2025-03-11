@@ -74,9 +74,10 @@ export interface CustomFont {
 }
 
 export interface FontData {
+  value: string
   name: string
   data: string
   type: string
-  fileHash: string
+  // fileHash: string
   originalFileName: string
 }

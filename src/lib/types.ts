@@ -5,3 +5,11 @@ export interface WebsiteItem {
   pattern?: string
   isActive?: boolean
 }
+
+export interface CustomFont {
+  value: string
+  name: string
+  type: string
+  fileHash: string
+  originalFileName?: string
+}

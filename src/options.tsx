@@ -11,201 +11,149 @@ import { useStorage } from "@plasmohq/storage/hook"
 import { ToastProvider } from "~src/components/ui/Toast"
 import { Toaster } from "~src/components/ui/toaster"
 import { useToast } from "~src/hooks/use-toast"
-import { defaultFonts } from "~src/lib/constants"
 import type { CustomFont, FontData } from "~src/utils/types"
 import { browserAPI } from "~src/utils/utils"
 
-const storage = new Storage()
-
 function OptionsPage() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [fontName, setFontName] = useState("")
-  // const [savedFonts, setSavedFonts] = useState<CustomFont[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
-
-  const [savedFonts, setSavedFonts] = useStorage<CustomFont[]>(
-    "customFonts",
+  const [customFontList, setCustomFontList] = useStorage(
+    {
+      key: "customFontList",
+      instance: new Storage({
+        area: "local"
+      })
+    },
     []
   )
 
-  const generateFileHash = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer()
-    const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashHex = hashArray
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-    return hashHex
-  }
-
-  const isFileContentDuplicate = async (fileHash: string): Promise<boolean> => {
-    const allFonts: any = await browserAPI.storage.local.get(null)
-    for (const key in allFonts) {
-      if (key.startsWith("font_")) {
-        const fontData = allFonts[key] as FontData
-        if (fontData.fileHash === fileHash) {
-          return true
+  const fontUtils = {
+    generateFileHash: async (file) => {
+      const arrayBuffer = await file.arrayBuffer()
+      const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+    },
+    isFileContentDuplicate: async (fileHash: string) => {
+      customFontList.forEach((customFont: CustomFont) => {
+        console.log(customFont.fileHash === fileHash)
+        if (customFont.fileHash === fileHash) return true
+      })
+      return false
+    },
+    convertToBase64: (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          if (reader.result && typeof reader.result === "string") {
+            // resolve(reader.result.split(",")[1])
+            resolve(reader.result)
+          } else {
+            reject(new Error("Failed to read file"))
+          }
         }
-      }
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(file)
+      })
     }
-    return false
   }
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [fontName, setFontName] = useState("")
+  const { toast } = useToast()
+
+  const handleFileChange = async (event) => {
     const file = event.target.files?.[0]
-    if (file) {
-      const validTypes = [".ttf", ".woff", ".woff2", ".otf"]
-      const extension = file.name
-        .substring(file.name.lastIndexOf("."))
-        .toLowerCase()
+    if (!file) return
 
-      if (!validTypes.includes(extension)) {
-        toast({
-          title: "لطفا یک فایل فونت معتبر (ttf, woff, woff2, otf) انتخاب کنید"
-        })
-        return
-      }
+    const validTypes = [".ttf", ".woff", ".woff2", ".otf"]
+    const extension = file.name
+      .substring(file.name.lastIndexOf("."))
+      .toLowerCase()
 
-      if (file.size > 2 * 1024 * 1024) {
-        toast({
-          title: "حجم فایل فونت نباید بیشتر از 2 مگابایت باشد"
-        })
-        return
-      }
-
-      // Generate hash and check for duplicates
-      const fileHash = await generateFileHash(file)
-      const isDuplicate = await isFileContentDuplicate(fileHash)
-
-      if (isDuplicate) {
-        toast({
-          title: "این فایل فونت قبلاً آپلود شده است"
-        })
-        return
-      }
-
-      setSelectedFile(file)
+    if (!validTypes.includes(extension)) {
+      toast({
+        title: "لطفا یک فایل فونت معتبر (ttf, woff, woff2, otf) انتخاب کنید"
+      })
+      return
     }
-  }
 
-  const convertToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => {
-        if (reader.result && typeof reader.result === "string") {
-          const base64Data = reader.result.split(",")[1]
-          resolve(base64Data)
-        } else {
-          reject(new Error("Failed to read file"))
-        }
-      }
-      reader.onerror = () => reject(reader.error)
-      reader.readAsDataURL(file)
-    })
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "حجم فایل فونت نباید بیشتر از 2 مگابایت باشد" })
+      return
+    }
+
+    // const fileHash = await fontUtils.generateFileHash(file)
+    // const isDuplicate = await fontUtils.isFileContentDuplicate(fileHash)
+
+    // if (isDuplicate) {
+    //   toast({ title: "این فایل فونت قبلاً آپلود شده است" })
+    //   return
+    // }
+
+    setSelectedFile(file)
   }
 
   const handleSaveFont = async () => {
     if (!selectedFile || !fontName) {
-      toast({
-        title: "خطا در پردازش, لطفا فونت و نام فونت را مجددن چک کنید"
-      })
+      toast({ title: "فیلدهای خالی را پر کنید" })
       return
     }
 
     setIsLoading(true)
 
     try {
-      // Check for duplicate names with null checks
-      const normalizedNewName = fontName.toLowerCase().trim()
-
-      const isDuplicateDefault = defaultFonts.some((font) => {
-        const defaultName = font.name?.toLowerCase()?.trim() || ""
-        const defaultValue = font.value?.toLowerCase()?.trim() || ""
+      const isDuplicateName = customFontList.some((font) => {
         return (
-          defaultName === normalizedNewName ||
-          defaultValue === normalizedNewName
+          (font.name.toLowerCase().trim() || "") ===
+          fontName.toLowerCase().trim()
         )
       })
 
-      if (isDuplicateDefault) {
-        throw new Error("این نام فونت قبلاً در لیست فونت‌های پیش‌فرض وجود دارد")
+      if (isDuplicateName) {
+        throw new Error("نام فونت تکراری است")
       }
 
-      const currentFonts =
-        (await storage.get<CustomFont[]>("customFonts")) || []
-      const isDuplicateCustom = currentFonts.some((font) => {
-        const customName = font.name?.toLowerCase()?.trim() || ""
-        return customName === normalizedNewName
-      })
-
-      if (isDuplicateCustom) {
-        throw new Error("فونتی با این نام قبلاً اضافه شده است")
-      }
-
-      // Generate file hash
-      const fileHash = await generateFileHash(selectedFile)
-
-      // Convert file to base64
-      const base64Data = await convertToBase64(selectedFile)
+      // Process and save the font
+      // const fileHash = await fontUtils.generateFileHash(selectedFile)
+      const base64Data = await fontUtils.convertToBase64(selectedFile)
       const extension = selectedFile.name.substring(
         selectedFile.name.lastIndexOf(".") + 1
       )
 
-      // Create and save font data
+      const suffix = "-Fontara"
+      let value
+
+      // Generate random prefix and check if it exists
+      do {
+        const chars =
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        let prefix = ""
+        for (let i = 0; i < 6; i++) {
+          prefix += chars[Math.floor(Math.random() * chars.length)]
+        }
+        value = prefix + suffix
+      } while (customFontList.some((font) => font.value === value))
+
       const fontData: FontData = {
+        value: value,
         name: fontName,
         data: base64Data,
+        // fileHash: fileHash,
         type: extension,
-        fileHash,
         originalFileName: selectedFile.name
       }
 
-      // Save to browserAPI.storage.local
-      await new Promise<void>((resolve, reject) => {
-        browserAPI.storage.local.set({ [`font_${fontName}`]: fontData }, () => {
-          if (browserAPI.runtime.lastError) {
-            reject(browserAPI.runtime.lastError)
-          } else {
-            resolve()
-          }
-        })
-      })
+      const updatedFonts = [...customFontList, fontData]
+      setCustomFontList(updatedFonts)
 
-      // Create metadata
-      const newFont: CustomFont = {
-        value: fontName,
-        name: fontName,
-        style: `font-${fontName.toLowerCase()}`,
-        type: extension,
-        fileHash,
-        originalFileName: selectedFile.name
-      }
+      toast({ title: "فونت با موفقیت اضافه شد" })
 
-      // Save metadata to storage
-      const updatedFonts = [...currentFonts, newFont]
-      await storage.set("customFonts", updatedFonts)
-
-      // Update local state
-      setSavedFonts(updatedFonts)
-
-      toast({
-        title: "فونت با موفقیت اضافه شد"
-      })
-
+      // Reset form
       setSelectedFile(null)
       setFontName("")
       if (fileInputRef.current) {
         fileInputRef.current.value = ""
-      }
-
-      // Close window and refresh parent
-      if (window.opener) {
-        window.opener.postMessage({ type: "FONT_ADDED", fontName }, "*")
-        window.close()
       }
     } catch (error) {
       toast({
@@ -216,43 +164,12 @@ function OptionsPage() {
     }
   }
 
-  const handleDeleteFont = async (fontName: string) => {
-    try {
-      // Remove from browserAPI.storage.local
-      await new Promise<void>((resolve, reject) => {
-        browserAPI.storage.local.remove(`font_${fontName}`, () => {
-          if (browserAPI.runtime.lastError) {
-            reject(browserAPI.runtime.lastError)
-          } else {
-            resolve()
-          }
-        })
-      })
-
-      // Remove from metadata storage
-      const currentFonts =
-        (await storage.get<CustomFont[]>("customFonts")) || []
-      const updatedFonts = currentFonts.filter(
-        (font) => font.value !== fontName
-      )
-      await storage.set("customFonts", updatedFonts)
-
-      // Update local state
-      setSavedFonts(updatedFonts)
-
-      toast({
-        title: "فونت با موفقیت حذف شد"
-      })
-
-      // Notify parent window
-      if (window.opener) {
-        window.opener.postMessage({ type: "FONT_DELETED", fontName }, "*")
-      }
-    } catch (error) {
-      toast({
-        title: "خطا در حذف فونت"
-      })
-    }
+  const handleDeleteFont = async (fontValue: string) => {
+    const updatedFonts = customFontList.filter(
+      (font) => font.value !== fontValue
+    )
+    setCustomFontList(updatedFonts)
+    toast({ title: "فونت با موفقیت حذف شد" })
   }
 
   return (
@@ -301,13 +218,13 @@ function OptionsPage() {
               {isLoading ? "در حال افزودن..." : "افزودن فونت"}
             </button>
 
-            {savedFonts.length > 0 && (
+            {customFontList.length > 0 && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-right mb-2">
                   فونت‌های اضافه شده
                 </h3>
                 <div className="space-y-2">
-                  {savedFonts.map((font) => (
+                  {customFontList.map((font: FontData) => (
                     <div
                       key={font.value}
                       className="flex flex-col p-2 border rounded">

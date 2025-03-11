@@ -4,6 +4,7 @@ import { useStorage } from "@plasmohq/storage/hook"
 
 import { STORAGE_KEYS } from "~src/lib/constants"
 import { popularWebsites } from "~src/lib/popularWebsites"
+import { browserAPI } from "~src/utils/utils"
 
 import { Checkbox } from "./ui/Checkbox"
 
@@ -66,7 +67,7 @@ const CustomUrlToggle = (props: Props) => {
 
   useEffect(() => {
     const getActiveTab = async () => {
-      const tabs = await chrome.tabs.query({
+      const tabs = await browserAPI.tabs.query({
         active: true,
         currentWindow: true
       })

@@ -14,7 +14,10 @@ const storage = new Storage()
 async function updateIconStatus() {
   try {
     // Get the current active tab
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    const tabs = await browserAPI.tabs.query({
+      active: true,
+      currentWindow: true
+    })
     const currentTab = tabs[0]
     const currentUrl = currentTab?.url || ""
 
@@ -27,9 +30,9 @@ async function updateIconStatus() {
       iconToShow = ICON_PATHS.default
     }
 
-    await chrome.action.setIcon({ path: iconToShow })
+    await browserAPI.action.setIcon({ path: iconToShow })
   } catch (error) {
-    await chrome.action.setIcon({ path: ICON_PATHS.default })
+    await browserAPI.action.setIcon({ path: ICON_PATHS.default })
     console.error("Error updating icon status:", error)
   }
 }
@@ -39,8 +42,8 @@ storage.watch({
   isExtensionEnabled: () => updateIconStatus(),
   websiteList: () => updateIconStatus()
 })
-chrome.tabs.onActivated.addListener(updateIconStatus)
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+browserAPI.tabs.onActivated.addListener(updateIconStatus)
+browserAPI.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url) {
     updateIconStatus()
   }
@@ -68,14 +71,14 @@ async function ensureStorageValues(keysToCheck = Object.keys(STORAGE_KEYS)) {
 }
 
 // Event Listeners in first install
-chrome.runtime.onInstalled.addListener(async (details) => {
+browserAPI.runtime.onInstalled.addListener(async (details) => {
   try {
     if (details.reason === "install") {
       await ensureStorageValues()
-      chrome.tabs.create({ url: URLS.WELCOME_PAGE })
+      browserAPI.tabs.create({ url: URLS.WELCOME_PAGE })
     } else if (details.reason === "update") {
       await ensureStorageValues()
-      // chrome.tabs.create({ url: URLS.CHANGELOG })
+      browserAPI.tabs.create({ url: URLS.CHANGELOG })
     }
   } catch (error) {
     console.error("Error during extension installation/update:", error)

@@ -1,155 +1,86 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 
-import { sendToBackground } from "@plasmohq/messaging"
-import { Storage } from "@plasmohq/storage"
+import { useStorage } from "@plasmohq/storage/hook"
 
-import { initialBoxes } from "~data/popularUrlData"
-import { Checkbox } from "~src/components/ui/Checkbox"
-import type { BoxItem } from "~src/utils/types"
-import { browserAPI, urlPatternToRegex } from "~src/utils/utils"
+import { STORAGE_KEYS } from "~src/lib/constants"
+import { popularWebsites } from "~src/lib/popularWebsites"
 
-const storage = new Storage()
+import { Checkbox } from "./ui/Checkbox"
 
-const CustomUrlToggle = () => {
-  const [favicon, setFavicon] = useState<string>("")
-  const [isCustomUrlActive, setIsCustomUrlActive] = useState<boolean>(false) // rename to isCurrentTabActive
-  const [hostName, setHostName] = useState<string>("") // rename to currentTabUrl
+type Props = {}
 
-  const useActiveTab = async () => {
-    const tabs = await browserAPI.tabs.query({
-      active: true,
-      currentWindow: true
-    })
-    return {
-      tab: tabs[0]
+const CustomUrlToggle = (props: Props) => {
+  const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null)
+  const [websiteList, setWebsiteList] = useStorage(STORAGE_KEYS.WEBSITE_LIST)
+
+  const createRegexFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url)
+      const hostname = urlObj.hostname
+      return `^https?://${hostname.replace(/\./g, "\\.")}/?.*$`
+    } catch (e) {
+      return url // Fallback if URL parsing fails
     }
   }
 
-  // Initialize custom URL status
-  useEffect(() => {
-    const initializeCustomUrlStatus = async () => {
-      const customActiveUrls =
-        (await storage.get<BoxItem[]>("customActiveUrls")) || []
-      const { tab } = await useActiveTab()
+  const handleUrlToggle = (checked: boolean) => {
+    let updatedUrls
 
-      if (tab?.url) {
-        const mainUrl = new URL(tab.url).origin
-        const currentTabUrl = `${mainUrl}/*`
-        const urlEntry = customActiveUrls.find(
-          (item) => item.url === currentTabUrl
-        )
-        setIsCustomUrlActive(urlEntry?.isActive ?? false)
-      }
+    const regex = new RegExp(currentTab?.url, "i")
+    const existingWebsiteIndex = websiteList.findIndex((item) =>
+      regex.test(item.url)
+    )
+
+    if (existingWebsiteIndex === -1) {
+      // Website doesn't exist, add it with isActive: true
+      updatedUrls = [
+        ...websiteList,
+        {
+          url: currentTab.url,
+          regex: createRegexFromUrl(currentTab.url),
+          isActive: true
+        }
+      ]
+    } else {
+      // Website exists, toggle isActive property
+      updatedUrls = websiteList.map((item, index) =>
+        index === existingWebsiteIndex
+          ? { ...item, isActive: !item.isActive }
+          : item
+      )
     }
 
-    initializeCustomUrlStatus()
-  }, [])
+    setWebsiteList(updatedUrls)
+  }
 
-  useEffect(() => {
-    const getFavicon = async () => {
-      try {
-        const { tab } = await useActiveTab()
-        if (tab?.favIconUrl) {
-          setFavicon(tab.favIconUrl)
-          return
-        } else {
-          setFavicon("")
-        }
-      } catch (error) {
-        setFavicon("")
+  const isUrlActive = (): boolean => {
+    for (const website of websiteList) {
+      const regex = new RegExp(website.regex, "i")
+      // Test if current URL matches the pattern
+      if (regex.test(currentTab.url.trim())) {
+        return website.isActive
       }
     }
+    return false
+  }
 
-    getFavicon()
-  }, [hostName])
-
-  // Check current tab
   useEffect(() => {
-    const checkCurrentTab = async () => {
-      try {
-        const { tab } = await useActiveTab()
-
-        if (tab?.url) {
-          const mainUrl = new URL(tab.url).origin
-          const currentTabUrl = `${mainUrl}/*`
-          setHostName(currentTabUrl)
-
-          // Check if the current URL matches any popular site
-          const matchedSite = initialBoxes.some(
-            (box) => box.url && urlPatternToRegex(box.url).test(tab.url)
-          )
-
-          if (matchedSite) {
-            setHostName("")
-            return
-          }
-
-          // Get current custom URLs
-          const customActiveUrls =
-            (await storage.get<BoxItem[]>("customActiveUrls")) || []
-          const isUrlActive = customActiveUrls.some(
-            (item) => item.url === currentTabUrl && item.isActive
-          )
-          setIsCustomUrlActive(isUrlActive)
-        }
-      } catch (error) {}
-    }
-
-    checkCurrentTab()
-  }, [initialBoxes])
-
-  const handleCustomUrlToggle = async () => {
-    try {
-      const newIsActive = !isCustomUrlActive
-      setIsCustomUrlActive(newIsActive)
-
-      const customActiveUrls =
-        (await storage.get<BoxItem[]>("customActiveUrls")) || []
-      let updatedUrls: BoxItem[]
-
-      if (newIsActive) {
-        const existingUrlIndex = customActiveUrls.findIndex(
-          (item) => item.url === hostName
-        )
-        if (existingUrlIndex === -1) {
-          updatedUrls = [...customActiveUrls, { url: hostName, isActive: true }]
-        } else {
-          updatedUrls = customActiveUrls.map((item) =>
-            item.url === hostName ? { ...item, isActive: true } : item
-          )
-        }
-      } else {
-        updatedUrls = customActiveUrls.map((item) =>
-          item.url === hostName ? { ...item, isActive: false } : item
-        )
-      }
-
-      await storage.set("customActiveUrls", updatedUrls)
-
-      await sendToBackground({
-        name: "updateCustomUrlStatus",
-        body: updatedUrls
-      })
-
-      const tabs = await browserAPI.tabs.query({
+    const getActiveTab = async () => {
+      const tabs = await chrome.tabs.query({
         active: true,
         currentWindow: true
       })
-      if (tabs[0]?.id) {
-        browserAPI.tabs.sendMessage(tabs[0].id, {
-          action: "setActiveStatus",
-          isActive: newIsActive
-        })
-      }
-    } catch (error) {
-      setIsCustomUrlActive(!isCustomUrlActive)
+      setCurrentTab(tabs[0])
     }
-  }
+    getActiveTab()
+  }, [])
 
   if (
-    !hostName ||
-    hostName.toLowerCase().includes("extension") ||
-    hostName.toLowerCase().includes("newtab")
+    !currentTab ||
+    !currentTab.url.startsWith("http") ||
+    popularWebsites.some((website) =>
+      new RegExp(website.regex, "i").test(currentTab.url)
+    )
   )
     return null
 
@@ -157,26 +88,23 @@ const CustomUrlToggle = () => {
     <div className="border border-gray-400 rounded-md p-2 select-none mx-auto w-full mt-3">
       <label
         className="text-xs cursor-pointer overflow-y-hidden"
-        htmlFor="activeUrl">
+        htmlFor="customUrl">
         <div className="flex items-center w-full gap-1">
           <Checkbox
-            name="activeUrl"
-            id="activeUrl"
-            checked={isCustomUrlActive}
-            onCheckedChange={handleCustomUrlToggle}
+            name="customUrl"
+            checked={isUrlActive()}
+            onCheckedChange={handleUrlToggle}
           />
           <div className="flex items-center justify-around gap-1 ">
             <span className="shrink-0">برای سایت</span>
             <span className="truncate" dir="ltr">
-              {hostName.slice(8, -2)}
+              {currentTab?.url && new URL(currentTab.url).hostname.slice(0, 25)}
             </span>
-            {favicon && (
-              <img
-                src={favicon}
-                className="!size-4 object-contain"
-                alt="site icon"
-              />
-            )}
+            <img
+              src={currentTab?.favIconUrl}
+              className="!size-4 object-contain"
+              alt="site icon"
+            />
             <span className="shrink-0">فعال باشد؟</span>
           </div>
         </div>

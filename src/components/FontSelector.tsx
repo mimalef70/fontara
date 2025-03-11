@@ -2,8 +2,8 @@ import { useEffect, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
+import { useStorage } from "@plasmohq/storage/hook"
 
-import { useStorage } from "~node_modules/@plasmohq/storage/dist/hook"
 import { CheckCircle, Circle, PlusCircle } from "~src/components/icons"
 import { defaultFonts, STORAGE_KEYS } from "~src/lib/constants"
 import { cn } from "~src/lib/utils"

@@ -11,6 +11,7 @@ import { isUrlActive } from "~src/lib/utils"
 const storage = new Storage({ area: "local" })
 
 async function updateIconStatus() {
+  console.log("updateIconStatus")
   try {
     // Get the current active tab
     const tabs = await chrome.tabs.query({

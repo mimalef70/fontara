@@ -12,12 +12,15 @@ type Props = {}
 
 const CustomUrlToggle = (props: Props) => {
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null)
-  const [websiteList, setWebsiteList] = useStorage({
-    key: STORAGE_KEYS.WEBSITE_LIST,
-    instance: new Storage({
-      area: "local"
-    })
-  })
+  const [websiteList, setWebsiteList] = useStorage(
+    {
+      key: STORAGE_KEYS.WEBSITE_LIST,
+      instance: new Storage({
+        area: "local"
+      })
+    },
+    []
+  )
 
   const createRegexFromUrl = (url: string): string => {
     try {
@@ -31,12 +34,10 @@ const CustomUrlToggle = (props: Props) => {
 
   const handleUrlToggle = (checked: boolean) => {
     let updatedUrls
-
     const regex = new RegExp(currentTab?.url, "i")
     const existingWebsiteIndex = websiteList.findIndex((item) =>
       regex.test(item.url)
     )
-
     if (existingWebsiteIndex === -1) {
       // Website doesn't exist, add it with isActive: true
       updatedUrls = [
@@ -55,11 +56,11 @@ const CustomUrlToggle = (props: Props) => {
           : item
       )
     }
-
     setWebsiteList(updatedUrls)
   }
 
   const isUrlActive = (): boolean => {
+    // if (!currentTab || !websiteList) return false
     for (const website of websiteList) {
       const regex = new RegExp(website.regex, "i")
       // Test if current URL matches the pattern

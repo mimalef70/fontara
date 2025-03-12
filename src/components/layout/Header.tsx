@@ -4,7 +4,9 @@ import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { STORAGE_KEYS } from "~src/lib/constants"
+import { toPersianNumbers } from "~src/lib/utils"
 
+import { version } from "../../../package.json"
 import { Badge } from "../ui/badge"
 import { Switch } from "../ui/Switch"
 
@@ -56,23 +58,22 @@ const Header = () => {
   }
 
   return (
-<div className="flex items-center justify-between pb-3 z-10 w-full">
-  <div className="flex items-center gap-2">
-    <Switch
-      dir="ltr"
-      checked={extensionActive}
-      onCheckedChange={handleExtensionToggle}
-    />
-  </div>
-  
-  <div className="flex items-center gap-2">
-    <Badge className="!text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
-      نسخه ۴.۱.۲
-    </Badge>
-    <img src={logo} alt="logo" className="h-auto max-h-8" />
-  </div>
-</div>
+    <div className="flex items-center justify-between pb-3 z-10 w-full">
+      <div className="flex items-center gap-2">
+        <Switch
+          dir="ltr"
+          checked={extensionActive}
+          onCheckedChange={handleExtensionToggle}
+        />
+      </div>
 
+      <div className="flex items-center gap-2">
+        <Badge className="!text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
+          نسخه {toPersianNumbers(version)}
+        </Badge>
+        <img src={logo} alt="logo" className="h-auto max-h-8" />
+      </div>
+    </div>
   )
 }
 

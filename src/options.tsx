@@ -11,7 +11,7 @@ import { useStorage } from "@plasmohq/storage/hook"
 import { ToastProvider } from "~src/components/ui/Toast"
 import { Toaster } from "~src/components/ui/toaster"
 import { useToast } from "~src/hooks/use-toast"
-import type { CustomFont, FontData } from "~src/utils/types"
+import type { CustomFont, FontData } from "~src/lib/types"
 
 function OptionsPage() {
   const [customFontList, setCustomFontList] = useStorage(

@@ -1,14 +1,12 @@
 import "~src/style.css"
 import "~src/fonts.css"
 
-import { useState } from "react"
-
 import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import CustomUrlToggle from "~src/components/CustomUrlToggle"
 import FontSelector from "~src/components/FontSelector"
-import { CheckCircle, Circle, PlusCircle } from "~src/components/icons"
+import { PlusCircle } from "~src/components/icons"
 import Footer from "~src/components/layout/Footer"
 import Header from "~src/components/layout/Header"
 import PopularSection from "~src/components/PopularSection"

@@ -21,6 +21,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+codetree.txt
 
 # local env files
 .env*
@@ -28,6 +29,12 @@ yarn-error.log*
 out/
 build/
 dist/
+# docs/
+# assets/
+# README.md
+# CONTRIBUTING.md
+# src/fonts.css
+# src/utils/fonts.ts
 
 # plasmo - https://www.plasmo.com
 .plasmo

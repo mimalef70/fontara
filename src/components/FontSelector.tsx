@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 
-import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
@@ -18,8 +17,7 @@ import {
   DrawerDescription,
   DrawerFooter,
   DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger
+  DrawerTitle
 } from "~src/components/ui/drawer"
 import { defaultFonts, STORAGE_KEYS } from "~src/lib/constants"
 import { cn } from "~src/lib/utils"

@@ -7,7 +7,6 @@ import { STORAGE_KEYS } from "~src/lib/constants"
 import { popularWebsites } from "~src/lib/popularWebsites"
 
 import { Check as CheckIcon } from "./icons"
-import { Checkbox } from "./ui/Checkbox"
 
 type Props = {}
 

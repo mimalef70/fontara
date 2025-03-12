@@ -3,9 +3,8 @@ import type { PlasmoCSConfig } from "plasmo"
 
 import { Storage } from "@plasmohq/storage"
 
-import { CUSTOM_CSS } from "~src/lib/constants"
+import { CUSTOM_CSS, excludedTags, iconClasses } from "~src/lib/constants"
 import { isUrlActive } from "~src/lib/utils"
-import { excludedTags, iconClasses } from "~src/utils/constants"
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],

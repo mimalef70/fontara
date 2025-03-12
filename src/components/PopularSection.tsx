@@ -1,3 +1,4 @@
+import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import {
@@ -12,9 +13,12 @@ import type { WebsiteItem } from "~src/lib/types"
 import { cn } from "~src/lib/utils"
 
 function PopularUrl() {
-  const [websiteList, setWebsiteList] = useStorage<WebsiteItem[]>(
-    STORAGE_KEYS.WEBSITE_LIST
-  )
+  const [websiteList, setWebsiteList] = useStorage<WebsiteItem[]>({
+    key: STORAGE_KEYS.WEBSITE_LIST,
+    instance: new Storage({
+      area: "local"
+    })
+  })
 
   const toggleActive = async (website: WebsiteItem) => {
     let updatedUrls
@@ -38,14 +42,13 @@ function PopularUrl() {
     setWebsiteList(updatedUrls)
   }
 
-  console.log(websiteList)
   return (
-    <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-[18rem] w-full">
+    <div className="grid grid-cols-5 gap-2 pb-3 justify-items-center items-center overflow-auto w-full">
       {popularWebsites.map((website) => (
         <TooltipProvider key={website.url} delayDuration={90}>
           <Tooltip>
             <TooltipTrigger
-              className="p-1 shadow-md hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)] rounded-md size-12 flex items-center justify-center cursor-pointer transition-all duration-300 border border-gray-100"
+              className="p-1 shadow-md hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)] rounded-md size-12 cursor-pointer transition-all duration-300 border border-gray-100"
               onClick={() => toggleActive(website)}>
               <img
                 src={website.icon}

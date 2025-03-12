@@ -42,7 +42,6 @@ function PopularUrl() {
     setWebsiteList(updatedUrls)
   }
 
-  console.log(websiteList)
   return (
     <div className="mt-2 grid grid-cols-5 justify-items-center items-center overflow-auto h-[18rem] w-full">
       {popularWebsites.map((website) => (

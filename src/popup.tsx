@@ -17,8 +17,6 @@ import { STORAGE_KEYS } from "~src/lib/constants"
 import { cn } from "./lib/utils"
 
 function IndexPopup() {
-  const [showOverlay, setShowOverlay] = useState(false)
-
   const [extensionActive] = useStorage({
     key: STORAGE_KEYS.EXTENSION_ENABLED,
     instance: new Storage({
@@ -29,7 +27,6 @@ function IndexPopup() {
   return (
     <div className="w-[20rem] h-[570px] py-4">
       <section className="h-full">
-        {showOverlay && <div className="absolute inset-0 bg-black/30 z-20" />}
         <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
           <div className="relative flex flex-col justify-between h-full">
             <Header />
@@ -45,7 +42,7 @@ function IndexPopup() {
               <div className="relative z-20">
                 <div className="relative">
                   <div className="flex flex-col gap-3">
-                    <FontSelector setIsOverlayActive={setShowOverlay} />
+                    <FontSelector />
                     <a
                       onClick={() => chrome.runtime.openOptionsPage()}
                       target="_blank"

@@ -46,9 +46,15 @@ function IndexPopup() {
                     <a
                       onClick={() => chrome.runtime.openOptionsPage()}
                       target="_blank"
-                      className="flex cursor-pointer justify-center items-center gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
+                      className="flex cursor-pointer justify-center items-center gap-1 h-10 font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative">
                       <PlusCircle />
                       افزودن فونت دلخواه
+                    </a>
+                    <a
+                      href="https://mimalef70.github.io/fontara/#donate"
+                      target="_blank"
+                      className="flex cursor-pointer justify-center items-center h-10 gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#4caf4f1c] rounded-[3px] text-[13px] text-[#4caf50] text-center py-[9px] relative">
+                      حمایت از فونت آرا
                     </a>
                   </div>
                 </div>

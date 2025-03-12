@@ -21,7 +21,7 @@ function Footer() {
         "opacity-30": !extensionActive,
         "opacity-100": extensionActive
       })}>
-      <footer className="w-full">
+      <footer className="w-full flex flex-col gap-2 items-center justify-center">
         <p className="flex justify-center items-center text-gray-500 gap-1">
           <span className="font-medium flex items-center gap-1">
             {" "}
@@ -36,6 +36,25 @@ function Footer() {
             مصطفی الهیاری
           </a>
         </p>
+        <div className="flex items-center justify-center gap-2">
+          {/* <a
+            href="https://mu.chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center">
+            <img src={muchatLogo} alt="muchat" className="h-3" />
+          </a> */}
+          <span className="text-gray-500 mt-2 mb-1">
+            Sponsored by{" "}
+            <a
+              href="https://mu.chat"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 font-bold">
+              muchat
+            </a>
+          </span>
+        </div>
       </footer>
     </div>
   )

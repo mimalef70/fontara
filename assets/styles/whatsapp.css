@@ -1,0 +1,41 @@
+:root {
+  font-family: var(--fontara-font);
+}
+body {
+  font-family: var(--fontara-font), "Roboto", sans-serif !important;
+}
+body *[dir="rtl"] {
+  font-family: var(--fontara-font), "Open Sans", sans-serif !important;
+}
+
+/* *:not(
+    pre,
+    pre *,
+    code,
+    [aria-hidden="true"],
+    [class*="fa-"],
+    .fa,
+    .fab,
+    .fad,
+    .fal,
+    .far,
+    .fas,
+    .fass,
+    .fasr,
+    .fat,
+    .icofont,
+    [style*="font-"],
+    [class*="icon"],
+    [class*="Icon"],
+    [class*="symbol"],
+    [class*="Symbol"],
+    .glyphicon,
+    [class*="material-symbol"],
+    [class*="material-icon"],
+    mu,
+    [class*="mu-"],
+    .typcn,
+    [class*="vjs-"]
+  ) {
+  font-family: var(--fontara-font) !important;
+} */

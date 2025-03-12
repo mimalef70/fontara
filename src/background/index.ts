@@ -7,14 +7,14 @@ import {
   URLS
 } from "~src/lib/constants"
 import { isUrlActive } from "~src/lib/utils"
-import { browserAPI } from "~src/utils/utils"
 
-const storage = new Storage()
+const storage = new Storage({ area: "local" })
 
 async function updateIconStatus() {
+  console.log("updateIconStatus")
   try {
     // Get the current active tab
-    const tabs = await browserAPI.tabs.query({
+    const tabs = await chrome.tabs.query({
       active: true,
       currentWindow: true
     })
@@ -30,9 +30,9 @@ async function updateIconStatus() {
       iconToShow = ICON_PATHS.default
     }
 
-    await browserAPI.action.setIcon({ path: iconToShow })
+    await chrome.action.setIcon({ path: iconToShow })
   } catch (error) {
-    await browserAPI.action.setIcon({ path: ICON_PATHS.default })
+    await chrome.action.setIcon({ path: ICON_PATHS.default })
     console.error("Error updating icon status:", error)
   }
 }
@@ -42,8 +42,8 @@ storage.watch({
   isExtensionEnabled: () => updateIconStatus(),
   websiteList: () => updateIconStatus()
 })
-browserAPI.tabs.onActivated.addListener(updateIconStatus)
-browserAPI.tabs.onUpdated.addListener((tabId, changeInfo) => {
+chrome.tabs.onActivated.addListener(updateIconStatus)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url) {
     updateIconStatus()
   }
@@ -52,11 +52,27 @@ browserAPI.tabs.onUpdated.addListener((tabId, changeInfo) => {
 async function ensureStorageValues(keysToCheck = Object.keys(STORAGE_KEYS)) {
   const storageUpdates = {}
 
-  for (const key of keysToCheck) {
-    const value = await storage.get(STORAGE_KEYS[key])
-    if (value === undefined) {
-      storageUpdates[STORAGE_KEYS[key]] = DEFAULT_VALUES[key] || null
-    }
+  const extensionEnabled = await storage.get(STORAGE_KEYS.EXTENSION_ENABLED)
+  if (extensionEnabled === undefined) {
+    storageUpdates[STORAGE_KEYS.EXTENSION_ENABLED] =
+      DEFAULT_VALUES.EXTENSION_ENABLED
+  }
+
+  const selectedFont = await storage.get(STORAGE_KEYS.SELECTED_FONT)
+  if (selectedFont === undefined) {
+    storageUpdates[STORAGE_KEYS.SELECTED_FONT] = DEFAULT_VALUES.SELECTED_FONT
+  }
+
+  const websiteList = await storage.get(STORAGE_KEYS.WEBSITE_LIST)
+  if (websiteList === undefined) {
+    storageUpdates[STORAGE_KEYS.WEBSITE_LIST] = DEFAULT_VALUES.WEBSITE_LIST
+  } else {
+    // Merge existing websites with default websites
+    const updatedWebsiteList = mergeWebsiteLists(
+      websiteList,
+      DEFAULT_VALUES.WEBSITE_LIST
+    )
+    storageUpdates[STORAGE_KEYS.WEBSITE_LIST] = updatedWebsiteList
   }
 
   if (Object.keys(storageUpdates).length > 0) {
@@ -70,21 +86,51 @@ async function ensureStorageValues(keysToCheck = Object.keys(STORAGE_KEYS)) {
   return storageUpdates
 }
 
+function mergeWebsiteLists(existingList, defaultList) {
+  const mergedList = [...existingList]
+
+  for (const defaultSite of defaultList) {
+    const existingIndex = mergedList.findIndex(
+      (site) => site.url === defaultSite.url
+    )
+
+    if (existingIndex === -1) {
+      // Add new site if it doesn't exist
+      mergedList.push(defaultSite)
+    } else if ("version" in defaultSite) {
+      const existingSite = mergedList[existingIndex]
+
+      // Update site if version is different/missing, but preserve isActive state
+      if (
+        !("version" in existingSite) ||
+        existingSite.version !== defaultSite.version
+      ) {
+        mergedList[existingIndex] = {
+          ...defaultSite,
+          isActive: existingSite.isActive
+        }
+      }
+    }
+  }
+
+  return mergedList
+}
+
 // Event Listeners in first install
-browserAPI.runtime.onInstalled.addListener(async (details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   try {
     if (details.reason === "install") {
       await ensureStorageValues()
-      browserAPI.tabs.create({ url: URLS.WELCOME_PAGE })
+      chrome.tabs.create({ url: URLS.WELCOME_PAGE })
     } else if (details.reason === "update") {
       await ensureStorageValues()
-      browserAPI.tabs.create({ url: URLS.CHANGELOG })
+      chrome.tabs.create({ url: URLS.CHANGELOG })
     }
   } catch (error) {
     console.error("Error during extension installation/update:", error)
   }
 })
 
-browserAPI.runtime.setUninstallURL(
+chrome.runtime.setUninstallURL(
   "https://app.mu.chat/forms/cm7x2dyjo0ajl01lfci211xev"
 )

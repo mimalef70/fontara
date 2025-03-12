@@ -10,7 +10,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export async function isUrlActive(currentUrl: string): Promise<boolean> {
-  const storage = new Storage()
+  const storage = new Storage({
+    area: "local"
+  })
 
   const isExtensionEnabled = await storage.get("isExtensionEnabled")
   const websiteList = await storage.get("websiteList")

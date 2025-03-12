@@ -2,16 +2,24 @@
   "name": "font-ara",
   "displayName": "__MSG_extensionName__",
   "short_name": "FontARA",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "__MSG_extensionDescription__",
   "author": "Mostafa Alahyari",
   "scripts": {
     "dev": "plasmo dev",
     "dev:firefox": "plasmo dev --target=firefox-mv3",
+    "dev:safari": "plasmo dev --target=safari-mv3",
     "debug": "plasmo dev --verbose",
     "debug:firefox": "plasmo dev --target=firefox-mv3 --verbose",
+    "debug:opera": "plasmo dev --target=opera-mv3 --verbose",
     "build": "plasmo build",
-    "build:firefox": "plasmo build --target=firefox-mv3",
+    "build:all": "pnpm run build:chrome && pnpm run build:firefox && pnpm run build:edge && pnpm run build:brave && pnpm run build:opera && pnpm run build:safari",
+    "build:chrome": "plasmo build --target=chrome-mv3 --zip",
+    "build:firefox": "plasmo build --target=firefox-mv3 --zip",
+    "build:edge": "plasmo build --target=edge-mv3 --zip",
+    "build:brave": "plasmo build --target=brave-mv3 --zip",
+    "build:opera": "plasmo build --target=opera-mv3 --zip",
+    "build:safari": "plasmo build --target=safari-mv3 --zip",
     "package": "plasmo package",
     "package:firefox": "plasmo package --target=firefox-mv3",
     "start": "web-ext run --source-dir ./build/chrome-mv3-dev -t chromium --start-url chrome://newtab",
@@ -24,11 +32,13 @@
     "@plasmohq/storage": "^1.12.0",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-select": "^2.1.2",
+    "@radix-ui/react-slot": "^1.1.2",
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.2",
     "@radix-ui/react-tooltip": "^1.1.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "concurrently": "^9.1.2",
     "lucide-react": "^0.460.0",
     "plasmo": "0.90.3",
     "react": "18.2.0",
@@ -36,6 +46,7 @@
     "react-flaticons": "^1.1.5",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "vaul": "^1.1.2",
     "web-ext": "^8.4.0"
   },
   "devDependencies": {
@@ -79,6 +90,11 @@
     ],
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
+    },
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "{206079c5-9bab-485d-ad12-97298719c3f2}"
+      }
     }
   }
 }

@@ -5,6 +5,8 @@ export interface WebsiteItem {
   pattern?: string
   isActive?: boolean
   siteName?: string
+  version?: string
+  customCss?: string
 }
 
 export interface CustomFont {

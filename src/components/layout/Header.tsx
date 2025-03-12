@@ -56,19 +56,23 @@ const Header = () => {
   }
 
   return (
-    <div className="flex justify-between z-9 pb-3">
-      <div className="flex items-center gap-2">
-        <img src={logo} alt="" className="relative w-[65%]" />
-        <Badge className="z-10 !text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
-          ورژن ۴
-        </Badge>
-      </div>
-      <Switch
-        dir="ltr"
-        checked={extensionActive}
-        onCheckedChange={handleExtensionToggle}
-      />
-    </div>
+<div className="flex items-center justify-between pb-3 z-10 w-full">
+  <div className="flex items-center gap-2">
+    <Switch
+      dir="ltr"
+      checked={extensionActive}
+      onCheckedChange={handleExtensionToggle}
+    />
+  </div>
+  
+  <div className="flex items-center gap-2">
+    <Badge className="!text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
+      نسخه ۴
+    </Badge>
+    <img src={logo} alt="logo" className="h-auto max-h-8" />
+  </div>
+</div>
+
   )
 }
 

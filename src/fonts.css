@@ -1,20 +1,18 @@
+/* ========== Vazirmatn ========== */
 @font-face {
   font-family: "Vazirmatn-Fontara";
-  src: url("data-url:~assets/fonts/vazir/Vazirmatn-Regular.woff2")
-    format("woff2");
-  font-weight: normal;
+  src:
+    url("data-url:~assets/fonts/vazir/variable/Vazirmatn[wght].woff2")
+      format("woff2 supports variations"),
+    url("data-url:~assets/fonts/vazir/variable/Vazirmatn[wght].woff2")
+      format("woff2-variations");
+  font-weight: 100 900;
   font-style: normal;
+  font-display: swap;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
-@font-face {
-  font-family: "Vazirmatn-Fontara";
-  src: url("data-url:~assets/fonts/vazir/Vazirmatn-Bold.woff2") format("woff2");
-  font-weight: bold;
-  font-style: normal;
-  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
-}
-
+/* ========== Estedad ========== */
 @font-face {
   font-family: "Estedad-Fontara";
   src:
@@ -28,10 +26,10 @@
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Samim ========== */
 @font-face {
   font-family: "Samim-Fontara";
-  src: url("data-url:~assets/fonts/samim/variable/Samim-WOL.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/samim/Samim.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
@@ -39,148 +37,168 @@
 
 @font-face {
   font-family: "Samim-Fontara";
-  src: url("data-url:~assets/fonts/samim/variable/Samim-Bold-WOL.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/samim/Samim-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+@font-face {
+  font-family: "Samim-Fontara";
+  src: url("data-url:~assets/fonts/samim/Samim-Bold.woff2") format("woff2");
   font-weight: bold;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Shabnam ========== */
 @font-face {
   font-family: "Shabnam-Fontara";
-  src: url("data-url:~assets/fonts/shabnam/variable/Shabnam-WOL.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/shabnam/Shabnam.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
-
 @font-face {
   font-family: "Shabnam-Fontara";
-  src: url("data-url:~assets/fonts/shabnam/variable/Shabnam-Bold-WOL.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/shabnam/Shabnam-Thin.woff2") format("woff2");
+  font-weight: 100;
+  font-style: normal;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "Shabnam-Fontara";
+  src: url("data-url:~assets/fonts/shabnam/Shabnam-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "Shabnam-Fontara";
+  src: url("data-url:~assets/fonts/shabnam/Shabnam-Medium.woff2")
+    format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+}
+@font-face {
+  font-family: "Shabnam-Fontara";
+  src: url("data-url:~assets/fonts/shabnam/Shabnam-Bold.woff2") format("woff2");
   font-weight: bold;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Sahel ========== */
 @font-face {
   font-family: "Sahel-Fontara";
-  src: url("data-url:~assets/fonts/sahel/variable/Sahel-WOL.woff")
-    format("woff");
+  src:
+    url("data-url:~assets/fonts/sahel/variable/Sahel-VF.woff2")
+      format("woff2 supports variations"),
+    url("data-url:~assets/fonts/sahel/variable/Sahel-VF.woff2")
+      format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+/* ========== Parastoo ========== */
+@font-face {
+  font-family: "Parastoo-Fontara";
+  src: url("data-url:~assets/fonts/parastoo/Parastoo.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
-
 @font-face {
-  font-family: "Sahel-Fontara";
-  src: url("data-url:~assets/fonts/sahel/variable/Sahel-Bold-WOL.woff")
-    format("woff");
+  font-family: "Parastoo-Fontara";
+  src: url("data-url:~assets/fonts/parastoo/Parastoo-Bold.woff2")
+    format("woff2");
   font-weight: bold;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
-@font-face {
-  font-family: "Parastoo-Fontara";
-  src: url("data-url:~assets/fonts/parastoo/variable/Parastoo-WOL.woff")
-    format("woff");
-  font-weight: normal;
-  font-style: normal;
-  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
-}
-
-@font-face {
-  font-family: "Parastoo-Fontara";
-  src: url("data-url:~assets/fonts/parastoo/variable/Parastoo-Bold-WOL.woff")
-    format("woff");
-  font-weight: bold;
-  font-style: normal;
-  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
-}
-
+/* ========== Gandom ========== */
 @font-face {
   font-family: "Gandom-Fontara";
-  src: url("data-url:~assets/fonts/gandom/variable/Gandom-WOL.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/gandom/Gandom.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Tanha ========== */
 @font-face {
   font-family: "Tanha-Fontara";
-  src: url("data-url:~assets/fonts/tanha/variable/Tanha-WOL.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/tanha/Tanha.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Behdad ========== */
 @font-face {
   font-family: "Behdad-Fontara";
-  src: url("data-url:~assets/fonts/behdad/variable/Behdad-Regular.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/behdad/Behdad-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Nika ========== */
 @font-face {
   font-family: "Nika-Fontara";
-  src: url("data-url:~assets/fonts/nika/variable/Nika-Regular.woff2")
-    format("woff2");
+  src: url("data-url:~assets/fonts/nika/Nika-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Ganjname ========== */
 @font-face {
   font-family: "Ganjname-Fontara";
-  src: url("data-url:~assets/fonts/ganjname/variable/GanjNamehSans-Regular.woff2")
+  src: url("data-url:~assets/fonts/ganjname/GanjNamehSans-Regular.woff2")
     format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Shahab ========== */
 @font-face {
   font-family: "Shahab-Fontara";
-  src: url("data-url:~assets/fonts/shahab/variable/Shahab-Regular.woff2")
-    format("woff2");
+  src: url("data-url:~assets/fonts/shahab/Shahab-Regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Mikhak ========== */
 @font-face {
   font-family: "Mikhak-Fontara";
-  src: url("data-url:~assets/fonts/mikhak/variable/Mikhak-Regular.woff2")
-    format("woff2");
-  font-weight: normal;
+  src:
+    url("data-url:~assets/fonts/mikhak/variable/Mikhak[DSTY,KSHD,wght].woff2")
+      format("woff2 supports variations"),
+    url("data-url:~assets/fonts/mikhak/variable/Mikhak[DSTY,KSHD,wght].woff2")
+      format("woff2-variations");
+  font-weight: 100 900;
   font-style: normal;
+  font-display: swap;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
-@font-face {
-  font-family: "Mikhak-Fontara";
-  src: url("data-url:~assets/fonts/mikhak/variable/Mikhak-Bold.woff2")
-    format("woff2");
-  font-weight: bold;
-  font-style: normal;
-  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
-}
-
+/* ========== Nahid ========== */
 @font-face {
   font-family: "Nahid-Fontara";
-  src: url("data-url:~assets/fonts/nahid/variable/Nahid-WOL.woff")
-    format("woff");
+  src: url("data-url:~assets/fonts/nahid/Nahid.woff2");
   font-weight: normal;
   font-style: normal;
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Azarmehr ========== */
 @font-face {
   font-family: "Azarmehr-Fontara";
   src:

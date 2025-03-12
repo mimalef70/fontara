@@ -23,17 +23,18 @@ import whatsapp from "url:~assets/logos/whatsapp-active.png"
 import wikipedia from "url:~assets/logos/wikipedia-active.png"
 import wordpress from "url:~assets/logos/wordpress-active.png"
 import youtube from "url:~assets/logos/youtube-active.png"
+import whatsappCss from "url:~assets/styles/whatsapp.css"
 
 import type { WebsiteItem } from "./types"
 
 export const popularWebsites: WebsiteItem[] = [
-  {
-    url: "https://app.crisp.chat",
-    regex: "^https://app\\.crisp\\.chat/.*$",
-    icon: crisp,
-    pattern: "https://app.crisp.chat/*",
-    siteName: "Crisp"
-  },
+  // {
+  //   url: "https://app.crisp.chat",
+  //   regex: "^https://app\\.crisp\\.chat/.*$",
+  //   icon: crisp,
+  //   pattern: "https://app.crisp.chat/*",
+  //   siteName: "Crisp"
+  // },
   {
     url: "https://www.dropbox.com",
     regex: "^https://www\\.[^/]*dropbox\\.com/.*$",
@@ -62,13 +63,13 @@ export const popularWebsites: WebsiteItem[] = [
     pattern: "https://chatgpt.com/*",
     siteName: "ChatGPT"
   },
-  {
-    url: "https://getpocket.com",
-    regex: "^https://getpocket\\.com/.*$",
-    icon: getpocket,
-    pattern: "https://getpocket.com/*",
-    siteName: "Pocket"
-  },
+  // {
+  //   url: "https://getpocket.com",
+  //   regex: "^https://getpocket\\.com/.*$",
+  //   icon: getpocket,
+  //   pattern: "https://getpocket.com/*",
+  //   siteName: "Pocket"
+  // },
   {
     url: "https://github.com",
     regex: "^https://github\\.com/.*$",
@@ -97,13 +98,13 @@ export const popularWebsites: WebsiteItem[] = [
     pattern: "https://www.google.com/*",
     siteName: "Google"
   },
-  {
-    url: "https://www.inoreader.com",
-    regex: "^https://www\\.inoreader\\.com/.*$",
-    icon: inoreader,
-    pattern: "https://www.inoreader.com/*",
-    siteName: "Inoreader"
-  },
+  // {
+  //   url: "https://www.inoreader.com",
+  //   regex: "^https://www\\.inoreader\\.com/.*$",
+  //   icon: inoreader,
+  //   pattern: "https://www.inoreader.com/*",
+  //   siteName: "Inoreader"
+  // },
   {
     url: "https://www.instagram.com",
     regex: "^https://www\\.instagram\\.com/.*$",
@@ -172,7 +173,9 @@ export const popularWebsites: WebsiteItem[] = [
     regex: "^https://web\\.whatsapp\\.com/.*$",
     icon: whatsapp,
     pattern: "https://web.whatsapp.com/*",
-    siteName: "WhatsApp"
+    siteName: "WhatsApp",
+    customCss: whatsappCss,
+    version: "4.1.1"
   },
   {
     url: "https://www.wikipedia.org",
@@ -181,25 +184,25 @@ export const popularWebsites: WebsiteItem[] = [
     pattern: "https://*.wikipedia.org/*",
     siteName: "Wikipedia"
   },
-  {
-    url: "https://wordpress.org",
-    regex: "^https://[^/]*\\.wordpress\\.org/.*$",
-    icon: wordpress,
-    pattern: "https://*.wordpress.org/*",
-    siteName: "WordPress"
-  },
+  // {
+  //   url: "https://wordpress.org",
+  //   regex: "^https://[^/]*\\.wordpress\\.org/.*$",
+  //   icon: wordpress,
+  //   pattern: "https://*.wordpress.org/*",
+  //   siteName: "WordPress"
+  // },
   {
     url: "https://www.youtube.com",
     regex: "^https://www\\.youtube\\.com/.*$",
     icon: youtube,
     pattern: "https://www.youtube.com/*",
     siteName: "YouTube"
-  },
-  {
-    url: "https://feedly.com",
-    regex: "^https://feedly\\.com/.*$",
-    icon: feedly,
-    pattern: "https://feedly.com/*",
-    siteName: "Feedly"
   }
+  // {
+  //   url: "https://feedly.com",
+  //   regex: "^https://feedly\\.com/.*$",
+  //   icon: feedly,
+  //   pattern: "https://feedly.com/*",
+  //   siteName: "Feedly"
+  // }
 ]

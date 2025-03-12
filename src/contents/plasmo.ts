@@ -3,6 +3,7 @@ import type { PlasmoCSConfig } from "plasmo"
 
 import { Storage } from "@plasmohq/storage"
 
+import { CUSTOM_CSS } from "~src/lib/constants"
 import { isUrlActive } from "~src/lib/utils"
 import { excludedTags, iconClasses } from "~src/utils/constants"
 
@@ -21,6 +22,13 @@ const storageLocal = new Storage({
 let observer: MutationObserver | null = null
 
 async function injectFontStyles() {
+  const currentUrl = window.location.href
+  const websiteList = await storage.get("websiteList")
+  const matchingWebsite = (websiteList as any).find((website) => {
+    const regex = new RegExp(website.regex, "i")
+    return regex.test(currentUrl.trim())
+  })
+
   try {
     // Check if styles are already injected
     const existingStyles = document.getElementById("fontara-font-styles")
@@ -31,6 +39,30 @@ async function injectFontStyles() {
     style.id = "fontara-font-styles"
     style.textContent = styleText
     document.head.appendChild(style)
+
+    // const styleElement = document.createElement("style")
+    // // Set type and content
+    // styleElement.id = "fontara-font-test-styles"
+    // styleElement.textContent = `
+    //   [data-fontara-processed] {
+    //     font-family: '';
+    //   }
+    // `
+    // // Append to head
+    // document.head.appendChild(styleElement)
+
+    if (matchingWebsite?.customCss) {
+      // Check if this custom CSS style is already injected
+      const existingCustomCssStyle = document.getElementById(
+        "fontara-custom-css-style"
+      )
+      if (!existingCustomCssStyle) {
+        const style = document.createElement("style")
+        style.id = "fontara-custom-css-style"
+        style.textContent = CUSTOM_CSS[matchingWebsite.url]
+        document.head.appendChild(style)
+      }
+    }
 
     // Create a separate style element for custom fonts
     const customStyle = document.createElement("style")
@@ -110,6 +142,13 @@ function removeFontStyles() {
       console.log("Custom font variable removed successfully")
     }
 
+    // Remove the dynamic css variable
+    const customCss = document.getElementById("fontara-custom-css-style")
+    if (customCss) {
+      customCss.remove()
+      console.log("Custom css variable removed successfully")
+    }
+
     // Remove the applied styles from all elements
     const allElements = document.querySelectorAll("[style*='fontara-font']")
     allElements.forEach((element) => {
@@ -177,7 +216,7 @@ function processElement(node: HTMLElement): void {
   // node.style.fontFamily = `var(--fontara-font), ${cleanFontFamily}`
   node.setAttribute(
     "style",
-    `font-family: var(--fontara-font), ${cleanFontFamily} !important; ${node.getAttribute("style") || ""}`
+    `font-family: var(--fontara-font)${cleanFontFamily ? `, ${cleanFontFamily}` : ""} !important; ${node.getAttribute("style") || ""}`
   )
 }
 

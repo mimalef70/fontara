@@ -6,6 +6,7 @@ import { useStorage } from "@plasmohq/storage/hook"
 import { STORAGE_KEYS } from "~src/lib/constants"
 import { popularWebsites } from "~src/lib/popularWebsites"
 
+import { Check as CheckIcon } from "./icons"
 import { Checkbox } from "./ui/Checkbox"
 
 type Props = {}
@@ -34,10 +35,11 @@ const CustomUrlToggle = (props: Props) => {
 
   const handleUrlToggle = (checked: boolean) => {
     let updatedUrls
-    const regex = new RegExp(currentTab?.url, "i")
-    const existingWebsiteIndex = websiteList.findIndex((item) =>
-      regex.test(item.url)
-    )
+
+    const existingWebsiteIndex = websiteList.findIndex((item) => {
+      const regex = new RegExp(item.regex, "i")
+      return regex.test(currentTab?.url)
+    })
     if (existingWebsiteIndex === -1) {
       // Website doesn't exist, add it with isActive: true
       updatedUrls = [
@@ -92,17 +94,32 @@ const CustomUrlToggle = (props: Props) => {
     return null
 
   return (
-    <div className="border border-gray-400 rounded-md p-2 select-none mx-auto w-full mt-3">
+    <div className="border border-gray-200 rounded-md p-2 select-none mx-auto w-full mt-3">
       <label
         className="text-xs cursor-pointer overflow-y-hidden"
         htmlFor="customUrl">
         <div className="flex items-center w-full gap-1">
-          <Checkbox
-            name="customUrl"
-            id="customUrl"
-            checked={isUrlActive()}
-            onCheckedChange={handleUrlToggle}
-          />
+          <div className="relative">
+            <input
+              type="checkbox"
+              name="customUrl"
+              id="customUrl"
+              className="sr-only"
+              checked={isUrlActive()}
+              onChange={(e) => handleUrlToggle(e.target.checked)}
+            />
+            <div
+              onClick={() => handleUrlToggle(!isUrlActive())}
+              className={`h-4 w-4 rounded border transition-all duration-200 flex items-center justify-center cursor-pointer ${
+                isUrlActive()
+                  ? "bg-[#2474FF] border-[#2474FF]"
+                  : "border-gray-300 hover:border-[#2474FF]"
+              }`}>
+              {isUrlActive() && (
+                <CheckIcon className="h-3 w-3 text-white" strokeWidth={3} />
+              )}
+            </div>
+          </div>
           <div className="flex items-center justify-around gap-1 ">
             <span className="shrink-0">برای سایت</span>
             <span className="truncate" dir="ltr">
@@ -110,7 +127,7 @@ const CustomUrlToggle = (props: Props) => {
             </span>
             {currentTab?.favIconUrl && (
               <img
-                src={currentTab.favIconUrl}
+                src={currentTab.favIconUrl || "/placeholder.svg"}
                 className="!size-4 object-contain"
                 alt="site icon"
               />

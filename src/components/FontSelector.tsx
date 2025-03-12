@@ -4,7 +4,12 @@ import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 import { useStorage } from "@plasmohq/storage/hook"
 
-import { CheckCircle, Circle, PlusCircle } from "~src/components/icons"
+import {
+  CheckCircle,
+  Circle,
+  FolderFileFont,
+  PlusCircle
+} from "~src/components/icons"
 import { Button } from "~src/components/ui/button"
 import {
   Drawer,
@@ -63,9 +68,11 @@ const FontSelector = () => {
       <Button
         onClick={() => setIsOpen(!isOpen)}
         variant="outline"
-        className="w-full !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)] flex justify-between items-center">
+        className="w-full !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300  flex justify-between items-center hover:!bg-white">
         <span className="font-estedad text-sm">{currentFontName}</span>
-        <span className="opacity-70">▼</span>
+        <span className="opacity-70">
+          <FolderFileFont className="!size-6" />
+        </span>
       </Button>
       <Drawer open={isOpen} onOpenChange={setIsOpen} direction="bottom">
         <DrawerContent className="max-h-[85vh]">

@@ -1,3 +1,5 @@
+import whatsapp from "data-text:../../assets/styles/whatsapp.css"
+
 import { popularWebsites } from "./popularWebsites"
 
 export const STORAGE_KEYS = {
@@ -110,4 +112,8 @@ export const DEFAULT_VALUES = {
 export const URLS = {
   WELCOME_PAGE: "https://mimalef70.github.io/fontara",
   CHANGELOG: "https://mimalef70.github.io/fontara#changelogs"
+}
+
+export const CUSTOM_CSS = {
+  "https://web.whatsapp.com": whatsapp
 }

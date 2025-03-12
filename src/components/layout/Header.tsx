@@ -67,7 +67,7 @@ const Header = () => {
   
   <div className="flex items-center gap-2">
     <Badge className="!text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
-      نسخه ۴
+      نسخه ۴.۱.۲
     </Badge>
     <img src={logo} alt="logo" className="h-auto max-h-8" />
   </div>

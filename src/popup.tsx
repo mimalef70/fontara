@@ -62,7 +62,7 @@ function IndexPopup() {
 
               <div>
                 <div style={{ direction: "rtl" }}>
-                  <div className="overflow-auto">
+                  <div>
                     <PopularSection />
                   </div>
 

@@ -30,7 +30,7 @@ function Footer() {
           </span>
           <a
             onClick={() => {
-              window.open("https://x.com/mimalef70", "_blank")
+              window.open("https://www.linkedin.com/in/mostafaalahyari/", "_blank")
             }}
             className="font-black text-gray-700 cursor-pointer">
             مصطفی الهیاری

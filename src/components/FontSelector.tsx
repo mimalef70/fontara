@@ -82,7 +82,7 @@ const FontSelector = () => {
               فونت مورد نظر خود را انتخاب کنید
             </DrawerDescription>
           </DrawerHeader>
-          <div className="px-4 py-2 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+          <div className="px-4 py-2 max-h-[60vh] overflow-y-auto">
             {Object.entries(fontsByAuthor).map(([author, fonts]) => (
               <div key={author} className="mt-4 mb-2">
                 <h3 className="text-gray-400 text-xs font-semibold mb-2">

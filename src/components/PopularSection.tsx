@@ -43,7 +43,7 @@ function PopularUrl() {
   }
 
   return (
-    <div className="grid grid-cols-5 gap-2 pb-3 justify-items-center items-center overflow-auto w-full">
+    <div className="grid grid-cols-5 gap-2 pb-3 justify-items-center items-center w-full">
       {popularWebsites.map((website) => (
         <TooltipProvider key={website.url} delayDuration={90}>
           <Tooltip>
@@ -54,7 +54,7 @@ function PopularUrl() {
                 src={website.icon}
                 alt={`${website.url} Logo`}
                 className={cn(
-                  "size-10 object-cover rounded-md transition-all duration-300",
+                  "rounded-md transition-all duration-300 px-2 py-2",
                   {
                     "grayscale opacity-25": !websiteList?.find(
                       (item) => item.url === website.url

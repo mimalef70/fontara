@@ -33,7 +33,6 @@ function OptionsPage() {
     },
     isFileContentDuplicate: async (fileHash: string) => {
       customFontList.forEach((customFont: CustomFont) => {
-        console.log(customFont.fileHash === fileHash)
         if (customFont.fileHash === fileHash) return true
       })
       return false

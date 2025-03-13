@@ -109,10 +109,7 @@ async function injectFontStyles() {
       // Set the style content with all the custom font faces
       customStyle.textContent = customFontFaces
       document.head.appendChild(customStyle)
-      console.log("Custom font styles injected successfully")
     }
-
-    console.log("Font styles injected successfully")
   } catch (err) {
     console.error("Failed to inject font styles:", err)
   }
@@ -124,28 +121,24 @@ function removeFontStyles() {
     const fontStyles = document.getElementById("fontara-font-styles")
     if (fontStyles) {
       fontStyles.remove()
-      console.log("Font styles removed successfully")
     }
 
     // Remove the dynamic font variable
     const dynamicFont = document.getElementById("fontara-dynamic-font")
     if (dynamicFont) {
       dynamicFont.remove()
-      console.log("Dynamic font variable removed successfully")
     }
 
     // Remove the dynamic font variable
     const customFont = document.getElementById("fontara-custom-font-styles")
     if (customFont) {
       customFont.remove()
-      console.log("Custom font variable removed successfully")
     }
 
     // Remove the dynamic css variable
     const customCss = document.getElementById("fontara-custom-css-style")
     if (customCss) {
       customCss.remove()
-      console.log("Custom css variable removed successfully")
     }
 
     // Remove the applied styles from all elements
@@ -159,8 +152,6 @@ function removeFontStyles() {
         }
       }
     })
-
-    console.log("Removed fontara styles from all elements")
   } catch (err) {
     console.error("Failed to remove font styles:", err)
   }
@@ -240,7 +231,6 @@ async function applyFontsIfActive() {
 
   if (isActive) {
     // Site is active, apply fonts
-    console.log("Site is active, applying fonts")
     injectFontStyles()
     await initializeFontVariable()
 
@@ -250,7 +240,6 @@ async function applyFontsIfActive() {
     }
   } else {
     // Site is not active, remove fonts
-    console.log("Site is not active, removing fonts")
     stopObserving()
     removeFontStyles()
   }
@@ -289,7 +278,6 @@ function startObserving() {
       subtree: true,
       childList: true
     })
-    console.log("Started observing DOM mutations")
   }
 }
 
@@ -297,7 +285,6 @@ function stopObserving() {
   if (observer) {
     observer.disconnect()
     observer = null
-    console.log("Stopped observing DOM mutations")
   }
 }
 
@@ -320,8 +307,6 @@ function updateFontVariable(fontName: string) {
       --fontara-font: "${fontName}";
     }
   `
-
-  console.log(`Font updated to: ${fontName}`)
 }
 
 async function initializeFontVariable() {
@@ -342,11 +327,9 @@ storage.watch({
     updateFontVariable(change.newValue)
   },
   isExtensionEnabled: async (change) => {
-    console.log("isExtensionEnabled changed:", change.newValue)
     applyFontsIfActive()
   },
   websiteList: async (change) => {
-    console.log("websiteList changed:", change.newValue)
     applyFontsIfActive()
   }
   // customFontList: async (change) => {

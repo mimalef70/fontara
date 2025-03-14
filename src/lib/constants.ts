@@ -12,42 +12,42 @@ export const defaultFonts = [
   {
     value: "Vazirmatn-Fontara",
     name: "وزیر",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Samim-Fontara",
     name: "صمیم",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Shabnam-Fontara",
     name: "شبنم",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Sahel-Fontara",
     name: "ساحل",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Parastoo-Fontara",
     name: "پرستو",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Gandom-Fontara",
     name: "گندم",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Tanha-Fontara",
     name: "تنها",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Nahid-Fontara",
     name: "ناهید",
-    author: "صابر راستی کردار"
+    author: "زنده یاد صابر راستی کردار"
   },
   {
     value: "Azarmehr-Fontara",

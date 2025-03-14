@@ -69,9 +69,27 @@ const Header = () => {
 
       <div className="flex items-center gap-2">
         <Badge className="!text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
-          نسخه {toPersianNumbers(version)}
+          <a
+            onClick={() => {
+              window.open(
+                "https://mimalef70.github.io/fontara/#changelogs",
+                "_blank"
+              )
+            }}
+            className="cursor-pointer">
+            نسخه {toPersianNumbers(version)}
+          </a>
         </Badge>
-        <img src={logo} alt="logo" className="h-auto max-h-8" />
+        <a
+          onClick={() => {
+            window.open(
+              "https://mimalef70.github.io/fontara",
+              "_blank"
+            )
+          }}
+          className="cursor-pointer">
+          <img src={logo} alt="logo" className="h-auto max-h-8" />
+        </a>  
       </div>
     </div>
   )

@@ -1,8 +1,9 @@
-import styleText from "data-text:../fonts.css"
+// import styleText from "data-text:../fonts.css"
 import type { PlasmoCSConfig } from "plasmo"
 
 import { Storage } from "@plasmohq/storage"
 
+import { getFonts } from "~src/fonts"
 import { CUSTOM_CSS, excludedTags, iconClasses } from "~src/lib/constants"
 import { isUrlActive } from "~src/lib/utils"
 
@@ -36,7 +37,8 @@ async function injectFontStyles() {
     // Create style element for built-in fonts
     const style = document.createElement("style")
     style.id = "fontara-font-styles"
-    style.textContent = styleText
+    // style.textContent = styleText
+    style.textContent = getFonts()
     document.head.appendChild(style)
 
     // const styleElement = document.createElement("style")

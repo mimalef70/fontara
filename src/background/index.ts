@@ -32,7 +32,7 @@ async function updateIconStatus() {
     await chrome.action.setIcon({ path: iconToShow })
   } catch (error) {
     await chrome.action.setIcon({ path: ICON_PATHS.default })
-    console.error("Error updating icon status:", error)
+    //console.error("Error updating icon status:", error)
   }
 }
 
@@ -126,7 +126,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       chrome.tabs.create({ url: URLS.CHANGELOG })
     }
   } catch (error) {
-    console.error("Error during extension installation/update:", error)
+    //console.error("Error during extension installation/update:", error)
   }
 })
 

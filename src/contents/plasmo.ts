@@ -111,7 +111,7 @@ async function injectFontStyles() {
       document.head.appendChild(customStyle)
     }
   } catch (err) {
-    console.error("Failed to inject font styles:", err)
+    //console.error("Failed to inject font styles:", err)
   }
 }
 
@@ -153,7 +153,7 @@ function removeFontStyles() {
       }
     })
   } catch (err) {
-    console.error("Failed to remove font styles:", err)
+    //console.error("Failed to remove font styles:", err)
   }
 }
 

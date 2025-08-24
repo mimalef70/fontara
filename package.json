@@ -2,7 +2,7 @@
   "name": "font-ara",
   "displayName": "__MSG_extensionName__",
   "short_name": "FontAra Font Changer",
-  "version": "4.1.4",
+  "version": "4.1.5",
   "description": "__MSG_extensionDescription__",
   "author": "Mostafa Alahyari",
   "scripts": {

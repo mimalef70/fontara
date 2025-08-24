@@ -51,7 +51,7 @@ function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-500 font-bold">
-              muchat
+              mu.chat
             </a>
           </span>
         </div>

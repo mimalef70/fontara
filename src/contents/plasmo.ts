@@ -21,13 +21,14 @@ const storageLocal = new Storage({
 
 let observer: MutationObserver | null = null
 
-async function injectFontStyles() {
+async function injectFontStyles(): Promise<boolean> {
   const currentUrl = window.location.href
   const websiteList = await storage.get("websiteList")
   const matchingWebsite = (websiteList as any).find((website) => {
     const regex = new RegExp(website.regex, "i")
     return regex.test(currentUrl.trim())
   })
+  let hasCustomCss = false
 
   try {
     // Check if styles are already injected
@@ -53,6 +54,7 @@ async function injectFontStyles() {
     // document.head.appendChild(styleElement)
 
     if (matchingWebsite?.customCss) {
+      hasCustomCss = true
       // Check if this custom CSS style is already injected
       const existingCustomCssStyle = document.getElementById(
         "fontara-custom-css-style"
@@ -115,6 +117,7 @@ async function injectFontStyles() {
   } catch (err) {
     //console.error("Failed to inject font styles:", err)
   }
+  return hasCustomCss
 }
 
 function removeFontStyles() {
@@ -233,8 +236,13 @@ async function applyFontsIfActive() {
 
   if (isActive) {
     // Site is active, apply fonts
-    injectFontStyles()
+    const hasCustomCss = await injectFontStyles()
     await initializeFontVariable()
+
+    if (hasCustomCss) {
+      // Custom CSS is applied, so we don't need the generic observer logic.
+      return
+    }
 
     if (document.body) {
       await getAllElementsWithFontFamily(document.body)

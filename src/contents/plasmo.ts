@@ -1,8 +1,9 @@
-import styleText from "data-text:../fonts.css"
+// import styleText from "data-text:../fonts.css"
 import type { PlasmoCSConfig } from "plasmo"
 
 import { Storage } from "@plasmohq/storage"
 
+import { getFonts } from "~src/fonts"
 import { CUSTOM_CSS, excludedTags, iconClasses } from "~src/lib/constants"
 import { isUrlActive } from "~src/lib/utils"
 
@@ -20,13 +21,14 @@ const storageLocal = new Storage({
 
 let observer: MutationObserver | null = null
 
-async function injectFontStyles() {
+async function injectFontStyles(): Promise<boolean> {
   const currentUrl = window.location.href
   const websiteList = await storage.get("websiteList")
   const matchingWebsite = (websiteList as any).find((website) => {
     const regex = new RegExp(website.regex, "i")
     return regex.test(currentUrl.trim())
   })
+  let hasCustomCss = false
 
   try {
     // Check if styles are already injected
@@ -36,7 +38,8 @@ async function injectFontStyles() {
     // Create style element for built-in fonts
     const style = document.createElement("style")
     style.id = "fontara-font-styles"
-    style.textContent = styleText
+    // style.textContent = styleText
+    style.textContent = getFonts()
     document.head.appendChild(style)
 
     // const styleElement = document.createElement("style")
@@ -51,6 +54,7 @@ async function injectFontStyles() {
     // document.head.appendChild(styleElement)
 
     if (matchingWebsite?.customCss) {
+      hasCustomCss = true
       // Check if this custom CSS style is already injected
       const existingCustomCssStyle = document.getElementById(
         "fontara-custom-css-style"
@@ -109,13 +113,11 @@ async function injectFontStyles() {
       // Set the style content with all the custom font faces
       customStyle.textContent = customFontFaces
       document.head.appendChild(customStyle)
-      //console.log("Custom font styles injected successfully")
     }
-
-    //console.log("Font styles injected successfully")
   } catch (err) {
     //console.error("Failed to inject font styles:", err)
   }
+  return hasCustomCss
 }
 
 function removeFontStyles() {
@@ -124,28 +126,24 @@ function removeFontStyles() {
     const fontStyles = document.getElementById("fontara-font-styles")
     if (fontStyles) {
       fontStyles.remove()
-      //console.log("Font styles removed successfully")
     }
 
     // Remove the dynamic font variable
     const dynamicFont = document.getElementById("fontara-dynamic-font")
     if (dynamicFont) {
       dynamicFont.remove()
-      //console.log("Dynamic font variable removed successfully")
     }
 
     // Remove the dynamic font variable
     const customFont = document.getElementById("fontara-custom-font-styles")
     if (customFont) {
       customFont.remove()
-      //console.log("Custom font variable removed successfully")
     }
 
     // Remove the dynamic css variable
     const customCss = document.getElementById("fontara-custom-css-style")
     if (customCss) {
       customCss.remove()
-      //console.log("Custom css variable removed successfully")
     }
 
     // Remove the applied styles from all elements
@@ -159,8 +157,6 @@ function removeFontStyles() {
         }
       }
     })
-
-    //console.log("Removed fontara styles from all elements")
   } catch (err) {
     //console.error("Failed to remove font styles:", err)
   }
@@ -240,9 +236,13 @@ async function applyFontsIfActive() {
 
   if (isActive) {
     // Site is active, apply fonts
-    //console.log("Site is active, applying fonts")
-    injectFontStyles()
+    const hasCustomCss = await injectFontStyles()
     await initializeFontVariable()
+
+    if (hasCustomCss) {
+      // Custom CSS is applied, so we don't need the generic observer logic.
+      return
+    }
 
     if (document.body) {
       await getAllElementsWithFontFamily(document.body)
@@ -250,7 +250,6 @@ async function applyFontsIfActive() {
     }
   } else {
     // Site is not active, remove fonts
-    //console.log("Site is not active, removing fonts")
     stopObserving()
     removeFontStyles()
   }
@@ -289,7 +288,6 @@ function startObserving() {
       subtree: true,
       childList: true
     })
-    //console.log("Started observing DOM mutations")
   }
 }
 
@@ -297,7 +295,6 @@ function stopObserving() {
   if (observer) {
     observer.disconnect()
     observer = null
-    //console.log("Stopped observing DOM mutations")
   }
 }
 
@@ -320,8 +317,6 @@ function updateFontVariable(fontName: string) {
       --fontara-font: "${fontName}";
     }
   `
-
-  //console.log(`Font updated to: ${fontName}`)
 }
 
 async function initializeFontVariable() {
@@ -342,11 +337,9 @@ storage.watch({
     updateFontVariable(change.newValue)
   },
   isExtensionEnabled: async (change) => {
-    //console.log("isExtensionEnabled changed:", change.newValue)
     applyFontsIfActive()
   },
   websiteList: async (change) => {
-    //console.log("websiteList changed:", change.newValue)
     applyFontsIfActive()
   }
   // customFontList: async (change) => {

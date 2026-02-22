@@ -146,12 +146,11 @@ function removeFontStyles() {
       customCss.remove()
     }
 
-    // Remove the applied styles from all elements
+    // Remove the applied font-family from all elements
     const allElements = document.querySelectorAll("[style*='fontara-font']")
     allElements.forEach((element) => {
       if (element instanceof HTMLElement) {
-        // Simply remove the inline style to revert to original style
-        element.style.fontFamily = ""
+        element.style.removeProperty("font-family")
         if (element.style.length === 0) {
           element.removeAttribute("style")
         }
@@ -206,13 +205,9 @@ function processElement(node: HTMLElement): void {
 
   const cleanFontFamily = fontFamilies.join(", ")
 
-  // Apply the new font-family without duplicating
-  // node.style.fontFamily = `var(--fontara-font), ${cleanFontFamily} !important`
-  // node.style.fontFamily = `var(--fontara-font), ${cleanFontFamily}`
-  node.setAttribute(
-    "style",
-    `font-family: var(--fontara-font)${cleanFontFamily ? `, ${cleanFontFamily}` : ""} !important; ${node.getAttribute("style") || ""}`
-  )
+  // Apply the new font-family without overwriting other inline styles
+  const fontValue = `var(--fontara-font)${cleanFontFamily ? `, ${cleanFontFamily}` : ""}`
+  node.style.setProperty("font-family", fontValue, "important")
 }
 
 export async function getAllElementsWithFontFamily(

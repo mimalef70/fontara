@@ -44,3 +44,4 @@ keys.json
 
 # typescript
 .tsbuildinfo
+.agent

@@ -120,12 +120,15 @@ async function injectFontStyles(): Promise<boolean> {
   return hasCustomCss
 }
 
-function applyRtl() {
-  const styleId = "fontara-rtl-style"
-  if (document.getElementById(styleId)) return
+function applyRtl(selector?: string) {
+  removeRtl()
   const style = document.createElement("style")
-  style.id = styleId
-  style.textContent = `html { direction: rtl !important; }`
+  style.id = "fontara-rtl-style"
+  if (selector) {
+    style.textContent = `${selector} { direction: rtl !important; }`
+  } else {
+    style.textContent = `html { direction: rtl !important; }`
+  }
   document.head.appendChild(style)
 }
 
@@ -137,8 +140,13 @@ function removeRtl() {
 async function applyRtlIfActive() {
   const hostname = window.location.hostname
   const rtlList = (await storage.get("rtlList")) || []
-  if (Array.isArray(rtlList) && rtlList.includes(hostname)) {
-    applyRtl()
+  if (Array.isArray(rtlList)) {
+    const item = rtlList.find((i: any) => i.hostname === hostname)
+    if (item) {
+      applyRtl(item.selector)
+    } else {
+      removeRtl()
+    }
   } else {
     removeRtl()
   }

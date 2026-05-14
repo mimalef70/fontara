@@ -7,9 +7,9 @@ import { useStorage } from "@plasmohq/storage/hook"
 import CustomUrlToggle from "~src/components/CustomUrlToggle"
 import FontSelector from "~src/components/FontSelector"
 import { PlusCircle } from "~src/components/icons"
-import Footer from "~src/components/layout/Footer"
 import Header from "~src/components/layout/Header"
 import PopularSection from "~src/components/PopularSection"
+import RtlToggle from "~src/components/RtlToggle"
 import { STORAGE_KEYS } from "~src/lib/constants"
 
 import { cn } from "./lib/utils"
@@ -48,12 +48,7 @@ function IndexPopup() {
                       <PlusCircle />
                       افزودن فونت دلخواه
                     </a>
-                    <a
-                      href="https://mimalef70.github.io/fontara/#donate"
-                      target="_blank"
-                      className="flex cursor-pointer justify-center items-center h-10 gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#4caf4f1c] rounded-[3px] text-[13px] text-[#4caf50] text-center py-[9px] relative">
-                      حمایت از فونت آرا
-                    </a>
+
                   </div>
                 </div>
               </div>
@@ -65,11 +60,11 @@ function IndexPopup() {
                   </div>
 
                   <CustomUrlToggle />
+                  <RtlToggle />
                 </div>
               </div>
             </div>
 
-            <Footer />
           </div>
         </div>
       </section>

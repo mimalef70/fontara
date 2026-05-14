@@ -5,7 +5,8 @@ import { popularWebsites } from "./popularWebsites"
 export const STORAGE_KEYS = {
   EXTENSION_ENABLED: "isExtensionEnabled",
   SELECTED_FONT: "selectedFont",
-  WEBSITE_LIST: "websiteList"
+  WEBSITE_LIST: "websiteList",
+  RTL_LIST: "rtlList"
 }
 
 export const defaultFonts = [

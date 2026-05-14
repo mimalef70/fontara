@@ -120,6 +120,30 @@ async function injectFontStyles(): Promise<boolean> {
   return hasCustomCss
 }
 
+function applyRtl() {
+  const styleId = "fontara-rtl-style"
+  if (document.getElementById(styleId)) return
+  const style = document.createElement("style")
+  style.id = styleId
+  style.textContent = `html { direction: rtl !important; }`
+  document.head.appendChild(style)
+}
+
+function removeRtl() {
+  const style = document.getElementById("fontara-rtl-style")
+  if (style) style.remove()
+}
+
+async function applyRtlIfActive() {
+  const hostname = window.location.hostname
+  const rtlList = (await storage.get("rtlList")) || []
+  if (Array.isArray(rtlList) && rtlList.includes(hostname)) {
+    applyRtl()
+  } else {
+    removeRtl()
+  }
+}
+
 function removeFontStyles() {
   try {
     // Remove the font styles
@@ -329,6 +353,7 @@ async function initializeFontVariable() {
 // Initial setup when content script loads
 if (document.body) {
   applyFontsIfActive()
+  applyRtlIfActive()
 }
 
 // Watch for storage changes
@@ -341,6 +366,9 @@ storage.watch({
   },
   websiteList: async (change) => {
     applyFontsIfActive()
+  },
+  rtlList: async () => {
+    applyRtlIfActive()
   }
   // customFontList: async (change) => {
   //   console.log("customFontList changed:", change.newValue)

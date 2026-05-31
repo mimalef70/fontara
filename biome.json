@@ -10,6 +10,7 @@
       ".github/**/*.yml",
       "components.json",
       "package.json",
+      "pnpm-workspace.yaml",
       "postcss.config.js",
       "src/**/*.html",
       "src/**/*.json",

@@ -62,6 +62,7 @@ We welcome contributions! Check our [Contributing Guidelines](CONTRIBUTING.md) t
 
 FontARA is now built as a pure WebExtension. The source manifest files live in `src/manifest*.json`, runtime code is split across `src/background`, `src/inject`, `src/ui`, `src/config`, and `src/utils`, and the build pipeline lives in `tasks`.
 
+- Use Node.js 24 LTS and pnpm 11.
 - `pnpm dev` builds and watches the Chrome MV3 debug extension in `build/chrome-mv3-dev`.
 - `pnpm build` builds and packages Chrome MV3 in `build/chrome-mv3-prod.zip`.
 - `pnpm build:all` builds and packages all configured MV3 targets.

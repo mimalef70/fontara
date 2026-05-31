@@ -12,7 +12,8 @@ test("CI and release workflows use native build checks without Plasmo publish ac
   const release = readWorkflow("release.yml")
   const workflowText = `${ci}\n${release}`
 
-  assert.match(workflowText, /node-version:\s*22\.x/)
+  assert.match(workflowText, /version:\s*11\.5\.0/)
+  assert.match(workflowText, /node-version:\s*24\.x/)
   assert.match(workflowText, /pnpm lint/)
   assert.match(workflowText, /pnpm typecheck/)
   assert.match(workflowText, /pnpm test/)

@@ -8,9 +8,12 @@ import { PlusCircle } from "../components/icons"
 import Footer from "../components/layout/Footer"
 import Header from "../components/layout/Header"
 import PopularSection from "../components/PopularSection"
+import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 
 function IndexPopup() {
+  useSelectedUIFont()
+
   const [extensionActive] = useStorageValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED,
     (value) => value !== false

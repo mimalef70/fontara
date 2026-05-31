@@ -4,7 +4,11 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        estedad: ["Estedad-Fontara", "Vazirmatn-Fontara", "sans-serif"]
+        estedad: [
+          'var(--fontara-ui-font, "Vazirmatn-Fontara")',
+          "Vazirmatn-Fontara",
+          "sans-serif"
+        ]
       },
       colors: {
         border: "hsl(var(--border))",

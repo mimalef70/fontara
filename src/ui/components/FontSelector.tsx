@@ -3,7 +3,6 @@ import { useEffect, useState } from "react"
 import { DEFAULT_FONTS } from "../../config/fonts"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { FontData } from "../../definitions"
-import { createCustomFontFaces } from "../../generators/custom-font-face"
 import { cn } from "../../utils/cn"
 import { useStorageValue } from "../hooks/use-storage"
 import { CheckCircle, Circle, FolderFileFont } from "./icons"
@@ -24,8 +23,6 @@ type DisplayFont = {
   author?: string
 }
 
-const CUSTOM_FONT_STYLE_ID = "fontara-ui-custom-font-styles"
-
 const FontSelector = () => {
   const [hoveredFont, setHoveredFont] = useState<string | null>(null)
   const [allFonts, setAllFonts] = useState<DisplayFont[]>(DEFAULT_FONTS)
@@ -42,28 +39,6 @@ const FontSelector = () => {
   useEffect(() => {
     if (customFontList) {
       setAllFonts([...DEFAULT_FONTS, ...customFontList])
-    }
-  }, [customFontList])
-
-  useEffect(() => {
-    const customFontFaces = createCustomFontFaces(customFontList)
-    const existingStyle = document.getElementById(CUSTOM_FONT_STYLE_ID)
-
-    if (!customFontFaces) {
-      existingStyle?.remove()
-      return
-    }
-
-    const styleElement =
-      existingStyle instanceof HTMLStyleElement
-        ? existingStyle
-        : document.createElement("style")
-
-    styleElement.id = CUSTOM_FONT_STYLE_ID
-    styleElement.textContent = customFontFaces
-
-    if (!styleElement.parentElement) {
-      document.head.appendChild(styleElement)
     }
   }, [customFontList])
 

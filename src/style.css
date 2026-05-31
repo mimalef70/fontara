@@ -59,7 +59,8 @@
 
   body {
     @apply font-estedad antialiased bg-background text-foreground text-[75%];
-    font-family: "Estedad-Fontara", "Vazirmatn-Fontara", sans-serif;
+    font-family: var(--fontara-ui-font, "Vazirmatn-Fontara"),
+      "Vazirmatn-Fontara", sans-serif;
     scrollbar-width: thin;
     scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
   }

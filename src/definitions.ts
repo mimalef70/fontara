@@ -9,19 +9,11 @@ export interface WebsiteItem {
   customCss?: boolean
 }
 
-export interface CustomFont {
-  value: string
-  name: string
-  type: string
-  fileHash: string
-  originalFileName?: string
-}
-
 export interface FontData {
   value: string
   name: string
   data: string
   type: string
-  // fileHash: string
+  fileHash: string
   originalFileName: string
 }

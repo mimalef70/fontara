@@ -1,9 +1,9 @@
-// @ts-expect-error esbuild loads text assets through the ?text suffix.
-import fontFaceCSS from "../fonts.css?text"
+import fontFaceCSS from "../fonts.css"
 
 export function getFontFaceCSS(): string {
   return fontFaceCSS.replace(
     /url\("assets\/([^"]+)"\)/g,
-    (_, assetPath: string) => `url("${chrome.runtime.getURL(`assets/${assetPath}`)}")`
+    (_, assetPath: string) =>
+      `url("${chrome.runtime.getURL(`assets/${assetPath}`)}")`
   )
 }

@@ -1,5 +1,4 @@
-const fs = require("node:fs")
-const path = require("node:path")
+const chokidar = require("chokidar")
 
 const bundleCSS = require("./bundle-css")
 const bundleHTML = require("./bundle-html")
@@ -72,14 +71,20 @@ function watch({ platforms, debug, zip }) {
     timer = setTimeout(rebuild, 150)
   }
 
-  for (const root of watchRoots) {
-    const rootPath = path.resolve(root)
-    if (fs.existsSync(rootPath)) {
-      fs.watch(rootPath, { recursive: true }, schedule)
-    }
-  }
+  const watcher = chokidar.watch(watchRoots, {
+    awaitWriteFinish: {
+      pollInterval: 25,
+      stabilityThreshold: 100
+    },
+    ignoreInitial: true,
+    ignored: ["**/node_modules/**", "build/**"]
+  })
+
+  watcher.on("all", schedule)
+  watcher.on("error", (error) => console.error(error))
 
   console.log("Watching source files...")
+  return watcher
 }
 
 module.exports = {

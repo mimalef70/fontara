@@ -1,3 +1,11 @@
+import { STORAGE_KEYS } from "../config/storage"
+import type { WebsiteItem } from "../definitions"
+import { watchLocalStorage } from "../utils/storage"
+import {
+  getMatchingWebsite,
+  getStoredWebsiteList,
+  isUrlActive
+} from "../utils/url"
 import { applyFontToTree } from "./dom-processor"
 import {
   initializeFontVariable,
@@ -6,10 +14,6 @@ import {
   updateFontVariable
 } from "./font-style-manager"
 import { startObserving, stopObserving } from "./observer"
-import type { WebsiteItem } from "../definitions"
-import { STORAGE_KEYS } from "../config/storage"
-import { getLocalValue, watchLocalStorage } from "../utils/storage"
-import { getMatchingWebsite, isUrlActive } from "../utils/url"
 
 function runWhenBodyIsReady(callback: () => void | Promise<void>): void {
   if (document.body) {
@@ -31,9 +35,7 @@ function runWhenBodyIsReady(callback: () => void | Promise<void>): void {
 }
 
 async function getCurrentWebsite(): Promise<WebsiteItem | null> {
-  const websiteList = await getLocalValue<WebsiteItem[]>(
-    STORAGE_KEYS.WEBSITE_LIST
-  )
+  const websiteList = await getStoredWebsiteList()
   return getMatchingWebsite(window.location.href, websiteList)
 }
 

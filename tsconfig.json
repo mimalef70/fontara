@@ -14,6 +14,12 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["chrome", "firefox-webext-browser", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "tests/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/*.d.ts",
+    "src/**/*.d.ts",
+    "tests/**/*.ts"
+  ],
   "exclude": ["node_modules", "build"]
 }

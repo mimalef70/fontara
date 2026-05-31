@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { createRoot } from "react-dom/client"
 
 import { STORAGE_KEYS } from "../../config/storage"
-import type { CustomFont, FontData } from "../../definitions"
+import type { FontData } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
@@ -16,15 +16,15 @@ function OptionsPage() {
   )
 
   const fontUtils = {
-    generateFileHash: async (file) => {
+    generateFileHash: async (file: File) => {
       const arrayBuffer = await file.arrayBuffer()
       const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer)
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
     },
-    isFileContentDuplicate: async (fileHash: string) => {
+    isFileContentDuplicate: (fileHash: string) => {
       return customFontList.some(
-        (customFont: Partial<CustomFont>) => customFont.fileHash === fileHash
+        (customFont) => customFont.fileHash === fileHash
       )
     },
     convertToBase64: (file: File): Promise<string> => {
@@ -46,11 +46,22 @@ function OptionsPage() {
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFileHash, setSelectedFileHash] = useState("")
   const [fontName, setFontName] = useState("")
   const { toast } = useToast()
 
-  const handleFileChange = async (event) => {
+  const resetSelectedFile = () => {
+    setSelectedFile(null)
+    setSelectedFileHash("")
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -63,23 +74,27 @@ function OptionsPage() {
       toast({
         title: "لطفا یک فایل فونت معتبر (ttf, woff, woff2, otf) انتخاب کنید"
       })
+      resetSelectedFile()
       return
     }
 
     if (file.size > 2 * 1024 * 1024) {
       toast({ title: "حجم فایل فونت نباید بیشتر از 2 مگابایت باشد" })
+      resetSelectedFile()
       return
     }
 
-    // const fileHash = await fontUtils.generateFileHash(file)
-    // const isDuplicate = await fontUtils.isFileContentDuplicate(fileHash)
+    const fileHash = await fontUtils.generateFileHash(file)
+    const isDuplicate = fontUtils.isFileContentDuplicate(fileHash)
 
-    // if (isDuplicate) {
-    //   toast({ title: "این فایل فونت قبلاً آپلود شده است" })
-    //   return
-    // }
+    if (isDuplicate) {
+      toast({ title: "این فایل فونت قبلاً آپلود شده است" })
+      resetSelectedFile()
+      return
+    }
 
     setSelectedFile(file)
+    setSelectedFileHash(fileHash)
   }
 
   const handleSaveFont = async () => {
@@ -102,17 +117,20 @@ function OptionsPage() {
         throw new Error("نام فونت تکراری است")
       }
 
-      // Process and save the font
-      // const fileHash = await fontUtils.generateFileHash(selectedFile)
+      const fileHash =
+        selectedFileHash || (await fontUtils.generateFileHash(selectedFile))
+      if (fontUtils.isFileContentDuplicate(fileHash)) {
+        throw new Error("این فایل فونت قبلاً آپلود شده است")
+      }
+
       const base64Data = await fontUtils.convertToBase64(selectedFile)
       const extension = selectedFile.name.substring(
         selectedFile.name.lastIndexOf(".") + 1
       )
 
       const suffix = "-Fontara"
-      let value
+      let value: string
 
-      // Generate random prefix and check if it exists
       do {
         const chars =
           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -127,7 +145,7 @@ function OptionsPage() {
         value: value,
         name: fontName,
         data: base64Data,
-        // fileHash: fileHash,
+        fileHash: fileHash,
         type: extension,
         originalFileName: selectedFile.name
       }
@@ -137,12 +155,8 @@ function OptionsPage() {
 
       toast({ title: "فونت با موفقیت اضافه شد" })
 
-      // Reset form
-      setSelectedFile(null)
+      resetSelectedFile()
       setFontName("")
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-      }
     } catch (error) {
       toast({
         title: error instanceof Error ? error.message : "خطا در پردازش فونت"

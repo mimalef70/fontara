@@ -1,6 +1,6 @@
+import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { WebsiteItem } from "../definitions"
 import { getLocalValue } from "./storage"
-import { STORAGE_KEYS } from "../config/storage"
 
 export function createRegexFromUrl(url: string): string {
   try {
@@ -31,16 +31,21 @@ export function getMatchingWebsite(
   return null
 }
 
+export async function getStoredWebsiteList(): Promise<WebsiteItem[]> {
+  const websiteList = await getLocalValue<WebsiteItem[]>(
+    STORAGE_KEYS.WEBSITE_LIST
+  )
+  return Array.isArray(websiteList) ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
+}
+
 export async function isUrlActive(currentUrl: string): Promise<boolean> {
   const isExtensionEnabled = await getLocalValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED
   )
-  const websiteList = await getLocalValue<WebsiteItem[]>(
-    STORAGE_KEYS.WEBSITE_LIST
-  )
 
   if (isExtensionEnabled === false) return false
 
+  const websiteList = await getStoredWebsiteList()
   const matchingWebsite = getMatchingWebsite(currentUrl, websiteList)
   return matchingWebsite?.isActive === true
 }

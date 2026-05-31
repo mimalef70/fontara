@@ -1,6 +1,7 @@
-import type { FontData, WebsiteItem } from "../definitions"
 import { CUSTOM_CSS_BY_SITE } from "../config/site-fixes"
 import { STORAGE_KEYS } from "../config/storage"
+import type { FontData, WebsiteItem } from "../definitions"
+import { createCustomFontFaces } from "../generators/custom-font-face"
 import { getFontFaceCSS } from "../generators/font-face"
 import { getLocalValue } from "../utils/storage"
 
@@ -31,36 +32,6 @@ function upsertStyle(id: string, textContent: string): HTMLStyleElement {
 
 function removeStyle(id: string): void {
   document.getElementById(id)?.remove()
-}
-
-function detectFontFormat(fontData: string): string {
-  if (fontData.includes("data:font/woff2")) return "woff2"
-  if (fontData.includes("data:font/woff")) return "woff"
-  if (fontData.includes("data:font/otf")) return "opentype"
-  if (fontData.includes("data:font/ttf")) return "truetype"
-  return "truetype"
-}
-
-function createCustomFontFaces(customFontList: FontData[] | undefined): string {
-  if (!Array.isArray(customFontList) || customFontList.length === 0) {
-    return ""
-  }
-
-  return customFontList
-    .filter((font) => font.value && font.data)
-    .map((font) => {
-      const format = detectFontFormat(font.data)
-      return `
-        @font-face {
-          font-family: "${font.value}";
-          src: url("${font.data}") format("${format}");
-          font-weight: normal;
-          font-style: normal;
-          font-display: swap;
-        }
-      `
-    })
-    .join("\n")
 }
 
 export async function injectFontStyles(

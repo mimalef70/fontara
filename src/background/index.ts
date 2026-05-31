@@ -2,6 +2,7 @@ import { URLS } from "../config/storage"
 import { registerIconListeners } from "./icon-manager"
 import { ensureStorageValues } from "./storage-manager"
 
+void ensureStorageValues()
 registerIconListeners()
 
 chrome.runtime.onInstalled.addListener((details) => {

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { mergeWebsiteLists } from "../../src/background/storage-manager"
+import {
+  mergeWebsiteLists,
+  normalizeCustomFontList
+} from "../../src/background/storage-manager"
 import type { WebsiteItem } from "../../src/definitions"
 
 test("mergeWebsiteLists appends new default sites", () => {
@@ -49,4 +52,19 @@ test("mergeWebsiteLists updates versioned defaults and preserves active state", 
       isActive: false
     }
   ])
+})
+
+test("normalizeCustomFontList backfills missing file hashes", async () => {
+  const [font] = await normalizeCustomFontList([
+    {
+      value: "LegacyCustom-Fontara",
+      name: "Legacy Custom",
+      data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+      type: "woff2",
+      originalFileName: "legacy.woff2"
+    }
+  ])
+
+  assert.equal(font.fileHash.length, 64)
+  assert.equal(font.originalFileName, "legacy.woff2")
 })

@@ -39,6 +39,17 @@ const textPlugin = {
       }
     })
 
+    build.onResolve({ filter: /\.css$/ }, (args) => {
+      const resolvedPath = path.isAbsolute(args.path)
+        ? args.path
+        : path.resolve(args.resolveDir, args.path)
+
+      return {
+        path: resolvedPath,
+        namespace: "fontara-text"
+      }
+    })
+
     build.onLoad({ filter: /.*/, namespace: "fontara-text" }, async (args) => {
       const text = await fs.promises.readFile(args.path, "utf8")
       return {

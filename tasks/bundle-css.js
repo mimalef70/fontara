@@ -1,8 +1,7 @@
 const fs = require("node:fs")
 const path = require("node:path")
 const postcss = require("postcss")
-const autoprefixer = require("autoprefixer")
-const tailwindcss = require("tailwindcss")
+const tailwindcssPostcss = require("@tailwindcss/postcss")
 
 const { absolutePath, getDestDir } = require("./paths")
 
@@ -12,10 +11,7 @@ async function bundleCSS({ platform, debug }) {
     absolutePath("src/style.css"),
     "utf8"
   )
-  const result = await postcss([
-    tailwindcss(absolutePath("tailwind.config.js")),
-    autoprefixer()
-  ]).process(sourceCSS, {
+  const result = await postcss([tailwindcssPostcss()]).process(sourceCSS, {
     from: absolutePath("src/style.css"),
     to: path.join(outDir, "ui/style.css")
   })

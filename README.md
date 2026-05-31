@@ -57,3 +57,12 @@ I would like to thank all friends and fans for their kind support of the project
 ### Contributing
 
 We welcome contributions! Check our [Contributing Guidelines](CONTRIBUTING.md) to get started.
+
+### Development
+
+FontARA is now built as a pure WebExtension. The source manifest files live in `src/manifest*.json`, runtime code is split across `src/background`, `src/inject`, `src/ui`, `src/config`, and `src/utils`, and the build pipeline lives in `tasks`.
+
+- `pnpm dev` builds and watches the Chrome MV3 debug extension in `build/chrome-mv3-dev`.
+- `pnpm build` builds and packages Chrome MV3 in `build/chrome-mv3-prod.zip`.
+- `pnpm build:all` builds and packages all configured MV3 targets.
+- `pnpm test` runs the unit tests.

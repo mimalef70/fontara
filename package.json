@@ -6,30 +6,31 @@
   "description": "__MSG_extensionDescription__",
   "author": "Mostafa Alahyari",
   "scripts": {
-    "dev": "plasmo dev",
-    "dev:firefox": "plasmo dev --target=firefox-mv3",
-    "dev:safari": "plasmo dev --target=safari-mv3",
-    "debug": "plasmo dev --verbose",
-    "debug:firefox": "plasmo dev --target=firefox-mv3 --verbose",
-    "debug:opera": "plasmo dev --target=opera-mv3 --verbose",
-    "build": "plasmo build",
-    "build:all": "pnpm run build:chrome && pnpm run build:firefox && pnpm run build:edge && pnpm run build:brave && pnpm run build:opera && pnpm run build:safari",
-    "build:chrome": "plasmo build --target=chrome-mv3 --zip",
-    "build:firefox": "plasmo build --target=firefox-mv3 --zip",
-    "build:edge": "plasmo build --target=edge-mv3 --zip",
-    "build:brave": "plasmo build --target=brave-mv3 --zip",
-    "build:opera": "plasmo build --target=opera-mv3 --zip",
-    "build:safari": "plasmo build --target=safari-mv3 --zip",
-    "package": "plasmo package",
-    "package:firefox": "plasmo package --target=firefox-mv3",
+    "dev": "node tasks/cli.js build --debug --watch --chrome-mv3",
+    "dev:firefox": "node tasks/cli.js build --debug --watch --firefox-mv3",
+    "dev:safari": "node tasks/cli.js build --debug --watch --safari-mv3",
+    "debug": "node tasks/cli.js build --debug --chrome-mv3",
+    "debug:firefox": "node tasks/cli.js build --debug --firefox-mv3",
+    "debug:opera": "node tasks/cli.js build --debug --opera-mv3",
+    "build": "node tasks/cli.js build --release --chrome-mv3",
+    "build:all": "node tasks/cli.js build --release --all",
+    "build:chrome": "node tasks/cli.js build --release --chrome-mv3",
+    "build:firefox": "node tasks/cli.js build --release --firefox-mv3",
+    "build:edge": "node tasks/cli.js build --release --edge-mv3",
+    "build:brave": "node tasks/cli.js build --release --brave-mv3",
+    "build:opera": "node tasks/cli.js build --release --opera-mv3",
+    "build:safari": "node tasks/cli.js build --release --safari-mv3",
+    "package": "node tasks/cli.js build --release --chrome-mv3",
+    "package:firefox": "node tasks/cli.js build --release --firefox-mv3",
     "start": "web-ext run --source-dir ./build/chrome-mv3-dev -t chromium --start-url chrome://newtab",
-    "start:firefox": "web-ext run --source-dir ./build/firefox-mv3-dev"
+    "start:firefox": "web-ext run --source-dir ./build/firefox-mv3-dev",
+    "test": "pnpm run test:unit",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@headlessui/react": "^2.1.2",
     "@heroicons/react": "^2.1.5",
-    "@plasmohq/messaging": "^0.6.2",
-    "@plasmohq/storage": "^1.12.0",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-slot": "^1.1.2",
@@ -40,7 +41,6 @@
     "clsx": "^2.1.1",
     "concurrently": "^9.1.2",
     "lucide-react": "^0.460.0",
-    "plasmo": "0.90.3",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-flaticons": "^1.1.5",
@@ -51,50 +51,20 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
-    "@parcel/optimizer-data-url": "2.9.3",
-    "@parcel/transformer-inline-string": "2.9.3",
     "@types/chrome": "0.0.258",
     "@types/firefox-webext-browser": "^120.0.4",
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
+    "@types/yazl": "^2.4.5",
     "autoprefixer": "^10.4.19",
+    "esbuild": "^0.27.0",
     "postcss": "^8.4.38",
     "prettier": "3.2.4",
     "tailwindcss": "^3.4.4",
+    "tsx": "^4.20.6",
     "typescript": "5.3.3",
-    "webextension-polyfill": "^0.12.0"
-  },
-  "manifest": {
-    "action": {
-      "default_popup": "popup.html"
-    },
-    "default_locale": "en",
-    "web_accessible_resources": [
-      {
-        "resources": [
-          "assets/*"
-        ],
-        "matches": [
-          "*://*/*"
-        ]
-      }
-    ],
-    "host_permissions": [
-      "<all_urls>"
-    ],
-    "permissions": [
-      "storage",
-      "activeTab",
-      "tabs"
-    ],
-    "content_security_policy": {
-      "extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
-    },
-    "browser_specific_settings": {
-      "gecko": {
-        "id": "{206079c5-9bab-485d-ad12-97298719c3f2}"
-      }
-    }
+    "webextension-polyfill": "^0.12.0",
+    "yazl": "^3.3.1"
   }
 }

@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extensionName__",
+  "short_name": "FontAra Font Changer",
+  "version": "4.1.6",
+  "description": "__MSG_extensionDescription__",
+  "author": "Mostafa Alahyari",
+  "default_locale": "en",
+  "action": {
+    "default_popup": "ui/popup/index.html",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png",
+      "48": "assets/icon-48.png"
+    }
+  },
+  "options_ui": {
+    "page": "ui/options/index.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background/index.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["inject/index.js"],
+      "run_at": "document_start",
+      "all_frames": false,
+      "match_about_blank": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*",
+        "assets/fonts/*",
+        "assets/fonts/*/*",
+        "assets/fonts/*/*/*",
+        "assets/logos/*",
+        "assets/styles/*"
+      ],
+      "matches": ["*://*/*"]
+    }
+  ],
+  "host_permissions": ["<all_urls>"],
+  "permissions": ["storage", "activeTab", "tabs"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' data:; style-src 'self' 'unsafe-inline'; img-src * data:;"
+  }
+}

@@ -1,0 +1,88 @@
+const fs = require("node:fs")
+const path = require("node:path")
+
+const bundleCSS = require("./bundle-css")
+const bundleHTML = require("./bundle-html")
+const bundleJS = require("./bundle-js")
+const bundleManifest = require("./bundle-manifest")
+const copyAssets = require("./copy")
+const { getDestDir } = require("./paths")
+const { emptyDirectory } = require("./utils")
+const zipBuild = require("./zip")
+
+const watchRoots = [
+  "assets",
+  "src",
+  "tailwind.config.js",
+  "postcss.config.js",
+  "package.json"
+]
+
+async function buildPlatform({ platform, debug, zip }) {
+  const outDir = getDestDir({ platform, debug })
+  await emptyDirectory(outDir)
+
+  await bundleHTML({ platform, debug })
+  await bundleJS({ platform, debug })
+  await bundleCSS({ platform, debug })
+  await bundleManifest({ platform, debug })
+  await copyAssets({ platform, debug })
+
+  if (zip && !debug) {
+    await zipBuild({ platform })
+  }
+}
+
+async function build({ platforms, debug, zip }) {
+  for (const platform of platforms) {
+    await buildPlatform({ platform, debug, zip })
+  }
+}
+
+function watch({ platforms, debug, zip }) {
+  let timer = null
+  let building = false
+  let pending = false
+
+  const rebuild = async () => {
+    if (building) {
+      pending = true
+      return
+    }
+
+    building = true
+    console.log("Rebuilding FontAra extension...")
+
+    try {
+      await build({ platforms, debug, zip })
+      console.log("Build finished.")
+    } catch (error) {
+      console.error(error)
+    } finally {
+      building = false
+      if (pending) {
+        pending = false
+        await rebuild()
+      }
+    }
+  }
+
+  const schedule = () => {
+    clearTimeout(timer)
+    timer = setTimeout(rebuild, 150)
+  }
+
+  for (const root of watchRoots) {
+    const rootPath = path.resolve(root)
+    if (fs.existsSync(rootPath)) {
+      fs.watch(rootPath, { recursive: true }, schedule)
+    }
+  }
+
+  console.log("Watching source files...")
+}
+
+module.exports = {
+  build,
+  watch
+}

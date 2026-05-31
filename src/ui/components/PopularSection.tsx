@@ -51,13 +51,14 @@ function PopularUrl() {
         <TooltipProvider key={website.url} delayDuration={90}>
           <Tooltip>
             <TooltipTrigger
-              className="p-1 shadow-md hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)] rounded-md size-12 cursor-pointer transition-all duration-300 border border-gray-100"
-              onClick={() => toggleActive(website)}>
+              type="button"
+              className="flex size-12 cursor-pointer items-center justify-center rounded-md border border-gray-100 p-0 shadow-md transition-all duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)]"
+              onClick={() => void toggleActive(website)}>
               <img
                 src={website.icon ? getExtensionAssetURL(website.icon) : ""}
                 alt={`${website.url} Logo`}
                 className={cn(
-                  "rounded-md transition-all duration-300 px-2 py-2",
+                  "size-8 rounded-md object-contain transition-all duration-300",
                   {
                     "grayscale opacity-25": !websiteList?.find(
                       (item) => item.url === website.url

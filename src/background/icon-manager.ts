@@ -2,6 +2,8 @@ import { ICON_PATHS, STORAGE_KEYS } from "../config/storage"
 import { watchLocalStorage } from "../utils/storage"
 import { isUrlActive } from "../utils/url"
 
+type IconPath = Parameters<typeof chrome.action.setIcon>[0]["path"]
+
 async function getCurrentTabURL(): Promise<string> {
   const tabs = await chrome.tabs.query({
     active: true,
@@ -11,15 +13,33 @@ async function getCurrentTabURL(): Promise<string> {
   return tabs[0]?.url || ""
 }
 
+async function setIcon(path: IconPath): Promise<boolean> {
+  try {
+    await chrome.action.setIcon({ path })
+    return true
+  } catch (error) {
+    if (__DEBUG__) {
+      console.warn("Failed to update FontAra icon.", error)
+    }
+    return false
+  }
+}
+
 export async function updateIconStatus(): Promise<void> {
   try {
     const currentUrl = await getCurrentTabURL()
     const active = await isUrlActive(currentUrl)
-    await chrome.action.setIcon({
-      path: active ? ICON_PATHS.active : ICON_PATHS.default
-    })
-  } catch {
-    await chrome.action.setIcon({ path: ICON_PATHS.default })
+    const updated = await setIcon(
+      active ? ICON_PATHS.active : ICON_PATHS.default
+    )
+
+    if (!updated && active) {
+      await setIcon(ICON_PATHS.default)
+    }
+  } catch (error) {
+    if (__DEBUG__) {
+      console.warn("Failed to resolve FontAra icon state.", error)
+    }
   }
 }
 

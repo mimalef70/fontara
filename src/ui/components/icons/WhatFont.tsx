@@ -1,4 +1,3 @@
-import * as React from "react"
 import type { SVGProps } from "react"
 
 const SvgWhatFont = (props: SVGProps<SVGSVGElement>) => (
@@ -8,6 +7,7 @@ const SvgWhatFont = (props: SVGProps<SVGSVGElement>) => (
     height="24"
     fill="none"
     viewBox="0 0 25 25"
+    aria-hidden="true"
     {...props}>
     <path
       stroke="currentColor"

@@ -19,13 +19,13 @@ const Header = () => {
       // Update all tabs
       const tabs = await chrome.tabs.query({})
       for (const tab of tabs) {
-        if (tab.id && tab.url && tab.url.startsWith("http")) {
+        if (tab.id && tab.url?.startsWith("http")) {
           try {
             await chrome.tabs.sendMessage(tab.id, {
               action: "toggle",
               isExtensionEnabled: checked
             })
-          } catch (error) {
+          } catch (_error) {
             // Silent catch for inactive tabs
           }
         }
@@ -50,20 +50,17 @@ const Header = () => {
       <div className="flex items-center gap-2">
         <Badge className="!text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
           <a
-            onClick={() => {
-              window.open(
-                "https://mimalef70.github.io/fontara/#changelogs",
-                "_blank"
-              )
-            }}
+            href="https://mimalef70.github.io/fontara/#changelogs"
+            target="_blank"
+            rel="noopener noreferrer"
             className="cursor-pointer">
             نسخه {toPersianNumbers(version)}
           </a>
         </Badge>
         <a
-          onClick={() => {
-            window.open("https://mimalef70.github.io/fontara", "_blank")
-          }}
+          href="https://mimalef70.github.io/fontara"
+          target="_blank"
+          rel="noopener noreferrer"
           className="cursor-pointer">
           <img
             src={getExtensionAssetURL("assets/newlogo.svg")}

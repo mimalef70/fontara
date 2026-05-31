@@ -5,7 +5,7 @@ export type StorageChange<T = unknown> = {
 
 export type StorageWatchers = Record<
   string,
-  (change: StorageChange<any>) => void | Promise<void>
+  (change: StorageChange) => void | Promise<void>
 >
 
 function getRuntimeError(): Error | null {

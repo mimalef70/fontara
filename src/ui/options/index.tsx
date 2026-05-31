@@ -195,8 +195,13 @@ function OptionsPage() {
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-right mb-2">انتخاب فونت</label>
+              <label
+                htmlFor="custom-font-file"
+                className="block text-right mb-2">
+                انتخاب فونت
+              </label>
               <input
+                id="custom-font-file"
                 ref={fileInputRef}
                 type="file"
                 onChange={handleFileChange}
@@ -210,8 +215,13 @@ function OptionsPage() {
             </div>
 
             <div>
-              <label className="block text-right mb-2">نام فونت</label>
+              <label
+                htmlFor="custom-font-name"
+                className="block text-right mb-2">
+                نام فونت
+              </label>
               <input
+                id="custom-font-name"
                 type="text"
                 value={fontName}
                 onChange={(e) => setFontName(e.target.value)}
@@ -223,6 +233,7 @@ function OptionsPage() {
             </div>
 
             <button
+              type="button"
               onClick={handleSaveFont}
               className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
               disabled={isLoading}>
@@ -241,6 +252,7 @@ function OptionsPage() {
                       className="flex flex-col p-2 border rounded">
                       <div className="flex justify-between items-center w-full mb-1">
                         <button
+                          type="button"
                           onClick={() => handleDeleteFont(font.value)}
                           className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
                           disabled={isLoading}>

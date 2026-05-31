@@ -1,4 +1,3 @@
-import * as React from "react"
 import type { SVGProps } from "react"
 
 const SvgCheck = (props: SVGProps<SVGSVGElement>) => (
@@ -8,6 +7,7 @@ const SvgCheck = (props: SVGProps<SVGSVGElement>) => (
     height="24"
     fill="none"
     viewBox="0 0 24 24"
+    aria-hidden="true"
     {...props}>
     <path
       stroke="currentColor"

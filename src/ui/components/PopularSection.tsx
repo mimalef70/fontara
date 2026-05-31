@@ -18,7 +18,7 @@ function PopularUrl() {
   )
 
   const toggleActive = async (website: WebsiteItem) => {
-    let updatedUrls
+    let updatedUrls: WebsiteItem[]
 
     const existingWebsiteIndex = websiteList.findIndex(
       (item) => item.url === website.url

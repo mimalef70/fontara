@@ -9,10 +9,10 @@ import {
   watchLocalStorage
 } from "../../src/utils/storage"
 
-const originalChrome = (globalThis as any).chrome
+const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
 afterEach(() => {
-  ;(globalThis as any).chrome = originalChrome
+  Reflect.set(globalThis, "chrome", originalChrome)
 })
 
 function mockChromeStorage(options: {
@@ -23,7 +23,7 @@ function mockChromeStorage(options: {
 }): Record<string, unknown> {
   const values = { ...(options.values || {}) }
   let runtimeError: { message: string } | undefined
-  ;(globalThis as any).chrome = {
+  Reflect.set(globalThis, "chrome", {
     runtime: {
       get lastError() {
         return runtimeError
@@ -72,7 +72,7 @@ function mockChromeStorage(options: {
         }
       }
     }
-  }
+  })
 
   return values
 }
@@ -110,12 +110,12 @@ test("watchLocalStorage dispatches local changes and removes its listener", () =
   let listener:
     | ((
         changes: Record<string, chrome.storage.StorageChange>,
-        areaName: string
+        areaName: "sync" | "local" | "managed" | "session"
       ) => void)
     | null = null
   let removed = false
   let seenValue: unknown
-  ;(globalThis as any).chrome = {
+  Reflect.set(globalThis, "chrome", {
     storage: {
       onChanged: {
         addListener(callback: typeof listener) {
@@ -126,7 +126,7 @@ test("watchLocalStorage dispatches local changes and removes its listener", () =
         }
       }
     }
-  }
+  })
 
   const stop = watchLocalStorage({
     selectedFont: (change) => {
@@ -145,7 +145,7 @@ test("watchLocalStorage dispatches local changes and removes its listener", () =
 test("watchLocalStorage returns safe cleanup when registration fails", () => {
   let addCalls = 0
 
-  ;(globalThis as any).chrome = {
+  Reflect.set(globalThis, "chrome", {
     storage: {
       onChanged: {
         addListener() {
@@ -157,7 +157,7 @@ test("watchLocalStorage returns safe cleanup when registration fails", () => {
         }
       }
     }
-  }
+  })
 
   const stop = watchLocalStorage({})
 

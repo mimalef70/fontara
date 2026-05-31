@@ -100,7 +100,9 @@ stopWaitingForBody = runWhenBodyIsReady(applyFontsIfActive)
 
 stopWatchingStorage = watchLocalStorage({
   [STORAGE_KEYS.SELECTED_FONT]: (change) => {
-    updateFontVariable(change.newValue)
+    updateFontVariable(
+      typeof change.newValue === "string" ? change.newValue : undefined
+    )
   },
   [STORAGE_KEYS.EXTENSION_ENABLED]: applyFontsIfActive,
   [STORAGE_KEYS.WEBSITE_LIST]: applyFontsIfActive,

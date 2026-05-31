@@ -1,4 +1,3 @@
-import * as React from "react"
 import type { SVGProps } from "react"
 
 const SvgHeartBold = (props: SVGProps<SVGSVGElement>) => (
@@ -7,6 +6,7 @@ const SvgHeartBold = (props: SVGProps<SVGSVGElement>) => (
     width="24"
     height="24"
     viewBox="0 0 24 24"
+    aria-hidden="true"
     {...props}>
     <path
       fill="currentColor"

@@ -26,7 +26,7 @@ async function zipBuild({ platform }) {
   const zipPath = getZipPath({ platform })
   await fs.promises.mkdir(path.dirname(zipPath), { recursive: true })
 
-  await new Promise(async (resolve, reject) => {
+  await new Promise((resolve, reject) => {
     const zipFile = new yazl.ZipFile()
     const output = fs.createWriteStream(zipPath)
 
@@ -35,12 +35,9 @@ async function zipBuild({ platform }) {
     zipFile.outputStream.on("error", reject)
     zipFile.outputStream.pipe(output)
 
-    try {
-      await addDirectory(zipFile, sourceDir)
-      zipFile.end()
-    } catch (error) {
-      reject(error)
-    }
+    addDirectory(zipFile, sourceDir)
+      .then(() => zipFile.end())
+      .catch(reject)
   })
 }
 

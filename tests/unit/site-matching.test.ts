@@ -10,14 +10,14 @@ import {
   isUrlActive
 } from "../../src/utils/url"
 
-const originalChrome = (globalThis as any).chrome
+const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
 afterEach(() => {
-  ;(globalThis as any).chrome = originalChrome
+  Reflect.set(globalThis, "chrome", originalChrome)
 })
 
 function mockLocalStorage(values: Record<string, unknown>): void {
-  ;(globalThis as any).chrome = {
+  Reflect.set(globalThis, "chrome", {
     storage: {
       local: {
         get(key: string, callback: (items: Record<string, unknown>) => void) {
@@ -25,7 +25,7 @@ function mockLocalStorage(values: Record<string, unknown>): void {
         }
       }
     }
-  }
+  })
 }
 
 test("popular website regexes match their declared base URLs", () => {

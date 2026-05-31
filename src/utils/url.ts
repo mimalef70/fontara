@@ -23,9 +23,7 @@ export function getMatchingWebsite(
       if (regex.test(currentUrl.trim())) {
         return website
       }
-    } catch {
-      continue
-    }
+    } catch {}
   }
 
   return null

@@ -23,9 +23,7 @@ function getPlatforms(args) {
     return ALL_PLATFORMS
   }
 
-  const platforms = args
-    .map((arg) => platformFlags[arg])
-    .filter(Boolean)
+  const platforms = args.map((arg) => platformFlags[arg]).filter(Boolean)
 
   return platforms.length > 0 ? [...new Set(platforms)] : [PLATFORM.CHROME_MV3]
 }

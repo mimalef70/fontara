@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { POPULAR_WEBSITES } from "../../config/sites"
 import { STORAGE_KEYS } from "../../config/storage"
@@ -62,12 +62,12 @@ const CustomUrlToggle = () => {
   }, [])
 
   const active = isUrlActive()
+  const currentUrl = currentTab?.url
 
   if (
-    !currentTab ||
-    !currentTab.url?.startsWith("http") ||
+    !currentUrl?.startsWith("http") ||
     POPULAR_WEBSITES.some(
-      (website) => getMatchingWebsite(currentTab.url, [website]) !== null
+      (website) => getMatchingWebsite(currentUrl, [website]) !== null
     )
   )
     return null
@@ -102,7 +102,7 @@ const CustomUrlToggle = () => {
           <div className="flex items-center justify-around gap-1 ">
             <span className="shrink-0">برای سایت</span>
             <span className="truncate" dir="ltr">
-              {currentTab?.url && new URL(currentTab.url).hostname.slice(0, 25)}
+              {new URL(currentUrl).hostname.slice(0, 25)}
             </span>
             {currentTab?.favIconUrl && (
               <img

@@ -1,5 +1,3 @@
-import React from "react"
-
 import { STORAGE_KEYS } from "../../../config/storage"
 import { cn } from "../../../utils/cn"
 import { useStorageValue } from "../../hooks/use-storage"
@@ -25,9 +23,9 @@ function Footer() {
             توسط{" "}
           </span>
           <a
-            onClick={() => {
-              window.open("https://www.linkedin.com/in/mostafaalahyari/", "_blank")
-            }}
+            href="https://www.linkedin.com/in/mostafaalahyari/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="font-black text-gray-700 cursor-pointer">
             مصطفی الهیاری
           </a>

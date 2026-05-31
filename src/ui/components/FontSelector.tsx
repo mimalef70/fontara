@@ -121,13 +121,14 @@ const FontSelector = () => {
                 </h3>
                 <div className="space-y-1">
                   {fonts.map((font) => (
-                    <div
+                    <button
+                      type="button"
                       key={`${font.value}-${font.name}`}
                       onClick={() => void handleFontSelect(font.value)}
                       onMouseEnter={() => setHoveredFont(font.value)}
                       onMouseLeave={() => setHoveredFont(null)}
                       className={cn(
-                        "flex items-center justify-between gap-2 relative p-3 rounded-md cursor-pointer",
+                        "flex items-center justify-between gap-2 relative p-3 rounded-md cursor-pointer w-full border-0 bg-transparent text-right",
                         {
                           "bg-blue-50": selectedFont === font.value,
                           "hover:bg-gray-50": selectedFont !== font.value
@@ -173,7 +174,7 @@ const FontSelector = () => {
                           selectedFont === font.value && <CheckCircle />
                         )}
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

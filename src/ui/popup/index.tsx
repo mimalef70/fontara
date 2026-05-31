@@ -1,13 +1,13 @@
 import { createRoot } from "react-dom/client"
 
+import { STORAGE_KEYS } from "../../config/storage"
+import { cn } from "../../utils/cn"
 import CustomUrlToggle from "../components/CustomUrlToggle"
 import FontSelector from "../components/FontSelector"
 import { PlusCircle } from "../components/icons"
 import Footer from "../components/layout/Footer"
 import Header from "../components/layout/Header"
 import PopularSection from "../components/PopularSection"
-import { STORAGE_KEYS } from "../../config/storage"
-import { cn } from "../../utils/cn"
 import { useStorageValue } from "../hooks/use-storage"
 
 function IndexPopup() {
@@ -71,4 +71,9 @@ function IndexPopup() {
   )
 }
 
-createRoot(document.body).render(<IndexPopup />)
+const rootElement = document.getElementById("root")
+if (!rootElement) {
+  throw new Error("FontAra popup root element was not found.")
+}
+
+createRoot(rootElement).render(<IndexPopup />)

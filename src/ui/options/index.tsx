@@ -266,4 +266,9 @@ function OptionsPage() {
   )
 }
 
-createRoot(document.body).render(<OptionsPage />)
+const rootElement = document.getElementById("root")
+if (!rootElement) {
+  throw new Error("FontAra options root element was not found.")
+}
+
+createRoot(rootElement).render(<OptionsPage />)

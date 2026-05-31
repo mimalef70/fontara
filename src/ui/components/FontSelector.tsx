@@ -80,9 +80,15 @@ const FontSelector = () => {
     {}
   )
 
-  const handleFontSelect = (fontValue: string) => {
-    void setSelectedFont(fontValue)
-    setIsOpen(false)
+  const handleFontSelect = async (fontValue: string) => {
+    try {
+      await setSelectedFont(fontValue)
+      setIsOpen(false)
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to save selected font.", error)
+      }
+    }
   }
 
   const currentFontName =
@@ -117,7 +123,7 @@ const FontSelector = () => {
                   {fonts.map((font) => (
                     <div
                       key={`${font.value}-${font.name}`}
-                      onClick={() => handleFontSelect(font.value)}
+                      onClick={() => void handleFontSelect(font.value)}
                       onMouseEnter={() => setHoveredFont(font.value)}
                       onMouseLeave={() => setHoveredFont(null)}
                       className={cn(

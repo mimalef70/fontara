@@ -32,8 +32,8 @@
       "matches": ["<all_urls>"],
       "js": ["inject/index.js"],
       "run_at": "document_start",
-      "all_frames": false,
-      "match_about_blank": false
+      "all_frames": true,
+      "match_about_blank": true
     }
   ],
   "web_accessible_resources": [
@@ -50,7 +50,7 @@
     }
   ],
   "host_permissions": ["<all_urls>"],
-  "permissions": ["storage", "activeTab", "tabs"],
+  "permissions": ["storage", "unlimitedStorage", "tabs"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' data:; style-src 'self' 'unsafe-inline'; img-src * data:;"
   }

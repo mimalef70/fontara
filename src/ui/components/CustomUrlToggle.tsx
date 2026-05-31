@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react"
 
-import { STORAGE_KEYS } from "../../config/storage"
 import { POPULAR_WEBSITES } from "../../config/sites"
+import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
 import { createRegexFromUrl, getMatchingWebsite } from "../../utils/url"
 import { useStorageValue } from "../hooks/use-storage"
-
 import { Check as CheckIcon } from "./icons"
 
 const CustomUrlToggle = () => {
@@ -35,12 +34,16 @@ const CustomUrlToggle = () => {
       ]
     } else {
       updatedUrls = websiteList.map((item, index) =>
-        index === existingWebsiteIndex
-          ? { ...item, isActive: checked }
-          : item
+        index === existingWebsiteIndex ? { ...item, isActive: checked } : item
       )
     }
-    await setWebsiteList(updatedUrls)
+    try {
+      await setWebsiteList(updatedUrls)
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to update custom URL setting.", error)
+      }
+    }
   }
 
   const isUrlActive = (): boolean => {

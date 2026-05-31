@@ -32,7 +32,6 @@ function OptionsPage() {
         const reader = new FileReader()
         reader.onload = () => {
           if (reader.result && typeof reader.result === "string") {
-            // resolve(reader.result.split(",")[1])
             resolve(reader.result)
           } else {
             reject(new Error("Failed to read file"))
@@ -167,11 +166,17 @@ function OptionsPage() {
   }
 
   const handleDeleteFont = async (fontValue: string) => {
-    const updatedFonts = customFontList.filter(
-      (font) => font.value !== fontValue
-    )
-    await setCustomFontList(updatedFonts)
-    toast({ title: "فونت با موفقیت حذف شد" })
+    try {
+      const updatedFonts = customFontList.filter(
+        (font) => font.value !== fontValue
+      )
+      await setCustomFontList(updatedFonts)
+      toast({ title: "فونت با موفقیت حذف شد" })
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : "خطا در حذف فونت"
+      })
+    }
   }
 
   return (

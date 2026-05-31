@@ -1,15 +1,15 @@
+import { POPULAR_WEBSITES } from "../../config/sites"
+import { STORAGE_KEYS } from "../../config/storage"
+import type { WebsiteItem } from "../../definitions"
+import { getExtensionAssetURL } from "../../utils/assets"
+import { cn } from "../../utils/cn"
+import { useStorageValue } from "../hooks/use-storage"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
 } from "./ui/tooltip"
-import { STORAGE_KEYS } from "../../config/storage"
-import { POPULAR_WEBSITES } from "../../config/sites"
-import type { WebsiteItem } from "../../definitions"
-import { getExtensionAssetURL } from "../../utils/assets"
-import { cn } from "../../utils/cn"
-import { useStorageValue } from "../hooks/use-storage"
 
 function PopularUrl() {
   const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
@@ -36,7 +36,13 @@ function PopularUrl() {
       )
     }
 
-    await setWebsiteList(updatedUrls)
+    try {
+      await setWebsiteList(updatedUrls)
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to update popular website setting.", error)
+      }
+    }
   }
 
   return (

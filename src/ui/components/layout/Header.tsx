@@ -31,7 +31,9 @@ const Header = () => {
         }
       }
     } catch (error) {
-      setExtensionActive(checked)
+      if (__DEBUG__) {
+        console.warn("Failed to update extension enabled state.", error)
+      }
     }
   }
 
@@ -60,10 +62,7 @@ const Header = () => {
         </Badge>
         <a
           onClick={() => {
-            window.open(
-              "https://mimalef70.github.io/fontara",
-              "_blank"
-            )
+            window.open("https://mimalef70.github.io/fontara", "_blank")
           }}
           className="cursor-pointer">
           <img

@@ -32,16 +32,27 @@ export function getMatchingWebsite(
 }
 
 export async function getStoredWebsiteList(): Promise<WebsiteItem[]> {
-  const websiteList = await getLocalValue<WebsiteItem[]>(
-    STORAGE_KEYS.WEBSITE_LIST
-  )
-  return Array.isArray(websiteList) ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
+  try {
+    const websiteList = await getLocalValue<WebsiteItem[]>(
+      STORAGE_KEYS.WEBSITE_LIST
+    )
+    return Array.isArray(websiteList)
+      ? websiteList
+      : DEFAULT_VALUES.WEBSITE_LIST
+  } catch {
+    return DEFAULT_VALUES.WEBSITE_LIST
+  }
 }
 
 export async function isUrlActive(currentUrl: string): Promise<boolean> {
-  const isExtensionEnabled = await getLocalValue<boolean>(
-    STORAGE_KEYS.EXTENSION_ENABLED
-  )
+  let isExtensionEnabled: boolean | undefined
+  try {
+    isExtensionEnabled = await getLocalValue<boolean>(
+      STORAGE_KEYS.EXTENSION_ENABLED
+    )
+  } catch {
+    isExtensionEnabled = DEFAULT_VALUES.EXTENSION_ENABLED
+  }
 
   if (isExtensionEnabled === false) return false
 

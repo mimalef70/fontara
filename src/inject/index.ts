@@ -15,10 +15,14 @@ import {
 } from "./font-style-manager"
 import { startObserving, stopObserving } from "./observer"
 
-function runWhenBodyIsReady(callback: () => void | Promise<void>): void {
+let disposed = false
+let stopWatchingStorage: (() => void) | null = null
+let stopWaitingForBody: (() => void) | null = null
+
+function runWhenBodyIsReady(callback: () => void | Promise<void>): () => void {
   if (document.body) {
     void callback()
-    return
+    return () => {}
   }
 
   const observer = new MutationObserver(() => {
@@ -32,6 +36,8 @@ function runWhenBodyIsReady(callback: () => void | Promise<void>): void {
     childList: true,
     subtree: true
   })
+
+  return () => observer.disconnect()
 }
 
 async function getCurrentWebsite(): Promise<WebsiteItem | null> {
@@ -40,32 +46,41 @@ async function getCurrentWebsite(): Promise<WebsiteItem | null> {
 }
 
 async function applyFontsIfActive(): Promise<void> {
-  const matchingWebsite = await getCurrentWebsite()
-  const active = await isUrlActive(window.location.href)
+  if (disposed) return
 
-  if (!active) {
+  try {
+    const matchingWebsite = await getCurrentWebsite()
+    const active = await isUrlActive(window.location.href)
+
+    if (!active) {
+      stopObserving()
+      removeFontStyles()
+      return
+    }
+
+    const hasCustomCSS = await injectFontStyles(matchingWebsite)
+    await initializeFontVariable()
+
+    if (hasCustomCSS) {
+      stopObserving()
+      return
+    }
+
+    if (document.body) {
+      applyFontToTree(document.body)
+      startObserving()
+    }
+  } catch (error) {
     stopObserving()
-    removeFontStyles()
-    return
-  }
-
-  const hasCustomCSS = await injectFontStyles(matchingWebsite)
-  await initializeFontVariable()
-
-  if (hasCustomCSS) {
-    stopObserving()
-    return
-  }
-
-  if (document.body) {
-    applyFontToTree(document.body)
-    startObserving()
+    if (__DEBUG__) {
+      console.warn("Failed to apply FontAra styles.", error)
+    }
   }
 }
 
-runWhenBodyIsReady(applyFontsIfActive)
+stopWaitingForBody = runWhenBodyIsReady(applyFontsIfActive)
 
-watchLocalStorage({
+stopWatchingStorage = watchLocalStorage({
   [STORAGE_KEYS.SELECTED_FONT]: (change) => {
     updateFontVariable(change.newValue)
   },
@@ -74,12 +89,53 @@ watchLocalStorage({
   [STORAGE_KEYS.CUSTOM_FONT_LIST]: applyFontsIfActive
 })
 
-chrome.runtime.onMessage.addListener((message) => {
+function handleRuntimeMessage(message: { action?: string }): void {
   if (message?.action === "toggle" || message?.action === "toggleExtension") {
     void applyFontsIfActive()
   }
-})
+}
 
-addEventListener("pagehide", () => {
+function cleanupRuntimeListeners(): void {
+  if (disposed) return
+
+  disposed = true
+  stopWaitingForBody?.()
+  stopWaitingForBody = null
   stopObserving()
-})
+  stopWatchingStorage?.()
+  stopWatchingStorage = null
+  chrome.runtime.onMessage.removeListener(handleRuntimeMessage)
+  removeEventListener("pagehide", handlePageHide)
+  removeEventListener("pageshow", handlePageShow)
+  removeEventListener("freeze", handleFreeze)
+  removeEventListener("resume", handleResume)
+}
+
+function handlePageHide(event: PageTransitionEvent): void {
+  stopObserving()
+
+  if (!event.persisted) {
+    cleanupRuntimeListeners()
+  }
+}
+
+function handlePageShow(event: PageTransitionEvent): void {
+  if (event.persisted) {
+    void applyFontsIfActive()
+  }
+}
+
+function handleFreeze(): void {
+  stopObserving()
+}
+
+function handleResume(): void {
+  void applyFontsIfActive()
+}
+
+chrome.runtime.onMessage.addListener(handleRuntimeMessage)
+
+addEventListener("pagehide", handlePageHide)
+addEventListener("pageshow", handlePageShow)
+addEventListener("freeze", handleFreeze)
+addEventListener("resume", handleResume)

@@ -28,11 +28,17 @@ export function useStorageValue<T>(
   React.useEffect(() => {
     let mounted = true
 
-    getLocalValue<T>(key).then((storedValue) => {
-      if (mounted) {
-        setValue(resolveInitialValue(storedValue))
-      }
-    })
+    getLocalValue<T>(key)
+      .then((storedValue) => {
+        if (mounted) {
+          setValue(resolveInitialValue(storedValue))
+        }
+      })
+      .catch((error) => {
+        if (__DEBUG__) {
+          console.warn(`Failed to read ${key} from extension storage.`, error)
+        }
+      })
 
     const listener = (
       changes: Record<string, chrome.storage.StorageChange>,
@@ -56,8 +62,15 @@ export function useStorageValue<T>(
           ? (nextValue as (current: T) => T)(value)
           : nextValue
 
+      const previousValue = value
       setValue(resolvedValue)
-      await setLocalValue(key, resolvedValue)
+
+      try {
+        await setLocalValue(key, resolvedValue)
+      } catch (error) {
+        setValue(previousValue)
+        throw error
+      }
     },
     [key, value]
   )

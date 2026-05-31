@@ -19,6 +19,22 @@ let disposed = false
 let stopWatchingStorage: (() => void) | null = null
 let stopWaitingForBody: (() => void) | null = null
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function isExtensionContextInvalidated(error: unknown): boolean {
+  return /extension context invalidated|context invalidated/i.test(
+    getErrorMessage(error)
+  )
+}
+
+function debugWarn(message: string, error: unknown): void {
+  if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+    console.warn(message, error)
+  }
+}
+
 function runWhenBodyIsReady(callback: () => void | Promise<void>): () => void {
   if (document.body) {
     void callback()
@@ -72,9 +88,11 @@ async function applyFontsIfActive(): Promise<void> {
     }
   } catch (error) {
     stopObserving()
-    if (__DEBUG__) {
-      console.warn("Failed to apply FontAra styles.", error)
+    if (isExtensionContextInvalidated(error)) {
+      cleanupRuntimeListeners({ removeStyles: true })
+      return
     }
+    debugWarn("Failed to apply FontAra styles.", error)
   }
 }
 
@@ -95,16 +113,25 @@ function handleRuntimeMessage(message: { action?: string }): void {
   }
 }
 
-function cleanupRuntimeListeners(): void {
+function cleanupRuntimeListeners(
+  options: { removeStyles?: boolean } = {}
+): void {
   if (disposed) return
 
   disposed = true
   stopWaitingForBody?.()
   stopWaitingForBody = null
   stopObserving()
+  if (options.removeStyles) {
+    removeFontStyles()
+  }
   stopWatchingStorage?.()
   stopWatchingStorage = null
-  chrome.runtime.onMessage.removeListener(handleRuntimeMessage)
+  try {
+    chrome.runtime.onMessage.removeListener(handleRuntimeMessage)
+  } catch (error) {
+    debugWarn("Failed to remove FontAra runtime message listener.", error)
+  }
   removeEventListener("pagehide", handlePageHide)
   removeEventListener("pageshow", handlePageShow)
   removeEventListener("freeze", handleFreeze)
@@ -133,9 +160,16 @@ function handleResume(): void {
   void applyFontsIfActive()
 }
 
-chrome.runtime.onMessage.addListener(handleRuntimeMessage)
+try {
+  chrome.runtime.onMessage.addListener(handleRuntimeMessage)
+} catch (error) {
+  cleanupRuntimeListeners({ removeStyles: true })
+  debugWarn("Failed to register FontAra runtime message listener.", error)
+}
 
-addEventListener("pagehide", handlePageHide)
-addEventListener("pageshow", handlePageShow)
-addEventListener("freeze", handleFreeze)
-addEventListener("resume", handleResume)
+if (!disposed) {
+  addEventListener("pagehide", handlePageHide)
+  addEventListener("pageshow", handlePageShow)
+  addEventListener("freeze", handleFreeze)
+  addEventListener("resume", handleResume)
+}

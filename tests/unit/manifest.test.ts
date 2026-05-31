@@ -4,6 +4,9 @@ import path from "node:path"
 import test from "node:test"
 
 type Manifest = {
+  content_security_policy: {
+    extension_pages: string
+  }
   content_scripts: Array<{
     all_frames?: boolean
     js: string[]
@@ -36,4 +39,18 @@ test("manifest grants storage capacity for custom fonts without redundant active
   assert.ok(manifest.permissions.includes("unlimitedStorage"))
   assert.ok(manifest.permissions.includes("tabs"))
   assert.equal(manifest.permissions.includes("activeTab"), false)
+})
+
+test("manifest keeps extension page CSP locked down", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+  const csp = manifest.content_security_policy.extension_pages
+
+  assert.match(csp, /default-src 'none'/)
+  assert.match(csp, /script-src 'self'/)
+  assert.match(csp, /object-src 'none'/)
+  assert.match(csp, /base-uri 'none'/)
+  assert.match(csp, /form-action 'none'/)
+  assert.match(csp, /font-src 'self' data:/)
+  assert.match(csp, /style-src 'self' 'unsafe-inline'/)
+  assert.doesNotMatch(csp, /object-src 'self'/)
 })

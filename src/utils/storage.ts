@@ -13,6 +13,12 @@ function getRuntimeError(): Error | null {
   return lastError ? new Error(lastError.message) : null
 }
 
+function debugWarn(message: string, error: unknown): void {
+  if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+    console.warn(message, error)
+  }
+}
+
 export function getLocalValue<T = unknown>(
   key: string
 ): Promise<T | undefined> {
@@ -86,14 +92,24 @@ export function watchLocalStorage(watchers: StorageWatchers): () => void {
       const watcher = watchers[key]
       if (watcher) {
         Promise.resolve(watcher(change)).catch((error) => {
-          if (__DEBUG__) {
-            console.warn(`Failed to handle ${key} storage change.`, error)
-          }
+          debugWarn(`Failed to handle ${key} storage change.`, error)
         })
       }
     }
   }
 
-  chrome.storage.onChanged.addListener(listener)
-  return () => chrome.storage.onChanged.removeListener(listener)
+  try {
+    chrome.storage.onChanged.addListener(listener)
+  } catch (error) {
+    debugWarn("Failed to watch extension storage changes.", error)
+    return () => {}
+  }
+
+  return () => {
+    try {
+      chrome.storage.onChanged.removeListener(listener)
+    } catch (error) {
+      debugWarn("Failed to stop watching extension storage changes.", error)
+    }
+  }
 }

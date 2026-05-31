@@ -61,6 +61,8 @@ const CustomUrlToggle = () => {
     getActiveTab()
   }, [])
 
+  const active = isUrlActive()
+
   if (
     !currentTab ||
     !currentTab.url?.startsWith("http") ||
@@ -82,20 +84,20 @@ const CustomUrlToggle = () => {
               name="customUrl"
               id="customUrl"
               className="sr-only"
-              checked={isUrlActive()}
-              onChange={(e) => handleUrlToggle(e.target.checked)}
+              checked={active}
+              onChange={(e) => void handleUrlToggle(e.target.checked)}
             />
-            <div
-              onClick={() => handleUrlToggle(!isUrlActive())}
+            <span
+              aria-hidden="true"
               className={`h-4 w-4 rounded border transition-all duration-200 flex items-center justify-center cursor-pointer ${
-                isUrlActive()
+                active
                   ? "bg-[#2474FF] border-[#2474FF]"
                   : "border-gray-300 hover:border-[#2474FF]"
               }`}>
-              {isUrlActive() && (
+              {active && (
                 <CheckIcon className="h-3 w-3 text-white" strokeWidth={3} />
               )}
-            </div>
+            </span>
           </div>
           <div className="flex items-center justify-around gap-1 ">
             <span className="shrink-0">برای سایت</span>

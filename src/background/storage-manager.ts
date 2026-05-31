@@ -51,7 +51,10 @@ function dataURLToBytes(dataURL: string): Uint8Array {
 }
 
 async function createSHA256Hash(data: Uint8Array): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  const buffer = new ArrayBuffer(data.byteLength)
+  new Uint8Array(buffer).set(data)
+
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("")
 }

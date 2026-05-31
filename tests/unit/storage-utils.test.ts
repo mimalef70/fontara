@@ -5,7 +5,8 @@ import {
   getLocalBytesInUse,
   getLocalValue,
   getLocalValues,
-  setLocalValue
+  setLocalValue,
+  watchLocalStorage
 } from "../../src/utils/storage"
 
 const originalChrome = (globalThis as any).chrome
@@ -103,4 +104,63 @@ test("storage helpers reject chrome runtime errors", async () => {
 
   mockChromeStorage({ bytesError: "bytes failed" })
   await assert.rejects(() => getLocalBytesInUse(), /bytes failed/)
+})
+
+test("watchLocalStorage dispatches local changes and removes its listener", () => {
+  let listener:
+    | ((
+        changes: Record<string, chrome.storage.StorageChange>,
+        areaName: string
+      ) => void)
+    | null = null
+  let removed = false
+  let seenValue: unknown
+  ;(globalThis as any).chrome = {
+    storage: {
+      onChanged: {
+        addListener(callback: typeof listener) {
+          listener = callback
+        },
+        removeListener(callback: typeof listener) {
+          removed = callback === listener
+        }
+      }
+    }
+  }
+
+  const stop = watchLocalStorage({
+    selectedFont: (change) => {
+      seenValue = change.newValue
+    }
+  })
+
+  listener?.({ selectedFont: { newValue: "Vazirmatn-Fontara" } }, "local")
+  listener?.({ selectedFont: { newValue: "Ignored-Fontara" } }, "sync")
+  stop()
+
+  assert.equal(seenValue, "Vazirmatn-Fontara")
+  assert.equal(removed, true)
+})
+
+test("watchLocalStorage returns safe cleanup when registration fails", () => {
+  let addCalls = 0
+
+  ;(globalThis as any).chrome = {
+    storage: {
+      onChanged: {
+        addListener() {
+          addCalls += 1
+          throw new Error("Extension context invalidated.")
+        },
+        removeListener() {
+          throw new Error("Should not remove an unregistered listener.")
+        }
+      }
+    }
+  }
+
+  const stop = watchLocalStorage({})
+
+  assert.equal(addCalls, 1)
+  assert.doesNotThrow(stop)
 })

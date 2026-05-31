@@ -76,6 +76,7 @@ async function bundleJS({ platform, debug }) {
         minify: !debug,
         legalComments: "none",
         define: {
+          "process.env.NODE_ENV": JSON.stringify("production"),
           __DEBUG__: JSON.stringify(debug),
           __PLATFORM__: JSON.stringify(platform),
           __CHROMIUM_MV3__: JSON.stringify(platform !== PLATFORM.FIREFOX_MV3),

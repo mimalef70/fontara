@@ -44,3 +44,5 @@ keys.json
 
 # typescript
 .tsbuildinfo
+
+# Extension SVG assets must stay trackable.

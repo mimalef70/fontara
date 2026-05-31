@@ -107,22 +107,22 @@ test("storage helpers reject chrome runtime errors", async () => {
 })
 
 test("watchLocalStorage dispatches local changes and removes its listener", () => {
-  let listener:
-    | ((
-        changes: Record<string, chrome.storage.StorageChange>,
-        areaName: "sync" | "local" | "managed" | "session"
-      ) => void)
-    | null = null
+  type StorageListener = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: "sync" | "local" | "managed" | "session"
+  ) => void
+
+  const listeners: StorageListener[] = []
   let removed = false
   let seenValue: unknown
   Reflect.set(globalThis, "chrome", {
     storage: {
       onChanged: {
-        addListener(callback: typeof listener) {
-          listener = callback
+        addListener(callback: StorageListener) {
+          listeners.push(callback)
         },
-        removeListener(callback: typeof listener) {
-          removed = callback === listener
+        removeListener(callback: StorageListener) {
+          removed = listeners.includes(callback)
         }
       }
     }
@@ -134,8 +134,15 @@ test("watchLocalStorage dispatches local changes and removes its listener", () =
     }
   })
 
-  listener?.({ selectedFont: { newValue: "Vazirmatn-Fontara" } }, "local")
-  listener?.({ selectedFont: { newValue: "Ignored-Fontara" } }, "sync")
+  const dispatchStorageChange = listeners[0]
+  dispatchStorageChange(
+    { selectedFont: { newValue: "Vazirmatn-Fontara" } },
+    "local"
+  )
+  dispatchStorageChange(
+    { selectedFont: { newValue: "Ignored-Fontara" } },
+    "sync"
+  )
   stop()
 
   assert.equal(seenValue, "Vazirmatn-Fontara")

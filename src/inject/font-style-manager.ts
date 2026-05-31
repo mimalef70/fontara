@@ -3,6 +3,7 @@ import { STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
 import { createCustomFontFaces } from "../generators/custom-font-face"
 import { getFontFaceCSS } from "../generators/font-face"
+import { escapeCSSString } from "../utils/font-data"
 import { getLocalValue } from "../utils/storage"
 
 const FONT_STYLES_ID = "fontara-font-styles"
@@ -81,12 +82,13 @@ export function removeFontStyles(): void {
 
 export function updateFontVariable(fontName: string | undefined): void {
   if (!fontName) return
+  const safeFontName = escapeCSSString(fontName)
 
   upsertStyle(
     DYNAMIC_FONT_ID,
     `
       :root {
-        --fontara-font: "${fontName}";
+        --fontara-font: "${safeFontName}";
       }
     `
   )

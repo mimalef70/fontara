@@ -2,10 +2,14 @@ import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { WebsiteItem } from "../definitions"
 import { getLocalValue } from "./storage"
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
 export function createRegexFromUrl(url: string): string {
   try {
     const urlObj = new URL(url)
-    return `^https?://${urlObj.hostname.replace(/\./g, "\\.")}/?.*$`
+    return `^https?://${escapeRegex(urlObj.hostname)}/?.*$`
   } catch {
     return url
   }

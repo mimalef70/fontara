@@ -4,6 +4,12 @@ import { createRoot } from "react-dom/client"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { FontData } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
+import {
+  getFontDataURLFormat,
+  getFontFileExtension,
+  isSupportedFontExtension,
+  MAX_CUSTOM_FONT_FILE_SIZE_BYTES
+} from "../../utils/font-data"
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
 import { useStorageValue } from "../hooks/use-storage"
@@ -64,12 +70,9 @@ function OptionsPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const validTypes = [".ttf", ".woff", ".woff2", ".otf"]
-    const extension = file.name
-      .substring(file.name.lastIndexOf("."))
-      .toLowerCase()
+    const extension = getFontFileExtension(file.name)
 
-    if (!validTypes.includes(extension)) {
+    if (!isSupportedFontExtension(extension)) {
       toast({
         title: "لطفا یک فایل فونت معتبر (ttf, woff, woff2, otf) انتخاب کنید"
       })
@@ -77,7 +80,7 @@ function OptionsPage() {
       return
     }
 
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_CUSTOM_FONT_FILE_SIZE_BYTES) {
       toast({ title: "حجم فایل فونت نباید بیشتر از 2 مگابایت باشد" })
       resetSelectedFile()
       return
@@ -123,9 +126,10 @@ function OptionsPage() {
       }
 
       const base64Data = await fontUtils.convertToBase64(selectedFile)
-      const extension = selectedFile.name.substring(
-        selectedFile.name.lastIndexOf(".") + 1
-      )
+      if (!getFontDataURLFormat(base64Data)) {
+        throw new Error("فایل فونت معتبر نیست")
+      }
+      const extension = getFontFileExtension(selectedFile.name)
 
       const suffix = "-Fontara"
       let value: string

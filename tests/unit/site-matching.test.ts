@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import fs from "node:fs"
+import path from "node:path"
 import test, { afterEach } from "node:test"
 
 import { POPULAR_WEBSITES } from "../../src/config/sites"
@@ -34,6 +36,16 @@ test("popular website regexes match their declared base URLs", () => {
   }
 })
 
+test("popular website icons point to existing assets", () => {
+  for (const website of POPULAR_WEBSITES) {
+    assert.ok(website.icon, `${website.siteName} should declare an icon`)
+    assert.ok(
+      fs.existsSync(path.resolve(website.icon)),
+      `${website.siteName} icon is missing: ${website.icon}`
+    )
+  }
+})
+
 test("custom URL regex matches the same host over http and https", () => {
   const regex = createRegexFromUrl("https://example.com/path")
   const customWebsite: WebsiteItem = {
@@ -53,6 +65,20 @@ test("custom URL regex matches the same host over http and https", () => {
   assert.equal(
     getMatchingWebsite("https://sub.example.com/", [customWebsite]),
     null
+  )
+})
+
+test("custom URL regex escapes host metacharacters", () => {
+  const regex = createRegexFromUrl("http://[::1]/path")
+  const customWebsite: WebsiteItem = {
+    url: "http://[::1]/path",
+    regex,
+    isActive: true
+  }
+
+  assert.equal(
+    getMatchingWebsite("http://[::1]/anything", [customWebsite]),
+    customWebsite
   )
 })
 

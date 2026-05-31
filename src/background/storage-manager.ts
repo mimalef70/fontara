@@ -1,5 +1,10 @@
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
+import {
+  getFontDataURLFormat,
+  isSafeCustomFontValue,
+  isSupportedFontExtension
+} from "../utils/font-data"
 import { getLocalValue, setLocalValue } from "../utils/storage"
 
 export function mergeWebsiteLists(
@@ -69,24 +74,40 @@ export async function normalizeCustomFontList(
   const normalizedFonts = await Promise.all(
     customFontList.map(async (font) => {
       const customFont = font as Partial<FontData>
+      const value = customFont.value
+      const name =
+        typeof customFont.name === "string" ? customFont.name.trim() : ""
+      const data = typeof customFont.data === "string" ? customFont.data : ""
+      const type =
+        typeof customFont.type === "string" ? customFont.type.toLowerCase() : ""
+
       if (
-        !customFont.value ||
-        !customFont.name ||
-        !customFont.data ||
-        !customFont.type
+        !isSafeCustomFontValue(value) ||
+        !name ||
+        !getFontDataURLFormat(data) ||
+        !isSupportedFontExtension(type)
       ) {
         return null
       }
 
+      const fileHash =
+        typeof customFont.fileHash === "string" &&
+        /^[a-f0-9]{64}$/i.test(customFont.fileHash)
+          ? customFont.fileHash
+          : await createSHA256Hash(dataURLToBytes(data))
+      const originalFileName =
+        typeof customFont.originalFileName === "string" &&
+        customFont.originalFileName.trim()
+          ? customFont.originalFileName.trim()
+          : name
+
       return {
-        value: customFont.value,
-        name: customFont.name,
-        data: customFont.data,
-        type: customFont.type,
-        fileHash:
-          customFont.fileHash ||
-          (await createSHA256Hash(dataURLToBytes(customFont.data))),
-        originalFileName: customFont.originalFileName || customFont.name
+        value,
+        name,
+        data,
+        type,
+        fileHash,
+        originalFileName
       }
     })
   )

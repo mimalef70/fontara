@@ -68,3 +68,22 @@ test("normalizeCustomFontList backfills missing file hashes", async () => {
   assert.equal(font.fileHash.length, 64)
   assert.equal(font.originalFileName, "legacy.woff2")
 })
+
+test("normalizeCustomFontList rejects unsafe custom font records", async () => {
+  const fonts = await normalizeCustomFontList([
+    {
+      value: 'Bad"-Fontara',
+      name: "Bad Font",
+      data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+      type: "woff2"
+    },
+    {
+      value: "InvalidData-Fontara",
+      name: "Invalid Data",
+      data: `data:text/plain;base64,${Buffer.from("font").toString("base64")}`,
+      type: "woff2"
+    }
+  ])
+
+  assert.deepEqual(fonts, [])
+})

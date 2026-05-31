@@ -29,3 +29,26 @@ test("createCustomFontFaces creates reusable font-face CSS", () => {
   assert.match(css, /format\("woff2"\)/)
   assert.match(css, /font-display: swap/)
 })
+
+test("createCustomFontFaces skips unsafe custom font records", () => {
+  const css = createCustomFontFaces([
+    {
+      value: 'Bad"-Fontara',
+      name: "Bad Font",
+      data: "data:font/woff2;base64,AAAA",
+      fileHash: "abc123",
+      originalFileName: "bad.woff2",
+      type: "woff2"
+    },
+    {
+      value: "InvalidData-Fontara",
+      name: "Invalid Data",
+      data: "data:text/plain;base64,AAAA",
+      fileHash: "def456",
+      originalFileName: "invalid.woff2",
+      type: "woff2"
+    }
+  ])
+
+  assert.equal(css, "")
+})

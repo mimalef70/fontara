@@ -49,6 +49,8 @@ export function processElement(node: HTMLElement): void {
 export function applyFontToTree(rootNode: HTMLElement): void {
   if (!rootNode) return
 
+  processElement(rootNode)
+
   const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT)
   let node = walker.nextNode()
 

@@ -4,10 +4,15 @@ import {
   writeFontWorkBatch,
   writeFontWorkBatchChunked
 } from "./dom-processor"
+import {
+  containsContentEditableElement,
+  refreshEditableFontStyles
+} from "./editable-font-style"
 
 let observer: MutationObserver | null = null
 let pendingNodes = new Set<HTMLElement>()
 let scheduledFrame: number | null = null
+let editableFontStylesDirty = false
 
 function getMutationElement(node: Node): HTMLElement | null {
   if (node instanceof HTMLElement) {
@@ -39,11 +44,28 @@ function getTopLevelPendingNodes(nodes: Set<HTMLElement>): HTMLElement[] {
   return Array.from(nodes).filter((node) => !isNestedPendingNode(node, nodes))
 }
 
+function markEditableFontStylesDirtyForNode(node: Node): void {
+  const element = getMutationElement(node)
+  if (element && containsContentEditableElement(element)) {
+    editableFontStylesDirty = true
+  }
+}
+
 function flushPendingNodes(): void {
   scheduledFrame = null
 
   const nodes = getTopLevelPendingNodes(pendingNodes)
   pendingNodes = new Set()
+  const connectedNodes = nodes.filter((node) => node.isConnected)
+  const shouldRefreshEditableFontStyles =
+    editableFontStylesDirty ||
+    connectedNodes.some(containsContentEditableElement)
+  editableFontStylesDirty = false
+
+  if (shouldRefreshEditableFontStyles) {
+    refreshEditableFontStyles()
+  }
+
   const work = nodes.flatMap((node) =>
     node.isConnected ? collectFontWork(node) : []
   )
@@ -68,24 +90,40 @@ export function startObserving(): void {
 
   observer = new MutationObserver((mutations: MutationRecord[]) => {
     for (const mutation of mutations) {
+      if (mutation.type === "attributes") {
+        const element = getMutationElement(mutation.target)
+        if (element) {
+          pendingNodes.add(element)
+        }
+        editableFontStylesDirty = true
+        continue
+      }
+
       if (mutation.type !== "childList") continue
 
       for (const node of mutation.addedNodes) {
         const element = getMutationElement(node)
         if (element) {
           pendingNodes.add(element)
+          markEditableFontStylesDirtyForNode(element)
         }
+      }
+
+      for (const node of mutation.removedNodes) {
+        markEditableFontStylesDirtyForNode(node)
       }
     }
 
-    if (pendingNodes.size > 0) {
+    if (pendingNodes.size > 0 || editableFontStylesDirty) {
       scheduleFlush()
     }
   })
 
   observer.observe(document.body, {
     subtree: true,
-    childList: true
+    childList: true,
+    attributes: true,
+    attributeFilter: ["contenteditable"]
   })
 }
 
@@ -96,6 +134,7 @@ export function stopObserving(): void {
   }
 
   pendingNodes = new Set()
+  editableFontStylesDirty = false
 
   if (!observer) return
 

@@ -55,10 +55,14 @@ class FakeStyleDeclaration {
 }
 
 class FakeElement {
+  attributes = new Map<string, string>()
   childNodes: Array<{ nodeType: number; textContent?: string | null }> = []
   classList = new Set<string>()
+  children: FakeElement[] = []
   id = ""
   isConnected = true
+  isContentEditable = false
+  localName: string
   parentElement: FakeElement | null = null
   style = new FakeStyleDeclaration()
   tagName: string
@@ -69,15 +73,28 @@ class FakeElement {
     private elementsById: Map<string, FakeElement>
   ) {
     this.tagName = tagName.toUpperCase()
+    this.localName = tagName.toLowerCase()
   }
 
   appendChild(child: FakeElement): FakeElement {
     child.parentElement = this
+    this.children.push(child)
     if (child.id) {
       this.elementsById.set(child.id, child)
     }
 
     return child
+  }
+
+  getAttribute(attributeName: string): string | null {
+    return this.attributes.get(attributeName) ?? null
+  }
+
+  setAttribute(attributeName: string, value: string): void {
+    this.attributes.set(attributeName, value)
+    if (attributeName === "contenteditable") {
+      this.isContentEditable = value.toLowerCase() !== "false"
+    }
   }
 
   remove(): void {
@@ -121,8 +138,14 @@ function createRuntimeMocks(): {
     [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
     [STORAGE_KEYS.WEBSITE_LIST]: [matchingWebsite]
   }
+  const bodyElement = new FakeElement("body", elementsById)
+  const editableElement = new FakeElement("div", elementsById)
+  editableElement.id = "prompt-textarea"
+  editableElement.setAttribute("contenteditable", "true")
+  elementsById.set(editableElement.id, editableElement)
+  bodyElement.appendChild(editableElement)
   const documentMock = {
-    body: new FakeElement("body", elementsById),
+    body: bodyElement,
     createElement(tagName: string) {
       return new FakeElement(tagName, elementsById)
     },
@@ -138,7 +161,15 @@ function createRuntimeMocks(): {
       return elementsById.get(id) ?? null
     },
     head: new FakeElement("head", elementsById),
-    querySelectorAll() {
+    querySelectorAll(selector: string) {
+      if (selector === '[contenteditable]:not([contenteditable="false" i])') {
+        return [editableElement]
+      }
+
+      if (selector === '[id="prompt-textarea"]') {
+        return [editableElement]
+      }
+
       return []
     }
   }
@@ -161,8 +192,13 @@ function createRuntimeMocks(): {
   )
   Reflect.set(globalThis, "document", documentMock)
   Reflect.set(globalThis, "window", {
-    getComputedStyle() {
-      return { fontFamily: "system-ui, sans-serif" }
+    getComputedStyle(element: FakeElement) {
+      return {
+        fontFamily:
+          element === editableElement
+            ? '"ChatGPT Sans", Arial, sans-serif'
+            : "system-ui, sans-serif"
+      }
     },
     location: { href: "https://example.com/" },
     requestIdleCallback(callback: (deadline: IdleDeadline) => void) {
@@ -267,7 +303,7 @@ test("selected custom font changes inject its font-face without a reload", async
 
   assert.match(
     runtime.getStyleText("fontara-editable-font-style"),
-    /\[contenteditable\][\s\S]*var\(--fontara-font\)/
+    /\[id="prompt-textarea"\][\s\S]*var\(--fontara-font\), "ChatGPT Sans", Arial, sans-serif/
   )
   assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
 

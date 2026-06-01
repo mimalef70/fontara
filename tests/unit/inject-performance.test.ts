@@ -30,13 +30,23 @@ test("font injection keeps computed-style reads separated from writes", () => {
 
 test("contenteditable editors use stylesheet font application", () => {
   const domProcessorSource = readSource("src/inject/dom-processor.ts")
+  const editableFontStyleSource = readSource(
+    "src/inject/editable-font-style.ts"
+  )
   const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
 
   assert.match(domProcessorSource, /contenteditable/)
   assert.match(domProcessorSource, /node\.isContentEditable === true/)
-  assert.match(fontStyleManagerSource, /fontara-editable-font-style/)
-  assert.match(fontStyleManagerSource, /\[contenteditable\]/)
-  assert.match(fontStyleManagerSource, /var\(--fontara-font\)/)
+  assert.match(editableFontStyleSource, /refreshEditableFontStyles/)
+  assert.match(editableFontStyleSource, /getTopLevelContentEditableElements/)
+  assert.match(editableFontStyleSource, /window\.getComputedStyle\(element\)/)
+  assert.match(editableFontStyleSource, /getElementSelector/)
+  assert.match(editableFontStyleSource, /fontara-editable-font-style/)
+  assert.match(editableFontStyleSource, /\[contenteditable\]/)
+  assert.match(editableFontStyleSource, /var\(--fontara-font\)/)
+  assert.doesNotMatch(editableFontStyleSource, /const EDITABLE_FONT_CSS/)
+  assert.match(fontStyleManagerSource, /refreshEditableFontStyles/)
+  assert.match(fontStyleManagerSource, /removeEditableFontStyles/)
 })
 
 test("mutation observer coalesces added nodes before processing", () => {
@@ -51,6 +61,10 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /writeFontWorkBatch\(work\)/)
   assert.match(observerSource, /shouldChunkFontWork\(work\)/)
   assert.match(observerSource, /writeFontWorkBatchChunked\(work\)/)
+  assert.match(observerSource, /refreshEditableFontStyles/)
+  assert.match(observerSource, /editableFontStylesDirty/)
+  assert.match(observerSource, /removedNodes/)
+  assert.match(observerSource, /attributeFilter: \["contenteditable"\]/)
   assert.doesNotMatch(observerSource, /applyFontToTree/)
 })
 

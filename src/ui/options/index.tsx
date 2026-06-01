@@ -4,12 +4,14 @@ import { createRoot } from "react-dom/client"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { FontData } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
+import { createCustomFontDeletionUpdate } from "../../utils/custom-fonts"
 import {
   getFontDataURLFormat,
   getFontFileExtension,
   isSupportedFontExtension,
   MAX_CUSTOM_FONT_FILE_SIZE_BYTES
 } from "../../utils/font-data"
+import { getLocalValue, setLocalValues } from "../../utils/storage"
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
@@ -174,10 +176,15 @@ function OptionsPage() {
 
   const handleDeleteFont = async (fontValue: string) => {
     try {
-      const updatedFonts = customFontList.filter(
-        (font) => font.value !== fontValue
+      const selectedFont = await getLocalValue<string>(
+        STORAGE_KEYS.SELECTED_FONT
       )
-      await setCustomFontList(updatedFonts)
+      const storageUpdate = createCustomFontDeletionUpdate(
+        customFontList,
+        fontValue,
+        selectedFont
+      )
+      await setLocalValues(storageUpdate)
       toast({ title: "فونت با موفقیت حذف شد" })
     } catch (error) {
       toast({

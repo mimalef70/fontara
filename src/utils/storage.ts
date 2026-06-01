@@ -49,6 +49,22 @@ export function setLocalValue<T>(key: string, value: T): Promise<void> {
   })
 }
 
+export function setLocalValues<T extends Record<string, unknown>>(
+  values: T
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(values, () => {
+      const error = getRuntimeError()
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
+  })
+}
+
 export function getLocalValues<T extends Record<string, unknown>>(
   defaults: T
 ): Promise<T> {

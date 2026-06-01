@@ -6,6 +6,7 @@ import {
   getLocalValue,
   getLocalValues,
   setLocalValue,
+  setLocalValues,
   watchLocalStorage
 } from "../../src/utils/storage"
 
@@ -92,6 +93,9 @@ test("storage helpers resolve values when chrome storage succeeds", async () => 
 
   await setLocalValue("font", "Vazirmatn-Fontara")
   assert.equal(values.font, "Vazirmatn-Fontara")
+  await setLocalValues({ enabled: false, font: "Estedad-Fontara" })
+  assert.equal(values.enabled, false)
+  assert.equal(values.font, "Estedad-Fontara")
   assert.equal(await getLocalBytesInUse(), 128)
 })
 
@@ -101,6 +105,7 @@ test("storage helpers reject chrome runtime errors", async () => {
 
   mockChromeStorage({ setError: "quota exceeded" })
   await assert.rejects(() => setLocalValue("font", "data"), /quota exceeded/)
+  await assert.rejects(() => setLocalValues({ font: "data" }), /quota exceeded/)
 
   mockChromeStorage({ bytesError: "bytes failed" })
   await assert.rejects(() => getLocalBytesInUse(), /bytes failed/)

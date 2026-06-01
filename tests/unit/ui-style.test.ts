@@ -36,3 +36,14 @@ test("UI follows the selected extension font", () => {
   assert.match(popupSource, /useSelectedUIFont\(\)/)
   assert.match(optionsSource, /useSelectedUIFont\(\)/)
 })
+
+test("drawer keeps focus out of aria-hidden popup content", () => {
+  const drawerSource = fs.readFileSync(
+    path.resolve("src/ui/components/ui/drawer.tsx"),
+    "utf8"
+  )
+
+  assert.match(drawerSource, /autoFocus = true/)
+  assert.match(drawerSource, /document\.getElementById\("root"\)/)
+  assert.match(drawerSource, /container=\{container \?\? defaultContainer\}/)
+})

@@ -6,14 +6,27 @@ import { Drawer as DrawerPrimitive } from "vaul"
 import { cn } from "../../../utils/cn"
 
 const Drawer = ({
+  autoFocus = true,
+  container,
   shouldScaleBackground = true,
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root
-    shouldScaleBackground={shouldScaleBackground}
-    {...props}
-  />
-)
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) => {
+  const [defaultContainer, setDefaultContainer] =
+    React.useState<HTMLElement | null>(null)
+
+  React.useEffect(() => {
+    setDefaultContainer(document.getElementById("root"))
+  }, [])
+
+  return (
+    <DrawerPrimitive.Root
+      autoFocus={autoFocus}
+      container={container ?? defaultContainer}
+      shouldScaleBackground={shouldScaleBackground}
+      {...props}
+    />
+  )
+}
 Drawer.displayName = "Drawer"
 
 const DrawerTrigger = DrawerPrimitive.Trigger

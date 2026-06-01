@@ -30,8 +30,6 @@ test("mutation observer coalesces added nodes before processing", () => {
   const observerSource = readSource("src/inject/observer.ts")
 
   assert.match(observerSource, /pendingNodes = new Set<HTMLElement>\(\)/)
-  assert.match(observerSource, /mutation\.type === "characterData"/)
-  assert.match(observerSource, /characterData: true/)
   assert.match(observerSource, /requestAnimationFrame\(flushPendingNodes\)/)
   assert.match(observerSource, /cancelAnimationFrame\(scheduledFrame\)/)
   assert.match(observerSource, /getTopLevelPendingNodes/)

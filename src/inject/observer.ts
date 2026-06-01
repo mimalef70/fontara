@@ -68,14 +68,6 @@ export function startObserving(): void {
 
   observer = new MutationObserver((mutations: MutationRecord[]) => {
     for (const mutation of mutations) {
-      if (mutation.type === "characterData") {
-        const element = getMutationElement(mutation.target)
-        if (element) {
-          pendingNodes.add(element)
-        }
-        continue
-      }
-
       if (mutation.type !== "childList") continue
 
       for (const node of mutation.addedNodes) {
@@ -93,8 +85,7 @@ export function startObserving(): void {
 
   observer.observe(document.body, {
     subtree: true,
-    childList: true,
-    characterData: true
+    childList: true
   })
 }
 

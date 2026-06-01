@@ -68,6 +68,14 @@ export function startObserving(): void {
 
   observer = new MutationObserver((mutations: MutationRecord[]) => {
     for (const mutation of mutations) {
+      if (mutation.type === "attributes") {
+        const element = getMutationElement(mutation.target)
+        if (element) {
+          pendingNodes.add(element)
+        }
+        continue
+      }
+
       if (mutation.type === "characterData") {
         const element = getMutationElement(mutation.target)
         if (element) {
@@ -94,7 +102,9 @@ export function startObserving(): void {
   observer.observe(document.body, {
     subtree: true,
     childList: true,
-    characterData: true
+    characterData: true,
+    attributes: true,
+    attributeFilter: ["style"]
   })
 }
 

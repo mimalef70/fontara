@@ -62,18 +62,25 @@ function getCleanFontFamily(fontFamily: string): string {
     .join(", ")
 }
 
+function hasAppliedFontaraFont(node: HTMLElement): boolean {
+  return node.style.getPropertyValue("font-family").includes("--fontara-font")
+}
+
 function addFontWork(node: HTMLElement, work: FontWork[]): void {
-  if (processedElements.has(node) || !hasRenderableText(node)) {
+  if (!hasRenderableText(node)) {
     return
   }
 
-  processedElements.add(node)
+  if (processedElements.has(node) && hasAppliedFontaraFont(node)) {
+    return
+  }
 
   const fontFamily = window.getComputedStyle(node).fontFamily
   if (isIconFontFamily(fontFamily)) {
     return
   }
 
+  processedElements.add(node)
   work.push({
     fallbackFontFamily: getCleanFontFamily(fontFamily),
     node

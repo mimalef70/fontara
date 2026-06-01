@@ -13,6 +13,7 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.match(domProcessorSource, /function collectFontWork/)
   assert.match(domProcessorSource, /function collectNextFontWork/)
   assert.match(domProcessorSource, /function createFontWorkCollection/)
+  assert.match(domProcessorSource, /function hasAppliedFontaraFont/)
   assert.match(domProcessorSource, /function writeFontWorkBatch/)
   assert.match(domProcessorSource, /function hasDirectText/)
   assert.match(domProcessorSource, /NodeFilter\.FILTER_REJECT/)
@@ -30,7 +31,10 @@ test("mutation observer coalesces added nodes before processing", () => {
   const observerSource = readSource("src/inject/observer.ts")
 
   assert.match(observerSource, /pendingNodes = new Set<HTMLElement>\(\)/)
+  assert.match(observerSource, /mutation\.type === "attributes"/)
   assert.match(observerSource, /mutation\.type === "characterData"/)
+  assert.match(observerSource, /attributes: true/)
+  assert.match(observerSource, /attributeFilter: \["style"\]/)
   assert.match(observerSource, /characterData: true/)
   assert.match(observerSource, /requestAnimationFrame\(flushPendingNodes\)/)
   assert.match(observerSource, /cancelAnimationFrame\(scheduledFrame\)/)

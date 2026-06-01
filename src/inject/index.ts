@@ -10,8 +10,7 @@ import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
 import {
   initializeFontVariable,
   injectFontStyles,
-  removeFontStyles,
-  updateFontVariable
+  removeFontStyles
 } from "./font-style-manager"
 import { startObserving, stopObserving } from "./observer"
 
@@ -100,11 +99,7 @@ async function applyFontsIfActive(): Promise<void> {
 stopWaitingForBody = runWhenBodyIsReady(applyFontsIfActive)
 
 stopWatchingStorage = watchLocalStorage({
-  [STORAGE_KEYS.SELECTED_FONT]: (change) => {
-    updateFontVariable(
-      typeof change.newValue === "string" ? change.newValue : undefined
-    )
-  },
+  [STORAGE_KEYS.SELECTED_FONT]: applyFontsIfActive,
   [STORAGE_KEYS.EXTENSION_ENABLED]: applyFontsIfActive,
   [STORAGE_KEYS.WEBSITE_LIST]: applyFontsIfActive,
   [STORAGE_KEYS.CUSTOM_FONT_LIST]: applyFontsIfActive

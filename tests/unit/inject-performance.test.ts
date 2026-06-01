@@ -11,6 +11,8 @@ test("font injection keeps computed-style reads separated from writes", () => {
   const domProcessorSource = readSource("src/inject/dom-processor.ts")
 
   assert.match(domProcessorSource, /function collectFontWork/)
+  assert.match(domProcessorSource, /function collectNextFontWork/)
+  assert.match(domProcessorSource, /function createFontWorkCollection/)
   assert.match(domProcessorSource, /function writeFontWorkBatch/)
   assert.match(domProcessorSource, /function hasDirectText/)
   assert.match(domProcessorSource, /NodeFilter\.FILTER_REJECT/)
@@ -20,6 +22,7 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.match(domProcessorSource, /endsWith\("-Fontara"\)/)
   assert.doesNotMatch(domProcessorSource, /\.closest\(/)
   assert.doesNotMatch(domProcessorSource, /includes\("-Fontara"\)/)
+  assert.doesNotMatch(domProcessorSource, /export function processElement/)
 })
 
 test("mutation observer coalesces added nodes before processing", () => {
@@ -30,6 +33,22 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /cancelAnimationFrame\(scheduledFrame\)/)
   assert.match(observerSource, /getTopLevelPendingNodes/)
   assert.match(observerSource, /node\.isConnected/)
+  assert.match(observerSource, /collectFontWork/)
+  assert.match(observerSource, /writeFontWorkBatch\(work\)/)
+  assert.doesNotMatch(observerSource, /applyFontToTree/)
+})
+
+test("selected font changes re-run the active injection pipeline", () => {
+  const injectSource = readSource("src/inject/index.ts")
+
+  assert.match(
+    injectSource,
+    /\[STORAGE_KEYS\.SELECTED_FONT\]: applyFontsIfActive/
+  )
+  assert.doesNotMatch(
+    injectSource,
+    /\[STORAGE_KEYS\.SELECTED_FONT\]:[\s\S]*?updateFontVariable/
+  )
 })
 
 test("hot selector lookups use Sets", () => {

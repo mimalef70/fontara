@@ -1,4 +1,4 @@
-import { applyFontToTree } from "./dom-processor"
+import { collectFontWork, writeFontWorkBatch } from "./dom-processor"
 
 let observer: MutationObserver | null = null
 let pendingNodes = new Set<HTMLElement>()
@@ -39,12 +39,11 @@ function flushPendingNodes(): void {
 
   const nodes = getTopLevelPendingNodes(pendingNodes)
   pendingNodes = new Set()
+  const work = nodes.flatMap((node) =>
+    node.isConnected ? collectFontWork(node) : []
+  )
 
-  for (const node of nodes) {
-    if (node.isConnected) {
-      applyFontToTree(node)
-    }
-  }
+  writeFontWorkBatch(work)
 }
 
 function scheduleFlush(): void {

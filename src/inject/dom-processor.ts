@@ -1,13 +1,20 @@
 import { EXCLUDED_TAGS, ICON_CLASSES } from "../config/selectors"
 
-type FontWork = {
+export type FontWork = {
   fallbackFontFamily: string
   node: HTMLElement
 }
 
+type FontWorkCollection = {
+  done: boolean
+  rootNode: HTMLElement
+  rootPending: boolean
+  walker: TreeWalker
+}
+
 const ICON_FONT_FAMILY_PARTS = ["fontawesome", "material", "icon", "glyphicon"]
 const TEXT_CONTROL_TAGS = new Set(["input", "textarea", "select", "option"])
-const WRITE_CHUNK_SIZE = 200
+const WORK_CHUNK_SIZE = 200
 
 let processedElements = new WeakSet<HTMLElement>()
 let processingGeneration = 0
@@ -73,33 +80,68 @@ function addFontWork(node: HTMLElement, work: FontWork[]): void {
   })
 }
 
-function collectFontWork(rootNode: HTMLElement): FontWork[] {
-  const work: FontWork[] = []
-
+function createFontWorkCollection(
+  rootNode: HTMLElement
+): FontWorkCollection | null {
   if (isExcludedSubtree(rootNode)) {
-    return work
+    return null
   }
 
-  addFontWork(rootNode, work)
+  return {
+    done: false,
+    rootNode,
+    rootPending: true,
+    walker: document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(node) {
+        if (!(node instanceof HTMLElement)) {
+          return NodeFilter.FILTER_SKIP
+        }
 
-  const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT, {
-    acceptNode(node) {
-      if (!(node instanceof HTMLElement)) {
-        return NodeFilter.FILTER_SKIP
+        return isExcludedSubtree(node)
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT
       }
+    })
+  }
+}
 
-      return isExcludedSubtree(node)
-        ? NodeFilter.FILTER_REJECT
-        : NodeFilter.FILTER_ACCEPT
+function collectNextFontWork(
+  collection: FontWorkCollection,
+  work: FontWork[],
+  deadline?: IdleDeadline
+): boolean {
+  let visitedCount = 0
+
+  while (!collection.done && shouldContinueChunk(deadline, visitedCount)) {
+    const node = collection.rootPending
+      ? collection.rootNode
+      : collection.walker.nextNode()
+
+    collection.rootPending = false
+
+    if (!node) {
+      collection.done = true
+      break
     }
-  })
 
-  let node = walker.nextNode()
-  while (node) {
     if (node instanceof HTMLElement) {
       addFontWork(node, work)
     }
-    node = walker.nextNode()
+
+    visitedCount += 1
+  }
+
+  return collection.done
+}
+
+export function collectFontWork(rootNode: HTMLElement): FontWork[] {
+  const collection = createFontWorkCollection(rootNode)
+  const work: FontWork[] = []
+
+  if (!collection) return work
+
+  while (!collection.done) {
+    collectNextFontWork(collection, work)
   }
 
   return work
@@ -121,7 +163,7 @@ function writeFontWork({ fallbackFontFamily, node }: FontWork): void {
   )
 }
 
-function writeFontWorkBatch(work: FontWork[]): void {
+export function writeFontWorkBatch(work: FontWork[]): void {
   for (const item of work) {
     writeFontWork(item)
   }
@@ -141,42 +183,18 @@ function shouldContinueChunk(
   writtenCount: number
 ): boolean {
   if (!deadline) {
-    return writtenCount < WRITE_CHUNK_SIZE
+    return writtenCount < WORK_CHUNK_SIZE
   }
 
   return deadline.timeRemaining() > 4 || writtenCount === 0
 }
 
-export function resetProcessedElements(): void {
-  processedElements = new WeakSet<HTMLElement>()
-  processingGeneration += 1
-}
-
-export function processElement(node: HTMLElement): void {
-  if (isExcludedSubtree(node)) return
-
-  const work: FontWork[] = []
-  addFontWork(node, work)
-  writeFontWorkBatch(work)
-}
-
-export function applyFontToTree(rootNode: HTMLElement): void {
-  if (!rootNode) return
-
-  const work = collectFontWork(rootNode)
-  writeFontWorkBatch(work)
-}
-
-export function applyFontToTreeChunked(rootNode: HTMLElement): void {
-  if (!rootNode) return
-
-  const work = collectFontWork(rootNode)
-  if (work.length <= WRITE_CHUNK_SIZE) {
+function writeFontWorkChunked(work: FontWork[], generation: number): void {
+  if (work.length <= WORK_CHUNK_SIZE) {
     writeFontWorkBatch(work)
     return
   }
 
-  const generation = processingGeneration
   let index = 0
 
   const step = (deadline?: IdleDeadline): void => {
@@ -199,4 +217,39 @@ export function applyFontToTreeChunked(rootNode: HTMLElement): void {
   }
 
   scheduleIdle(step)
+}
+
+export function resetProcessedElements(): void {
+  processedElements = new WeakSet<HTMLElement>()
+  processingGeneration += 1
+}
+
+export function applyFontToTree(rootNode: HTMLElement): void {
+  if (!rootNode) return
+
+  const work = collectFontWork(rootNode)
+  writeFontWorkBatch(work)
+}
+
+export function applyFontToTreeChunked(rootNode: HTMLElement): void {
+  if (!rootNode) return
+
+  const collection = createFontWorkCollection(rootNode)
+  const work: FontWork[] = []
+  const generation = processingGeneration
+
+  if (!collection) return
+
+  const collectStep = (deadline?: IdleDeadline): void => {
+    if (generation !== processingGeneration) return
+
+    if (!collectNextFontWork(collection, work, deadline)) {
+      scheduleIdle(collectStep)
+      return
+    }
+
+    writeFontWorkChunked(work, generation)
+  }
+
+  scheduleIdle(collectStep)
 }

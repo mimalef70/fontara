@@ -8,10 +8,8 @@ import {
 } from "../utils/url"
 import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
 import {
-  areBaseFontStylesPresent,
   initializeFontVariable,
   injectFontStyles,
-  isManagedFontStyleElement,
   removeFontStyles
 } from "./font-style-manager"
 import { startObserving, stopObserving } from "./observer"
@@ -20,7 +18,6 @@ let disposed = false
 let applyFontsQueued = false
 let applyFontsRunning = false
 let applyFontsScheduled = false
-let stopWatchingFontStyles: (() => void) | null = null
 let stopWatchingStorage: (() => void) | null = null
 let stopWaitingForBody: (() => void) | null = null
 
@@ -66,58 +63,6 @@ async function getCurrentWebsite(): Promise<WebsiteItem | null> {
   return getMatchingWebsite(window.location.href, websiteList)
 }
 
-function getFontStyleHost(): HTMLElement {
-  return document.head || document.documentElement
-}
-
-function shouldRestoreFontStyles(mutations: MutationRecord[]): boolean {
-  if (!areBaseFontStylesPresent()) return true
-
-  return mutations.some((mutation) =>
-    Array.from(mutation.removedNodes).some(isManagedFontStyleElement)
-  )
-}
-
-function startWatchingFontStyles(): void {
-  stopWatchingFontStyles?.()
-
-  const host = getFontStyleHost()
-  const observers: MutationObserver[] = []
-  const watchHost = () => {
-    if (disposed) return
-
-    if (getFontStyleHost() !== host) {
-      startWatchingFontStyles()
-      scheduleApplyFontsIfActive()
-    }
-  }
-  const restoreMissingStyles = (mutations: MutationRecord[]) => {
-    if (disposed) return
-
-    if (shouldRestoreFontStyles(mutations)) {
-      scheduleApplyFontsIfActive()
-    }
-  }
-  const hostObserver = new MutationObserver(restoreMissingStyles)
-
-  hostObserver.observe(host, { childList: true })
-  observers.push(hostObserver)
-
-  if (host !== document.documentElement) {
-    const documentElementObserver = new MutationObserver(watchHost)
-    documentElementObserver.observe(document.documentElement, {
-      childList: true
-    })
-    observers.push(documentElementObserver)
-  }
-
-  stopWatchingFontStyles = () => {
-    for (const observer of observers) {
-      observer.disconnect()
-    }
-  }
-}
-
 async function applyFontsIfActive(): Promise<void> {
   if (disposed) return
 
@@ -127,8 +72,6 @@ async function applyFontsIfActive(): Promise<void> {
 
     if (!active) {
       stopObserving()
-      stopWatchingFontStyles?.()
-      stopWatchingFontStyles = null
       resetProcessedElements()
       removeFontStyles()
       return
@@ -136,7 +79,6 @@ async function applyFontsIfActive(): Promise<void> {
 
     const hasCustomCSS = await injectFontStyles(matchingWebsite)
     await initializeFontVariable()
-    startWatchingFontStyles()
 
     if (hasCustomCSS) {
       stopObserving()
@@ -219,8 +161,6 @@ function cleanupRuntimeListeners(
   stopWaitingForBody?.()
   stopWaitingForBody = null
   stopObserving()
-  stopWatchingFontStyles?.()
-  stopWatchingFontStyles = null
   if (options.removeStyles) {
     resetProcessedElements()
     removeFontStyles()

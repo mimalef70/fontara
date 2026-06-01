@@ -10,12 +10,6 @@ const FONT_STYLES_ID = "fontara-font-styles"
 const CUSTOM_CSS_ID = "fontara-custom-css-style"
 const CUSTOM_FONT_STYLES_ID = "fontara-custom-font-styles"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
-const MANAGED_STYLE_IDS = new Set([
-  CUSTOM_CSS_ID,
-  CUSTOM_FONT_STYLES_ID,
-  DYNAMIC_FONT_ID,
-  FONT_STYLES_ID
-])
 
 function getStyleHost(): HTMLElement {
   return document.head || document.documentElement
@@ -39,17 +33,6 @@ function upsertStyle(id: string, textContent: string): HTMLStyleElement {
 
 function removeStyle(id: string): void {
   document.getElementById(id)?.remove()
-}
-
-export function areBaseFontStylesPresent(): boolean {
-  return Boolean(
-    document.getElementById(FONT_STYLES_ID) &&
-      document.getElementById(DYNAMIC_FONT_ID)
-  )
-}
-
-export function isManagedFontStyleElement(node: Node): boolean {
-  return node instanceof HTMLElement && MANAGED_STYLE_IDS.has(node.id)
 }
 
 async function getSelectedCustomFonts(): Promise<FontData[]> {

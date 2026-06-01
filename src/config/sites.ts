@@ -10,11 +10,10 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
   },
   {
     url: "https://x.com",
-    regex: "^https://(?:x|twitter)\\.com/.*$",
+    regex: "^https://x\\.com/.*$",
     icon: "assets/logos/twitter-active.png",
     pattern: "https://x.com/*",
-    siteName: "X",
-    version: "4.1.7"
+    siteName: "X"
   },
   {
     url: "https://www.facebook.com",

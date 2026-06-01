@@ -49,13 +49,8 @@ test("mutation observer coalesces added nodes before processing", () => {
 
 test("storage changes schedule the active injection pipeline", () => {
   const injectSource = readSource("src/inject/index.ts")
-  const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
 
   assert.match(injectSource, /function scheduleApplyFontsIfActive/)
-  assert.match(injectSource, /function startWatchingFontStyles/)
-  assert.match(injectSource, /areBaseFontStylesPresent/)
-  assert.match(injectSource, /isManagedFontStyleElement/)
-  assert.match(injectSource, /stopWatchingFontStyles/)
   assert.match(injectSource, /queueMicrotask/)
   assert.match(injectSource, /applyFontsRunning/)
   assert.match(injectSource, /applyFontsQueued/)
@@ -67,8 +62,6 @@ test("storage changes schedule the active injection pipeline", () => {
     injectSource,
     /\[STORAGE_KEYS\.SELECTED_FONT\]:[\s\S]*?updateFontVariable/
   )
-  assert.match(fontStyleManagerSource, /function areBaseFontStylesPresent/)
-  assert.match(fontStyleManagerSource, /function isManagedFontStyleElement/)
 })
 
 test("hot selector lookups use Sets", () => {

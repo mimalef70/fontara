@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client"
 
 import { STORAGE_KEYS } from "../../config/storage"
 import { cn } from "../../utils/cn"
+import { openOptionsPageSafely } from "../../utils/options-page"
 import CustomUrlToggle from "../components/CustomUrlToggle"
 import FontSelector from "../components/FontSelector"
 import { PlusCircle } from "../components/icons"
@@ -40,7 +41,7 @@ function IndexPopup() {
                     <FontSelector />
                     <button
                       type="button"
-                      onClick={() => void chrome.runtime.openOptionsPage()}
+                      onClick={() => void openOptionsPageSafely()}
                       className="flex cursor-pointer justify-center items-center gap-1 h-10 font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative border-0">
                       <PlusCircle />
                       افزودن فونت دلخواه

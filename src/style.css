@@ -98,3 +98,7 @@ body,
   font-family: var(--fontara-ui-font, "Vazirmatn-Fontara"),
     "Vazirmatn-Fontara", sans-serif !important;
 }
+
+#root .fontara-font-preview {
+  font-family: var(--fontara-preview-font), "Vazirmatn-Fontara", sans-serif !important;
+}

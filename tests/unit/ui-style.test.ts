@@ -24,6 +24,10 @@ test("UI follows the selected extension font", () => {
     path.resolve("src/ui/options/index.tsx"),
     "utf8"
   )
+  const fontSelectorSource = fs.readFileSync(
+    path.resolve("src/ui/components/FontSelector.tsx"),
+    "utf8"
+  )
 
   assert.equal(
     estedadFontFamily?.[0],
@@ -39,6 +43,12 @@ test("UI follows the selected extension font", () => {
   )
   assert.match(popupSource, /useSelectedUIFont\(\)/)
   assert.match(optionsSource, /useSelectedUIFont\(\)/)
+  assert.match(
+    styleCSS,
+    /#root \.fontara-font-preview \{[\s\S]*font-family: var\(--fontara-preview-font\)[\s\S]*!important;/
+  )
+  assert.match(fontSelectorSource, /"--fontara-preview-font"/)
+  assert.match(fontSelectorSource, /FONT_SAMPLE_TEXT/)
 })
 
 test("drawer keeps focus out of aria-hidden popup content", () => {

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react"
+import { type CSSProperties, useEffect, useState } from "react"
 
 import { DEFAULT_FONTS } from "../../config/fonts"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { FontData } from "../../definitions"
 import { cn } from "../../utils/cn"
+import { escapeCSSString } from "../../utils/font-data"
 import { useStorageValue } from "../hooks/use-storage"
 import { CheckCircle, Circle, FolderFileFont } from "./icons"
 import { Button } from "./ui/button"
@@ -21,6 +22,18 @@ type DisplayFont = {
   value: string
   name: string
   author?: string
+}
+
+type FontPreviewStyle = CSSProperties & {
+  "--fontara-preview-font": string
+}
+
+const FONT_SAMPLE_TEXT = "بِستَد دل و دین از من"
+
+function getFontPreviewStyle(fontValue: string): FontPreviewStyle {
+  return {
+    "--fontara-preview-font": `"${escapeCSSString(fontValue)}"`
+  }
 }
 
 const FontSelector = () => {
@@ -102,6 +115,7 @@ const FontSelector = () => {
                       onClick={() => void handleFontSelect(font.value)}
                       onMouseEnter={() => setHoveredFont(font.value)}
                       onMouseLeave={() => setHoveredFont(null)}
+                      style={getFontPreviewStyle(font.value)}
                       className={cn(
                         "flex items-center justify-between gap-2 relative p-3 rounded-md cursor-pointer w-full border-0 bg-transparent text-right",
                         {
@@ -111,27 +125,30 @@ const FontSelector = () => {
                       )}>
                       <div className="flex items-center justify-between w-full gap-2">
                         <span
-                          className={cn("w-[7rem] text-sm font-medium", {
-                            "text-[#0D92F4]": selectedFont === font.value
-                          })}>
+                          className={cn(
+                            "fontara-font-preview w-[7rem] text-sm font-medium",
+                            {
+                              "text-[#0D92F4]": selectedFont === font.value
+                            }
+                          )}>
                           {font.name}
                         </span>
                         <span
-                          className={cn("!w-full mx-auto text-xs", {
-                            inline:
-                              hoveredFont === font.value ||
-                              selectedFont === font.value,
-                            hidden:
-                              hoveredFont !== font.value &&
-                              selectedFont !== font.value,
-                            "text-[#0D92F4] opacity-70":
-                              selectedFont === font.value,
-                            "text-gray-400": selectedFont !== font.value
-                          })}
-                          style={{
-                            fontFamily: font.value
-                          }}>
-                          بِستَد دل و دین از من
+                          className={cn(
+                            "fontara-font-preview !w-full mx-auto text-xs",
+                            {
+                              inline:
+                                hoveredFont === font.value ||
+                                selectedFont === font.value,
+                              hidden:
+                                hoveredFont !== font.value &&
+                                selectedFont !== font.value,
+                              "text-[#0D92F4] opacity-70":
+                                selectedFont === font.value,
+                              "text-gray-400": selectedFont !== font.value
+                            }
+                          )}>
+                          {FONT_SAMPLE_TEXT}
                         </span>
                       </div>
                       <div

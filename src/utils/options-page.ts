@@ -18,9 +18,7 @@ export async function openOptionsPageSafely(): Promise<void> {
       await chrome.runtime.openOptionsPage()
       return
     }
-  } catch (error) {
-    debugWarn("Failed to open FontAra options page.", error)
-  }
+  } catch {}
 
   try {
     await openOptionsPageFallback()

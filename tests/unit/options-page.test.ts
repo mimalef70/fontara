@@ -4,9 +4,11 @@ import test, { afterEach } from "node:test"
 import { openOptionsPageSafely } from "../../src/utils/options-page"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
+const originalDebug = Reflect.get(globalThis, "__DEBUG__") as unknown
 
 afterEach(() => {
   Reflect.set(globalThis, "chrome", originalChrome)
+  Reflect.set(globalThis, "__DEBUG__", originalDebug)
 })
 
 test("openOptionsPageSafely uses the native options page API when available", async () => {
@@ -37,6 +39,8 @@ test("openOptionsPageSafely uses the native options page API when available", as
 
 test("openOptionsPageSafely falls back to the options URL when native open fails", async () => {
   let fallbackUrl = ""
+  let warnCalls = 0
+  const originalWarn = console.warn
 
   Reflect.set(globalThis, "chrome", {
     runtime: {
@@ -53,9 +57,21 @@ test("openOptionsPageSafely falls back to the options URL when native open fails
       }
     }
   })
+  Reflect.set(globalThis, "__DEBUG__", true)
+  console.warn = () => {
+    warnCalls += 1
+  }
 
-  await assert.doesNotReject(openOptionsPageSafely)
-  assert.equal(fallbackUrl, "chrome-extension://fontara/ui/options/index.html")
+  try {
+    await assert.doesNotReject(openOptionsPageSafely)
+    assert.equal(
+      fallbackUrl,
+      "chrome-extension://fontara/ui/options/index.html"
+    )
+    assert.equal(warnCalls, 0)
+  } finally {
+    console.warn = originalWarn
+  }
 })
 
 test("openOptionsPageSafely does not leak fallback failures", async () => {

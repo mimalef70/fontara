@@ -219,16 +219,17 @@ function writeFontWorkChunked(work: FontWork[], generation: number): void {
   scheduleIdle(step)
 }
 
+export function writeFontWorkBatchChunked(work: FontWork[]): void {
+  writeFontWorkChunked(work, processingGeneration)
+}
+
+export function shouldChunkFontWork(work: FontWork[]): boolean {
+  return work.length > WORK_CHUNK_SIZE
+}
+
 export function resetProcessedElements(): void {
   processedElements = new WeakSet<HTMLElement>()
   processingGeneration += 1
-}
-
-export function applyFontToTree(rootNode: HTMLElement): void {
-  if (!rootNode) return
-
-  const work = collectFontWork(rootNode)
-  writeFontWorkBatch(work)
 }
 
 export function applyFontToTreeChunked(rootNode: HTMLElement): void {

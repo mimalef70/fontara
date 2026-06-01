@@ -23,6 +23,7 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.doesNotMatch(domProcessorSource, /\.closest\(/)
   assert.doesNotMatch(domProcessorSource, /includes\("-Fontara"\)/)
   assert.doesNotMatch(domProcessorSource, /export function processElement/)
+  assert.doesNotMatch(domProcessorSource, /export function applyFontToTree\(/)
 })
 
 test("mutation observer coalesces added nodes before processing", () => {
@@ -35,15 +36,21 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /node\.isConnected/)
   assert.match(observerSource, /collectFontWork/)
   assert.match(observerSource, /writeFontWorkBatch\(work\)/)
+  assert.match(observerSource, /shouldChunkFontWork\(work\)/)
+  assert.match(observerSource, /writeFontWorkBatchChunked\(work\)/)
   assert.doesNotMatch(observerSource, /applyFontToTree/)
 })
 
-test("selected font changes re-run the active injection pipeline", () => {
+test("storage changes schedule the active injection pipeline", () => {
   const injectSource = readSource("src/inject/index.ts")
 
+  assert.match(injectSource, /function scheduleApplyFontsIfActive/)
+  assert.match(injectSource, /queueMicrotask/)
+  assert.match(injectSource, /applyFontsRunning/)
+  assert.match(injectSource, /applyFontsQueued/)
   assert.match(
     injectSource,
-    /\[STORAGE_KEYS\.SELECTED_FONT\]: applyFontsIfActive/
+    /\[STORAGE_KEYS\.SELECTED_FONT\]: scheduleApplyFontsIfActive/
   )
   assert.doesNotMatch(
     injectSource,

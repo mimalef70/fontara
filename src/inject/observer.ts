@@ -1,4 +1,9 @@
-import { collectFontWork, writeFontWorkBatch } from "./dom-processor"
+import {
+  collectFontWork,
+  shouldChunkFontWork,
+  writeFontWorkBatch,
+  writeFontWorkBatchChunked
+} from "./dom-processor"
 
 let observer: MutationObserver | null = null
 let pendingNodes = new Set<HTMLElement>()
@@ -42,6 +47,11 @@ function flushPendingNodes(): void {
   const work = nodes.flatMap((node) =>
     node.isConnected ? collectFontWork(node) : []
   )
+
+  if (shouldChunkFontWork(work)) {
+    writeFontWorkBatchChunked(work)
+    return
+  }
 
   writeFontWorkBatch(work)
 }

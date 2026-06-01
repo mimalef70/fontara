@@ -15,6 +15,9 @@ import {
 import { startObserving, stopObserving } from "./observer"
 
 let disposed = false
+let applyFontsQueued = false
+let applyFontsRunning = false
+let applyFontsScheduled = false
 let stopWatchingStorage: (() => void) | null = null
 let stopWaitingForBody: (() => void) | null = null
 
@@ -96,18 +99,54 @@ async function applyFontsIfActive(): Promise<void> {
   }
 }
 
-stopWaitingForBody = runWhenBodyIsReady(applyFontsIfActive)
+async function runScheduledApplyFontsIfActive(): Promise<void> {
+  if (applyFontsRunning) {
+    applyFontsQueued = true
+    return
+  }
+
+  applyFontsRunning = true
+  try {
+    do {
+      applyFontsQueued = false
+      await applyFontsIfActive()
+    } while (applyFontsQueued && !disposed)
+  } finally {
+    applyFontsRunning = false
+  }
+}
+
+function scheduleApplyFontsIfActive(): void {
+  if (disposed) return
+
+  if (applyFontsRunning) {
+    applyFontsQueued = true
+    return
+  }
+
+  if (applyFontsScheduled) return
+
+  applyFontsScheduled = true
+  queueMicrotask(() => {
+    applyFontsScheduled = false
+    if (!disposed) {
+      void runScheduledApplyFontsIfActive()
+    }
+  })
+}
+
+stopWaitingForBody = runWhenBodyIsReady(scheduleApplyFontsIfActive)
 
 stopWatchingStorage = watchLocalStorage({
-  [STORAGE_KEYS.SELECTED_FONT]: applyFontsIfActive,
-  [STORAGE_KEYS.EXTENSION_ENABLED]: applyFontsIfActive,
-  [STORAGE_KEYS.WEBSITE_LIST]: applyFontsIfActive,
-  [STORAGE_KEYS.CUSTOM_FONT_LIST]: applyFontsIfActive
+  [STORAGE_KEYS.SELECTED_FONT]: scheduleApplyFontsIfActive,
+  [STORAGE_KEYS.EXTENSION_ENABLED]: scheduleApplyFontsIfActive,
+  [STORAGE_KEYS.WEBSITE_LIST]: scheduleApplyFontsIfActive,
+  [STORAGE_KEYS.CUSTOM_FONT_LIST]: scheduleApplyFontsIfActive
 })
 
 function handleRuntimeMessage(message: { action?: string }): void {
   if (message?.action === "toggle" || message?.action === "toggleExtension") {
-    void applyFontsIfActive()
+    scheduleApplyFontsIfActive()
   }
 }
 
@@ -117,6 +156,8 @@ function cleanupRuntimeListeners(
   if (disposed) return
 
   disposed = true
+  applyFontsQueued = false
+  applyFontsScheduled = false
   stopWaitingForBody?.()
   stopWaitingForBody = null
   stopObserving()
@@ -147,7 +188,7 @@ function handlePageHide(event: PageTransitionEvent): void {
 
 function handlePageShow(event: PageTransitionEvent): void {
   if (event.persisted) {
-    void applyFontsIfActive()
+    scheduleApplyFontsIfActive()
   }
 }
 
@@ -156,7 +197,7 @@ function handleFreeze(): void {
 }
 
 function handleResume(): void {
-  void applyFontsIfActive()
+  scheduleApplyFontsIfActive()
 }
 
 try {

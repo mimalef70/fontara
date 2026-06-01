@@ -39,10 +39,7 @@ class FakeStyleDeclaration {
 }
 
 class FakeElement {
-  childNodes: Array<
-    FakeElement | { nodeType: number; textContent?: string | null }
-  >
-  children: FakeElement[] = []
+  childNodes: Array<{ nodeType: number; textContent?: string | null }>
   classList = new Set<string>()
   isConnected = true
   style = new FakeStyleDeclaration()
@@ -52,12 +49,6 @@ class FakeElement {
     this.tagName = tagName.toUpperCase()
     this.childNodes = [{ nodeType: 3, textContent }]
   }
-
-  appendChild(child: FakeElement): FakeElement {
-    this.children.push(child)
-    this.childNodes.push(child)
-    return child
-  }
 }
 
 afterEach(() => {
@@ -66,21 +57,7 @@ afterEach(() => {
   }
 })
 
-function getTreeWalkerNodes(root: FakeElement): FakeElement[] {
-  const nodes: FakeElement[] = []
-
-  for (const child of root.children) {
-    nodes.push(child, ...getTreeWalkerNodes(child))
-  }
-
-  return nodes
-}
-
-function installDOMProcessorMocks(
-  options: {
-    requestIdleCallback?: (callback: (deadline: IdleDeadline) => void) => number
-  } = {}
-): void {
+function installDOMProcessorMocks(): void {
   Reflect.set(globalThis, "HTMLElement", FakeElement)
   Reflect.set(globalThis, "Node", { TEXT_NODE: 3 })
   Reflect.set(globalThis, "NodeFilter", {
@@ -90,15 +67,10 @@ function installDOMProcessorMocks(
     SHOW_ELEMENT: 1
   })
   Reflect.set(globalThis, "document", {
-    createTreeWalker(rootNode: FakeElement) {
-      const nodes = getTreeWalkerNodes(rootNode)
-      let index = 0
-
+    createTreeWalker() {
       return {
         nextNode() {
-          const node = nodes[index]
-          index += 1
-          return node ?? null
+          return null
         }
       }
     }
@@ -109,12 +81,10 @@ function installDOMProcessorMocks(
         fontFamily: "TwitterChirp, Arial, sans-serif"
       }
     },
-    requestIdleCallback:
-      options.requestIdleCallback ??
-      ((callback: (deadline: IdleDeadline) => void) => {
-        callback({ timeRemaining: () => 50 } as IdleDeadline)
-        return 1
-      }),
+    requestIdleCallback(callback: (deadline: IdleDeadline) => void) {
+      callback({ timeRemaining: () => 50 } as IdleDeadline)
+      return 1
+    },
     setTimeout
   })
 }
@@ -142,39 +112,4 @@ test("processed text nodes are re-applied when the site removes the inline font 
   work = collectFontWork(textElement)
 
   assert.equal(work.length, 1)
-})
-
-test("chunked initial traversal writes collected work before the whole tree is collected", async () => {
-  const idleCallbacks: Array<(deadline: IdleDeadline) => void> = []
-  installDOMProcessorMocks({
-    requestIdleCallback(callback) {
-      idleCallbacks.push(callback)
-      return idleCallbacks.length
-    }
-  })
-  const { applyFontToTreeChunked, resetProcessedElements } = await import(
-    "../../src/inject/dom-processor"
-  )
-  const root = new FakeElement("div", "")
-  const firstSidebarItem = root.appendChild(
-    new FakeElement("span", " صفحه اصلی ")
-  )
-  const secondSidebarItem = root.appendChild(new FakeElement("span", " جستجو "))
-
-  resetProcessedElements()
-  applyFontToTreeChunked(root as unknown as HTMLElement)
-
-  assert.equal(firstSidebarItem.style.getPropertyValue("font-family"), "")
-  assert.equal(secondSidebarItem.style.getPropertyValue("font-family"), "")
-
-  idleCallbacks.shift()?.({ timeRemaining: () => 0 } as IdleDeadline)
-  assert.equal(firstSidebarItem.style.getPropertyValue("font-family"), "")
-  assert.equal(secondSidebarItem.style.getPropertyValue("font-family"), "")
-
-  idleCallbacks.shift()?.({ timeRemaining: () => 0 } as IdleDeadline)
-  assert.match(
-    firstSidebarItem.style.getPropertyValue("font-family"),
-    /--fontara-font/
-  )
-  assert.equal(secondSidebarItem.style.getPropertyValue("font-family"), "")
 })

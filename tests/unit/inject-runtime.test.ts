@@ -265,6 +265,10 @@ test("selected custom font changes inject its font-face without a reload", async
     "expected initial built-in font styles to be injected"
   )
 
+  assert.match(
+    runtime.getStyleText("fontara-editable-font-style"),
+    /\[contenteditable\][\s\S]*var\(--fontara-font\)/
+  )
   assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
 
   runtime.values[STORAGE_KEYS.SELECTED_FONT] = "RuntimeCustom-Fontara"

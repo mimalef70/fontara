@@ -19,6 +19,31 @@ const WORK_CHUNK_SIZE = 200
 let processedElements = new WeakSet<HTMLElement>()
 let processingGeneration = 0
 
+function getContentEditableValue(node: HTMLElement): string | null {
+  return typeof node.getAttribute === "function"
+    ? node.getAttribute("contenteditable")
+    : null
+}
+
+function isContentEditableRoot(node: HTMLElement): boolean {
+  const value = getContentEditableValue(node)
+  return value !== null && value.toLowerCase() !== "false"
+}
+
+function hasContentEditableAncestorOrSelf(node: HTMLElement): boolean {
+  if (node.isContentEditable === true) {
+    return true
+  }
+
+  let current: HTMLElement | null = node
+  while (current) {
+    if (isContentEditableRoot(current)) return true
+    current = current.parentElement
+  }
+
+  return false
+}
+
 function hasIconClass(node: HTMLElement): boolean {
   for (const className of node.classList) {
     if (ICON_CLASSES.has(className)) return true
@@ -28,7 +53,11 @@ function hasIconClass(node: HTMLElement): boolean {
 }
 
 function isExcludedSubtree(node: HTMLElement): boolean {
-  return EXCLUDED_TAGS.has(node.tagName.toLowerCase()) || hasIconClass(node)
+  return (
+    EXCLUDED_TAGS.has(node.tagName.toLowerCase()) ||
+    hasIconClass(node) ||
+    isContentEditableRoot(node)
+  )
 }
 
 function hasDirectText(node: HTMLElement): boolean {
@@ -83,7 +112,10 @@ function addFontWork(node: HTMLElement, work: FontWork[]): void {
 function createFontWorkCollection(
   rootNode: HTMLElement
 ): FontWorkCollection | null {
-  if (isExcludedSubtree(rootNode)) {
+  if (
+    isExcludedSubtree(rootNode) ||
+    hasContentEditableAncestorOrSelf(rootNode)
+  ) {
     return null
   }
 

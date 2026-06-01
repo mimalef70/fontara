@@ -10,6 +10,14 @@ const FONT_STYLES_ID = "fontara-font-styles"
 const CUSTOM_CSS_ID = "fontara-custom-css-style"
 const CUSTOM_FONT_STYLES_ID = "fontara-custom-font-styles"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
+const EDITABLE_FONT_ID = "fontara-editable-font-style"
+
+const EDITABLE_FONT_CSS = `
+  [contenteditable]:not([contenteditable="false" i]),
+  [contenteditable]:not([contenteditable="false" i]) * {
+    font-family: var(--fontara-font), ui-sans-serif, system-ui, sans-serif !important;
+  }
+`
 
 function getStyleHost(): HTMLElement {
   return document.head || document.documentElement
@@ -52,6 +60,7 @@ export async function injectFontStyles(
   matchingWebsite: WebsiteItem | null
 ): Promise<boolean> {
   upsertStyle(FONT_STYLES_ID, getFontFaceCSS())
+  upsertStyle(EDITABLE_FONT_ID, EDITABLE_FONT_CSS)
 
   const customFontFaces = createCustomFontFaces(await getSelectedCustomFonts())
   if (customFontFaces) {
@@ -77,6 +86,7 @@ export async function injectFontStyles(
 export function removeFontStyles(): void {
   removeStyle(FONT_STYLES_ID)
   removeStyle(DYNAMIC_FONT_ID)
+  removeStyle(EDITABLE_FONT_ID)
   removeStyle(CUSTOM_FONT_STYLES_ID)
   removeStyle(CUSTOM_CSS_ID)
 

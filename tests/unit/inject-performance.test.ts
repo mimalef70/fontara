@@ -20,10 +20,23 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.match(domProcessorSource, /applyFontToTreeChunked/)
   assert.match(domProcessorSource, /requestIdleCallback/)
   assert.match(domProcessorSource, /endsWith\("-Fontara"\)/)
+  assert.match(domProcessorSource, /hasContentEditableAncestorOrSelf/)
+  assert.match(domProcessorSource, /isContentEditableRoot/)
   assert.doesNotMatch(domProcessorSource, /\.closest\(/)
   assert.doesNotMatch(domProcessorSource, /includes\("-Fontara"\)/)
   assert.doesNotMatch(domProcessorSource, /export function processElement/)
   assert.doesNotMatch(domProcessorSource, /export function applyFontToTree\(/)
+})
+
+test("contenteditable editors use stylesheet font application", () => {
+  const domProcessorSource = readSource("src/inject/dom-processor.ts")
+  const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
+
+  assert.match(domProcessorSource, /contenteditable/)
+  assert.match(domProcessorSource, /node\.isContentEditable === true/)
+  assert.match(fontStyleManagerSource, /fontara-editable-font-style/)
+  assert.match(fontStyleManagerSource, /\[contenteditable\]/)
+  assert.match(fontStyleManagerSource, /var\(--fontara-font\)/)
 })
 
 test("mutation observer coalesces added nodes before processing", () => {

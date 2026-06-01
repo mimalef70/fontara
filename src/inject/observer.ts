@@ -1,6 +1,56 @@
 import { applyFontToTree } from "./dom-processor"
 
 let observer: MutationObserver | null = null
+let pendingNodes = new Set<HTMLElement>()
+let scheduledFrame: number | null = null
+
+function getMutationElement(node: Node): HTMLElement | null {
+  if (node instanceof HTMLElement) {
+    return node
+  }
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.parentElement
+  }
+
+  return null
+}
+
+function isNestedPendingNode(
+  node: HTMLElement,
+  nodes: Set<HTMLElement>
+): boolean {
+  let parent = node.parentElement
+
+  while (parent) {
+    if (nodes.has(parent)) return true
+    parent = parent.parentElement
+  }
+
+  return false
+}
+
+function getTopLevelPendingNodes(nodes: Set<HTMLElement>): HTMLElement[] {
+  return Array.from(nodes).filter((node) => !isNestedPendingNode(node, nodes))
+}
+
+function flushPendingNodes(): void {
+  scheduledFrame = null
+
+  const nodes = getTopLevelPendingNodes(pendingNodes)
+  pendingNodes = new Set()
+
+  for (const node of nodes) {
+    if (node.isConnected) {
+      applyFontToTree(node)
+    }
+  }
+}
+
+function scheduleFlush(): void {
+  if (scheduledFrame !== null) return
+  scheduledFrame = requestAnimationFrame(flushPendingNodes)
+}
 
 export function startObserving(): void {
   stopObserving()
@@ -12,10 +62,15 @@ export function startObserving(): void {
       if (mutation.type !== "childList") continue
 
       for (const node of mutation.addedNodes) {
-        if (node instanceof HTMLElement) {
-          applyFontToTree(node)
+        const element = getMutationElement(node)
+        if (element) {
+          pendingNodes.add(element)
         }
       }
+    }
+
+    if (pendingNodes.size > 0) {
+      scheduleFlush()
     }
   })
 
@@ -26,6 +81,13 @@ export function startObserving(): void {
 }
 
 export function stopObserving(): void {
+  if (scheduledFrame !== null) {
+    cancelAnimationFrame(scheduledFrame)
+    scheduledFrame = null
+  }
+
+  pendingNodes = new Set()
+
   if (!observer) return
 
   observer.disconnect()

@@ -6,7 +6,7 @@ import {
   getStoredWebsiteList,
   isUrlActive
 } from "../utils/url"
-import { applyFontToTree } from "./dom-processor"
+import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
 import {
   initializeFontVariable,
   injectFontStyles,
@@ -70,6 +70,7 @@ async function applyFontsIfActive(): Promise<void> {
 
     if (!active) {
       stopObserving()
+      resetProcessedElements()
       removeFontStyles()
       return
     }
@@ -83,7 +84,7 @@ async function applyFontsIfActive(): Promise<void> {
     }
 
     if (document.body) {
-      applyFontToTree(document.body)
+      applyFontToTreeChunked(document.body)
       startObserving()
     }
   } catch (error) {
@@ -125,6 +126,7 @@ function cleanupRuntimeListeners(
   stopWaitingForBody = null
   stopObserving()
   if (options.removeStyles) {
+    resetProcessedElements()
     removeFontStyles()
   }
   stopWatchingStorage?.()

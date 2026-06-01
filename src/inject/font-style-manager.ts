@@ -35,15 +35,25 @@ function removeStyle(id: string): void {
   document.getElementById(id)?.remove()
 }
 
+async function getSelectedCustomFonts(): Promise<FontData[]> {
+  const [customFontList, selectedFont] = await Promise.all([
+    getLocalValue<FontData[]>(STORAGE_KEYS.CUSTOM_FONT_LIST),
+    getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
+  ])
+
+  if (!Array.isArray(customFontList) || !selectedFont) {
+    return []
+  }
+
+  return customFontList.filter((font) => font.value === selectedFont)
+}
+
 export async function injectFontStyles(
   matchingWebsite: WebsiteItem | null
 ): Promise<boolean> {
   upsertStyle(FONT_STYLES_ID, getFontFaceCSS())
 
-  const customFontList = await getLocalValue<FontData[]>(
-    STORAGE_KEYS.CUSTOM_FONT_LIST
-  )
-  const customFontFaces = createCustomFontFaces(customFontList)
+  const customFontFaces = createCustomFontFaces(await getSelectedCustomFonts())
   if (customFontFaces) {
     upsertStyle(CUSTOM_FONT_STYLES_ID, customFontFaces)
   } else {

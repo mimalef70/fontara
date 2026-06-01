@@ -1,20 +1,49 @@
 import { EXCLUDED_TAGS, ICON_CLASSES } from "../config/selectors"
 
-function isIconElement(node: HTMLElement, fontFamily: string): boolean {
-  const hasIconClass = ICON_CLASSES.some(
-    (className) =>
-      node.classList.contains(className) ||
-      node.closest(`.${className}`) !== null
-  )
+type FontWork = {
+  fallbackFontFamily: string
+  node: HTMLElement
+}
 
-  if (hasIconClass) return true
+const ICON_FONT_FAMILY_PARTS = ["fontawesome", "material", "icon", "glyphicon"]
+const TEXT_CONTROL_TAGS = new Set(["input", "textarea", "select", "option"])
+const WRITE_CHUNK_SIZE = 200
 
-  const normalizedFontFamily = fontFamily.toLowerCase()
+let processedElements = new WeakSet<HTMLElement>()
+let processingGeneration = 0
+
+function hasIconClass(node: HTMLElement): boolean {
+  for (const className of node.classList) {
+    if (ICON_CLASSES.has(className)) return true
+  }
+
+  return false
+}
+
+function isExcludedSubtree(node: HTMLElement): boolean {
+  return EXCLUDED_TAGS.has(node.tagName.toLowerCase()) || hasIconClass(node)
+}
+
+function hasDirectText(node: HTMLElement): boolean {
+  for (const child of node.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function hasRenderableText(node: HTMLElement): boolean {
   return (
-    normalizedFontFamily.includes("fontawesome") ||
-    normalizedFontFamily.includes("material") ||
-    normalizedFontFamily.includes("icon") ||
-    normalizedFontFamily.includes("glyphicon")
+    hasDirectText(node) || TEXT_CONTROL_TAGS.has(node.tagName.toLowerCase())
+  )
+}
+
+function isIconFontFamily(fontFamily: string): boolean {
+  const normalizedFontFamily = fontFamily.toLowerCase()
+  return ICON_FONT_FAMILY_PARTS.some((part) =>
+    normalizedFontFamily.includes(part)
   )
 }
 
@@ -22,42 +51,152 @@ function getCleanFontFamily(fontFamily: string): string {
   return fontFamily
     .split(",")
     .map((family) => family.trim().replace(/^["']+|["']+$/g, ""))
-    .filter((family) => !family.includes("-Fontara") && Boolean(family))
+    .filter((family) => Boolean(family) && !family.endsWith("-Fontara"))
     .join(", ")
 }
 
-export function processElement(node: HTMLElement): void {
-  if (EXCLUDED_TAGS.includes(node.tagName.toLowerCase())) {
+function addFontWork(node: HTMLElement, work: FontWork[]): void {
+  if (processedElements.has(node) || !hasRenderableText(node)) {
     return
   }
 
-  const computedStyle = window.getComputedStyle(node)
-  const fontFamily = computedStyle.fontFamily
+  processedElements.add(node)
 
-  if (isIconElement(node, fontFamily)) {
+  const fontFamily = window.getComputedStyle(node).fontFamily
+  if (isIconFontFamily(fontFamily)) {
     return
   }
 
-  const cleanFontFamily = getCleanFontFamily(fontFamily)
+  work.push({
+    fallbackFontFamily: getCleanFontFamily(fontFamily),
+    node
+  })
+}
+
+function collectFontWork(rootNode: HTMLElement): FontWork[] {
+  const work: FontWork[] = []
+
+  if (isExcludedSubtree(rootNode)) {
+    return work
+  }
+
+  addFontWork(rootNode, work)
+
+  const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT, {
+    acceptNode(node) {
+      if (!(node instanceof HTMLElement)) {
+        return NodeFilter.FILTER_SKIP
+      }
+
+      return isExcludedSubtree(node)
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT
+    }
+  })
+
+  let node = walker.nextNode()
+  while (node) {
+    if (node instanceof HTMLElement) {
+      addFontWork(node, work)
+    }
+    node = walker.nextNode()
+  }
+
+  return work
+}
+
+function getFontFamilyValue(fallbackFontFamily: string): string {
+  return `var(--fontara-font)${
+    fallbackFontFamily ? `, ${fallbackFontFamily}` : ""
+  }`
+}
+
+function writeFontWork({ fallbackFontFamily, node }: FontWork): void {
+  if (!node.isConnected) return
+
   node.style.setProperty(
     "font-family",
-    `var(--fontara-font)${cleanFontFamily ? `, ${cleanFontFamily}` : ""}`,
+    getFontFamilyValue(fallbackFontFamily),
     "important"
   )
+}
+
+function writeFontWorkBatch(work: FontWork[]): void {
+  for (const item of work) {
+    writeFontWork(item)
+  }
+}
+
+function scheduleIdle(callback: (deadline?: IdleDeadline) => void): void {
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback((deadline) => callback(deadline))
+    return
+  }
+
+  window.setTimeout(() => callback(), 16)
+}
+
+function shouldContinueChunk(
+  deadline: IdleDeadline | undefined,
+  writtenCount: number
+): boolean {
+  if (!deadline) {
+    return writtenCount < WRITE_CHUNK_SIZE
+  }
+
+  return deadline.timeRemaining() > 4 || writtenCount === 0
+}
+
+export function resetProcessedElements(): void {
+  processedElements = new WeakSet<HTMLElement>()
+  processingGeneration += 1
+}
+
+export function processElement(node: HTMLElement): void {
+  if (isExcludedSubtree(node)) return
+
+  const work: FontWork[] = []
+  addFontWork(node, work)
+  writeFontWorkBatch(work)
 }
 
 export function applyFontToTree(rootNode: HTMLElement): void {
   if (!rootNode) return
 
-  processElement(rootNode)
+  const work = collectFontWork(rootNode)
+  writeFontWorkBatch(work)
+}
 
-  const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT)
-  let node = walker.nextNode()
+export function applyFontToTreeChunked(rootNode: HTMLElement): void {
+  if (!rootNode) return
 
-  while (node) {
-    if (node instanceof HTMLElement) {
-      processElement(node)
-    }
-    node = walker.nextNode()
+  const work = collectFontWork(rootNode)
+  if (work.length <= WRITE_CHUNK_SIZE) {
+    writeFontWorkBatch(work)
+    return
   }
+
+  const generation = processingGeneration
+  let index = 0
+
+  const step = (deadline?: IdleDeadline): void => {
+    if (generation !== processingGeneration) return
+
+    let writtenCount = 0
+    while (
+      index < work.length &&
+      generation === processingGeneration &&
+      shouldContinueChunk(deadline, writtenCount)
+    ) {
+      writeFontWork(work[index])
+      index += 1
+      writtenCount += 1
+    }
+
+    if (index < work.length) {
+      scheduleIdle(step)
+    }
+  }
+
+  scheduleIdle(step)
 }

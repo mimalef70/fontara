@@ -1,4 +1,4 @@
-export const EXCLUDED_TAGS = [
+export const EXCLUDED_TAGS = new Set([
   "script",
   "style",
   "img",
@@ -10,9 +10,9 @@ export const EXCLUDED_TAGS = [
   "canvas",
   "video",
   "audio"
-]
+])
 
-export const ICON_CLASSES = [
+export const ICON_CLASSES = new Set([
   "fa",
   "fas",
   "far",
@@ -29,4 +29,4 @@ export const ICON_CLASSES = [
   "mui-icon",
   "dashicons",
   "wp-menu-image"
-]
+])

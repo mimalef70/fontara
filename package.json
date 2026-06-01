@@ -67,7 +67,6 @@
     "tsx": "4.22.3",
     "typescript": "6.0.3",
     "web-ext": "10.3.0",
-    "webextension-polyfill": "^0.12.0",
     "yazl": "^3.3.1"
   }
 }

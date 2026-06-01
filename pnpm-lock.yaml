@@ -90,9 +90,6 @@ importers:
       web-ext:
         specifier: 10.3.0
         version: 10.3.0(jiti@2.7.0)
-      webextension-polyfill:
-        specifier: ^0.12.0
-        version: 0.12.0
       yazl:
         specifier: ^3.3.1
         version: 3.3.1
@@ -2145,9 +2142,6 @@ packages:
     engines: {node: '>=20.0.0', npm: '>=8.0.0'}
     hasBin: true
 
-  webextension-polyfill@0.12.0:
-    resolution: {integrity: sha512-97TBmpoWJEE+3nFBQ4VocyCdLKfw54rFaJ6EVQYLBCXqCIpLSZkwGgASpv4oPt9gdKCJ80RJlcmNzNn008Ag6Q==}
-
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
@@ -4116,8 +4110,6 @@ snapshots:
       - jiti
       - safe-compare
       - supports-color
-
-  webextension-polyfill@0.12.0: {}
 
   whatwg-encoding@3.1.1:
     dependencies:

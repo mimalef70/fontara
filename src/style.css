@@ -90,3 +90,11 @@
     height: 0;
   }
 }
+
+html,
+body,
+#root,
+#root * {
+  font-family: var(--fontara-ui-font, "Vazirmatn-Fontara"),
+    "Vazirmatn-Fontara", sans-serif !important;
+}

@@ -33,6 +33,10 @@ test("UI follows the selected extension font", () => {
     styleCSS,
     /font-family: var\(--fontara-ui-font, "Vazirmatn-Fontara"\)/
   )
+  assert.match(
+    styleCSS,
+    /#root \* \{[\s\S]*font-family: var\(--fontara-ui-font, "Vazirmatn-Fontara"\)[\s\S]*!important;/
+  )
   assert.match(popupSource, /useSelectedUIFont\(\)/)
   assert.match(optionsSource, /useSelectedUIFont\(\)/)
 })

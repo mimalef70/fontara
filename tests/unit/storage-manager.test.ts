@@ -54,6 +54,26 @@ test("mergeWebsiteLists updates versioned defaults and preserves active state", 
   ])
 })
 
+test("mergeWebsiteLists upgrades X matching for legacy twitter.com URLs", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://x.com",
+      regex: "^https://x\\.com/.*$",
+      isActive: true
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://x.com",
+      regex: "^https://(?:x|twitter)\\.com/.*$",
+      isActive: true,
+      version: "4.1.7"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), defaultList)
+})
+
 test("normalizeCustomFontList backfills missing file hashes", async () => {
   const [font] = await normalizeCustomFontList([
     {

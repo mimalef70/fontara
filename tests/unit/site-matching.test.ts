@@ -36,6 +36,18 @@ test("popular website regexes match their declared base URLs", () => {
   }
 })
 
+test("X popular website also matches legacy twitter.com URLs", () => {
+  const xWebsite = POPULAR_WEBSITES.find(
+    (website) => website.url === "https://x.com"
+  )
+
+  assert.ok(xWebsite)
+  assert.equal(
+    getMatchingWebsite("https://twitter.com/home", [xWebsite]),
+    xWebsite
+  )
+})
+
 test("popular website icons point to existing assets", () => {
   for (const website of POPULAR_WEBSITES) {
     assert.ok(website.icon, `${website.siteName} should declare an icon`)

@@ -13,6 +13,13 @@ const STABLE_SELECTOR_ATTRIBUTES = [
   "name"
 ]
 
+type EditableFontRule = {
+  css: string
+  signature: string
+}
+
+let editableFontSignature = ""
+
 function getStyleHost(): HTMLElement {
   return document.head || document.documentElement
 }
@@ -230,33 +237,51 @@ function getCleanFontFamily(fontFamily: string): string {
   return cleanFontFamily || DEFAULT_EDITABLE_FALLBACK
 }
 
-function createEditableFontRule(element: HTMLElement): string {
+function createEditableFontRule(element: HTMLElement): EditableFontRule {
   const selector = getElementSelector(element)
   const fallbackFontFamily = getCleanFontFamily(
     window.getComputedStyle(element).fontFamily
   )
   const fontFamily = `var(--fontara-font), ${fallbackFontFamily}`
 
-  return `
-    ${selector},
-    ${selector} * {
-      font-family: ${fontFamily} !important;
-    }
-  `
-}
-
-export function refreshEditableFontStyles(): void {
-  removeStyle(EDITABLE_FONT_ID)
-
-  const editableFontCSS = getTopLevelContentEditableElements()
-    .map(createEditableFontRule)
-    .join("\n")
-
-  if (editableFontCSS) {
-    upsertStyle(EDITABLE_FONT_ID, editableFontCSS)
+  return {
+    css: `
+      ${selector},
+      ${selector} * {
+        font-family: ${fontFamily} !important;
+      }
+    `,
+    signature: `${selector}\u0000${fallbackFontFamily}`
   }
 }
 
+export function refreshEditableFontStyles(): void {
+  const editableFontRules = getTopLevelContentEditableElements().map(
+    createEditableFontRule
+  )
+  const nextSignature = editableFontRules
+    .map((rule) => rule.signature)
+    .join("\u0002")
+
+  if (
+    nextSignature === editableFontSignature &&
+    (!nextSignature || document.getElementById(EDITABLE_FONT_ID))
+  ) {
+    return
+  }
+
+  editableFontSignature = nextSignature
+  const editableFontCSS = editableFontRules.map((rule) => rule.css).join("\n")
+
+  if (editableFontCSS) {
+    upsertStyle(EDITABLE_FONT_ID, editableFontCSS)
+    return
+  }
+
+  removeStyle(EDITABLE_FONT_ID)
+}
+
 export function removeEditableFontStyles(): void {
+  editableFontSignature = ""
   removeStyle(EDITABLE_FONT_ID)
 }

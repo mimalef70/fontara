@@ -114,11 +114,15 @@ afterEach(() => {
 
 function createRuntimeMocks(): {
   dispatchStorageChange: StorageListener
+  getStorageGetCount: (key: string) => number
   getStyleText: (id: string) => string
+  getTreeWalkerCount: () => number
   values: StoredValues
 } {
   const elementsById = new Map<string, FakeElement>()
   const listeners: StorageListener[] = []
+  const storageGetCounts = new Map<string, number>()
+  let treeWalkerCount = 0
   const matchingWebsite: WebsiteItem = {
     isActive: true,
     regex: "^https?://example\\.com/?.*$",
@@ -150,6 +154,7 @@ function createRuntimeMocks(): {
       return new FakeElement(tagName, elementsById)
     },
     createTreeWalker() {
+      treeWalkerCount += 1
       return {
         nextNode() {
           return null
@@ -238,10 +243,14 @@ function createRuntimeMocks(): {
           callback: (items: Record<string, unknown>) => void
         ) {
           if (typeof keys === "string") {
+            storageGetCounts.set(keys, (storageGetCounts.get(keys) ?? 0) + 1)
             callback({ [keys]: values[keys as keyof StoredValues] })
             return
           }
 
+          for (const key of Object.keys(keys)) {
+            storageGetCounts.set(key, (storageGetCounts.get(key) ?? 0) + 1)
+          }
           callback({ ...keys, ...values })
         }
       },
@@ -273,8 +282,14 @@ function createRuntimeMocks(): {
         listener(changes, areaName)
       }
     },
+    getStorageGetCount(key) {
+      return storageGetCounts.get(key) ?? 0
+    },
     getStyleText(id) {
       return elementsById.get(id)?.textContent ?? ""
+    },
+    getTreeWalkerCount() {
+      return treeWalkerCount
     },
     values
   }
@@ -306,6 +321,8 @@ test("selected custom font changes inject its font-face without a reload", async
     /\[id="prompt-textarea"\][\s\S]*var\(--fontara-font\), "ChatGPT Sans", Arial, sans-serif/
   )
   assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
+  assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 0)
+  const initialTreeWalkerCount = runtime.getTreeWalkerCount()
 
   runtime.values[STORAGE_KEYS.SELECTED_FONT] = "RuntimeCustom-Fontara"
   runtime.dispatchStorageChange(
@@ -329,4 +346,6 @@ test("selected custom font changes inject its font-face without a reload", async
     runtime.getStyleText("fontara-dynamic-font"),
     /--fontara-font: "RuntimeCustom-Fontara"/
   )
+  assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
+  assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 1)
 })

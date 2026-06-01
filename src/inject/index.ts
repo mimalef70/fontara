@@ -1,25 +1,25 @@
 import { STORAGE_KEYS } from "../config/storage"
-import type { WebsiteItem } from "../definitions"
 import { watchLocalStorage } from "../utils/storage"
-import {
-  getMatchingWebsite,
-  getStoredWebsiteList,
-  isUrlActive
-} from "../utils/url"
+import { getUrlActivationState } from "../utils/url"
 import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
-import {
-  initializeFontVariable,
-  injectFontStyles,
-  removeFontStyles
-} from "./font-style-manager"
+import { injectFontStyles, removeFontStyles } from "./font-style-manager"
 import { startObserving, stopObserving } from "./observer"
 
+type ApplyMode = "font-styles" | "full"
+
 let disposed = false
-let applyFontsQueued = false
+let applyFontsQueuedMode: ApplyMode | null = null
 let applyFontsRunning = false
-let applyFontsScheduled = false
+let applyFontsScheduledMode: ApplyMode | null = null
 let stopWatchingStorage: (() => void) | null = null
 let stopWaitingForBody: (() => void) | null = null
+
+function mergeApplyMode(
+  currentMode: ApplyMode | null,
+  nextMode: ApplyMode
+): ApplyMode {
+  return currentMode === "full" || nextMode === "full" ? "full" : "font-styles"
+}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -58,35 +58,31 @@ function runWhenBodyIsReady(callback: () => void | Promise<void>): () => void {
   return () => observer.disconnect()
 }
 
-async function getCurrentWebsite(): Promise<WebsiteItem | null> {
-  const websiteList = await getStoredWebsiteList()
-  return getMatchingWebsite(window.location.href, websiteList)
-}
-
-async function applyFontsIfActive(): Promise<void> {
+async function applyFontsIfActive(mode: ApplyMode): Promise<void> {
   if (disposed) return
 
   try {
-    const matchingWebsite = await getCurrentWebsite()
-    const active = await isUrlActive(window.location.href)
+    const activationState = await getUrlActivationState(window.location.href)
 
-    if (!active) {
+    if (!activationState.active) {
       stopObserving()
       resetProcessedElements()
       removeFontStyles()
       return
     }
 
-    const hasCustomCSS = await injectFontStyles(matchingWebsite)
-    await initializeFontVariable()
+    const hasCustomCSS = await injectFontStyles(activationState.matchingWebsite)
 
     if (hasCustomCSS) {
       stopObserving()
       return
     }
 
-    if (document.body) {
+    if (mode === "full" && document.body) {
       applyFontToTreeChunked(document.body)
+    }
+
+    if (document.body) {
       startObserving()
     }
   } catch (error) {
@@ -99,38 +95,45 @@ async function applyFontsIfActive(): Promise<void> {
   }
 }
 
-async function runScheduledApplyFontsIfActive(): Promise<void> {
+async function runScheduledApplyFontsIfActive(mode: ApplyMode): Promise<void> {
   if (applyFontsRunning) {
-    applyFontsQueued = true
+    applyFontsQueuedMode = mergeApplyMode(applyFontsQueuedMode, mode)
     return
   }
 
   applyFontsRunning = true
+  let currentMode: ApplyMode | null = mode
   try {
-    do {
-      applyFontsQueued = false
-      await applyFontsIfActive()
-    } while (applyFontsQueued && !disposed)
+    while (currentMode && !disposed) {
+      const modeToRun = currentMode
+      currentMode = null
+      applyFontsQueuedMode = null
+      await applyFontsIfActive(modeToRun)
+      currentMode = applyFontsQueuedMode
+    }
   } finally {
     applyFontsRunning = false
   }
 }
 
-function scheduleApplyFontsIfActive(): void {
+function scheduleApplyFontsIfActive(mode: ApplyMode = "full"): void {
   if (disposed) return
 
   if (applyFontsRunning) {
-    applyFontsQueued = true
+    applyFontsQueuedMode = mergeApplyMode(applyFontsQueuedMode, mode)
     return
   }
 
-  if (applyFontsScheduled) return
+  const alreadyScheduled = applyFontsScheduledMode !== null
+  applyFontsScheduledMode = mergeApplyMode(applyFontsScheduledMode, mode)
+  if (alreadyScheduled) return
 
-  applyFontsScheduled = true
   queueMicrotask(() => {
-    applyFontsScheduled = false
-    if (!disposed) {
-      void runScheduledApplyFontsIfActive()
+    const scheduledMode = applyFontsScheduledMode
+    applyFontsScheduledMode = null
+
+    if (!disposed && scheduledMode) {
+      void runScheduledApplyFontsIfActive(scheduledMode)
     }
   })
 }
@@ -138,10 +141,11 @@ function scheduleApplyFontsIfActive(): void {
 stopWaitingForBody = runWhenBodyIsReady(scheduleApplyFontsIfActive)
 
 stopWatchingStorage = watchLocalStorage({
-  [STORAGE_KEYS.SELECTED_FONT]: scheduleApplyFontsIfActive,
-  [STORAGE_KEYS.EXTENSION_ENABLED]: scheduleApplyFontsIfActive,
-  [STORAGE_KEYS.WEBSITE_LIST]: scheduleApplyFontsIfActive,
-  [STORAGE_KEYS.CUSTOM_FONT_LIST]: scheduleApplyFontsIfActive
+  [STORAGE_KEYS.SELECTED_FONT]: () => scheduleApplyFontsIfActive("font-styles"),
+  [STORAGE_KEYS.EXTENSION_ENABLED]: () => scheduleApplyFontsIfActive(),
+  [STORAGE_KEYS.WEBSITE_LIST]: () => scheduleApplyFontsIfActive(),
+  [STORAGE_KEYS.CUSTOM_FONT_LIST]: () =>
+    scheduleApplyFontsIfActive("font-styles")
 })
 
 function handleRuntimeMessage(message: { action?: string }): void {
@@ -156,8 +160,8 @@ function cleanupRuntimeListeners(
   if (disposed) return
 
   disposed = true
-  applyFontsQueued = false
-  applyFontsScheduled = false
+  applyFontsQueuedMode = null
+  applyFontsScheduledMode = null
   stopWaitingForBody?.()
   stopWaitingForBody = null
   stopObserving()

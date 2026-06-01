@@ -1,3 +1,4 @@
+import { DEFAULT_FONTS } from "../config/fonts"
 import { CUSTOM_CSS_BY_SITE } from "../config/site-fixes"
 import { STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
@@ -14,6 +15,7 @@ const FONT_STYLES_ID = "fontara-font-styles"
 const CUSTOM_CSS_ID = "fontara-custom-css-style"
 const CUSTOM_FONT_STYLES_ID = "fontara-custom-font-styles"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
+const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
 
 function getStyleHost(): HTMLElement {
   return document.head || document.documentElement
@@ -39,15 +41,18 @@ function removeStyle(id: string): void {
   document.getElementById(id)?.remove()
 }
 
-async function getSelectedCustomFonts(): Promise<FontData[]> {
-  const [customFontList, selectedFont] = await Promise.all([
-    getLocalValue<FontData[]>(STORAGE_KEYS.CUSTOM_FONT_LIST),
-    getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
-  ])
-
-  if (!Array.isArray(customFontList) || !selectedFont) {
+async function getSelectedCustomFonts(
+  selectedFont: string | undefined
+): Promise<FontData[]> {
+  if (!selectedFont || BUNDLED_FONT_VALUES.has(selectedFont)) {
     return []
   }
+
+  const customFontList = await getLocalValue<FontData[]>(
+    STORAGE_KEYS.CUSTOM_FONT_LIST
+  )
+
+  if (!Array.isArray(customFontList)) return []
 
   return customFontList.filter((font) => font.value === selectedFont)
 }
@@ -56,9 +61,13 @@ export async function injectFontStyles(
   matchingWebsite: WebsiteItem | null
 ): Promise<boolean> {
   upsertStyle(FONT_STYLES_ID, getFontFaceCSS())
+  const selectedFont = await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
+  updateFontVariable(selectedFont)
   refreshEditableFontStyles()
 
-  const customFontFaces = createCustomFontFaces(await getSelectedCustomFonts())
+  const customFontFaces = createCustomFontFaces(
+    await getSelectedCustomFonts(selectedFont)
+  )
   if (customFontFaces) {
     upsertStyle(CUSTOM_FONT_STYLES_ID, customFontFaces)
   } else {
@@ -108,9 +117,4 @@ export function updateFontVariable(fontName: string | undefined): void {
       }
     `
   )
-}
-
-export async function initializeFontVariable(): Promise<void> {
-  const selectedFont = await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
-  updateFontVariable(selectedFont)
 }

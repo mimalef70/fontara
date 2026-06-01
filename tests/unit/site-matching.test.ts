@@ -9,6 +9,7 @@ import type { WebsiteItem } from "../../src/definitions"
 import {
   createRegexFromUrl,
   getMatchingWebsite,
+  getUrlActivationState,
   isUrlActive
 } from "../../src/utils/url"
 
@@ -86,6 +87,14 @@ test("isUrlActive falls back to default websites when local storage is empty", a
   mockLocalStorage({})
 
   assert.equal(await isUrlActive(`${POPULAR_WEBSITES[0].url}/`), true)
+})
+
+test("getUrlActivationState returns active status and matching website together", async () => {
+  mockLocalStorage({})
+
+  const state = await getUrlActivationState(`${POPULAR_WEBSITES[0].url}/`)
+  assert.equal(state.active, true)
+  assert.equal(state.matchingWebsite?.url, POPULAR_WEBSITES[0].url)
 })
 
 test("isUrlActive respects the global disabled flag", async () => {

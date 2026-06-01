@@ -2,6 +2,11 @@ import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { WebsiteItem } from "../definitions"
 import { getLocalValue } from "./storage"
 
+export type UrlActivationState = {
+  active: boolean
+  matchingWebsite: WebsiteItem | null
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -47,6 +52,12 @@ export async function getStoredWebsiteList(): Promise<WebsiteItem[]> {
 }
 
 export async function isUrlActive(currentUrl: string): Promise<boolean> {
+  return (await getUrlActivationState(currentUrl)).active
+}
+
+export async function getUrlActivationState(
+  currentUrl: string
+): Promise<UrlActivationState> {
   let isExtensionEnabled: boolean | undefined
   try {
     isExtensionEnabled = await getLocalValue<boolean>(
@@ -56,9 +67,17 @@ export async function isUrlActive(currentUrl: string): Promise<boolean> {
     isExtensionEnabled = DEFAULT_VALUES.EXTENSION_ENABLED
   }
 
-  if (isExtensionEnabled === false) return false
+  if (isExtensionEnabled === false) {
+    return {
+      active: false,
+      matchingWebsite: null
+    }
+  }
 
   const websiteList = await getStoredWebsiteList()
   const matchingWebsite = getMatchingWebsite(currentUrl, websiteList)
-  return matchingWebsite?.isActive === true
+  return {
+    active: matchingWebsite?.isActive === true,
+    matchingWebsite
+  }
 }

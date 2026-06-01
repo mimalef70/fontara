@@ -18,7 +18,9 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.match(domProcessorSource, /NodeFilter\.FILTER_REJECT/)
   assert.match(domProcessorSource, /new WeakSet<HTMLElement>\(\)/)
   assert.match(domProcessorSource, /applyFontToTreeChunked/)
+  assert.match(domProcessorSource, /applyFontToTreesChunked/)
   assert.match(domProcessorSource, /requestIdleCallback/)
+  assert.match(domProcessorSource, /ROOT_COLLECTIONS_PER_TIMEOUT/)
   assert.match(domProcessorSource, /endsWith\("-Fontara"\)/)
   assert.match(domProcessorSource, /hasContentEditableAncestorOrSelf/)
   assert.match(domProcessorSource, /isContentEditableRoot/)
@@ -41,6 +43,7 @@ test("contenteditable editors use stylesheet font application", () => {
   assert.match(editableFontStyleSource, /getTopLevelContentEditableElements/)
   assert.match(editableFontStyleSource, /window\.getComputedStyle\(element\)/)
   assert.match(editableFontStyleSource, /getElementSelector/)
+  assert.match(editableFontStyleSource, /editableFontSignature/)
   assert.match(editableFontStyleSource, /fontara-editable-font-style/)
   assert.match(editableFontStyleSource, /\[contenteditable\]/)
   assert.match(editableFontStyleSource, /var\(--fontara-font\)/)
@@ -57,31 +60,33 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /cancelAnimationFrame\(scheduledFrame\)/)
   assert.match(observerSource, /getTopLevelPendingNodes/)
   assert.match(observerSource, /node\.isConnected/)
-  assert.match(observerSource, /collectFontWork/)
-  assert.match(observerSource, /writeFontWorkBatch\(work\)/)
-  assert.match(observerSource, /shouldChunkFontWork\(work\)/)
-  assert.match(observerSource, /writeFontWorkBatchChunked\(work\)/)
+  assert.match(observerSource, /applyFontToTreesChunked\(connectedNodes\)/)
   assert.match(observerSource, /refreshEditableFontStyles/)
   assert.match(observerSource, /editableFontStylesDirty/)
   assert.match(observerSource, /removedNodes/)
   assert.match(observerSource, /attributeFilter: \["contenteditable"\]/)
-  assert.doesNotMatch(observerSource, /applyFontToTree/)
+  assert.doesNotMatch(observerSource, /applyFontToTree\(/)
 })
 
 test("storage changes schedule the active injection pipeline", () => {
   const injectSource = readSource("src/inject/index.ts")
 
   assert.match(injectSource, /function scheduleApplyFontsIfActive/)
+  assert.match(injectSource, /type ApplyMode = "font-styles" \| "full"/)
   assert.match(injectSource, /queueMicrotask/)
   assert.match(injectSource, /applyFontsRunning/)
-  assert.match(injectSource, /applyFontsQueued/)
+  assert.match(injectSource, /applyFontsQueuedMode/)
   assert.match(
     injectSource,
-    /\[STORAGE_KEYS\.SELECTED_FONT\]: scheduleApplyFontsIfActive/
+    /\[STORAGE_KEYS\.SELECTED_FONT\]: \(\) =>\s*scheduleApplyFontsIfActive\("font-styles"\)/
+  )
+  assert.match(
+    injectSource,
+    /\[STORAGE_KEYS\.WEBSITE_LIST\]: \(\) => scheduleApplyFontsIfActive\(\)/
   )
   assert.doesNotMatch(
     injectSource,
-    /\[STORAGE_KEYS\.SELECTED_FONT\]:[\s\S]*?updateFontVariable/
+    /\[STORAGE_KEYS\.SELECTED_FONT\]:[\s\S]*?applyFontToTreeChunked/
   )
 })
 
@@ -96,12 +101,13 @@ test("custom font injection only emits the selected custom font", () => {
   const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
 
   assert.match(fontStyleManagerSource, /function getSelectedCustomFonts/)
-  assert.match(fontStyleManagerSource, /Promise\.all/)
-  assert.match(fontStyleManagerSource, /font\.value === selectedFont/)
+  assert.match(fontStyleManagerSource, /BUNDLED_FONT_VALUES/)
   assert.match(
     fontStyleManagerSource,
-    /createCustomFontFaces\(await getSelectedCustomFonts\(\)\)/
+    /BUNDLED_FONT_VALUES\.has\(selectedFont\)/
   )
+  assert.match(fontStyleManagerSource, /font\.value === selectedFont/)
+  assert.match(fontStyleManagerSource, /getSelectedCustomFonts\(selectedFont\)/)
   assert.doesNotMatch(
     fontStyleManagerSource,
     /createCustomFontFaces\(customFontList\)/

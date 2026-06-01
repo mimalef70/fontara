@@ -14,6 +14,7 @@ type FontWorkCollection = {
 
 const ICON_FONT_FAMILY_PARTS = ["fontawesome", "material", "icon", "glyphicon"]
 const TEXT_CONTROL_TAGS = new Set(["input", "textarea", "select", "option"])
+const ROOT_COLLECTIONS_PER_TIMEOUT = 20
 const WORK_CHUNK_SIZE = 200
 
 let processedElements = new WeakSet<HTMLElement>()
@@ -265,20 +266,47 @@ export function resetProcessedElements(): void {
 }
 
 export function applyFontToTreeChunked(rootNode: HTMLElement): void {
-  if (!rootNode) return
+  applyFontToTreesChunked([rootNode])
+}
 
-  const collection = createFontWorkCollection(rootNode)
+export function applyFontToTreesChunked(rootNodes: HTMLElement[]): void {
+  if (rootNodes.length === 0) return
+
+  const collections = rootNodes.flatMap((rootNode) => {
+    const collection = createFontWorkCollection(rootNode)
+    return collection ? [collection] : []
+  })
   const work: FontWork[] = []
   const generation = processingGeneration
+  let collectionIndex = 0
 
-  if (!collection) return
+  if (collections.length === 0) return
 
   const collectStep = (deadline?: IdleDeadline): void => {
     if (generation !== processingGeneration) return
 
-    if (!collectNextFontWork(collection, work, deadline)) {
-      scheduleIdle(collectStep)
-      return
+    let completedCollections = 0
+    while (
+      collectionIndex < collections.length &&
+      generation === processingGeneration
+    ) {
+      const collection = collections[collectionIndex]
+      if (!collectNextFontWork(collection, work, deadline)) {
+        scheduleIdle(collectStep)
+        return
+      }
+
+      collectionIndex += 1
+      completedCollections += 1
+
+      if (
+        collectionIndex < collections.length &&
+        ((deadline && !shouldContinueChunk(deadline, 1)) ||
+          (!deadline && completedCollections >= ROOT_COLLECTIONS_PER_TIMEOUT))
+      ) {
+        scheduleIdle(collectStep)
+        return
+      }
     }
 
     writeFontWorkChunked(work, generation)

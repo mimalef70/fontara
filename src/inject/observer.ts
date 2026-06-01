@@ -1,9 +1,4 @@
-import {
-  collectFontWork,
-  shouldChunkFontWork,
-  writeFontWorkBatch,
-  writeFontWorkBatchChunked
-} from "./dom-processor"
+import { applyFontToTreesChunked } from "./dom-processor"
 import {
   containsContentEditableElement,
   refreshEditableFontStyles
@@ -66,16 +61,7 @@ function flushPendingNodes(): void {
     refreshEditableFontStyles()
   }
 
-  const work = nodes.flatMap((node) =>
-    node.isConnected ? collectFontWork(node) : []
-  )
-
-  if (shouldChunkFontWork(work)) {
-    writeFontWorkBatchChunked(work)
-    return
-  }
-
-  writeFontWorkBatch(work)
+  applyFontToTreesChunked(connectedNodes)
 }
 
 function scheduleFlush(): void {
@@ -84,7 +70,7 @@ function scheduleFlush(): void {
 }
 
 export function startObserving(): void {
-  stopObserving()
+  if (observer) return
 
   if (!document.body) return
 

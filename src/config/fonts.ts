@@ -15,6 +15,11 @@ export const DEFAULT_FONTS = [
     author: "زنده یاد صابر راستی کردار"
   },
   {
+    value: "Arad-Fontara",
+    name: "آراد",
+    author: "محمد درویشی"
+  },
+  {
     value: "Sahel-Fontara",
     name: "ساحل",
     author: "زنده یاد صابر راستی کردار"

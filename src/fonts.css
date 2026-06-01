@@ -97,6 +97,20 @@
   unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
 }
 
+/* ========== Arad ========== */
+@font-face {
+  font-family: "Arad-Fontara";
+  src:
+    url("assets/fonts/arad/Arad-VF.woff2")
+      format("woff2 supports variations"),
+    url("assets/fonts/arad/Arad-VF.woff2")
+      format("woff2-variations");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+}
+
 /* ========== Sahel ========== */
 @font-face {
   font-family: "Sahel-Fontara";

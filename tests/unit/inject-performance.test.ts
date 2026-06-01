@@ -120,7 +120,9 @@ test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
   const azarmehrPath = path.resolve(
     "assets/fonts/azarmehr/AzarMehr[wght].woff2"
   )
+  const aradPath = path.resolve("assets/fonts/arad/Arad-VF.woff2")
   const azarmehrFont = fs.readFileSync(azarmehrPath)
+  const aradFont = fs.readFileSync(aradPath)
 
   assert.ok(fontFaceBlocks.length > 0)
   assert.equal(
@@ -130,5 +132,7 @@ test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
   )
   assert.doesNotMatch(fontsCSS, /data:font/)
   assert.match(fontsCSS, /assets\/fonts\/azarmehr\/AzarMehr\[wght\]\.woff2/)
+  assert.match(fontsCSS, /assets\/fonts\/arad\/Arad-VF\.woff2/)
   assert.equal(azarmehrFont.subarray(0, 4).toString("ascii"), "wOF2")
+  assert.equal(aradFont.subarray(0, 4).toString("ascii"), "wOF2")
 })

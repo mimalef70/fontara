@@ -54,11 +54,17 @@ function isIconFontFamily(fontFamily: string): boolean {
   )
 }
 
+function isFontaraFontFamily(fontFamily: string): boolean {
+  return (
+    fontFamily.includes("--fontara-font") || fontFamily.endsWith("-Fontara")
+  )
+}
+
 function getCleanFontFamily(fontFamily: string): string {
   return fontFamily
     .split(",")
     .map((family) => family.trim().replace(/^["']+|["']+$/g, ""))
-    .filter((family) => Boolean(family) && !family.endsWith("-Fontara"))
+    .filter((family) => Boolean(family) && !isFontaraFontFamily(family))
     .join(", ")
 }
 
@@ -243,7 +249,6 @@ export function applyFontToTreeChunked(rootNode: HTMLElement): void {
   if (!rootNode) return
 
   const collection = createFontWorkCollection(rootNode)
-  const work: FontWork[] = []
   const generation = processingGeneration
 
   if (!collection) return
@@ -251,12 +256,16 @@ export function applyFontToTreeChunked(rootNode: HTMLElement): void {
   const collectStep = (deadline?: IdleDeadline): void => {
     if (generation !== processingGeneration) return
 
-    if (!collectNextFontWork(collection, work, deadline)) {
-      scheduleIdle(collectStep)
-      return
+    const work: FontWork[] = []
+    const done = collectNextFontWork(collection, work, deadline)
+
+    if (work.length > 0) {
+      writeFontWorkChunked(work, generation)
     }
 
-    writeFontWorkChunked(work, generation)
+    if (!done) {
+      scheduleIdle(collectStep)
+    }
   }
 
   scheduleIdle(collectStep)

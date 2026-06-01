@@ -14,6 +14,7 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.match(domProcessorSource, /function collectNextFontWork/)
   assert.match(domProcessorSource, /function createFontWorkCollection/)
   assert.match(domProcessorSource, /function hasAppliedFontaraFont/)
+  assert.match(domProcessorSource, /function isFontaraFontFamily/)
   assert.match(domProcessorSource, /function writeFontWorkBatch/)
   assert.match(domProcessorSource, /function hasDirectText/)
   assert.match(domProcessorSource, /NodeFilter\.FILTER_REJECT/)

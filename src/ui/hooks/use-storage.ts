@@ -8,18 +8,20 @@ export function useStorageValue<T>(
   key: string,
   initialValue?: Initializer<T>
 ): [T, (value: T | ((current: T) => T)) => Promise<void>] {
-  const resolveInitialValue = React.useCallback(
-    (value: T | undefined): T => {
-      if (typeof initialValue === "function") {
-        return (initialValue as (value: T | undefined) => T)(value)
-      }
-      if (value === undefined && initialValue !== undefined) {
-        return initialValue
-      }
-      return value as T
-    },
-    [initialValue]
-  )
+  const initialValueRef = React.useRef(initialValue)
+  initialValueRef.current = initialValue
+
+  const resolveInitialValue = React.useCallback((value: T | undefined): T => {
+    const initialValue = initialValueRef.current
+
+    if (typeof initialValue === "function") {
+      return (initialValue as (value: T | undefined) => T)(value)
+    }
+    if (value === undefined && initialValue !== undefined) {
+      return initialValue
+    }
+    return value as T
+  }, [])
 
   const [value, setValue] = React.useState<T>(() =>
     resolveInitialValue(undefined)

@@ -4,6 +4,7 @@ import type { WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
 import { useStorageValue } from "../hooks/use-storage"
+import { EMPTY_WEBSITE_LIST } from "../storage-defaults"
 import {
   Tooltip,
   TooltipContent,
@@ -14,7 +15,7 @@ import {
 function PopularUrl() {
   const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
-    []
+    EMPTY_WEBSITE_LIST
   )
 
   const toggleActive = async (website: WebsiteItem) => {

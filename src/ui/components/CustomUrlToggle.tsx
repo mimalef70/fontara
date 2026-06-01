@@ -5,13 +5,14 @@ import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
 import { createRegexFromUrl, getMatchingWebsite } from "../../utils/url"
 import { useStorageValue } from "../hooks/use-storage"
+import { EMPTY_WEBSITE_LIST } from "../storage-defaults"
 import { Check as CheckIcon } from "./icons"
 
 const CustomUrlToggle = () => {
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null)
   const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
-    []
+    EMPTY_WEBSITE_LIST
   )
 
   const handleUrlToggle = async (checked: boolean) => {

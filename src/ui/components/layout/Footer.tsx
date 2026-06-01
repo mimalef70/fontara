@@ -1,12 +1,13 @@
 import { STORAGE_KEYS } from "../../../config/storage"
 import { cn } from "../../../utils/cn"
 import { useStorageValue } from "../../hooks/use-storage"
+import { getExtensionEnabledInitialValue } from "../../storage-defaults"
 import { HeartBold } from "../icons"
 
 function Footer() {
   const [extensionActive] = useStorageValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED,
-    (value) => value !== false
+    getExtensionEnabledInitialValue
   )
 
   return (

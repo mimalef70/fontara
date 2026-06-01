@@ -6,6 +6,7 @@ import type { FontData } from "../../definitions"
 import { cn } from "../../utils/cn"
 import { escapeCSSString } from "../../utils/font-data"
 import { useStorageValue } from "../hooks/use-storage"
+import { EMPTY_CUSTOM_FONT_LIST } from "../storage-defaults"
 import { CheckCircle, Circle, FolderFileFont } from "./icons"
 import { Button } from "./ui/button"
 import {
@@ -46,7 +47,7 @@ const FontSelector = () => {
   )
   const [customFontList] = useStorageValue<FontData[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
-    []
+    EMPTY_CUSTOM_FONT_LIST
   )
 
   useEffect(() => {

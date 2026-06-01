@@ -3,13 +3,14 @@ import { STORAGE_KEYS } from "../../../config/storage"
 import { getExtensionAssetURL } from "../../../utils/assets"
 import { toPersianNumbers } from "../../../utils/text"
 import { useStorageValue } from "../../hooks/use-storage"
+import { getExtensionEnabledInitialValue } from "../../storage-defaults"
 import { Badge } from "../ui/badge"
 import { Switch } from "../ui/Switch"
 
 const Header = () => {
   const [extensionActive, setExtensionActive] = useStorageValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED,
-    (v) => (v === undefined ? true : v)
+    getExtensionEnabledInitialValue
   )
 
   const handleExtensionToggle = async (checked: boolean) => {

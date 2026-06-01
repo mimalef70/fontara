@@ -12,18 +12,20 @@ import {
   MAX_CUSTOM_FONT_FILE_SIZE_BYTES
 } from "../../utils/font-data"
 import { getLocalValue, setLocalValues } from "../../utils/storage"
+import ErrorBoundary from "../components/ErrorBoundary"
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
+import { EMPTY_CUSTOM_FONT_LIST } from "../storage-defaults"
 
 function OptionsPage() {
   useSelectedUIFont()
 
   const [customFontList, setCustomFontList] = useStorageValue<FontData[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
-    []
+    EMPTY_CUSTOM_FONT_LIST
   )
 
   const fontUtils = {
@@ -297,4 +299,8 @@ if (!rootElement) {
   throw new Error("FontAra options root element was not found.")
 }
 
-createRoot(rootElement).render(<OptionsPage />)
+createRoot(rootElement).render(
+  <ErrorBoundary title="خطا در بارگذاری تنظیمات فونت‌آرا">
+    <OptionsPage />
+  </ErrorBoundary>
+)

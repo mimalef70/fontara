@@ -4,10 +4,10 @@ import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import type { FontData } from "../../definitions"
 import { createCustomFontFaces } from "../../generators/custom-font-face"
 import { escapeCSSString } from "../../utils/font-data"
+import { EMPTY_CUSTOM_FONT_LIST } from "../storage-defaults"
 import { useStorageValue } from "./use-storage"
 
 const CUSTOM_FONT_STYLE_ID = "fontara-ui-custom-font-styles"
-const EMPTY_CUSTOM_FONT_LIST: FontData[] = []
 
 function upsertCustomFontStyles(customFontList: FontData[]): void {
   const customFontFaces = createCustomFontFaces(customFontList)

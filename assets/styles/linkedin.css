@@ -6,10 +6,6 @@ body,
     Ubuntu, Oxygen, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
     Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol";
-  --fontara-linkedin-monospace: ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, "Liberation Mono", "Courier New", monospace;
-  --artdeco-reset-typography-font-family-sans: var(--fontara-font),
-    var(--fontara-linkedin-fallback) !important;
 }
 
 html,
@@ -34,19 +30,4 @@ option,
 [contenteditable="true"],
 body * {
   font-family: var(--fontara-font), var(--fontara-linkedin-fallback) !important;
-}
-
-pre,
-pre *,
-code,
-code *,
-samp,
-samp * {
-  font-family: var(--fontara-linkedin-monospace) !important;
-}
-
-svg,
-svg *,
-canvas {
-  font-family: inherit !important;
 }

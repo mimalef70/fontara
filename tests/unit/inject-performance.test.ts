@@ -154,7 +154,7 @@ test("X uses site CSS instead of streaming DOM writes", () => {
   assert.match(xCSS, /\.r-poiln3/)
 })
 
-test("Gemini uses site CSS without replacing icon fonts", () => {
+test("Gemini custom CSS only targets text surfaces", () => {
   const geminiCSS = readSource("assets/styles/gemini.css")
   const siteFixesSource = readSource("src/config/site-fixes.ts")
   const sitesSource = readSource("src/config/sites.ts")
@@ -165,13 +165,23 @@ test("Gemini uses site CSS without replacing icon fonts", () => {
   assert.match(siteFixesSource, /gemini\.css/)
   assert.match(siteFixesSource, /"https:\/\/gemini\.google\.com": gemini/)
   assert.match(geminiCSS, /--fontara-gemini-fallback/)
-  assert.match(geminiCSS, /--fontara-gemini-monospace/)
-  assert.match(geminiCSS, /--mat-sys-label-large-font/)
   assert.match(geminiCSS, /\.ql-editor/)
   assert.match(geminiCSS, /\.gds-body-l/)
-  assert.match(geminiCSS, /:not\(mat-icon\)/)
-  assert.match(geminiCSS, /:not\(\.google-symbols\)/)
-  assert.match(geminiCSS, /:not\(\.lumi-symbols\)/)
+  assert.match(geminiCSS, /\.markdown h3/)
+  assert.match(geminiCSS, /\.mat-mdc-button:not\(\.mat-mdc-icon-button\)/)
+  assert.doesNotMatch(geminiCSS, /body \*/)
+  assert.doesNotMatch(geminiCSS, /\bmat-icon\b/)
+  assert.doesNotMatch(geminiCSS, /\.mat-icon\b/)
+  assert.doesNotMatch(geminiCSS, /google-symbols/)
+  assert.doesNotMatch(geminiCSS, /lumi-symbols/)
+  assert.doesNotMatch(geminiCSS, /material-symbols/)
+  assert.doesNotMatch(geminiCSS, /\bsvg\b/)
+  assert.doesNotMatch(geminiCSS, /\bcanvas\b/)
+  assert.doesNotMatch(geminiCSS, /\.ql-editor \*/)
+  assert.doesNotMatch(geminiCSS, /\.text-input-field \*/)
+  assert.doesNotMatch(geminiCSS, /\.markdown \*/)
+  assert.doesNotMatch(geminiCSS, /\.response-container \*/)
+  assert.doesNotMatch(geminiCSS, /\.single-draft-response-container \*/)
 })
 
 test("LinkedIn uses site CSS instead of streaming DOM writes", () => {

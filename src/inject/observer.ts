@@ -1,6 +1,7 @@
 import { applyFontToTreesChunked } from "./dom-processor"
 import {
   containsContentEditableElement,
+  EDITABLE_SELECTOR_ATTRIBUTES,
   refreshEditableFontStyles
 } from "./editable-font-style"
 
@@ -80,8 +81,13 @@ export function startObserving(): void {
         const element = getMutationElement(mutation.target)
         if (element) {
           pendingNodes.add(element)
+          if (
+            mutation.attributeName === "contenteditable" ||
+            containsContentEditableElement(element)
+          ) {
+            editableFontStylesDirty = true
+          }
         }
-        editableFontStylesDirty = true
         continue
       }
 
@@ -109,7 +115,7 @@ export function startObserving(): void {
     subtree: true,
     childList: true,
     attributes: true,
-    attributeFilter: ["contenteditable"]
+    attributeFilter: ["contenteditable", ...EDITABLE_SELECTOR_ATTRIBUTES]
   })
 }
 

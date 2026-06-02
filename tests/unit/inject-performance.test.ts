@@ -41,8 +41,13 @@ test("contenteditable editors use stylesheet font application", () => {
   assert.match(domProcessorSource, /node\.isContentEditable === true/)
   assert.match(editableFontStyleSource, /refreshEditableFontStyles/)
   assert.match(editableFontStyleSource, /getTopLevelContentEditableElements/)
-  assert.match(editableFontStyleSource, /window\.getComputedStyle\(element\)/)
+  assert.match(
+    editableFontStyleSource,
+    /window\.getComputedStyle\(getEditableFontSample\(element\)\)/
+  )
   assert.match(editableFontStyleSource, /getElementSelector/)
+  assert.match(editableFontStyleSource, /getEditableRootSelectors/)
+  assert.match(editableFontStyleSource, /\[data-text="true"\]/)
   assert.match(editableFontStyleSource, /editableFontSignature/)
   assert.match(editableFontStyleSource, /fontara-editable-font-style/)
   assert.match(editableFontStyleSource, /\[contenteditable\]/)
@@ -64,7 +69,11 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /refreshEditableFontStyles/)
   assert.match(observerSource, /editableFontStylesDirty/)
   assert.match(observerSource, /removedNodes/)
-  assert.match(observerSource, /attributeFilter: \["contenteditable"\]/)
+  assert.match(observerSource, /EDITABLE_SELECTOR_ATTRIBUTES/)
+  assert.match(
+    observerSource,
+    /attributeFilter: \["contenteditable", \.\.\.EDITABLE_SELECTOR_ATTRIBUTES\]/
+  )
   assert.doesNotMatch(observerSource, /applyFontToTree\(/)
 })
 

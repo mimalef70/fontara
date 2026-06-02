@@ -86,6 +86,17 @@ class FakeElement {
     return child
   }
 
+  querySelector(selector: string): FakeElement | null {
+    if (selector === '[data-text="true"]') {
+      return findFirstElement(
+        this,
+        (element) => element.getAttribute("data-text") === "true"
+      )
+    }
+
+    return null
+  }
+
   getAttribute(attributeName: string): string | null {
     return this.attributes.get(attributeName) ?? null
   }
@@ -102,6 +113,20 @@ class FakeElement {
       this.elementsById.delete(this.id)
     }
   }
+}
+
+function findFirstElement(
+  root: FakeElement,
+  predicate: (element: FakeElement) => boolean
+): FakeElement | null {
+  for (const child of root.children) {
+    if (predicate(child)) return child
+
+    const match = findFirstElement(child, predicate)
+    if (match) return match
+  }
+
+  return null
 }
 
 afterEach(() => {
@@ -148,6 +173,14 @@ function createRuntimeMocks(): {
   editableElement.setAttribute("contenteditable", "true")
   elementsById.set(editableElement.id, editableElement)
   bodyElement.appendChild(editableElement)
+  const twitterEditableElement = new FakeElement("div", elementsById)
+  twitterEditableElement.setAttribute("contenteditable", "true")
+  twitterEditableElement.setAttribute("data-testid", "tweetTextarea_0")
+  twitterEditableElement.setAttribute("role", "textbox")
+  const twitterTextElement = new FakeElement("span", elementsById)
+  twitterTextElement.setAttribute("data-text", "true")
+  twitterEditableElement.appendChild(twitterTextElement)
+  bodyElement.appendChild(twitterEditableElement)
   const documentMock = {
     body: bodyElement,
     createElement(tagName: string) {
@@ -168,11 +201,18 @@ function createRuntimeMocks(): {
     head: new FakeElement("head", elementsById),
     querySelectorAll(selector: string) {
       if (selector === '[contenteditable]:not([contenteditable="false" i])') {
-        return [editableElement]
+        return [editableElement, twitterEditableElement]
       }
 
       if (selector === '[id="prompt-textarea"]') {
         return [editableElement]
+      }
+
+      if (
+        selector ===
+        'div[contenteditable]:not([contenteditable="false" i])[data-testid="tweetTextarea_0"][role="textbox"]'
+      ) {
+        return [twitterEditableElement]
       }
 
       return []
@@ -202,7 +242,9 @@ function createRuntimeMocks(): {
         fontFamily:
           element === editableElement
             ? '"ChatGPT Sans", Arial, sans-serif'
-            : "system-ui, sans-serif"
+            : element === twitterTextElement
+              ? '"TwitterChirp", system-ui, sans-serif'
+              : "system-ui, sans-serif"
       }
     },
     location: { href: "https://example.com/" },
@@ -319,6 +361,14 @@ test("selected custom font changes inject its font-face without a reload", async
   assert.match(
     runtime.getStyleText("fontara-editable-font-style"),
     /\[id="prompt-textarea"\][\s\S]*var\(--fontara-font\), "ChatGPT Sans", Arial, sans-serif/
+  )
+  assert.match(
+    runtime.getStyleText("fontara-editable-font-style"),
+    /\[id="prompt-textarea"\] \[data-text="true"\]/
+  )
+  assert.match(
+    runtime.getStyleText("fontara-editable-font-style"),
+    /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[data-testid="tweetTextarea_0"\]\[role="textbox"\][\s\S]*\[data-text="true"\][\s\S]*var\(--fontara-font\), "TwitterChirp", system-ui, sans-serif/
   )
   assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
   assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 0)

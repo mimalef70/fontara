@@ -3,8 +3,10 @@ import { escapeCSSString } from "../utils/font-data"
 const EDITABLE_FONT_ID = "fontara-editable-font-style"
 const CONTENT_EDITABLE_SELECTOR =
   '[contenteditable]:not([contenteditable="false" i])'
+const EDITABLE_TEXT_SELECTOR = '[data-text="true"]'
 const DEFAULT_EDITABLE_FALLBACK = "ui-sans-serif, system-ui, sans-serif"
-const STABLE_SELECTOR_ATTRIBUTES = [
+export const EDITABLE_SELECTOR_ATTRIBUTES = [
+  "id",
   "data-testid",
   "data-test-id",
   "data-qa",
@@ -66,9 +68,8 @@ function getUniqueSelector(element: HTMLElement): string | null {
   }
 
   const tagName = getElementTagName(element)
-  const selectorParts = STABLE_SELECTOR_ATTRIBUTES.flatMap((attributeName) => {
-    const value = element.getAttribute(attributeName)
-    return value ? [getAttributeSelector(attributeName, value)] : []
+  const selectorParts = getStableAttributeSelectorParts(element, {
+    includeId: false
   })
 
   if (selectorParts.length === 0) {
@@ -103,14 +104,24 @@ function getNthOfTypeSelector(element: HTMLElement): string {
 
 function getSelectorPart(element: HTMLElement): string {
   const tagName = getElementTagName(element)
-  const attributeSelectors = STABLE_SELECTOR_ATTRIBUTES.flatMap(
-    (attributeName) => {
-      const value = element.getAttribute(attributeName)
-      return value ? [getAttributeSelector(attributeName, value)] : []
-    }
-  ).join("")
+  const attributeSelectors = getStableAttributeSelectorParts(element, {
+    includeId: false
+  }).join("")
 
   return `${tagName}${attributeSelectors}${getNthOfTypeSelector(element)}`
+}
+
+function getStableAttributeSelectorParts(
+  element: HTMLElement,
+  options: { includeId: boolean }
+): string[] {
+  return EDITABLE_SELECTOR_ATTRIBUTES.flatMap((attributeName) => {
+    if (!options.includeId && attributeName === "id") return []
+
+    const value =
+      attributeName === "id" ? element.id : element.getAttribute(attributeName)
+    return value ? [getAttributeSelector(attributeName, value)] : []
+  })
 }
 
 function getElementSelector(element: HTMLElement): string {
@@ -134,6 +145,43 @@ function getElementSelector(element: HTMLElement): string {
   }
 
   return parts.join(" > ")
+}
+
+function selectorTargetsElement(
+  element: HTMLElement,
+  selector: string
+): boolean {
+  try {
+    if (typeof element.matches === "function") {
+      return element.matches(selector)
+    }
+
+    return Array.from(document.querySelectorAll(selector)).includes(element)
+  } catch {
+    return false
+  }
+}
+
+function getStableEditableSelector(element: HTMLElement): string | null {
+  const tagName = getElementTagName(element)
+  const attributeSelectors = getStableAttributeSelectorParts(element, {
+    includeId: true
+  }).join("")
+  const selector = `${tagName}${CONTENT_EDITABLE_SELECTOR}${attributeSelectors}`
+
+  return selectorTargetsElement(element, selector) ? selector : null
+}
+
+function getEditableRootSelectors(element: HTMLElement): string[] {
+  const selectors = new Set<string>()
+  const stableEditableSelector = getStableEditableSelector(element)
+
+  if (stableEditableSelector) {
+    selectors.add(stableEditableSelector)
+  }
+
+  selectors.add(getElementSelector(element))
+  return Array.from(selectors)
 }
 
 export function isContentEditableElement(element: HTMLElement): boolean {
@@ -237,21 +285,33 @@ function getCleanFontFamily(fontFamily: string): string {
   return cleanFontFamily || DEFAULT_EDITABLE_FALLBACK
 }
 
+function getEditableFontSample(element: HTMLElement): HTMLElement {
+  const textElement =
+    typeof element.querySelector === "function"
+      ? element.querySelector<HTMLElement>(EDITABLE_TEXT_SELECTOR)
+      : null
+  return textElement ?? element
+}
+
+function getEditableFontTargets(selector: string): string[] {
+  return [selector, `${selector} *`, `${selector} ${EDITABLE_TEXT_SELECTOR}`]
+}
+
 function createEditableFontRule(element: HTMLElement): EditableFontRule {
-  const selector = getElementSelector(element)
+  const selectors = getEditableRootSelectors(element)
   const fallbackFontFamily = getCleanFontFamily(
-    window.getComputedStyle(element).fontFamily
+    window.getComputedStyle(getEditableFontSample(element)).fontFamily
   )
   const fontFamily = `var(--fontara-font), ${fallbackFontFamily}`
+  const targets = selectors.flatMap(getEditableFontTargets).join(",\n      ")
 
   return {
     css: `
-      ${selector},
-      ${selector} * {
+      ${targets} {
         font-family: ${fontFamily} !important;
       }
     `,
-    signature: `${selector}\u0000${fallbackFontFamily}`
+    signature: `${selectors.join("\u0001")}\u0000${fallbackFontFamily}`
   }
 }
 

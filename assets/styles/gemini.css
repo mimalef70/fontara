@@ -1,0 +1,97 @@
+:root,
+html,
+body,
+chat-app {
+  --fontara-gemini-fallback: "Google Sans Flex", "Google Sans Text",
+    "Google Sans", "Helvetica Neue", Arial, sans-serif;
+  --fontara-gemini-monospace: "Google Sans Mono", ui-monospace,
+    SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  --fontara-gemini-text-font: var(--fontara-font),
+    var(--fontara-gemini-fallback);
+  --mat-sys-body-large-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-body-medium-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-body-small-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-label-large-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-label-medium-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-label-small-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-title-large-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-title-medium-font: var(--fontara-gemini-text-font) !important;
+  --mat-sys-title-small-font: var(--fontara-gemini-text-font) !important;
+  --mat-button-text-label-text-font: var(--fontara-gemini-text-font) !important;
+  --mat-button-filled-label-text-font: var(--fontara-gemini-text-font) !important;
+  --mat-list-list-item-label-text-font: var(--fontara-gemini-text-font) !important;
+  --mat-list-list-item-trailing-supporting-text-font: var(
+    --fontara-gemini-text-font
+  ) !important;
+}
+
+html,
+body,
+chat-app,
+main,
+section,
+article,
+aside,
+nav,
+header,
+footer,
+button,
+input,
+textarea,
+select,
+optgroup,
+option,
+[role="button"],
+[role="dialog"],
+[role="menu"],
+[contenteditable="true"],
+rich-textarea,
+.ql-container,
+.ql-editor,
+.markdown,
+.markdown-main-panel,
+.gds-title-l-emphasized,
+.gds-body-l,
+.gds-body-m,
+.gds-body-s,
+.gds-label-l,
+.mat-mdc-button,
+.mat-mdc-unelevated-button,
+.mdc-list-item__primary-text,
+.mdc-list-item__end,
+body
+  :not(mat-icon)
+  :not(gem-icon)
+  :not(.mat-icon)
+  :not(.material-icons)
+  :not(.material-symbols)
+  :not(.material-symbols-outlined)
+  :not(.material-symbols-rounded)
+  :not(.material-symbols-sharp)
+  :not(.google-symbols)
+  :not(.lumi-symbols)
+  :not(.lm-icon-s)
+  :not(.lm-icon-m)
+  :not(.lm-icon-l) {
+  font-family: var(--fontara-gemini-text-font) !important;
+}
+
+rich-textarea .ql-editor.ql-blank::before {
+  font-family: var(--fontara-gemini-text-font) !important;
+}
+
+pre,
+pre *,
+code,
+code *,
+samp,
+samp * {
+  font-family: var(--fontara-gemini-monospace) !important;
+}
+
+svg,
+svg *,
+canvas {
+  font-family: inherit !important;
+}

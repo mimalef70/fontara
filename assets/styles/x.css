@@ -1,0 +1,42 @@
+:root,
+html,
+body {
+  --fontara-x-fallback: TwitterChirp, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fontara-x-monospace: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+html,
+body,
+#react-root,
+[role="dialog"],
+[role="menu"],
+[role="button"],
+button,
+input,
+textarea,
+select,
+.css-146c3p1,
+.css-1jxf684,
+.r-poiln3,
+.r-1k78y06,
+.r-4hwcpe,
+body * {
+  font-family: var(--fontara-font), var(--fontara-x-fallback) !important;
+}
+
+pre,
+pre *,
+code,
+code *,
+samp,
+samp * {
+  font-family: var(--fontara-x-monospace) !important;
+}
+
+svg,
+svg *,
+canvas {
+  font-family: inherit !important;
+}

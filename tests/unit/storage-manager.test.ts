@@ -80,6 +80,84 @@ test("mergeWebsiteLists upgrades ChatGPT to CSS-only defaults", () => {
   ])
 })
 
+test("mergeWebsiteLists upgrades X to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://x.com",
+      regex: "^https://x\\.com/.*$",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://x.com",
+      regex: "^https://x\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
+test("mergeWebsiteLists upgrades LinkedIn to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://www.linkedin.com",
+      regex: "^https://[^/]*linkedin\\.com/.*$",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://www.linkedin.com",
+      regex: "^https://[^/]*linkedin\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
+test("mergeWebsiteLists upgrades Gemini to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://gemini.google.com",
+      regex: "^https://gemini\\.google\\.com/.*$",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://gemini.google.com",
+      regex: "^https://gemini\\.google\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
 test("normalizeCustomFontList backfills missing file hashes", async () => {
   const [font] = await normalizeCustomFontList([
     {

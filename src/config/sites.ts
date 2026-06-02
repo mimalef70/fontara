@@ -6,14 +6,18 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     regex: "^https://[^/]*linkedin\\.com/.*$",
     icon: "assets/logos/linkedin-active.png",
     pattern: "https://*linkedin.com/*",
-    siteName: "LinkedIn"
+    siteName: "LinkedIn",
+    customCss: true,
+    version: "4.2.1"
   },
   {
     url: "https://x.com",
     regex: "^https://x\\.com/.*$",
     icon: "assets/logos/twitter-active.png",
     pattern: "https://x.com/*",
-    siteName: "X"
+    siteName: "X",
+    customCss: true,
+    version: "4.2.1"
   },
   {
     url: "https://www.facebook.com",
@@ -35,6 +39,15 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     icon: "assets/logos/chatgpt-active.png",
     pattern: "https://chatgpt.com/*",
     siteName: "ChatGPT",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
+    url: "https://gemini.google.com",
+    regex: "^https://gemini\\.google\\.com/.*$",
+    icon: "assets/logos/google-active.png",
+    pattern: "https://gemini.google.com/*",
+    siteName: "Gemini",
     customCss: true,
     version: "4.2.1"
   },

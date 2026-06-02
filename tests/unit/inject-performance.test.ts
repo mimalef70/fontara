@@ -136,6 +136,67 @@ test("ChatGPT uses site CSS instead of streaming DOM writes", () => {
   )
 })
 
+test("X uses site CSS instead of streaming DOM writes", () => {
+  const xCSS = readSource("assets/styles/x.css")
+  const siteFixesSource = readSource("src/config/site-fixes.ts")
+  const sitesSource = readSource("src/config/sites.ts")
+
+  assert.match(sitesSource, /url: "https:\/\/x\.com"/)
+  assert.match(sitesSource, /siteName: "X"[\s\S]*customCss: true/)
+  assert.match(sitesSource, /siteName: "X"[\s\S]*version: "4\.2\.1"/)
+  assert.match(siteFixesSource, /x\.css/)
+  assert.match(siteFixesSource, /"https:\/\/x\.com": x/)
+  assert.match(xCSS, /body \*/)
+  assert.match(xCSS, /--fontara-x-fallback/)
+  assert.match(xCSS, /--fontara-x-monospace/)
+  assert.match(xCSS, /\.css-146c3p1/)
+  assert.match(xCSS, /\.css-1jxf684/)
+  assert.match(xCSS, /\.r-poiln3/)
+})
+
+test("Gemini uses site CSS without replacing icon fonts", () => {
+  const geminiCSS = readSource("assets/styles/gemini.css")
+  const siteFixesSource = readSource("src/config/site-fixes.ts")
+  const sitesSource = readSource("src/config/sites.ts")
+
+  assert.match(sitesSource, /url: "https:\/\/gemini\.google\.com"/)
+  assert.match(sitesSource, /siteName: "Gemini"[\s\S]*customCss: true/)
+  assert.match(sitesSource, /siteName: "Gemini"[\s\S]*version: "4\.2\.1"/)
+  assert.match(siteFixesSource, /gemini\.css/)
+  assert.match(siteFixesSource, /"https:\/\/gemini\.google\.com": gemini/)
+  assert.match(geminiCSS, /--fontara-gemini-fallback/)
+  assert.match(geminiCSS, /--fontara-gemini-monospace/)
+  assert.match(geminiCSS, /--mat-sys-label-large-font/)
+  assert.match(geminiCSS, /\.ql-editor/)
+  assert.match(geminiCSS, /\.gds-body-l/)
+  assert.match(geminiCSS, /:not\(mat-icon\)/)
+  assert.match(geminiCSS, /:not\(\.google-symbols\)/)
+  assert.match(geminiCSS, /:not\(\.lumi-symbols\)/)
+})
+
+test("LinkedIn uses site CSS instead of streaming DOM writes", () => {
+  const linkedinCSS = readSource("assets/styles/linkedin.css")
+  const siteFixesSource = readSource("src/config/site-fixes.ts")
+  const sitesSource = readSource("src/config/sites.ts")
+
+  assert.match(sitesSource, /url: "https:\/\/www\.linkedin\.com"/)
+  assert.match(sitesSource, /siteName: "LinkedIn"[\s\S]*customCss: true/)
+  assert.match(sitesSource, /siteName: "LinkedIn"[\s\S]*version: "4\.2\.1"/)
+  assert.match(siteFixesSource, /linkedin\.css/)
+  assert.match(
+    siteFixesSource,
+    /"https:\/\/www\.linkedin\.com": linkedin/
+  )
+  assert.match(linkedinCSS, /body \*/)
+  assert.match(linkedinCSS, /--fontara-linkedin-fallback/)
+  assert.match(linkedinCSS, /--fontara-linkedin-monospace/)
+  assert.match(
+    linkedinCSS,
+    /--artdeco-reset-typography-font-family-sans/
+  )
+  assert.match(linkedinCSS, /:lang\(en\)/)
+})
+
 test("hot selector lookups use Sets", () => {
   const selectorsSource = readSource("src/config/selectors.ts")
 

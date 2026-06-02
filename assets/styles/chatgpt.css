@@ -1,0 +1,39 @@
+:root {
+  --fontara-chatgpt-fallback: -apple-system-body, ui-sans-serif, -apple-system,
+    system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol";
+  --fontara-chatgpt-monospace: ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+html,
+body,
+body * {
+  font-family: var(--fontara-font), var(--fontara-chatgpt-fallback) !important;
+}
+
+pre,
+pre *,
+code,
+code *,
+samp,
+samp *,
+.monaco-editor,
+.monaco-editor *,
+.cm-editor,
+.cm-editor *,
+[data-language],
+[data-language] * {
+  font-family: var(--fontara-chatgpt-monospace) !important;
+}
+
+kbd,
+kbd * {
+  font-family: var(--fontara-chatgpt-fallback) !important;
+}
+
+svg,
+svg *,
+canvas {
+  font-family: inherit !important;
+}

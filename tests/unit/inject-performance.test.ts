@@ -41,17 +41,25 @@ test("contenteditable editors use stylesheet font application", () => {
   assert.match(domProcessorSource, /node\.isContentEditable === true/)
   assert.match(editableFontStyleSource, /refreshEditableFontStyles/)
   assert.match(editableFontStyleSource, /getTopLevelContentEditableElements/)
+  assert.match(editableFontStyleSource, /getStaticEditableFontRule/)
+  assert.match(editableFontStyleSource, /isInsideContentEditableElement/)
+  assert.match(editableFontStyleSource, /removeContentEditableInlineFontStyles/)
+  assert.match(editableFontStyleSource, /CONTENT_EDITABLE_INLINE_FONT_SELECTOR/)
   assert.match(
     editableFontStyleSource,
     /window\.getComputedStyle\(getEditableFontSample\(element\)\)/
   )
-  assert.match(editableFontStyleSource, /getElementSelector/)
-  assert.match(editableFontStyleSource, /getEditableRootSelectors/)
+  assert.match(editableFontStyleSource, /getStableEditableSelector/)
+  assert.match(editableFontStyleSource, /MAX_DYNAMIC_EDITABLE_RULES/)
   assert.match(editableFontStyleSource, /\[data-text="true"\]/)
+  assert.match(editableFontStyleSource, /"p"/)
+  assert.match(editableFontStyleSource, /fontara-editable-font-specificity/)
   assert.match(editableFontStyleSource, /editableFontSignature/)
   assert.match(editableFontStyleSource, /fontara-editable-font-style/)
   assert.match(editableFontStyleSource, /\[contenteditable\]/)
   assert.match(editableFontStyleSource, /var\(--fontara-font\)/)
+  assert.doesNotMatch(editableFontStyleSource, /nth-of-type/)
+  assert.doesNotMatch(editableFontStyleSource, /parts\.join\(" > "\)/)
   assert.doesNotMatch(editableFontStyleSource, /const EDITABLE_FONT_CSS/)
   assert.match(fontStyleManagerSource, /refreshEditableFontStyles/)
   assert.match(fontStyleManagerSource, /removeEditableFontStyles/)
@@ -68,6 +76,9 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /applyFontToTreesChunked\(connectedNodes\)/)
   assert.match(observerSource, /refreshEditableFontStyles/)
   assert.match(observerSource, /editableFontStylesDirty/)
+  assert.match(observerSource, /addPendingNodeIfOutsideContentEditable/)
+  assert.match(observerSource, /isInsideContentEditableElement/)
+  assert.match(observerSource, /containsContentEditableElement/)
   assert.match(observerSource, /removedNodes/)
   assert.match(observerSource, /EDITABLE_SELECTOR_ATTRIBUTES/)
   assert.match(
@@ -96,6 +107,32 @@ test("storage changes schedule the active injection pipeline", () => {
   assert.doesNotMatch(
     injectSource,
     /\[STORAGE_KEYS\.SELECTED_FONT\]:[\s\S]*?applyFontToTreeChunked/
+  )
+})
+
+test("ChatGPT uses site CSS instead of streaming DOM writes", () => {
+  const chatgptCSS = readSource("assets/styles/chatgpt.css")
+  const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
+  const injectSource = readSource("src/inject/index.ts")
+  const siteFixesSource = readSource("src/config/site-fixes.ts")
+  const sitesSource = readSource("src/config/sites.ts")
+
+  assert.match(sitesSource, /url: "https:\/\/chatgpt\.com"/)
+  assert.match(sitesSource, /siteName: "ChatGPT"[\s\S]*customCss: true/)
+  assert.match(sitesSource, /siteName: "ChatGPT"[\s\S]*version: "4\.2\.1"/)
+  assert.match(siteFixesSource, /chatgpt\.css/)
+  assert.match(siteFixesSource, /"https:\/\/chatgpt\.com": chatgpt/)
+  assert.match(chatgptCSS, /body \*/)
+  assert.match(chatgptCSS, /--fontara-chatgpt-fallback/)
+  assert.match(chatgptCSS, /--fontara-chatgpt-monospace/)
+  assert.match(fontStyleManagerSource, /export function removeInlineFontStyles/)
+  assert.match(
+    fontStyleManagerSource,
+    /removeEditableFontStyles\(\)[\s\S]*removeInlineFontStyles\(\)[\s\S]*upsertStyle\(CUSTOM_CSS_ID, customCSS\)/
+  )
+  assert.match(
+    injectSource,
+    /if \(hasCustomCSS\) \{[\s\S]*stopObserving\(\)[\s\S]*resetProcessedElements\(\)/
   )
 })
 

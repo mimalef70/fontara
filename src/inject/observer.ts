@@ -2,6 +2,8 @@ import { applyFontToTreesChunked } from "./dom-processor"
 import {
   containsContentEditableElement,
   EDITABLE_SELECTOR_ATTRIBUTES,
+  isContentEditableElement,
+  isInsideContentEditableElement,
   refreshEditableFontStyles
 } from "./editable-font-style"
 
@@ -47,6 +49,12 @@ function markEditableFontStylesDirtyForNode(node: Node): void {
   }
 }
 
+function addPendingNodeIfOutsideContentEditable(element: HTMLElement): void {
+  if (!isInsideContentEditableElement(element)) {
+    pendingNodes.add(element)
+  }
+}
+
 function flushPendingNodes(): void {
   scheduledFrame = null
 
@@ -80,9 +88,10 @@ export function startObserving(): void {
       if (mutation.type === "attributes") {
         const element = getMutationElement(mutation.target)
         if (element) {
-          pendingNodes.add(element)
+          addPendingNodeIfOutsideContentEditable(element)
           if (
             mutation.attributeName === "contenteditable" ||
+            isContentEditableElement(element) ||
             containsContentEditableElement(element)
           ) {
             editableFontStylesDirty = true
@@ -96,7 +105,7 @@ export function startObserving(): void {
       for (const node of mutation.addedNodes) {
         const element = getMutationElement(node)
         if (element) {
-          pendingNodes.add(element)
+          addPendingNodeIfOutsideContentEditable(element)
           markEditableFontStylesDirtyForNode(element)
         }
       }

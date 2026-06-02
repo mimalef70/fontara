@@ -34,7 +34,9 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     regex: "^https://chatgpt\\.com/.*$",
     icon: "assets/logos/chatgpt-active.png",
     pattern: "https://chatgpt.com/*",
-    siteName: "ChatGPT"
+    siteName: "ChatGPT",
+    customCss: true,
+    version: "4.2.1"
   },
   {
     url: "https://www.google.com",

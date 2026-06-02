@@ -54,6 +54,32 @@ test("mergeWebsiteLists updates versioned defaults and preserves active state", 
   ])
 })
 
+test("mergeWebsiteLists upgrades ChatGPT to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://chatgpt.com",
+      regex: "^https://chatgpt\\.com/.*$",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://chatgpt.com",
+      regex: "^https://chatgpt\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
 test("normalizeCustomFontList backfills missing file hashes", async () => {
   const [font] = await normalizeCustomFontList([
     {

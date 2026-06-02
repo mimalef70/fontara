@@ -75,6 +75,7 @@ async function applyFontsIfActive(mode: ApplyMode): Promise<void> {
 
     if (hasCustomCSS) {
       stopObserving()
+      resetProcessedElements()
       return
     }
 

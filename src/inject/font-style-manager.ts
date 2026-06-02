@@ -41,6 +41,17 @@ function removeStyle(id: string): void {
   document.getElementById(id)?.remove()
 }
 
+export function removeInlineFontStyles(): void {
+  document.querySelectorAll("[style*='fontara-font']").forEach((element) => {
+    if (element instanceof HTMLElement) {
+      element.style.fontFamily = ""
+      if (element.style.length === 0) {
+        element.removeAttribute("style")
+      }
+    }
+  })
+}
+
 async function getSelectedCustomFonts(
   selectedFont: string | undefined
 ): Promise<FontData[]> {
@@ -63,7 +74,6 @@ export async function injectFontStyles(
   upsertStyle(FONT_STYLES_ID, getFontFaceCSS())
   const selectedFont = await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
   updateFontVariable(selectedFont)
-  refreshEditableFontStyles()
 
   const customFontFaces = createCustomFontFaces(
     await getSelectedCustomFonts(selectedFont)
@@ -80,11 +90,14 @@ export async function injectFontStyles(
       : null
 
   if (customCSS) {
+    removeEditableFontStyles()
+    removeInlineFontStyles()
     upsertStyle(CUSTOM_CSS_ID, customCSS)
     return true
   }
 
   removeStyle(CUSTOM_CSS_ID)
+  refreshEditableFontStyles()
   return false
 }
 
@@ -94,15 +107,7 @@ export function removeFontStyles(): void {
   removeEditableFontStyles()
   removeStyle(CUSTOM_FONT_STYLES_ID)
   removeStyle(CUSTOM_CSS_ID)
-
-  document.querySelectorAll("[style*='fontara-font']").forEach((element) => {
-    if (element instanceof HTMLElement) {
-      element.style.fontFamily = ""
-      if (element.style.length === 0) {
-        element.removeAttribute("style")
-      }
-    }
-  })
+  removeInlineFontStyles()
 }
 
 export function updateFontVariable(fontName: string | undefined): void {

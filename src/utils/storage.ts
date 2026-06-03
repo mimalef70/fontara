@@ -27,6 +27,16 @@ function debugWarn(message: string, error: unknown): void {
   }
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function isExpectedStorageListenerError(error: unknown): boolean {
+  return /extension context invalidated|context invalidated|cannot read (?:properties|property) of undefined \(reading ['"]onChanged['"]\)/i.test(
+    getErrorMessage(error)
+  )
+}
+
 export function getLocalValue<T = unknown>(
   key: string
 ): Promise<T | undefined> {
@@ -126,7 +136,9 @@ export function watchLocalStorage(watchers: StorageWatchers): () => void {
   try {
     storageChanged?.addListener(listener)
   } catch (error) {
-    debugWarn("Failed to watch extension storage changes.", error)
+    if (!isExpectedStorageListenerError(error)) {
+      debugWarn("Failed to watch extension storage changes.", error)
+    }
     return () => {}
   }
 
@@ -134,7 +146,9 @@ export function watchLocalStorage(watchers: StorageWatchers): () => void {
     try {
       storageChanged?.removeListener(listener)
     } catch (error) {
-      debugWarn("Failed to stop watching extension storage changes.", error)
+      if (!isExpectedStorageListenerError(error)) {
+        debugWarn("Failed to stop watching extension storage changes.", error)
+      }
     }
   }
 }

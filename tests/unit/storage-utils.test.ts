@@ -11,9 +11,11 @@ import {
 } from "../../src/utils/storage"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
+const originalDebug = Reflect.get(globalThis, "__DEBUG__") as unknown
 
 afterEach(() => {
   Reflect.set(globalThis, "chrome", originalChrome)
+  Reflect.set(globalThis, "__DEBUG__", originalDebug)
 })
 
 function mockChromeStorage(options: {
@@ -186,6 +188,66 @@ test("watchLocalStorage cleans up the captured listener when chrome storage disa
   stop()
 
   assert.equal(removed, true)
+})
+
+test("watchLocalStorage suppresses expected storage teardown cleanup warnings", () => {
+  let warnCalls = 0
+  const originalWarn = console.warn
+
+  Reflect.set(globalThis, "__DEBUG__", true)
+  Reflect.set(globalThis, "chrome", {
+    storage: {
+      onChanged: {
+        addListener() {},
+        removeListener() {
+          throw new TypeError(
+            "Cannot read properties of undefined (reading 'onChanged')"
+          )
+        }
+      }
+    }
+  })
+  console.warn = () => {
+    warnCalls += 1
+  }
+
+  try {
+    const stop = watchLocalStorage({})
+
+    assert.doesNotThrow(stop)
+    assert.equal(warnCalls, 0)
+  } finally {
+    console.warn = originalWarn
+  }
+})
+
+test("watchLocalStorage warns for unexpected storage cleanup failures", () => {
+  let warnCalls = 0
+  const originalWarn = console.warn
+
+  Reflect.set(globalThis, "__DEBUG__", true)
+  Reflect.set(globalThis, "chrome", {
+    storage: {
+      onChanged: {
+        addListener() {},
+        removeListener() {
+          throw new Error("unexpected cleanup failure")
+        }
+      }
+    }
+  })
+  console.warn = () => {
+    warnCalls += 1
+  }
+
+  try {
+    const stop = watchLocalStorage({})
+
+    assert.doesNotThrow(stop)
+    assert.equal(warnCalls, 1)
+  } finally {
+    console.warn = originalWarn
+  }
 })
 
 test("watchLocalStorage returns safe cleanup when registration fails", () => {

@@ -1,6 +1,9 @@
 :root {
-  --fontara-google-arial-ui-fallback: Arial, sans-serif;
-  --fontara-google-sans-ui-fallback: "Google Sans", Arial, sans-serif;
+  --fontara-instagram-system-ui-fallback: -apple-system, "system-ui",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fontara-instagram-sfns-text-fallback: system-ui, -apple-system,
+    "system-ui", ".SFNSText-Regular", sans-serif;
+  --fontara-instagram-helvetica-ui-fallback: Helvetica, Arial, sans-serif;
 }
 
 :where(
@@ -49,5 +52,11 @@
   code, code *,
   kbd, samp
 ) {
-  font-family: var(--fontara-font), var(--fontara-google-sans-ui-fallback) !important;
+  font-family: var(--fontara-font),
+  var(--fontara-instagram-system-ui-fallback) !important;
+}
+
+select {
+  font-family: var(--fontara-font),
+    var(--fontara-instagram-helvetica-ui-fallback) !important;
 }

@@ -106,6 +106,32 @@ test("mergeWebsiteLists upgrades X to CSS-only defaults", () => {
   ])
 })
 
+test("mergeWebsiteLists upgrades Instagram to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://www.instagram.com",
+      regex: "^https://www\\.instagram\\.com/.*$",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://www.instagram.com",
+      regex: "^https://www\\.instagram\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
 test("mergeWebsiteLists upgrades LinkedIn to CSS-only defaults", () => {
   const existingList: WebsiteItem[] = [
     {

@@ -1,116 +1,81 @@
 {
   "site": "google",
+  "selectorMode": "semantic",
   "cssFile": "assets/styles/google.css",
   "fallbackPrefix": "--fontara-google",
+  "sourceEvidence": {
+    "stableDocumentMarkers": [
+      "html[itemtype=\"http://schema.org/SearchResultsPage\"]",
+      "body#gsr"
+    ],
+    "stableLandmarks": [
+      "form#tsf",
+      "textarea#APjFqb",
+      "textarea[name=\"q\"]",
+      "input[name=\"q\"]",
+      "#cnt",
+      "#search",
+      "#rso",
+      "#bres",
+      "#hdtb",
+      "#botstuff",
+      "#sfooter"
+    ],
+    "fallbackStacksFound": [
+      "Arial, sans-serif",
+      "\"Google Sans\", Arial, sans-serif",
+      "\"Google Sans\", Roboto, Arial, sans-serif"
+    ]
+  },
   "groups": [
     {
-      "selectors": [".ApHyTb", ".BjWz4c", ".cRV9hb .pcTkSc .ClJ9Yb"],
-      "fallbackName": "token-yfikf",
-      "fontFamily": "var(--YfiKf)"
-    },
-    {
       "selectors": [
-        ".cRV9hb .pcTkSc",
-        ".e9EfHf",
-        ".lh87ke:link",
-        ".yUTMj",
-        "body",
-        "h1",
-        "html",
-        "input"
+        "html[itemtype=\"http://schema.org/SearchResultsPage\"]",
+        "body#gsr",
+        "body#gsr #cnt",
+        "body#gsr #search",
+        "body#gsr #rso",
+        "body#gsr #bres",
+        "body#gsr #botstuff",
+        "body#gsr #sfooter",
+        "body#gsr h1",
+        "body#gsr input"
       ],
       "fallbackName": "arial-ui",
       "fontFamily": "Arial, sans-serif"
     },
     {
       "selectors": [
-        ".cRV9hb .pcTkSc .wM6W7d",
-        ".dg6jd",
-        ".DuQANe",
-        ".E2ShOd",
-        ".FkX2oe",
-        ".GLcBOb",
-        ".gLFyf",
-        ".GuoVP",
-        ".ILxcde",
-        ".JgzqYd",
-        ".jloFI",
-        ".jR6h",
-        ".jtAOgd",
-        ".lKuDef",
-        ".lQfa5",
-        ".q8U8x",
-        ".qIQse",
-        ".t6uYac",
-        ".UUbT9",
-        ".XhWQv.rNHry",
-        ".YacQv",
-        ".ynRric"
+        "body#gsr form#tsf",
+        "body#gsr form#tsf textarea[name=\"q\"]",
+        "body#gsr form#tsf input[name=\"q\"]",
+        "body#gsr #hdtb",
+        "body#gsr #search h3",
+        "body#gsr #rso h3",
+        "body#gsr #bres h3",
+        "body#gsr [role=\"heading\"]",
+        "body#gsr [role=\"button\"]",
+        "body#gsr [role=\"menuitem\"]",
+        "body#gsr [role=\"option\"]",
+        "body#gsr [role=\"dialog\"]"
       ],
-      "fallbackName": "google-sans-ui",
+      "fallbackName": "sans-ui",
       "fontFamily": "\"Google Sans\", Arial, sans-serif"
-    },
-    {
-      "selectors": [".Fzsovc", ".YWpX0d"],
-      "fallbackName": "token-rtk0e",
-      "fontFamily": "var(--rTk0E)"
-    },
-    {
-      "matchedSelector": ".IFnjPb",
-      "fallbackName": "token-aoh9xe",
-      "fontFamily": "var(--Aoh9Xe)"
-    },
-    {
-      "selectors": [".jqVAid", ".zg2IJb"],
-      "fallbackName": "token-tnv9kb-wspbzc",
-      "fontFamily": "var(--tNv9Kb--WspBzc,var(--qR8X0))"
-    },
-    {
-      "matchedSelector": ".k1U36b",
-      "fallbackName": "token-qbwyqb",
-      "fontFamily": "var(--qBwyqb)"
-    },
-    {
-      "matchedSelector": ".MBeuO",
-      "fallbackName": "token-eou8yc",
-      "fontFamily": "var(--Eou8Yc)"
-    },
-    {
-      "matchedSelector": ".n6owBd",
-      "fallbackName": "token-cqpmve-wspbzc",
-      "fontFamily": "var(--cQpmVe--WspBzc,unset)"
-    },
-    {
-      "selectors": [".p4wth", ".Vlt3wb", ".wHYlTd", ".YrbPuc"],
-      "fallbackName": "token-li4bo",
-      "fontFamily": "var(--LI4Bo)"
-    },
-    {
-      "matchedSelector": ".Pqkn2e",
-      "fallbackName": "token-nkmqoe",
-      "fontFamily": "var(--nkmQOe)"
-    },
-    {
-      "selectors": [".R1QWuf", ".sjVJQd", ".ZFiwCf"],
-      "fallbackName": "token-qr8x0",
-      "fontFamily": "var(--qR8X0)"
-    },
-    {
-      "matchedSelector": ".tNxQIb",
-      "fallbackName": "token-zttqpe",
-      "fontFamily": "var(--ztTqPe)"
-    },
-    {
-      "matchedSelector": ".YB4h9",
-      "fallbackName": "google-sans-roboto-ui",
-      "fontFamily": "\"Google Sans\", Roboto, Arial, sans-serif"
     }
   ],
   "ignoredSelectors": [],
   "ignoredSelectorPatterns": [
     {
-      "pattern": "^div#[A-Za-z0-9_-]+ > div\\.YzCcne:nth-of-type\\(1\\) > div\\.hdzaWe$",
-      "reason": "volatile-generated-dom-path"
+      "pattern": "(^|[\\s,>+~])\\.[A-Za-z][A-Za-z0-9_-]{2,}",
+      "reason": "google-search-class-names-are-build-generated"
+    },
+    {
+      "pattern": "#(?:_|evlb_|folsrch-sqf-)[A-Za-z0-9_-]+",
+      "reason": "google-search-ids-contain-session-or-query-generated-tokens"
+    },
+    {
+      "pattern": ":nth-of-type\\(",
+      "reason": "positional-dom-paths-break-across-google-builds"
     }
   ]
 }

@@ -2,8 +2,10 @@
 
 ## Site CSS from matched-selector JSON
 
-When a site CSS file is generated from inspected JSON, use only the JSON data.
-Do not invent selectors, exceptions, or broad rules.
+When a site CSS file is generated from inspected JSON, use the captured JSON as
+the source of truth for font stacks and text targets. In the default mode, use
+the JSON `matchedSelector` values directly after normalization. Do not invent
+selectors, exceptions, or broad rules.
 
 Required contract:
 
@@ -27,9 +29,10 @@ Required contract:
    These hashes can change per build/user and must not appear in site CSS. If
    stripping them makes duplicate selectors, keep the rule that would have won
    in the source CSS cascade, usually the more specific or later rule.
-   Also ignore per-message/session selectors that encode generated content ids,
-   such as Gmail `div#m_...bd > div` selectors, and generated full DOM paths
-   with ids plus positional selectors such as `:nth-of-type(...)`.
+   Do not drop selectors only because they contain an id or look generated. If
+   the JSON captured a selector, preserve it in the first CSS pass unless it is
+   an explicitly ignored icon/symbol target or an explicitly configured ignored
+   pattern.
 4. For each merged fallback group, emit exactly one CSS rule with the normalized
    selectors joined as a comma-separated selector list.
 5. That rule must set:
@@ -51,8 +54,89 @@ Required contract:
    `font-family` selector rules. If icon/symbol selectors were present in the
    source JSON, list them as ignored selectors in the fixture and assert that
    CSS does not target them.
-   For volatile generated selectors, prefer an ignored selector pattern instead
-   of copying exact session ids into the fixture.
+   For volatile generated selectors, only add an ignored selector pattern when
+   the user explicitly asked for that cleanup or approved a semantic refactor.
 
 Fixtures live at `tests/fixtures/*-font-rules.json`, and the contract test
 lives at `tests/unit/site-css-json-contract.test.ts`.
+
+### High-churn selector warning
+
+Some sites, especially Google Search, ship most readable text selectors as
+short generated class names or generated full DOM paths. For these sites, using
+`matchedSelector` verbatim creates CSS that is correct for one build and brittle
+for the next build.
+
+Do not automatically rewrite these sites into semantic selectors. First build
+the CSS normally from the JSON `matchedSelector` values, even when selectors
+contain ids, generated-looking classes, or positional paths. If the captured
+payload includes HTML, do not use it to invent selectors during this first pass.
+
+After finishing the normal CSS, tell the user when the selector set looks
+high-churn or suspicious. Explain that a follow-up semantic review may be more
+stable, and offer a scoped text-whitelist approach like this. Do not apply this
+template unless the user explicitly asks for a semantic refactor.
+
+```css
+<site-root> :where(
+  p,
+  span,
+  div,
+  mark,
+  a,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  li,
+  label,
+  button,
+  input,
+  textarea,
+  select,
+  option,
+  em,
+  strong,
+  b,
+  i,
+  small,
+  time,
+  cite,
+  q,
+  blockquote,
+  figcaption,
+  summary,
+  dt,
+  dd,
+  th,
+  td,
+  caption,
+  legend,
+  [role="heading"],
+  [role="button"],
+  [role="menuitem"],
+  [role="option"],
+  [role="tab"]
+):not(
+  [class*="icon" i],
+  [class*="symbol" i],
+  [class*="glyph" i],
+  [class*="material-icons" i],
+  [class*="fa-"],
+  [class~="fa"],
+  [class*="bi-"],
+  [role="img"],
+  pre *,
+  code,
+  code *,
+  kbd,
+  samp
+) {
+  font-family: var(--fontara-font), var(--site-text-fallback) !important;
+}
+```
+
+When the user approves this path, keep it scoped to a stable site root such as
+`body#gsr`; never ship the template globally.

@@ -195,6 +195,33 @@ test("X uses site CSS instead of streaming DOM writes", () => {
   assert.match(xCSS, /\.r-poiln3/)
 })
 
+test("Instagram custom CSS is driven by matched-selector JSON", () => {
+  const instagramCSS = readSource("assets/styles/instagram.css")
+  const siteFixesSource = readSource("src/config/site-fixes.ts")
+  const sitesSource = readSource("src/config/sites.ts")
+
+  assert.match(sitesSource, /url: "https:\/\/www\.instagram\.com"/)
+  assert.match(sitesSource, /siteName: "Instagram"[\s\S]*customCss: true/)
+  assert.match(sitesSource, /siteName: "Instagram"[\s\S]*version: "4\.2\.1"/)
+  assert.match(siteFixesSource, /instagram\.css/)
+  assert.match(siteFixesSource, /"https:\/\/www\.instagram\.com": instagram/)
+  assert.match(instagramCSS, /--fontara-instagram-system-ui-fallback/)
+  assert.match(instagramCSS, /--fontara-instagram-sfns-text-fallback/)
+  assert.match(instagramCSS, /--fontara-instagram-helvetica-ui-fallback/)
+  assert.match(instagramCSS, /\._ap3a,/)
+  assert.match(instagramCSS, /\._ar45,/)
+  assert.match(instagramCSS, /\.x1i0vuye,/)
+  assert.match(instagramCSS, /body button,/)
+  assert.match(instagramCSS, /\.x1n0sxbx/)
+  assert.match(instagramCSS, /select \{/)
+  assert.doesNotMatch(instagramCSS, /body \*/)
+  assert.doesNotMatch(instagramCSS, /\[role=/)
+  assert.doesNotMatch(
+    instagramCSS,
+    /--fontara-instagram-[^:]+-fallback:[^;]*var\(--fontara-font\)/
+  )
+})
+
 test("Gemini custom CSS is driven by matched-selector JSON", () => {
   const geminiCSS = readSource("assets/styles/gemini.css")
   const siteFixesSource = readSource("src/config/site-fixes.ts")
@@ -305,7 +332,7 @@ test("Gmail custom CSS is driven by matched-selector JSON", () => {
   )
 })
 
-test("Google custom CSS is driven by matched-selector JSON", () => {
+test("Google custom CSS uses semantic selectors from JSON HTML evidence", () => {
   const googleCSS = readSource("assets/styles/google.css")
   const siteFixesSource = readSource("src/config/site-fixes.ts")
   const sitesSource = readSource("src/config/sites.ts")
@@ -315,19 +342,25 @@ test("Google custom CSS is driven by matched-selector JSON", () => {
   assert.match(sitesSource, /siteName: "Google"[\s\S]*version: "4\.2\.1"/)
   assert.match(siteFixesSource, /google\.css/)
   assert.match(siteFixesSource, /"https:\/\/www\.google\.com": google/)
-  assert.match(googleCSS, /--fontara-google-google-sans-ui-fallback/)
+  assert.match(googleCSS, /--fontara-google-sans-ui-fallback/)
   assert.match(googleCSS, /--fontara-google-arial-ui-fallback/)
-  assert.match(googleCSS, /--fontara-google-token-yfikf-fallback/)
-  assert.match(googleCSS, /\.ApHyTb,/)
-  assert.match(googleCSS, /\.gLFyf,/)
-  assert.match(googleCSS, /\.YacQv,/)
-  assert.match(googleCSS, /\.p4wth,/)
-  assert.match(googleCSS, /body,/)
-  assert.match(googleCSS, /input \{/)
+  assert.match(
+    googleCSS,
+    /html\[itemtype="http:\/\/schema\.org\/SearchResultsPage"\]/
+  )
+  assert.match(googleCSS, /body#gsr/)
+  assert.match(googleCSS, /body#gsr form#tsf/)
+  assert.match(googleCSS, /body#gsr form#tsf textarea\[name="q"\]/)
+  assert.match(googleCSS, /body#gsr #rso/)
+  assert.match(googleCSS, /body#gsr #bres/)
+  assert.match(googleCSS, /body#gsr #hdtb/)
+  assert.match(googleCSS, /body#gsr \[role="button"\]/)
+  assert.match(googleCSS, /body#gsr \[role="option"\]/)
   assert.doesNotMatch(googleCSS, /body \*/)
   assert.doesNotMatch(googleCSS, /div#eKIzJc/)
   assert.doesNotMatch(googleCSS, /nth-of-type/)
-  assert.doesNotMatch(googleCSS, /\[role=/)
+  assert.doesNotMatch(googleCSS, /--fontara-google-token-/)
+  assert.doesNotMatch(googleCSS, /(^|[\s,>+~])\.[A-Za-z][A-Za-z0-9_-]{2,}/m)
   assert.doesNotMatch(
     googleCSS,
     /--fontara-google-[^:]+-fallback:[^;]*var\(--fontara-font\)/

@@ -6,6 +6,7 @@ import test from "node:test"
 type FontRuleFixture = {
   cssFile: string
   fallbackPrefix: string
+  selectorMode?: "matched-selector" | "semantic"
   groups: Array<{
     fallbackName: string
     fontFamily: string
@@ -99,7 +100,7 @@ const fixturePaths = fs
 for (const fixturePath of fixturePaths) {
   const fixture = readJSON<FontRuleFixture>(fixturePath)
 
-  test(`${fixture.site} CSS follows the matched-selector JSON contract`, () => {
+  test(`${fixture.site} CSS follows the font-rule fixture contract`, () => {
     const css = readText(fixture.cssFile)
     const expectedSelectors = fixture.groups.map(getExpectedSelector)
 

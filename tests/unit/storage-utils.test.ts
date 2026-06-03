@@ -154,6 +154,40 @@ test("watchLocalStorage dispatches local changes and removes its listener", () =
   assert.equal(removed, true)
 })
 
+test("watchLocalStorage cleans up the captured listener when chrome storage disappears", () => {
+  type StorageListener = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: "sync" | "local" | "managed" | "session"
+  ) => void
+
+  const listeners: StorageListener[] = []
+  let removed = false
+  const onChanged = {
+    addListener(callback: StorageListener) {
+      listeners.push(callback)
+    },
+    removeListener(callback: StorageListener) {
+      removed = listeners.includes(callback)
+    }
+  }
+  const chromeMock: {
+    storage?: {
+      onChanged: typeof onChanged
+    }
+  } = {
+    storage: {
+      onChanged
+    }
+  }
+  Reflect.set(globalThis, "chrome", chromeMock)
+
+  const stop = watchLocalStorage({})
+  chromeMock.storage = undefined
+  stop()
+
+  assert.equal(removed, true)
+})
+
 test("watchLocalStorage returns safe cleanup when registration fails", () => {
   let addCalls = 0
 

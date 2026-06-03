@@ -8,9 +8,17 @@ export type StorageWatchers = Record<
   (change: StorageChange) => void | Promise<void>
 >
 
+type StorageChangedEvent = typeof chrome.storage.onChanged
+
 function getRuntimeError(): Error | null {
   const lastError = chrome.runtime?.lastError
   return lastError ? new Error(lastError.message) : null
+}
+
+function getStorageChangedEvent(): StorageChangedEvent | null {
+  if (typeof chrome === "undefined") return null
+
+  return chrome.storage?.onChanged ?? null
 }
 
 function debugWarn(message: string, error: unknown): void {
@@ -98,6 +106,7 @@ export function getLocalBytesInUse(
 }
 
 export function watchLocalStorage(watchers: StorageWatchers): () => void {
+  const storageChanged = getStorageChangedEvent()
   const listener = (
     changes: Record<string, chrome.storage.StorageChange>,
     areaName: string
@@ -115,7 +124,7 @@ export function watchLocalStorage(watchers: StorageWatchers): () => void {
   }
 
   try {
-    chrome.storage.onChanged.addListener(listener)
+    storageChanged?.addListener(listener)
   } catch (error) {
     debugWarn("Failed to watch extension storage changes.", error)
     return () => {}
@@ -123,7 +132,7 @@ export function watchLocalStorage(watchers: StorageWatchers): () => void {
 
   return () => {
     try {
-      chrome.storage.onChanged.removeListener(listener)
+      storageChanged?.removeListener(listener)
     } catch (error) {
       debugWarn("Failed to stop watching extension storage changes.", error)
     }

@@ -1,20 +1,54 @@
-:root,
-html,
-body {
-  --fontara-chatgpt-fallback: -apple-system-body, ui-sans-serif, -apple-system,
-    system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol";
+:root {
+  --fontara-chatgpt-body-fallback: var(--font-sans);
+  --fontara-chatgpt-html-fallback: var(
+    --default-font-family,
+    ui-sans-serif,
+    system-ui,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji"
+  );
+  --fontara-chatgpt-kbd-fallback: var(
+    --default-mono-font-family,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
+  --fontara-chatgpt-font-sans-child-fallback: -apple-system-body,
+    ui-sans-serif, -apple-system, "system-ui", "Segoe UI", Helvetica,
+    "Apple Color Emoji", Arial, "sans-serif", "Segoe UI Emoji",
+    "Segoe UI Symbol";
+  --fontara-chatgpt-header-wordmark-fallback: "OpenAI Sans", sans-serif;
 }
 
-html,
-body,
-button,
-input,
-textarea,
-select,
-optgroup,
-option,
-.font-sans,
-body * {
-  font-family: var(--fontara-font), var(--fontara-chatgpt-fallback) !important;
+body {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-body-fallback) !important;
+}
+
+html {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-html-fallback) !important;
+}
+
+kbd {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-kbd-fallback) !important;
+}
+
+:is(.\*\:font-sans > *) {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-font-sans-child-fallback) !important;
+}
+
+.header-wordmark {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-header-wordmark-fallback) !important;
 }

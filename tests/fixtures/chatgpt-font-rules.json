@@ -1,0 +1,32 @@
+{
+  "site": "chatgpt",
+  "cssFile": "assets/styles/chatgpt.css",
+  "fallbackPrefix": "--fontara-chatgpt",
+  "groups": [
+    {
+      "matchedSelector": ":is(.\\*\\:font-sans > *)",
+      "fallbackName": "font-sans-child",
+      "fontFamily": "-apple-system-body, ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", Helvetica, \"Apple Color Emoji\", Arial, \"sans-serif\", \"Segoe UI Emoji\", \"Segoe UI Symbol\""
+    },
+    {
+      "matchedSelector": ".header-wordmark",
+      "fallbackName": "header-wordmark",
+      "fontFamily": "\"OpenAI Sans\", sans-serif"
+    },
+    {
+      "matchedSelector": "body",
+      "fallbackName": "body",
+      "fontFamily": "var(--font-sans)"
+    },
+    {
+      "matchedSelector": "html",
+      "fallbackName": "html",
+      "fontFamily": "var(--default-font-family,ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\")"
+    },
+    {
+      "matchedSelector": "kbd",
+      "fallbackName": "kbd",
+      "fontFamily": "var(--default-mono-font-family,ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace)"
+    }
+  ]
+}

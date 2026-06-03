@@ -1,0 +1,53 @@
+{
+  "site": "linkedin",
+  "cssFile": "assets/styles/linkedin.css",
+  "fallbackPrefix": "--fontara-linkedin",
+  "groups": [
+    {
+      "matchedSelector": ":host",
+      "fallbackName": "host",
+      "fontFamily": "var(--artdeco-reset-typography-font-family-sans)"
+    },
+    {
+      "matchedSelector": ":lang(en)",
+      "fallbackName": "lang-en",
+      "fontFamily": "var(--artdeco-reset-typography-font-family-sans)"
+    },
+    {
+      "matchedSelector": "._38c8bff9",
+      "fallbackName": "38c8bff9",
+      "fontFamily": "var(--_5a455dfe)"
+    },
+    {
+      "matchedSelector": ".artdeco-entity-lockup__subtitle",
+      "fallbackName": "artdeco-entity-lockup-subtitle",
+      "fontFamily": "var(--artdeco-typography-sans)"
+    },
+    {
+      "matchedSelector": ".artdeco-entity-lockup__title",
+      "fallbackName": "artdeco-entity-lockup-title",
+      "fontFamily": "var(--artdeco-typography-sans)"
+    },
+    {
+      "matchedSelector": ".artdeco-modal__header",
+      "fallbackName": "artdeco-modal-header",
+      "fontFamily": "var(--artdeco-typography-sans)"
+    },
+    {
+      "matchedSelector": ".artdeco-modal__header h2",
+      "fallbackName": "artdeco-modal-header-h2",
+      "fontFamily": "var(--artdeco-typography-sans)"
+    },
+    {
+      "matchedSelector": ".ql-container",
+      "fallbackName": "ql-container",
+      "fontFamily": "Helvetica, Arial, sans-serif"
+    },
+    {
+      "matchedSelector": "body",
+      "fallbackName": "body",
+      "fontFamily": "var(--_5a455dfe)"
+    }
+  ],
+  "ignoredSelectors": []
+}

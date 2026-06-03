@@ -122,9 +122,50 @@ test("ChatGPT uses site CSS instead of streaming DOM writes", () => {
   assert.match(sitesSource, /siteName: "ChatGPT"[\s\S]*version: "4\.2\.1"/)
   assert.match(siteFixesSource, /chatgpt\.css/)
   assert.match(siteFixesSource, /"https:\/\/chatgpt\.com": chatgpt/)
-  assert.match(chatgptCSS, /body \*/)
-  assert.match(chatgptCSS, /--fontara-chatgpt-fallback/)
-  assert.match(chatgptCSS, /--fontara-chatgpt-monospace/)
+  assert.match(
+    chatgptCSS,
+    /--fontara-chatgpt-body-fallback: var\(--font-sans\);/
+  )
+  assert.match(
+    chatgptCSS,
+    /--fontara-chatgpt-html-fallback: var\([\s\S]*--default-font-family/
+  )
+  assert.match(
+    chatgptCSS,
+    /--fontara-chatgpt-kbd-fallback: var\([\s\S]*--default-mono-font-family/
+  )
+  assert.match(
+    chatgptCSS,
+    /--fontara-chatgpt-font-sans-child-fallback: -apple-system-body,[\s\S]*"Segoe UI Symbol";/
+  )
+  assert.match(
+    chatgptCSS,
+    /--fontara-chatgpt-header-wordmark-fallback: "OpenAI Sans", sans-serif;/
+  )
+  assert.match(
+    chatgptCSS,
+    /body \{[\s\S]*font-family: var\(--fontara-font\),[\s\S]*var\(--fontara-chatgpt-body-fallback\) !important;/
+  )
+  assert.match(
+    chatgptCSS,
+    /html \{[\s\S]*font-family: var\(--fontara-font\),[\s\S]*var\(--fontara-chatgpt-html-fallback\) !important;/
+  )
+  assert.match(
+    chatgptCSS,
+    /kbd \{[\s\S]*font-family: var\(--fontara-font\),[\s\S]*var\(--fontara-chatgpt-kbd-fallback\) !important;/
+  )
+  assert.match(
+    chatgptCSS,
+    /:is\(\.\\\*\\:font-sans > \*\) \{[\s\S]*font-family: var\(--fontara-font\),[\s\S]*var\(--fontara-chatgpt-font-sans-child-fallback\) !important;/
+  )
+  assert.match(
+    chatgptCSS,
+    /\.header-wordmark \{[\s\S]*font-family: var\(--fontara-font\),[\s\S]*var\(--fontara-chatgpt-header-wordmark-fallback\) !important;/
+  )
+  assert.doesNotMatch(chatgptCSS, /body \*/)
+  assert.doesNotMatch(chatgptCSS, /\bpre\b/)
+  assert.doesNotMatch(chatgptCSS, /\bcode\b/)
+  assert.doesNotMatch(chatgptCSS, /\bsvg\b/)
   assert.match(fontStyleManagerSource, /export function removeInlineFontStyles/)
   assert.match(
     fontStyleManagerSource,
@@ -154,7 +195,7 @@ test("X uses site CSS instead of streaming DOM writes", () => {
   assert.match(xCSS, /\.r-poiln3/)
 })
 
-test("Gemini custom CSS only targets text surfaces", () => {
+test("Gemini custom CSS is driven by matched-selector JSON", () => {
   const geminiCSS = readSource("assets/styles/gemini.css")
   const siteFixesSource = readSource("src/config/site-fixes.ts")
   const sitesSource = readSource("src/config/sites.ts")
@@ -164,17 +205,30 @@ test("Gemini custom CSS only targets text surfaces", () => {
   assert.match(sitesSource, /siteName: "Gemini"[\s\S]*version: "4\.2\.1"/)
   assert.match(siteFixesSource, /gemini\.css/)
   assert.match(siteFixesSource, /"https:\/\/gemini\.google\.com": gemini/)
-  assert.match(geminiCSS, /--fontara-gemini-fallback/)
-  assert.match(geminiCSS, /\.ql-editor/)
+  assert.match(geminiCSS, /--fontara-gemini-gds-body-l-fallback/)
+  assert.match(geminiCSS, /--fontara-gemini-gb-eb-fallback/)
   assert.match(geminiCSS, /\.gds-body-l/)
-  assert.match(geminiCSS, /\.markdown h3/)
-  assert.match(geminiCSS, /\.mat-mdc-button:not\(\.mat-mdc-icon-button\)/)
+  assert.match(
+    geminiCSS,
+    /\.actions-container-v2 \.buttons-container-v2 \.menu-button-wrapper/
+  )
+  assert.match(geminiCSS, /\.markdown-main-panel \{/)
+  assert.match(geminiCSS, /\.markdown \{/)
+  assert.match(geminiCSS, /\.ql-container \{/)
+  assert.match(geminiCSS, /rich-textarea \.ql-editor\.ql-blank::before/)
   assert.doesNotMatch(geminiCSS, /body \*/)
-  assert.doesNotMatch(geminiCSS, /\bmat-icon\b/)
-  assert.doesNotMatch(geminiCSS, /\.mat-icon\b/)
-  assert.doesNotMatch(geminiCSS, /google-symbols/)
-  assert.doesNotMatch(geminiCSS, /lumi-symbols/)
-  assert.doesNotMatch(geminiCSS, /material-symbols/)
+  assert.doesNotMatch(geminiCSS, /\[_ngcontent-ng-c\d+\]/)
+  assert.doesNotMatch(geminiCSS, /\[_nghost-ng-c\d+\]/)
+  assert.doesNotMatch(geminiCSS, /--fontara-gemini-google-symbols-fallback/)
+  assert.doesNotMatch(geminiCSS, /--fontara-gemini-lumi-symbols-fallback/)
+  assert.doesNotMatch(geminiCSS, /\.google-symbols/)
+  assert.doesNotMatch(geminiCSS, /\.lumi-symbols/)
+  assert.doesNotMatch(geminiCSS, /mat-icon\.lm-icon-l/)
+  assert.doesNotMatch(geminiCSS, /mat-icon\.lm-icon-m/)
+  assert.doesNotMatch(geminiCSS, /mat-icon\.lm-icon-s/)
+  assert.doesNotMatch(geminiCSS, /\.markdown h3/)
+  assert.doesNotMatch(geminiCSS, /\.mat-mdc-button:not/)
+  assert.doesNotMatch(geminiCSS, /mat-action-list button/)
   assert.doesNotMatch(geminiCSS, /\bsvg\b/)
   assert.doesNotMatch(geminiCSS, /\bcanvas\b/)
   assert.doesNotMatch(geminiCSS, /\.ql-editor \*/)
@@ -184,7 +238,7 @@ test("Gemini custom CSS only targets text surfaces", () => {
   assert.doesNotMatch(geminiCSS, /\.single-draft-response-container \*/)
 })
 
-test("LinkedIn uses site CSS instead of streaming DOM writes", () => {
+test("LinkedIn custom CSS is driven by matched-selector JSON", () => {
   const linkedinCSS = readSource("assets/styles/linkedin.css")
   const siteFixesSource = readSource("src/config/site-fixes.ts")
   const sitesSource = readSource("src/config/sites.ts")
@@ -193,18 +247,21 @@ test("LinkedIn uses site CSS instead of streaming DOM writes", () => {
   assert.match(sitesSource, /siteName: "LinkedIn"[\s\S]*customCss: true/)
   assert.match(sitesSource, /siteName: "LinkedIn"[\s\S]*version: "4\.2\.1"/)
   assert.match(siteFixesSource, /linkedin\.css/)
-  assert.match(
-    siteFixesSource,
-    /"https:\/\/www\.linkedin\.com": linkedin/
-  )
-  assert.match(linkedinCSS, /body \*/)
-  assert.match(linkedinCSS, /--fontara-linkedin-fallback/)
-  assert.match(linkedinCSS, /--fontara-linkedin-monospace/)
-  assert.match(
-    linkedinCSS,
-    /--artdeco-reset-typography-font-family-sans/
-  )
+  assert.match(siteFixesSource, /"https:\/\/www\.linkedin\.com": linkedin/)
+  assert.match(linkedinCSS, /--fontara-linkedin-host-fallback/)
+  assert.match(linkedinCSS, /--fontara-linkedin-body-fallback/)
+  assert.match(linkedinCSS, /:host/)
+  assert.match(linkedinCSS, /--artdeco-reset-typography-font-family-sans/)
   assert.match(linkedinCSS, /:lang\(en\)/)
+  assert.match(linkedinCSS, /\._38c8bff9/)
+  assert.match(linkedinCSS, /\.artdeco-modal__header h2/)
+  assert.match(linkedinCSS, /\.ql-container/)
+  assert.doesNotMatch(linkedinCSS, /body \*/)
+  assert.doesNotMatch(linkedinCSS, /--fontara-linkedin-monospace/)
+  assert.doesNotMatch(linkedinCSS, /\[role="button"\]/)
+  assert.doesNotMatch(linkedinCSS, /\[contenteditable="true"\]/)
+  assert.doesNotMatch(linkedinCSS, /\bbutton,\b/)
+  assert.doesNotMatch(linkedinCSS, /\binput,\b/)
 })
 
 test("hot selector lookups use Sets", () => {

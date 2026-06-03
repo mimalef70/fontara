@@ -1,0 +1,118 @@
+{
+  "site": "gemini",
+  "cssFile": "assets/styles/gemini.css",
+  "fallbackPrefix": "--fontara-gemini",
+  "groups": [
+    {
+      "matchedSelector": ".actions-container-v2 .buttons-container-v2 .menu-button-wrapper",
+      "fallbackName": "actions-menu-button-wrapper",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".gb_Eb",
+      "fallbackName": "gb-eb",
+      "fontFamily": "Roboto, Arial, sans-serif",
+      "sourceDeclaration": {
+        "property": "font",
+        "value": "13px / 27px Roboto, Arial, sans-serif"
+      }
+    },
+    {
+      "matchedSelector": ".gb_Jd",
+      "fallbackName": "gb-jd",
+      "fontFamily": "\"Google Sans Text\", Roboto, Helvetica, Arial, sans-serif"
+    },
+    {
+      "matchedSelector": ".gds-body-l",
+      "fallbackName": "gds-body-l",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".gds-body-m",
+      "fallbackName": "gds-body-m",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".gds-body-s",
+      "fallbackName": "gds-body-s",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".gds-label-l",
+      "fallbackName": "gds-label-l",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".gds-title-l-emphasized",
+      "fallbackName": "gds-title-l-emphasized",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".markdown-main-panel",
+      "fallbackName": "markdown-main-panel",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".markdown",
+      "fallbackName": "markdown",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": ".mat-mdc-button",
+      "fallbackName": "mat-mdc-button",
+      "fontFamily": "var(--mat-button-text-label-text-font, var(--mat-sys-label-large-font))"
+    },
+    {
+      "matchedSelector": ".mat-mdc-unelevated-button",
+      "fallbackName": "mat-mdc-unelevated-button",
+      "fontFamily": "var(--mat-button-filled-label-text-font, var(--mat-sys-label-large-font))"
+    },
+    {
+      "matchedSelector": ".mdc-list-item__primary-text",
+      "fallbackName": "mdc-list-item-primary-text",
+      "fontFamily": "var(--mat-list-list-item-label-text-font, var(--mat-sys-body-large-font))"
+    },
+    {
+      "matchedSelector": ".mdc-list-item--with-trailing-meta .mdc-list-item__end",
+      "fallbackName": "mdc-list-item-end",
+      "fontFamily": "var(--mat-list-list-item-trailing-supporting-text-font, var(--mat-sys-label-small-font))"
+    },
+    {
+      "matchedSelector": ".ql-container",
+      "fallbackName": "ql-container",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    },
+    {
+      "matchedSelector": "rich-textarea .ql-editor.ql-blank::before",
+      "fallbackName": "rich-textarea-ql-blank-before",
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+    }
+  ],
+  "ignoredSelectors": [
+    {
+      "matchedSelector": ".google-symbols",
+      "reason": "icon-font",
+      "fontFamily": "\"Google Symbols\""
+    },
+    {
+      "matchedSelector": ".lumi-symbols",
+      "reason": "icon-font",
+      "fontFamily": "\"Luminous Symbols\""
+    },
+    {
+      "matchedSelector": "mat-icon.lm-icon-l",
+      "reason": "icon-font",
+      "fontFamily": "\"Luminous Symbols\""
+    },
+    {
+      "matchedSelector": "mat-icon.lm-icon-m",
+      "reason": "icon-font",
+      "fontFamily": "\"Luminous Symbols\""
+    },
+    {
+      "matchedSelector": "mat-icon.lm-icon-s",
+      "reason": "icon-font",
+      "fontFamily": "\"Luminous Symbols\""
+    }
+  ]
+}

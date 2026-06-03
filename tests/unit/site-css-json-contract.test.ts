@@ -9,11 +9,16 @@ type FontRuleFixture = {
   groups: Array<{
     fallbackName: string
     fontFamily: string
-    matchedSelector: string
+    matchedSelector?: string
+    selectors?: string[]
   }>
   ignoredSelectors?: Array<{
     fontFamily: string
     matchedSelector: string
+    reason: string
+  }>
+  ignoredSelectorPatterns?: Array<{
+    pattern: string
     reason: string
   }>
   site: string
@@ -74,6 +79,18 @@ function getFontFamilyRuleSelectors(css: string): string[] {
   return selectors
 }
 
+function getExpectedSelector(group: {
+  matchedSelector?: string
+  selectors?: string[]
+}): string {
+  if (group.selectors !== undefined) {
+    return group.selectors.join(",\n")
+  }
+
+  assert.ok(group.matchedSelector, "Missing matchedSelector or selectors")
+  return group.matchedSelector
+}
+
 const fixturePaths = fs
   .readdirSync(path.resolve("tests/fixtures"))
   .filter((fileName) => fileName.endsWith("-font-rules.json"))
@@ -84,9 +101,7 @@ for (const fixturePath of fixturePaths) {
 
   test(`${fixture.site} CSS follows the matched-selector JSON contract`, () => {
     const css = readText(fixture.cssFile)
-    const expectedSelectors = fixture.groups.map(
-      (group) => group.matchedSelector
-    )
+    const expectedSelectors = fixture.groups.map(getExpectedSelector)
 
     assert.doesNotMatch(css, VOLATILE_ANGULAR_SCOPE_ATTRIBUTE_PATTERN)
 
@@ -104,14 +119,29 @@ for (const fixturePath of fixturePaths) {
       )
     }
 
+    for (const ignoredSelectorPattern of fixture.ignoredSelectorPatterns ??
+      []) {
+      const pattern = new RegExp(ignoredSelectorPattern.pattern)
+      for (const appliedSelector of appliedSelectors) {
+        assert.doesNotMatch(
+          appliedSelector,
+          pattern,
+          `Ignored selector pattern must not get a font-family rule: ${ignoredSelectorPattern.pattern}`
+        )
+      }
+    }
+
     for (const group of fixture.groups) {
       const fallbackProperty = `${fixture.fallbackPrefix}-${group.fallbackName}-fallback`
-      assert.equal(
-        getCustomPropertyValue(css, fallbackProperty),
-        normalizeCSSValue(group.fontFamily)
+      const fallbackValue = getCustomPropertyValue(css, fallbackProperty)
+      assert.doesNotMatch(
+        fallbackValue,
+        /var\(--fontara-font\)/,
+        `Fallback must not include FontARA itself: ${fallbackProperty}`
       )
+      assert.equal(fallbackValue, normalizeCSSValue(group.fontFamily))
 
-      const ruleBlock = getRuleBlock(css, group.matchedSelector)
+      const ruleBlock = getRuleBlock(css, getExpectedSelector(group))
       assert.equal(
         ruleBlock,
         normalizeCSSValue(

@@ -4,49 +4,29 @@
   "fallbackPrefix": "--fontara-linkedin",
   "groups": [
     {
-      "matchedSelector": ":host",
-      "fallbackName": "host",
+      "selectors": [":host", ":lang(en)"],
+      "fallbackName": "reset-sans",
       "fontFamily": "var(--artdeco-reset-typography-font-family-sans)"
     },
     {
-      "matchedSelector": ":lang(en)",
-      "fallbackName": "lang-en",
-      "fontFamily": "var(--artdeco-reset-typography-font-family-sans)"
-    },
-    {
-      "matchedSelector": "._38c8bff9",
-      "fallbackName": "38c8bff9",
+      "selectors": ["._38c8bff9", "body"],
+      "fallbackName": "app-ui",
       "fontFamily": "var(--_5a455dfe)"
     },
     {
-      "matchedSelector": ".artdeco-entity-lockup__subtitle",
-      "fallbackName": "artdeco-entity-lockup-subtitle",
-      "fontFamily": "var(--artdeco-typography-sans)"
-    },
-    {
-      "matchedSelector": ".artdeco-entity-lockup__title",
-      "fallbackName": "artdeco-entity-lockup-title",
-      "fontFamily": "var(--artdeco-typography-sans)"
-    },
-    {
-      "matchedSelector": ".artdeco-modal__header",
-      "fallbackName": "artdeco-modal-header",
-      "fontFamily": "var(--artdeco-typography-sans)"
-    },
-    {
-      "matchedSelector": ".artdeco-modal__header h2",
-      "fallbackName": "artdeco-modal-header-h2",
+      "selectors": [
+        ".artdeco-entity-lockup__subtitle",
+        ".artdeco-entity-lockup__title",
+        ".artdeco-modal__header",
+        ".artdeco-modal__header h2"
+      ],
+      "fallbackName": "artdeco-ui",
       "fontFamily": "var(--artdeco-typography-sans)"
     },
     {
       "matchedSelector": ".ql-container",
-      "fallbackName": "ql-container",
+      "fallbackName": "editor",
       "fontFamily": "Helvetica, Arial, sans-serif"
-    },
-    {
-      "matchedSelector": "body",
-      "fallbackName": "body",
-      "fontFamily": "var(--_5a455dfe)"
     }
   ],
   "ignoredSelectors": []

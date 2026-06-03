@@ -158,6 +158,58 @@ test("mergeWebsiteLists upgrades Gemini to CSS-only defaults", () => {
   ])
 })
 
+test("mergeWebsiteLists upgrades Gmail to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://mail.google.com",
+      regex: "^https://mail\\.google\\.com/.*$",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://mail.google.com",
+      regex: "^https://mail\\.google\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
+test("mergeWebsiteLists upgrades Google to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://www.google.com",
+      regex: "^https://www\\.google\\.com/.*$",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://www.google.com",
+      regex: "^https://www\\.google\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
 test("normalizeCustomFontList backfills missing file hashes", async () => {
   const [font] = await normalizeCustomFontList([
     {

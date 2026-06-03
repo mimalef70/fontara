@@ -205,18 +205,24 @@ test("Gemini custom CSS is driven by matched-selector JSON", () => {
   assert.match(sitesSource, /siteName: "Gemini"[\s\S]*version: "4\.2\.1"/)
   assert.match(siteFixesSource, /gemini\.css/)
   assert.match(siteFixesSource, /"https:\/\/gemini\.google\.com": gemini/)
-  assert.match(geminiCSS, /--fontara-gemini-gds-body-l-fallback/)
-  assert.match(geminiCSS, /--fontara-gemini-gb-eb-fallback/)
+  assert.match(geminiCSS, /--fontara-gemini-google-sans-flex-ui-fallback/)
+  assert.match(geminiCSS, /--fontara-gemini-roboto-ui-fallback/)
+  assert.match(geminiCSS, /--fontara-gemini-material-text-button-fallback/)
   assert.match(geminiCSS, /\.gds-body-l/)
   assert.match(
     geminiCSS,
     /\.actions-container-v2 \.buttons-container-v2 \.menu-button-wrapper/
   )
-  assert.match(geminiCSS, /\.markdown-main-panel \{/)
-  assert.match(geminiCSS, /\.markdown \{/)
-  assert.match(geminiCSS, /\.ql-container \{/)
+  assert.match(geminiCSS, /\.markdown-main-panel,/)
+  assert.match(geminiCSS, /\.markdown,/)
+  assert.match(geminiCSS, /\.ql-container,/)
   assert.match(geminiCSS, /rich-textarea \.ql-editor\.ql-blank::before/)
   assert.doesNotMatch(geminiCSS, /body \*/)
+  assert.doesNotMatch(geminiCSS, /--fontara-gemini-gds-body-l-fallback/)
+  assert.doesNotMatch(
+    geminiCSS,
+    /--fontara-gemini-actions-menu-button-wrapper-fallback/
+  )
   assert.doesNotMatch(geminiCSS, /\[_ngcontent-ng-c\d+\]/)
   assert.doesNotMatch(geminiCSS, /\[_nghost-ng-c\d+\]/)
   assert.doesNotMatch(geminiCSS, /--fontara-gemini-google-symbols-fallback/)
@@ -248,8 +254,9 @@ test("LinkedIn custom CSS is driven by matched-selector JSON", () => {
   assert.match(sitesSource, /siteName: "LinkedIn"[\s\S]*version: "4\.2\.1"/)
   assert.match(siteFixesSource, /linkedin\.css/)
   assert.match(siteFixesSource, /"https:\/\/www\.linkedin\.com": linkedin/)
-  assert.match(linkedinCSS, /--fontara-linkedin-host-fallback/)
-  assert.match(linkedinCSS, /--fontara-linkedin-body-fallback/)
+  assert.match(linkedinCSS, /--fontara-linkedin-reset-sans-fallback/)
+  assert.match(linkedinCSS, /--fontara-linkedin-app-ui-fallback/)
+  assert.match(linkedinCSS, /--fontara-linkedin-artdeco-ui-fallback/)
   assert.match(linkedinCSS, /:host/)
   assert.match(linkedinCSS, /--artdeco-reset-typography-font-family-sans/)
   assert.match(linkedinCSS, /:lang\(en\)/)
@@ -257,11 +264,74 @@ test("LinkedIn custom CSS is driven by matched-selector JSON", () => {
   assert.match(linkedinCSS, /\.artdeco-modal__header h2/)
   assert.match(linkedinCSS, /\.ql-container/)
   assert.doesNotMatch(linkedinCSS, /body \*/)
+  assert.doesNotMatch(linkedinCSS, /--fontara-linkedin-host-fallback/)
+  assert.doesNotMatch(linkedinCSS, /--fontara-linkedin-body-fallback/)
   assert.doesNotMatch(linkedinCSS, /--fontara-linkedin-monospace/)
   assert.doesNotMatch(linkedinCSS, /\[role="button"\]/)
   assert.doesNotMatch(linkedinCSS, /\[contenteditable="true"\]/)
   assert.doesNotMatch(linkedinCSS, /\bbutton,\b/)
   assert.doesNotMatch(linkedinCSS, /\binput,\b/)
+})
+
+test("Gmail custom CSS is driven by matched-selector JSON", () => {
+  const gmailCSS = readSource("assets/styles/gmail.css")
+  const siteFixesSource = readSource("src/config/site-fixes.ts")
+  const sitesSource = readSource("src/config/sites.ts")
+
+  assert.match(sitesSource, /url: "https:\/\/mail\.google\.com"/)
+  assert.match(sitesSource, /siteName: "Gmail"[\s\S]*customCss: true/)
+  assert.match(sitesSource, /siteName: "Gmail"[\s\S]*version: "4\.2\.1"/)
+  assert.match(siteFixesSource, /gmail\.css/)
+  assert.match(siteFixesSource, /"https:\/\/mail\.google\.com": gmail/)
+  assert.match(gmailCSS, /--fontara-gmail-message-body-fallback/)
+  assert.match(gmailCSS, /--fontara-gmail-google-sans-ui-fallback/)
+  assert.match(gmailCSS, /--fontara-gmail-arial-ui-fallback/)
+  assert.match(gmailCSS, /\.a3s/)
+  assert.match(gmailCSS, /\.FOBRw-anl/)
+  assert.match(gmailCSS, /\.zA > \.a4W/)
+  assert.match(gmailCSS, /#loading/)
+  assert.match(gmailCSS, /body,/)
+  assert.match(gmailCSS, /button,/)
+  assert.match(gmailCSS, /input \{/)
+  assert.doesNotMatch(gmailCSS, /body \*/)
+  assert.doesNotMatch(gmailCSS, /--fontara-gmail-amh-dj-fallback/)
+  assert.doesNotMatch(gmailCSS, /--fontara-gmail-gb-eb-fallback/)
+  assert.doesNotMatch(gmailCSS, /\[role=/)
+  assert.doesNotMatch(gmailCSS, /#\\:/)
+  assert.doesNotMatch(gmailCSS, /div#m_/)
+  assert.doesNotMatch(
+    gmailCSS,
+    /--fontara-gmail-[^:]+-fallback:[^;]*var\(--fontara-font\)/
+  )
+})
+
+test("Google custom CSS is driven by matched-selector JSON", () => {
+  const googleCSS = readSource("assets/styles/google.css")
+  const siteFixesSource = readSource("src/config/site-fixes.ts")
+  const sitesSource = readSource("src/config/sites.ts")
+
+  assert.match(sitesSource, /url: "https:\/\/www\.google\.com"/)
+  assert.match(sitesSource, /siteName: "Google"[\s\S]*customCss: true/)
+  assert.match(sitesSource, /siteName: "Google"[\s\S]*version: "4\.2\.1"/)
+  assert.match(siteFixesSource, /google\.css/)
+  assert.match(siteFixesSource, /"https:\/\/www\.google\.com": google/)
+  assert.match(googleCSS, /--fontara-google-google-sans-ui-fallback/)
+  assert.match(googleCSS, /--fontara-google-arial-ui-fallback/)
+  assert.match(googleCSS, /--fontara-google-token-yfikf-fallback/)
+  assert.match(googleCSS, /\.ApHyTb,/)
+  assert.match(googleCSS, /\.gLFyf,/)
+  assert.match(googleCSS, /\.YacQv,/)
+  assert.match(googleCSS, /\.p4wth,/)
+  assert.match(googleCSS, /body,/)
+  assert.match(googleCSS, /input \{/)
+  assert.doesNotMatch(googleCSS, /body \*/)
+  assert.doesNotMatch(googleCSS, /div#eKIzJc/)
+  assert.doesNotMatch(googleCSS, /nth-of-type/)
+  assert.doesNotMatch(googleCSS, /\[role=/)
+  assert.doesNotMatch(
+    googleCSS,
+    /--fontara-google-[^:]+-fallback:[^;]*var\(--fontara-font\)/
+  )
 })
 
 test("hot selector lookups use Sets", () => {

@@ -1,0 +1,133 @@
+:root {
+  --fontara-gmail-message-body-fallback: Arial, Helvetica, sans-serif;
+  --fontara-gmail-google-sans-ui-fallback: "Google Sans", Roboto, RobotoDraft,
+    Helvetica, Arial, sans-serif;
+  --fontara-gmail-google-sans-compact-fallback: "Google Sans", Roboto,
+    sans-serif;
+  --fontara-gmail-gm3-filled-tonal-button-fallback: var(
+    --gm3-button-filled-tonal-label-text-font,
+    "Google Sans",
+    Roboto,
+    Arial,
+    sans-serif
+  );
+  --fontara-gmail-gm3-filled-tonal-flex-button-fallback: var(
+    --gm3-button-filled-tonal-label-text-font,
+    "Google Sans Flex",
+    "Google Sans Text",
+    "Google Sans",
+    Roboto,
+    Arial,
+    sans-serif
+  );
+  --fontara-gmail-roboto-ui-fallback: Roboto, Arial, sans-serif;
+  --fontara-gmail-google-sans-header-fallback: "Google Sans", Roboto,
+    Helvetica, Arial, sans-serif;
+  --fontara-gmail-google-sans-text-header-fallback: "Google Sans Text", Roboto,
+    Helvetica, Arial, sans-serif;
+  --fontara-gmail-gm3-text-button-fallback: var(
+    --gm3-button-text-label-text-font,
+    "Google Sans",
+    Roboto,
+    Arial,
+    sans-serif
+  );
+  --fontara-gmail-gm3-text-flex-button-fallback: var(
+    --gm3-button-text-label-text-font,
+    "Google Sans Flex",
+    "Google Sans Text",
+    "Google Sans",
+    Roboto,
+    Arial,
+    sans-serif
+  );
+  --fontara-gmail-arial-ui-fallback: arial, sans-serif;
+}
+
+.a3s {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-message-body-fallback) !important;
+}
+
+.aAv,
+.aeU .ma,
+.ah9 > .CJ,
+.ahR,
+.aiD,
+.amH > .Dj,
+.amn > .ams,
+.aOd.T-I,
+.bcA,
+.Bn,
+.bsU,
+.bx0,
+.Di > .amH,
+.gJ,
+.ha > .hP,
+.hx .gD,
+.hx .hb,
+.iv .g3,
+.J-M,
+.l6,
+.T-ays,
+.TO .nU > .n0,
+.yW,
+.z0 > .L3,
+.zA > .a4W,
+.zA > .xW,
+button,
+h3.iw {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-google-sans-ui-fallback) !important;
+}
+
+.d-a8c-OgMUtf {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-google-sans-compact-fallback) !important;
+}
+
+.FOBRw-anl {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-gm3-filled-tonal-button-fallback) !important;
+}
+
+.FOBRw-kSE8rc-FoKg4d-a2N-YoZ4jf .FOBRw-anl {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-gm3-filled-tonal-flex-button-fallback) !important;
+}
+
+.gb_Eb,
+.ua {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-roboto-ui-fallback) !important;
+}
+
+.gb_Ee,
+.gb_ud {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-google-sans-header-fallback) !important;
+}
+
+.gb_Ma {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-google-sans-text-header-fallback) !important;
+}
+
+.mUIrbf-anl {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-gm3-text-button-fallback) !important;
+}
+
+.mUIrbf-kSE8rc-FoKg4d-a2N-YoZ4jf .mUIrbf-anl {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-gm3-text-flex-button-fallback) !important;
+}
+
+.p6,
+.T9,
+#loading,
+body,
+input {
+  font-family: var(--fontara-font),
+    var(--fontara-gmail-arial-ui-fallback) !important;
+}

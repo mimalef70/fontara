@@ -1,0 +1,130 @@
+:root {
+  --fontara-google-token-yfikf-fallback: var(--YfiKf);
+  --fontara-google-arial-ui-fallback: Arial, sans-serif;
+  --fontara-google-google-sans-ui-fallback: "Google Sans", Arial, sans-serif;
+  --fontara-google-token-rtk0e-fallback: var(--rTk0E);
+  --fontara-google-token-aoh9xe-fallback: var(--Aoh9Xe);
+  --fontara-google-token-tnv9kb-wspbzc-fallback: var(
+    --tNv9Kb--WspBzc,
+    var(--qR8X0)
+  );
+  --fontara-google-token-qbwyqb-fallback: var(--qBwyqb);
+  --fontara-google-token-eou8yc-fallback: var(--Eou8Yc);
+  --fontara-google-token-cqpmve-wspbzc-fallback: var(
+    --cQpmVe--WspBzc,
+    unset
+  );
+  --fontara-google-token-li4bo-fallback: var(--LI4Bo);
+  --fontara-google-token-nkmqoe-fallback: var(--nkmQOe);
+  --fontara-google-token-qr8x0-fallback: var(--qR8X0);
+  --fontara-google-token-zttqpe-fallback: var(--ztTqPe);
+  --fontara-google-google-sans-roboto-ui-fallback: "Google Sans", Roboto,
+    Arial, sans-serif;
+}
+
+.ApHyTb,
+.BjWz4c,
+.cRV9hb .pcTkSc .ClJ9Yb {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-yfikf-fallback) !important;
+}
+
+.cRV9hb .pcTkSc,
+.e9EfHf,
+.lh87ke:link,
+.yUTMj,
+body,
+h1,
+html,
+input {
+  font-family: var(--fontara-font),
+    var(--fontara-google-arial-ui-fallback) !important;
+}
+
+.cRV9hb .pcTkSc .wM6W7d,
+.dg6jd,
+.DuQANe,
+.E2ShOd,
+.FkX2oe,
+.GLcBOb,
+.gLFyf,
+.GuoVP,
+.ILxcde,
+.JgzqYd,
+.jloFI,
+.jR6h,
+.jtAOgd,
+.lKuDef,
+.lQfa5,
+.q8U8x,
+.qIQse,
+.t6uYac,
+.UUbT9,
+.XhWQv.rNHry,
+.YacQv,
+.ynRric {
+  font-family: var(--fontara-font),
+    var(--fontara-google-google-sans-ui-fallback) !important;
+}
+
+.Fzsovc,
+.YWpX0d {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-rtk0e-fallback) !important;
+}
+
+.IFnjPb {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-aoh9xe-fallback) !important;
+}
+
+.jqVAid,
+.zg2IJb {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-tnv9kb-wspbzc-fallback) !important;
+}
+
+.k1U36b {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-qbwyqb-fallback) !important;
+}
+
+.MBeuO {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-eou8yc-fallback) !important;
+}
+
+.n6owBd {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-cqpmve-wspbzc-fallback) !important;
+}
+
+.p4wth,
+.Vlt3wb,
+.wHYlTd,
+.YrbPuc {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-li4bo-fallback) !important;
+}
+
+.Pqkn2e {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-nkmqoe-fallback) !important;
+}
+
+.R1QWuf,
+.sjVJQd,
+.ZFiwCf {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-qr8x0-fallback) !important;
+}
+
+.tNxQIb {
+  font-family: var(--fontara-font),
+    var(--fontara-google-token-zttqpe-fallback) !important;
+}
+
+.YB4h9 {
+  font-family: var(--fontara-font),
+    var(--fontara-google-google-sans-roboto-ui-fallback) !important;
+}

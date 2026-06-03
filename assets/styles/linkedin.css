@@ -1,68 +1,33 @@
 :root {
-  --fontara-linkedin-host-fallback: var(
+  --fontara-linkedin-reset-sans-fallback: var(
     --artdeco-reset-typography-font-family-sans
   );
-  --fontara-linkedin-lang-en-fallback: var(
-    --artdeco-reset-typography-font-family-sans
-  );
-  --fontara-linkedin-38c8bff9-fallback: var(--_5a455dfe);
-  --fontara-linkedin-artdeco-entity-lockup-subtitle-fallback: var(
-    --artdeco-typography-sans
-  );
-  --fontara-linkedin-artdeco-entity-lockup-title-fallback: var(
-    --artdeco-typography-sans
-  );
-  --fontara-linkedin-artdeco-modal-header-fallback: var(
-    --artdeco-typography-sans
-  );
-  --fontara-linkedin-artdeco-modal-header-h2-fallback: var(
-    --artdeco-typography-sans
-  );
-  --fontara-linkedin-ql-container-fallback: Helvetica, Arial, sans-serif;
-  --fontara-linkedin-body-fallback: var(--_5a455dfe);
+  --fontara-linkedin-app-ui-fallback: var(--_5a455dfe);
+  --fontara-linkedin-artdeco-ui-fallback: var(--artdeco-typography-sans);
+  --fontara-linkedin-editor-fallback: Helvetica, Arial, sans-serif;
 }
 
-:host {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-host-fallback) !important;
-}
-
+:host,
 :lang(en) {
   font-family: var(--fontara-font),
-    var(--fontara-linkedin-lang-en-fallback) !important;
+    var(--fontara-linkedin-reset-sans-fallback) !important;
 }
 
-._38c8bff9 {
+._38c8bff9,
+body {
   font-family: var(--fontara-font),
-    var(--fontara-linkedin-38c8bff9-fallback) !important;
+    var(--fontara-linkedin-app-ui-fallback) !important;
 }
 
-.artdeco-entity-lockup__subtitle {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-artdeco-entity-lockup-subtitle-fallback) !important;
-}
-
-.artdeco-entity-lockup__title {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-artdeco-entity-lockup-title-fallback) !important;
-}
-
-.artdeco-modal__header {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-artdeco-modal-header-fallback) !important;
-}
-
+.artdeco-entity-lockup__subtitle,
+.artdeco-entity-lockup__title,
+.artdeco-modal__header,
 .artdeco-modal__header h2 {
   font-family: var(--fontara-font),
-    var(--fontara-linkedin-artdeco-modal-header-h2-fallback) !important;
+    var(--fontara-linkedin-artdeco-ui-fallback) !important;
 }
 
 .ql-container {
   font-family: var(--fontara-font),
-    var(--fontara-linkedin-ql-container-fallback) !important;
-}
-
-body {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-body-fallback) !important;
+    var(--fontara-linkedin-editor-fallback) !important;
 }

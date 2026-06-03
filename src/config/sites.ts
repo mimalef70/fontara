@@ -56,14 +56,18 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     regex: "^https://www\\.google\\.com/.*$",
     icon: "assets/logos/google-active.png",
     pattern: "https://www.google.com/*",
-    siteName: "Google"
+    siteName: "Google",
+    customCss: true,
+    version: "4.2.1"
   },
   {
     url: "https://mail.google.com",
     regex: "^https://mail\\.google\\.com/.*$",
     icon: "assets/logos/gmail-active.png",
     pattern: "https://mail.google.com/*",
-    siteName: "Gmail"
+    siteName: "Gmail",
+    customCss: true,
+    version: "4.2.1"
   },
   {
     url: "https://web.telegram.org",

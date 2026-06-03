@@ -1,121 +1,67 @@
 :root {
-  --fontara-gemini-actions-menu-button-wrapper-fallback: "Google Sans Flex",
+  --fontara-gemini-google-sans-flex-ui-fallback: "Google Sans Flex",
     "Google Sans", "Helvetica Neue", sans-serif;
-  --fontara-gemini-gb-eb-fallback: Roboto, Arial, sans-serif;
-  --fontara-gemini-gb-jd-fallback: "Google Sans Text", Roboto, Helvetica,
-    Arial, sans-serif;
-  --fontara-gemini-gds-body-l-fallback: "Google Sans Flex", "Google Sans",
-    "Helvetica Neue", sans-serif;
-  --fontara-gemini-gds-body-m-fallback: "Google Sans Flex", "Google Sans",
-    "Helvetica Neue", sans-serif;
-  --fontara-gemini-gds-body-s-fallback: "Google Sans Flex", "Google Sans",
-    "Helvetica Neue", sans-serif;
-  --fontara-gemini-gds-label-l-fallback: "Google Sans Flex", "Google Sans",
-    "Helvetica Neue", sans-serif;
-  --fontara-gemini-gds-title-l-emphasized-fallback: "Google Sans Flex",
-    "Google Sans", "Helvetica Neue", sans-serif;
-  --fontara-gemini-markdown-main-panel-fallback: "Google Sans Flex",
-    "Google Sans", "Helvetica Neue", sans-serif;
-  --fontara-gemini-markdown-fallback: "Google Sans Flex", "Google Sans",
-    "Helvetica Neue", sans-serif;
-  --fontara-gemini-mat-mdc-button-fallback: var(
+  --fontara-gemini-roboto-ui-fallback: Roboto, Arial, sans-serif;
+  --fontara-gemini-google-sans-text-ui-fallback: "Google Sans Text", Roboto,
+    Helvetica, Arial, sans-serif;
+  --fontara-gemini-material-text-button-fallback: var(
     --mat-button-text-label-text-font,
     var(--mat-sys-label-large-font)
   );
-  --fontara-gemini-mat-mdc-unelevated-button-fallback: var(
+  --fontara-gemini-material-filled-button-fallback: var(
     --mat-button-filled-label-text-font,
     var(--mat-sys-label-large-font)
   );
-  --fontara-gemini-mdc-list-item-primary-text-fallback: var(
+  --fontara-gemini-material-list-primary-fallback: var(
     --mat-list-list-item-label-text-font,
     var(--mat-sys-body-large-font)
   );
-  --fontara-gemini-mdc-list-item-end-fallback: var(
+  --fontara-gemini-material-list-meta-fallback: var(
     --mat-list-list-item-trailing-supporting-text-font,
     var(--mat-sys-label-small-font)
   );
-  --fontara-gemini-ql-container-fallback: "Google Sans Flex", "Google Sans",
-    "Helvetica Neue", sans-serif;
-  --fontara-gemini-rich-textarea-ql-blank-before-fallback: "Google Sans Flex",
-    "Google Sans", "Helvetica Neue", sans-serif;
 }
 
-.actions-container-v2 .buttons-container-v2 .menu-button-wrapper {
+.actions-container-v2 .buttons-container-v2 .menu-button-wrapper,
+.gds-body-l,
+.gds-body-m,
+.gds-body-s,
+.gds-label-l,
+.gds-title-l-emphasized,
+.markdown-main-panel,
+.markdown,
+.ql-container,
+rich-textarea .ql-editor.ql-blank::before {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-actions-menu-button-wrapper-fallback) !important;
+    var(--fontara-gemini-google-sans-flex-ui-fallback) !important;
 }
 
 .gb_Eb {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-gb-eb-fallback) !important;
+    var(--fontara-gemini-roboto-ui-fallback) !important;
 }
 
 .gb_Jd {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-gb-jd-fallback) !important;
-}
-
-.gds-body-l {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-gds-body-l-fallback) !important;
-}
-
-.gds-body-m {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-gds-body-m-fallback) !important;
-}
-
-.gds-body-s {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-gds-body-s-fallback) !important;
-}
-
-.gds-label-l {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-gds-label-l-fallback) !important;
-}
-
-.gds-title-l-emphasized {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-gds-title-l-emphasized-fallback) !important;
-}
-
-.markdown-main-panel {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-markdown-main-panel-fallback) !important;
-}
-
-.markdown {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-markdown-fallback) !important;
+    var(--fontara-gemini-google-sans-text-ui-fallback) !important;
 }
 
 .mat-mdc-button {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-mat-mdc-button-fallback) !important;
+    var(--fontara-gemini-material-text-button-fallback) !important;
 }
 
 .mat-mdc-unelevated-button {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-mat-mdc-unelevated-button-fallback) !important;
+    var(--fontara-gemini-material-filled-button-fallback) !important;
 }
 
 .mdc-list-item__primary-text {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-mdc-list-item-primary-text-fallback) !important;
+    var(--fontara-gemini-material-list-primary-fallback) !important;
 }
 
 .mdc-list-item--with-trailing-meta .mdc-list-item__end {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-mdc-list-item-end-fallback) !important;
-}
-
-.ql-container {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-ql-container-fallback) !important;
-}
-
-rich-textarea .ql-editor.ql-blank::before {
-  font-family: var(--fontara-font),
-    var(--fontara-gemini-rich-textarea-ql-blank-before-fallback) !important;
+    var(--fontara-gemini-material-list-meta-fallback) !important;
 }

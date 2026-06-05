@@ -49,7 +49,7 @@ const Header = () => {
       </div>
 
       <div className="flex items-center gap-2">
-        <Badge className="!text-[10px] !py-[2px] !bg-red-500 hover:!bg-red-600">
+        <Badge className="!border-gray-200 !bg-gray-100 !px-2 !py-[1px] !text-[9px] !font-medium !text-gray-500 hover:!bg-gray-100">
           <a
             href="https://mimalef70.github.io/fontara/#changelogs"
             target="_blank"

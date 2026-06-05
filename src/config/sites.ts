@@ -2,90 +2,45 @@ import type { WebsiteItem } from "../definitions"
 
 export const POPULAR_WEBSITES: WebsiteItem[] = [
   {
-    url: "https://www.linkedin.com",
-    regex: "^https://[^/]*linkedin\\.com/.*$",
-    icon: "assets/logos/linkedin-active.png",
-    pattern: "https://*linkedin.com/*",
-    siteName: "LinkedIn",
-    customCss: true,
-    version: "4.2.1"
-  },
-  {
-    url: "https://x.com",
-    regex: "^https://x\\.com/.*$",
-    icon: "assets/logos/twitter-active.png",
-    pattern: "https://x.com/*",
-    siteName: "X",
-    customCss: true,
-    version: "4.2.1"
-  },
-  {
-    url: "https://www.facebook.com",
-    regex: "^https://www\\.facebook\\.com/.*$",
-    icon: "assets/logos/facebook-active.png",
-    pattern: "https://www.facebook.com/*",
-    siteName: "Facebook",
-    customCss: true,
-    version: "4.2.1"
-  },
-  {
-    url: "https://www.instagram.com",
-    regex: "^https://www\\.instagram\\.com/.*$",
-    icon: "assets/logos/instagram-active.png",
-    pattern: "https://www.instagram.com/*",
-    siteName: "Instagram",
-    customCss: true,
-    version: "4.2.1"
-  },
-  {
     url: "https://chatgpt.com",
     regex: "^https://chatgpt\\.com/.*$",
-    icon: "assets/logos/chatgpt-active.png",
+    icon: "assets/logos/ChatGPT.svg",
     pattern: "https://chatgpt.com/*",
     siteName: "ChatGPT",
     customCss: true,
     version: "4.2.1"
   },
   {
-    url: "https://arena.ai",
-    regex: "^https://arena\\.ai/.*$",
-    icon: "assets/logos/arena-active.svg",
-    pattern: "https://arena.ai/*",
-    siteName: "Arena",
-    customCss: true,
-    version: "4.2.1"
-  },
-  {
     url: "https://claude.ai",
     regex: "^https://claude\\.ai/.*$",
-    icon: "assets/logos/claude-active.svg",
+    icon: "assets/logos/Claude.svg",
     pattern: "https://claude.ai/*",
     siteName: "Claude",
     customCss: true,
     version: "4.2.1"
   },
   {
+    url: "https://gemini.google.com",
+    regex: "^https://gemini\\.google\\.com/.*$",
+    icon: "assets/logos/Gemini.svg",
+    pattern: "https://gemini.google.com/*",
+    siteName: "Gemini",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
     url: "https://copilot.microsoft.com",
     regex: "^https://copilot\\.microsoft\\.com/.*$",
-    icon: "assets/logos/copilot-active.svg",
+    icon: "assets/logos/Copilot.svg",
     pattern: "https://copilot.microsoft.com/*",
     siteName: "Copilot",
     customCss: true,
     version: "4.2.1"
   },
   {
-    url: "https://chat.deepseek.com",
-    regex: "^https://chat\\.deepseek\\.com/.*$",
-    icon: "assets/logos/deepseek-active.svg",
-    pattern: "https://chat.deepseek.com/*",
-    siteName: "DeepSeek",
-    customCss: true,
-    version: "4.2.1"
-  },
-  {
     url: "https://www.perplexity.ai",
     regex: "^https://www\\.perplexity\\.ai/.*$",
-    icon: "assets/logos/perplexity-active.svg",
+    icon: "assets/logos/Perplexity.svg",
     pattern: "https://www.perplexity.ai/*",
     siteName: "Perplexity",
     customCss: true,
@@ -94,7 +49,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
   {
     url: "https://poe.com",
     regex: "^https://poe\\.com/.*$",
-    icon: "assets/logos/poe-active.svg",
+    icon: "assets/logos/poe.svg",
     pattern: "https://poe.com/*",
     siteName: "Poe",
     customCss: true,
@@ -110,38 +65,47 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     version: "4.2.1"
   },
   {
-    url: "https://notebooklm.google.com",
-    regex: "^https://notebooklm\\.google\\.com/.*$",
-    icon: "assets/logos/google-active.png",
-    pattern: "https://notebooklm.google.com/*",
-    siteName: "NotebookLM",
+    url: "https://chat.deepseek.com",
+    regex: "^https://chat\\.deepseek\\.com/.*$",
+    icon: "assets/logos/Deepseek.svg",
+    pattern: "https://chat.deepseek.com/*",
+    siteName: "DeepSeek",
     customCss: true,
     version: "4.2.1"
   },
   {
     url: "https://chat.qwen.ai",
     regex: "^https://chat\\.qwen\\.ai/.*$",
-    icon: "assets/logos/qwen-active.svg",
+    icon: "assets/logos/Qwen.svg",
     pattern: "https://chat.qwen.ai/*",
     siteName: "Qwen",
     customCss: true,
     version: "4.2.1"
   },
   {
-    url: "https://gemini.google.com",
-    regex: "^https://gemini\\.google\\.com/.*$",
-    icon: "assets/logos/google-active.png",
-    pattern: "https://gemini.google.com/*",
-    siteName: "Gemini",
+    url: "https://notebooklm.google.com",
+    regex: "^https://notebooklm\\.google\\.com/.*$",
+    icon: "assets/logos/NotebookLM.svg",
+    pattern: "https://notebooklm.google.com/*",
+    siteName: "NotebookLM",
     customCss: true,
     version: "4.2.1"
   },
   {
     url: "https://aistudio.google.com",
     regex: "^https://aistudio\\.google\\.com/.*$",
-    icon: "assets/logos/google-active.png",
+    icon: "assets/logos/AIStudio.svg",
     pattern: "https://aistudio.google.com/*",
     siteName: "AI Studio",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
+    url: "https://arena.ai",
+    regex: "^https://arena\\.ai/.*$",
+    icon: "assets/logos/Arena.svg",
+    pattern: "https://arena.ai/*",
+    siteName: "Arena",
     customCss: true,
     version: "4.2.1"
   },
@@ -155,11 +119,72 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     version: "4.2.1"
   },
   {
+    url: "https://www.youtube.com",
+    regex: "^https://www\\.youtube\\.com/.*$",
+    icon: "assets/logos/youtube-active.png",
+    pattern: "https://www.youtube.com/*",
+    siteName: "YouTube",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
     url: "https://mail.google.com",
     regex: "^https://mail\\.google\\.com/.*$",
     icon: "assets/logos/gmail-active.png",
     pattern: "https://mail.google.com/*",
     siteName: "Gmail",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
+    url: "https://x.com",
+    regex: "^https://x\\.com/.*$",
+    icon: "assets/logos/x-active.svg",
+    pattern: "https://x.com/*",
+    siteName: "X",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
+    url: "https://www.linkedin.com",
+    regex: "^https://[^/]*linkedin\\.com/.*$",
+    icon: "assets/logos/linkedin-active.png",
+    pattern: "https://*linkedin.com/*",
+    siteName: "LinkedIn",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
+    url: "https://www.instagram.com",
+    regex: "^https://www\\.instagram\\.com/.*$",
+    icon: "assets/logos/instagram-active.png",
+    pattern: "https://www.instagram.com/*",
+    siteName: "Instagram",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
+    url: "https://www.facebook.com",
+    regex: "^https://www\\.facebook\\.com/.*$",
+    icon: "assets/logos/facebook-active.png",
+    pattern: "https://www.facebook.com/*",
+    siteName: "Facebook",
+    customCss: true,
+    version: "4.2.1"
+  },
+  {
+    url: "https://github.com",
+    regex: "^https://github\\.com/.*$",
+    icon: "assets/logos/github-active.png",
+    pattern: "https://github.com/*",
+    siteName: "GitHub"
+  },
+  {
+    url: "https://web.whatsapp.com",
+    regex: "^https://web\\.whatsapp\\.com/.*$",
+    icon: "assets/logos/whatsapp-active.png",
+    pattern: "https://web.whatsapp.com/*",
+    siteName: "WhatsApp",
     customCss: true,
     version: "4.2.1"
   },
@@ -173,43 +198,6 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     version: "4.2.1"
   },
   {
-    url: "https://web.whatsapp.com",
-    regex: "^https://web\\.whatsapp\\.com/.*$",
-    icon: "assets/logos/whatsapp-active.png",
-    pattern: "https://web.whatsapp.com/*",
-    siteName: "WhatsApp",
-    customCss: true,
-    version: "4.2.1"
-  },
-  {
-    url: "https://github.com",
-    regex: "^https://github\\.com/.*$",
-    icon: "assets/logos/github-active.png",
-    pattern: "https://github.com/*",
-    siteName: "GitHub"
-  },
-  {
-    url: "https://www.goodreads.com",
-    regex: "^https://www\\.goodreads\\.com/.*$",
-    icon: "assets/logos/goodreads-active.png",
-    pattern: "https://www.goodreads.com/*",
-    siteName: "Goodreads"
-  },
-  {
-    url: "https://medium.com",
-    regex: "^https://medium\\.com/.*$",
-    icon: "assets/logos/medium-active.png",
-    pattern: "https://medium.com/*",
-    siteName: "Medium"
-  },
-  {
-    url: "https://messages.google.com",
-    regex: "^https://messages\\.google\\.com/.*$",
-    icon: "assets/logos/messagesandroid-active.png",
-    pattern: "https://messages.google.com/*",
-    siteName: "Messages"
-  },
-  {
     url: "https://app.slack.com",
     regex: "^https://app\\.slack\\.com/.*$",
     icon: "assets/logos/slack-active.png",
@@ -219,20 +207,11 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     version: "4.2.1"
   },
   {
-    url: "https://www.dropbox.com",
-    regex: "^https://www\\.[^/]*dropbox\\.com/.*$",
-    icon: "assets/logos/dropbox-active.png",
-    pattern: "https://www.*dropbox.com/*",
-    siteName: "Dropbox"
-  },
-  {
-    url: "https://duckduckgo.com",
-    regex: "^https://duckduckgo\\.com/.*$",
-    icon: "assets/logos/duckduckgo-active.png",
-    pattern: "https://duckduckgo.com/*",
-    siteName: "DuckDuckGo",
-    customCss: true,
-    version: "4.2.1"
+    url: "https://messages.google.com",
+    regex: "^https://messages\\.google\\.com/.*$",
+    icon: "assets/logos/messagesandroid-active.png",
+    pattern: "https://messages.google.com/*",
+    siteName: "Messages"
   },
   {
     url: "https://trello.com",
@@ -253,19 +232,33 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     version: "4.2.1"
   },
   {
-    url: "https://wordpress.org",
-    regex: "^https://([^/]*\\.)?wordpress\\.org/.*$",
-    icon: "assets/logos/wordpress-active.png",
-    pattern: "https://*wordpress.org/*",
-    siteName: "WordPress"
-  },
-  {
-    url: "https://www.youtube.com",
-    regex: "^https://www\\.youtube\\.com/.*$",
-    icon: "assets/logos/youtube-active.png",
-    pattern: "https://www.youtube.com/*",
-    siteName: "YouTube",
+    url: "https://duckduckgo.com",
+    regex: "^https://duckduckgo\\.com/.*$",
+    icon: "assets/logos/duckduckgo-active.png",
+    pattern: "https://duckduckgo.com/*",
+    siteName: "DuckDuckGo",
     customCss: true,
     version: "4.2.1"
+  },
+  {
+    url: "https://medium.com",
+    regex: "^https://medium\\.com/.*$",
+    icon: "assets/logos/medium-active.png",
+    pattern: "https://medium.com/*",
+    siteName: "Medium"
+  },
+  {
+    url: "https://www.goodreads.com",
+    regex: "^https://www\\.goodreads\\.com/.*$",
+    icon: "assets/logos/goodreads-active.png",
+    pattern: "https://www.goodreads.com/*",
+    siteName: "Goodreads"
+  },
+  {
+    url: "https://www.dropbox.com",
+    regex: "^https://www\\.[^/]*dropbox\\.com/.*$",
+    icon: "assets/logos/dropbox-active.png",
+    pattern: "https://www.*dropbox.com/*",
+    siteName: "Dropbox"
   }
 ]

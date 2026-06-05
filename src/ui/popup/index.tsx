@@ -10,6 +10,12 @@ import { PlusCircle } from "../components/icons"
 import Footer from "../components/layout/Footer"
 import Header from "../components/layout/Header"
 import PopularSection from "../components/PopularSection"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "../components/ui/tooltip"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { getExtensionEnabledInitialValue } from "../storage-defaults"
@@ -39,22 +45,38 @@ function IndexPopup() {
               )}>
               <div className="relative z-20">
                 <div className="relative">
-                  <div className="flex flex-col gap-3">
-                    <FontSelector />
-                    <button
-                      type="button"
-                      onClick={() => void openOptionsPageSafely()}
-                      className="flex cursor-pointer justify-center items-center gap-1 h-10 font-bold antialiased tracking-[0.2px] bg-[#edf3fd] rounded-[3px] text-[13px] text-[#2374ff] text-center py-[9px] relative border-0">
-                      <PlusCircle />
-                      افزودن فونت دلخواه
-                    </button>
-                    <a
+                  <div className="flex flex-col gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <FontSelector />
+                      </div>
+                      <TooltipProvider delayDuration={90}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label="افزودن فونت دلخواه"
+                              onClick={() => void openOptionsPageSafely()}
+                              className="flex size-[3rem] shrink-0 cursor-pointer items-center justify-center rounded-[3px] border-0 bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(0,0,0,0.08)] transition-all duration-300 hover:bg-[#e4efff]">
+                              <PlusCircle className="size-6" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
+                            side="top"
+                            align="center">
+                            افزودن فونت دلخواه
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    {/* <a
                       href="https://mimalef70.github.io/fontara/#donate"
                       target="_blank"
                       className="flex cursor-pointer justify-center items-center h-10 gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#4caf4f1c] rounded-[3px] text-[13px] text-[#4caf50] text-center py-[9px] relative"
                       rel="noopener">
                       حمایت از فونت آرا
-                    </a>
+                    </a> */}
                   </div>
                 </div>
               </div>

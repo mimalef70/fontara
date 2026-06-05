@@ -82,6 +82,40 @@ test("extension pages render inside error boundaries", () => {
   assert.match(optionsSource, /<ErrorBoundary title="خطا در بارگذاری تنظیمات/)
 })
 
+test("popup add custom font action is an icon button beside the selector", () => {
+  const popupSource = fs.readFileSync(
+    path.resolve("src/ui/popup/index.tsx"),
+    "utf8"
+  )
+
+  assert.match(popupSource, /<FontSelector \/>[\s\S]*<TooltipProvider/)
+  assert.match(popupSource, /flex flex-col gap-3 mb-3/)
+  assert.match(popupSource, /aria-label="افزودن فونت دلخواه"/)
+  assert.match(popupSource, /className="[^"]*size-\[3rem\]/)
+  assert.match(popupSource, /<PlusCircle className="size-6" \/>/)
+  assert.doesNotMatch(
+    popupSource,
+    /<button[\s\S]*<PlusCircle \/>[\s\S]*افزودن فونت دلخواه[\s\S]*<\/button>/
+  )
+})
+
+test("popup header uses a quieter version badge and green toggle", () => {
+  const headerSource = fs.readFileSync(
+    path.resolve("src/ui/components/layout/Header.tsx"),
+    "utf8"
+  )
+  const switchSource = fs.readFileSync(
+    path.resolve("src/ui/components/ui/Switch.tsx"),
+    "utf8"
+  )
+
+  assert.match(headerSource, /!bg-gray-100/)
+  assert.match(headerSource, /!text-\[9px\]/)
+  assert.match(headerSource, /!text-gray-500/)
+  assert.doesNotMatch(headerSource, /!bg-red-500/)
+  assert.match(switchSource, /data-\[state=checked\]:bg-emerald-500/)
+})
+
 test("custom font uploads normalize stored names and data URLs", () => {
   const optionsSource = fs.readFileSync(
     path.resolve("src/ui/options/index.tsx"),

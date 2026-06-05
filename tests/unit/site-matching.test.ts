@@ -47,6 +47,83 @@ test("popular website icons point to existing assets", () => {
   }
 })
 
+test("AI website icons use provided brand assets", () => {
+  const expectedIcons = new Map([
+    ["AI Studio", "assets/logos/AIStudio.svg"],
+    ["Arena", "assets/logos/Arena.svg"],
+    ["ChatGPT", "assets/logos/ChatGPT.svg"],
+    ["Claude", "assets/logos/Claude.svg"],
+    ["Copilot", "assets/logos/Copilot.svg"],
+    ["DeepSeek", "assets/logos/Deepseek.svg"],
+    ["Gemini", "assets/logos/Gemini.svg"],
+    ["NotebookLM", "assets/logos/NotebookLM.svg"],
+    ["Perplexity", "assets/logos/Perplexity.svg"],
+    ["Poe", "assets/logos/poe.svg"],
+    ["Qwen", "assets/logos/Qwen.svg"]
+  ])
+
+  for (const [siteName, expectedIcon] of expectedIcons) {
+    const website = POPULAR_WEBSITES.find((site) => site.siteName === siteName)
+    assert.equal(website?.icon, expectedIcon)
+  }
+})
+
+test("X uses the X brand instead of Twitter assets", () => {
+  const website = POPULAR_WEBSITES.find((site) => site.url === "https://x.com")
+
+  assert.equal(website?.siteName, "X")
+  assert.equal(website?.icon, "assets/logos/x-active.svg")
+})
+
+test("WordPress is not shown in popular websites", () => {
+  assert.equal(
+    POPULAR_WEBSITES.some((site) => site.siteName === "WordPress"),
+    false
+  )
+  assert.equal(
+    POPULAR_WEBSITES.some((site) => site.url === "https://wordpress.org"),
+    false
+  )
+})
+
+test("popular websites are ordered by priority and category", () => {
+  assert.deepEqual(
+    POPULAR_WEBSITES.map((site) => site.siteName),
+    [
+      "ChatGPT",
+      "Claude",
+      "Gemini",
+      "Copilot",
+      "Perplexity",
+      "Poe",
+      "OpenRouter",
+      "DeepSeek",
+      "Qwen",
+      "NotebookLM",
+      "AI Studio",
+      "Arena",
+      "Google",
+      "YouTube",
+      "Gmail",
+      "X",
+      "LinkedIn",
+      "Instagram",
+      "Facebook",
+      "GitHub",
+      "WhatsApp",
+      "Telegram",
+      "Slack",
+      "Messages",
+      "Trello",
+      "Wikipedia",
+      "DuckDuckGo",
+      "Medium",
+      "Goodreads",
+      "Dropbox"
+    ]
+  )
+})
+
 test("custom URL regex matches the same host over http and https", () => {
   const regex = createRegexFromUrl("https://example.com/path")
   const customWebsite: WebsiteItem = {

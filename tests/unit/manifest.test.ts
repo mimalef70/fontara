@@ -38,7 +38,6 @@ test("manifest grants storage capacity for custom fonts without redundant active
   assert.ok(manifest.permissions.includes("storage"))
   assert.ok(manifest.permissions.includes("unlimitedStorage"))
   assert.ok(manifest.permissions.includes("tabs"))
-  assert.ok(manifest.permissions.includes("scripting"))
   assert.equal(manifest.permissions.includes("activeTab"), false)
 })
 

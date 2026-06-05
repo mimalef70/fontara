@@ -1,7 +1,6 @@
 import { URLS } from "../config/storage"
 import { registerIconListeners } from "./icon-manager"
 import { ensureStorageValues } from "./storage-manager"
-import { refreshOpenTabs } from "./tab-refresher"
 
 function logStorageError(error: unknown): void {
   if (__DEBUG__) {
@@ -17,10 +16,8 @@ chrome.runtime.onInstalled.addListener((details) => {
     await ensureStorageValues().catch(logStorageError)
 
     if (details.reason === "install") {
-      await refreshOpenTabs()
       await chrome.tabs.create({ url: URLS.WELCOME_PAGE })
     } else if (details.reason === "update") {
-      await refreshOpenTabs()
       await chrome.tabs.create({ url: URLS.CHANGELOG })
     }
   })()

@@ -6,25 +6,7 @@ import { injectFontStyles, removeFontStyles } from "./font-style-manager"
 import { startObserving, stopObserving } from "./observer"
 
 type ApplyMode = "font-styles" | "full"
-type FontAraContentScriptState = {
-  cleanup: () => void
-  version: string
-}
-type FontAraWindow = Window &
-  typeof globalThis & {
-    __fontaraContentScriptState?: FontAraContentScriptState
-  }
 type RuntimeMessageEvent = typeof chrome.runtime.onMessage
-
-const FONTARA_RUNTIME_VERSION =
-  typeof chrome === "undefined"
-    ? "unknown"
-    : (chrome.runtime?.getManifest?.().version ?? "unknown")
-const fontAraWindow = window as FontAraWindow
-
-try {
-  fontAraWindow.__fontaraContentScriptState?.cleanup()
-} catch {}
 
 let disposed = false
 let applyFontsQueuedMode: ApplyMode | null = null
@@ -184,6 +166,16 @@ function scheduleApplyFontsIfActive(mode: ApplyMode = "full"): void {
   })
 }
 
+stopWaitingForBody = runWhenBodyIsReady(scheduleApplyFontsIfActive)
+
+stopWatchingStorage = watchLocalStorage({
+  [STORAGE_KEYS.SELECTED_FONT]: () => scheduleApplyFontsIfActive("font-styles"),
+  [STORAGE_KEYS.EXTENSION_ENABLED]: () => scheduleApplyFontsIfActive(),
+  [STORAGE_KEYS.WEBSITE_LIST]: () => scheduleApplyFontsIfActive(),
+  [STORAGE_KEYS.CUSTOM_FONT_LIST]: () =>
+    scheduleApplyFontsIfActive("font-styles")
+})
+
 function handleRuntimeMessage(message: { action?: string }): void {
   if (message?.action === "toggle" || message?.action === "toggleExtension") {
     scheduleApplyFontsIfActive()
@@ -220,16 +212,6 @@ function cleanupRuntimeListeners(
   removeEventListener("pageshow", handlePageShow)
   removeEventListener("freeze", handleFreeze)
   removeEventListener("resume", handleResume)
-  if (
-    fontAraWindow.__fontaraContentScriptState?.cleanup ===
-    cleanupCurrentContentScript
-  ) {
-    delete fontAraWindow.__fontaraContentScriptState
-  }
-}
-
-function cleanupCurrentContentScript(): void {
-  cleanupRuntimeListeners({ removeStyles: true })
 }
 
 function handlePageHide(event: PageTransitionEvent): void {
@@ -253,21 +235,6 @@ function handleFreeze(): void {
 function handleResume(): void {
   scheduleApplyFontsIfActive()
 }
-
-fontAraWindow.__fontaraContentScriptState = {
-  cleanup: cleanupCurrentContentScript,
-  version: FONTARA_RUNTIME_VERSION
-}
-
-stopWaitingForBody = runWhenBodyIsReady(scheduleApplyFontsIfActive)
-
-stopWatchingStorage = watchLocalStorage({
-  [STORAGE_KEYS.SELECTED_FONT]: () => scheduleApplyFontsIfActive("font-styles"),
-  [STORAGE_KEYS.EXTENSION_ENABLED]: () => scheduleApplyFontsIfActive(),
-  [STORAGE_KEYS.WEBSITE_LIST]: () => scheduleApplyFontsIfActive(),
-  [STORAGE_KEYS.CUSTOM_FONT_LIST]: () =>
-    scheduleApplyFontsIfActive("font-styles")
-})
 
 try {
   const messageEvent = getRuntimeMessageEvent()

@@ -1,0 +1,13 @@
+:root {
+  --fontara-deepseek-app-ui-fallback: quote-cjk-patch, Inter, system-ui,
+    -apple-system, "system-ui", "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell,
+    "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+._9986c0c .d00ed9c9,
+.ds-markdown,
+.e37a04e4,
+body {
+  font-family: var(--fontara-font),
+    var(--fontara-deepseek-app-ui-fallback) !important;
+}

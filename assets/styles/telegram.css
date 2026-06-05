@@ -1,0 +1,12 @@
+:root {
+  --fontara-telegram-roboto-ui-fallback: Roboto, -apple-system,
+    "apple color emoji", "system-ui", "Segoe UI", Roboto, Oxygen-Sans, Ubuntu,
+    Cantarell, "Helvetica Neue", sans-serif;
+}
+
+button,
+html,
+input {
+  font-family: var(--fontara-font),
+    var(--fontara-telegram-roboto-ui-fallback) !important;
+}

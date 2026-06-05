@@ -1,0 +1,42 @@
+{
+  "site": "claude",
+  "cssFile": "assets/styles/claude.css",
+  "fallbackPrefix": "--fontara-claude",
+  "groups": [
+    {
+      "selectors": [".cds-root[data-font]", ".font-sans"],
+      "fallbackName": "anthropic-sans-root",
+      "fontFamily": "\"Anthropic Sans\", system-ui, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "selectors": [
+        ".font-base",
+        ".font-base-bold",
+        ".font-large",
+        ".font-small",
+        ".font-ui",
+        ".sm\\:font-base",
+        "body",
+        "html"
+      ],
+      "fallbackName": "anthropic-sans-ui",
+      "fontFamily": "\"Anthropic Sans\", system-ui, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+    },
+    {
+      "matchedSelector": ".font-display",
+      "fallbackName": "anthropic-serif-display",
+      "fontFamily": "\"Anthropic Serif\", Georgia, \"Arial Hebrew\", \"Noto Sans Hebrew\", \"Times New Roman\", Times, \"Hiragino Sans\", \"Yu Gothic\", Meiryo, \"Noto Sans CJK JP\", \"PingFang TC\", \"Microsoft JhengHei\", \"Noto Sans CJK TC\", \"PingFang SC\", \"Microsoft YaHei\", \"Noto Sans CJK SC\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", \"Noto Sans CJK KR\", serif"
+    }
+  ],
+  "ignoredSelectors": [],
+  "ignoredSelectorPatterns": [
+    {
+      "pattern": "^button#_r_[A-Za-z0-9_]+_ >",
+      "reason": "anthropicons-icon-font"
+    },
+    {
+      "pattern": "^div#(?:main-content|root) > [\\s\\S]*nth-of-type",
+      "reason": "anthropicons-icon-font-generated-dom-path"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "site": "slack",
+  "cssFile": "assets/styles/slack.css",
+  "fallbackPrefix": "--fontara-slack",
+  "groups": [
+    {
+      "selectors": ["body", ".ql-container"],
+      "fallbackName": "app-ui",
+      "fontFamily": "Slack-Lato, Slack-Fractions, appleLogo, sans-serif"
+    },
+    {
+      "matchedSelector": ".p-trouble_loading",
+      "fallbackName": "loading-ui",
+      "fontFamily": "Slack-Lato, appleLogo, sans-serif"
+    }
+  ],
+  "ignoredSelectors": [
+    {
+      "matchedSelector": ".c-icon::before",
+      "fontFamily": "\"Slack v2\"",
+      "reason": "Slack v2 is Slack's icon font"
+    },
+    {
+      "matchedSelector": ".p-activity_toast_ia2022__link__icon",
+      "fontFamily": "\"Slack v2\"",
+      "reason": "Slack v2 is Slack's icon font"
+    }
+  ],
+  "ignoredSelectorPatterns": []
+}

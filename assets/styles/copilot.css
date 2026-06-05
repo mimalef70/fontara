@@ -1,0 +1,12 @@
+:root {
+  --fontara-copilot-ginto-ui-fallback: Ginto, ui-sans-serif, system-ui,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+
+body,
+html,
+html > body > textarea {
+  font-family: var(--fontara-font),
+    var(--fontara-copilot-ginto-ui-fallback) !important;
+}

@@ -6,11 +6,13 @@ import { injectFontStyles, removeFontStyles } from "./font-style-manager"
 import { startObserving, stopObserving } from "./observer"
 
 type ApplyMode = "font-styles" | "full"
+type RuntimeMessageEvent = typeof chrome.runtime.onMessage
 
 let disposed = false
 let applyFontsQueuedMode: ApplyMode | null = null
 let applyFontsRunning = false
 let applyFontsScheduledMode: ApplyMode | null = null
+let runtimeMessageEvent: RuntimeMessageEvent | null = null
 let stopWatchingStorage: (() => void) | null = null
 let stopWaitingForBody: (() => void) | null = null
 
@@ -22,7 +24,17 @@ function mergeApplyMode(
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  if (error instanceof Error) return error.message
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message
+  }
+
+  return String(error)
 }
 
 function isExtensionContextInvalidated(error: unknown): boolean {
@@ -31,10 +43,25 @@ function isExtensionContextInvalidated(error: unknown): boolean {
   )
 }
 
+function isExpectedRuntimeTeardownError(error: unknown): boolean {
+  return (
+    isExtensionContextInvalidated(error) ||
+    /Cannot read (?:properties|property) of undefined \(reading 'onMessage'\)/i.test(
+      getErrorMessage(error)
+    )
+  )
+}
+
 function debugWarn(message: string, error: unknown): void {
   if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
     console.warn(message, error)
   }
+}
+
+function getRuntimeMessageEvent(): RuntimeMessageEvent | null {
+  if (typeof chrome === "undefined") return null
+
+  return chrome.runtime?.onMessage ?? null
 }
 
 function runWhenBodyIsReady(callback: () => void | Promise<void>): () => void {
@@ -172,10 +199,14 @@ function cleanupRuntimeListeners(
   }
   stopWatchingStorage?.()
   stopWatchingStorage = null
+  const messageEvent = runtimeMessageEvent ?? getRuntimeMessageEvent()
+  runtimeMessageEvent = null
   try {
-    chrome.runtime.onMessage.removeListener(handleRuntimeMessage)
+    messageEvent?.removeListener(handleRuntimeMessage)
   } catch (error) {
-    debugWarn("Failed to remove FontAra runtime message listener.", error)
+    if (!isExpectedRuntimeTeardownError(error)) {
+      debugWarn("Failed to remove FontAra runtime message listener.", error)
+    }
   }
   removeEventListener("pagehide", handlePageHide)
   removeEventListener("pageshow", handlePageShow)
@@ -206,10 +237,19 @@ function handleResume(): void {
 }
 
 try {
-  chrome.runtime.onMessage.addListener(handleRuntimeMessage)
+  const messageEvent = getRuntimeMessageEvent()
+  if (!messageEvent) {
+    throw new TypeError(
+      "Cannot read properties of undefined (reading 'onMessage')"
+    )
+  }
+  messageEvent.addListener(handleRuntimeMessage)
+  runtimeMessageEvent = messageEvent
 } catch (error) {
   cleanupRuntimeListeners({ removeStyles: true })
-  debugWarn("Failed to register FontAra runtime message listener.", error)
+  if (!isExpectedRuntimeTeardownError(error)) {
+    debugWarn("Failed to register FontAra runtime message listener.", error)
+  }
 }
 
 if (!disposed) {

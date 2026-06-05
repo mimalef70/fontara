@@ -1,0 +1,16 @@
+:root {
+  --fontara-slack-app-ui-fallback: Slack-Lato, Slack-Fractions, appleLogo,
+    sans-serif;
+  --fontara-slack-loading-ui-fallback: Slack-Lato, appleLogo, sans-serif;
+}
+
+body,
+.ql-container {
+  font-family: var(--fontara-font),
+    var(--fontara-slack-app-ui-fallback) !important;
+}
+
+.p-trouble_loading {
+  font-family: var(--fontara-font),
+    var(--fontara-slack-loading-ui-fallback) !important;
+}

@@ -1,0 +1,36 @@
+:root {
+  --fontara-claude-anthropic-sans-root-fallback: "Anthropic Sans", system-ui,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif, ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fontara-claude-anthropic-sans-ui-fallback: "Anthropic Sans", system-ui,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fontara-claude-anthropic-serif-display-fallback: "Anthropic Serif",
+    Georgia, "Arial Hebrew", "Noto Sans Hebrew", "Times New Roman", Times,
+    "Hiragino Sans", "Yu Gothic", Meiryo, "Noto Sans CJK JP", "PingFang TC",
+    "Microsoft JhengHei", "Noto Sans CJK TC", "PingFang SC",
+    "Microsoft YaHei", "Noto Sans CJK SC", "Apple SD Gothic Neo",
+    "Malgun Gothic", "Noto Sans CJK KR", serif;
+}
+
+.cds-root[data-font],
+.font-sans {
+  font-family: var(--fontara-font),
+    var(--fontara-claude-anthropic-sans-root-fallback) !important;
+}
+
+.font-base,
+.font-base-bold,
+.font-large,
+.font-small,
+.font-ui,
+.sm\:font-base,
+body,
+html {
+  font-family: var(--fontara-font),
+    var(--fontara-claude-anthropic-sans-ui-fallback) !important;
+}
+
+.font-display {
+  font-family: var(--fontara-font),
+    var(--fontara-claude-anthropic-serif-display-fallback) !important;
+}

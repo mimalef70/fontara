@@ -4,8 +4,8 @@
 
 When a site CSS file is generated from inspected JSON, use the captured JSON as
 the source of truth for font stacks and text targets. In the default mode, use
-the JSON `matchedSelector` values directly after normalization. Do not invent
-selectors, exceptions, or broad rules.
+the JSON `matchedSelector` values after the required normalizations below. Do
+not invent selectors, exceptions, or broad rules.
 
 Required contract:
 
@@ -29,10 +29,28 @@ Required contract:
    These hashes can change per build/user and must not appear in site CSS. If
    stripping them makes duplicate selectors, keep the rule that would have won
    in the source CSS cascade, usually the more specific or later rule.
+   Also normalize readable CSS Modules class hashes in the same first pass.
+   When a captured selector contains a stable readable local class followed by
+   a volatile build suffix, such as `.Component_part__a1B2c` or
+   `.Component_part___a1B2c`, the emitted selector must use the stable prefix:
+   `[class*="Component_part__"]`. This direction is mandatory; never emit the
+   full hashed class in site CSS when a readable CSS Modules prefix exists.
+   Do not reverse this transformation.
+   Use `[class*="...__"]` instead of `[class^="...__"]`, because these classes
+   usually appear in a multi-class `class` attribute. This is a mechanical
+   normalization, not a semantic rewrite: keep the original combinators,
+   pseudo-elements, and surrounding selector structure unless the user
+   explicitly asks to simplify a path. Do not apply this rule to short opaque
+   classes, utility classes, ids, or generated-looking selectors that do not
+   expose a readable stable CSS Modules prefix. For example, Poe-style
+   `.MessageDate_container__HJE_V` becomes
+   `[class*="MessageDate_container__"]`, but an Ant/CSS-in-JS hash like
+   `:where(.css-mncuj7).ant-select` stays as captured. If normalization makes
+   duplicate selectors, keep one.
    Do not drop selectors only because they contain an id or look generated. If
    the JSON captured a selector, preserve it in the first CSS pass unless it is
-   an explicitly ignored icon/symbol target or an explicitly configured ignored
-   pattern.
+   normalized by the Angular/CSS Modules rules above, an explicitly ignored
+   icon/symbol target, or an explicitly configured ignored pattern.
 4. For each merged fallback group, emit exactly one CSS rule with the normalized
    selectors joined as a comma-separated selector list.
 5. That rule must set:
@@ -50,10 +68,13 @@ Required contract:
    FontARA site CSS should change readable text, not icon font rendering.
 8. Do not change unrelated site CSS or unrelated tests just to make a task pass.
 9. Add or update a contract test that reads the JSON fixture and verifies:
-   fallback variables, exact selector coverage, and absence of extra
-   `font-family` selector rules. If icon/symbol selectors were present in the
-   source JSON, list them as ignored selectors in the fixture and assert that
-   CSS does not target them.
+   fallback variables, exact normalized selector coverage, and absence of extra
+   `font-family` selector rules. For CSS Modules normalization, the fixture
+   should store the normalized `[class*="...__"]` selector, and tests should
+   assert that the emitted CSS does not contain the original volatile hash
+   suffix. If icon/symbol selectors were present in the source JSON, list them
+   as ignored selectors in the fixture and assert that CSS does not target
+   them.
    For volatile generated selectors, only add an ignored selector pattern when
    the user explicitly asked for that cleanup or approved a semantic refactor.
 
@@ -71,6 +92,10 @@ Do not automatically rewrite these sites into semantic selectors. First build
 the CSS normally from the JSON `matchedSelector` values, even when selectors
 contain ids, generated-looking classes, or positional paths. If the captured
 payload includes HTML, do not use it to invent selectors during this first pass.
+The CSS Modules hash normalization rule above is part of the normal first pass:
+it turns a readable hashed class like `.MessageDate_container__HJE_V` into
+`[class*="MessageDate_container__"]`. It must not invent a new semantic target
+that was not present in the JSON.
 
 After finishing the normal CSS, tell the user when the selector set looks
 high-churn or suspicious. Explain that a follow-up semantic review may be more

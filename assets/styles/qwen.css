@@ -1,0 +1,21 @@
+:root {
+  --fontara-qwen-ant-ui-fallback: -apple-system, "system-ui", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --fontara-qwen-app-ui-fallback: system-ui, ui-sans-serif, -apple-system,
+    "system-ui", Inter, NotoSansHans, sans-serif;
+}
+
+:where(.css-mncuj7).ant-select,
+:where(.css-mncuj7)[class^="ant-select"] {
+  font-family: var(--fontara-font),
+    var(--fontara-qwen-ant-ui-fallback) !important;
+}
+
+.app,
+.qwen-thinking-selector .qwen-select-thinking-label .qwen-select-thinking-label-text,
+body {
+  font-family: var(--fontara-font),
+    var(--fontara-qwen-app-ui-fallback) !important;
+}

@@ -2,56 +2,23 @@
   "site": "gemini",
   "cssFile": "assets/styles/gemini.css",
   "fallbackPrefix": "--fontara-gemini",
+  "selectorMode": "semantic",
   "groups": [
     {
-      "selectors": [
-        ".actions-container-v2 .buttons-container-v2 .menu-button-wrapper",
-        ".gds-body-l",
-        ".gds-body-m",
-        ".gds-body-s",
-        ".gds-label-l",
-        ".gds-title-l-emphasized",
-        ".markdown-main-panel",
-        ".markdown",
-        ".ql-container",
-        "rich-textarea .ql-editor.ql-blank::before"
-      ],
+      "matchedSelector": "body :where(\n  p,\n  span,\n  div,\n  mark,\n  a,\n  h1, h2, h3, h4, h5, h6,\n  li,\n  label,\n  button,\n  input,\n  textarea,\n  select,\n  option,\n  em,\n  strong,\n  b,\n  i,\n  small,\n  time,\n  cite,\n  q,\n  blockquote,\n  figcaption,\n  summary,\n  dt, dd,\n  th, td, caption,\n  legend,\n  [role=\"heading\"],\n  [role=\"button\"],\n  [role=\"menuitem\"],\n  [role=\"option\"],\n  [role=\"tab\"]\n):not(\n  [class*=\"icon\" i],\n  [class*=\"symbol\" i],\n  [class*=\"glyph\" i],\n  [class*=\"material-icons\" i],\n  [class*=\"fa-\"],\n  [class~=\"fa\"],\n  [class*=\"bi-\"],\n  [role=\"img\"],\n  pre *,\n  code, code *,\n  kbd, samp\n)",
       "fallbackName": "google-sans-flex-ui",
-      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
-    },
-    {
-      "matchedSelector": ".gb_Eb",
-      "fallbackName": "roboto-ui",
-      "fontFamily": "Roboto, Arial, sans-serif",
-      "sourceDeclaration": {
-        "property": "font",
-        "value": "13px / 27px Roboto, Arial, sans-serif"
-      }
-    },
-    {
-      "matchedSelector": ".gb_Jd",
-      "fallbackName": "google-sans-text-ui",
-      "fontFamily": "\"Google Sans Text\", Roboto, Helvetica, Arial, sans-serif"
-    },
-    {
-      "matchedSelector": ".mat-mdc-button",
-      "fallbackName": "material-text-button",
-      "fontFamily": "var(--mat-button-text-label-text-font, var(--mat-sys-label-large-font))"
-    },
-    {
-      "matchedSelector": ".mat-mdc-unelevated-button",
-      "fallbackName": "material-filled-button",
-      "fontFamily": "var(--mat-button-filled-label-text-font, var(--mat-sys-label-large-font))"
-    },
-    {
-      "matchedSelector": ".mdc-list-item__primary-text",
-      "fallbackName": "material-list-primary",
-      "fontFamily": "var(--mat-list-list-item-label-text-font, var(--mat-sys-body-large-font))"
-    },
-    {
-      "matchedSelector": ".mdc-list-item--with-trailing-meta .mdc-list-item__end",
-      "fallbackName": "material-list-meta",
-      "fontFamily": "var(--mat-list-list-item-trailing-supporting-text-font, var(--mat-sys-label-small-font))"
+      "fontFamily": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif",
+      "sourceDeclarations": [
+        {
+          "property": "font-family",
+          "value": "\"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+        },
+        {
+          "property": "font",
+          "value": "16px / 28px \"Google Sans Flex\", \"Google Sans\", \"Helvetica Neue\", sans-serif"
+        }
+      ],
+      "semanticReason": "Gemini ships Angular scoped attributes and generated component classes; a scoped text whitelist is more stable than per-build selectors."
     }
   ],
   "ignoredSelectors": [
@@ -79,6 +46,16 @@
       "matchedSelector": "mat-icon.lm-icon-s",
       "reason": "icon-font",
       "fontFamily": "\"Luminous Symbols\""
+    }
+  ],
+  "ignoredSelectorPatterns": [
+    {
+      "pattern": "^\\.(?:actions-container-v2|gds-|markdown|markdown-main-panel|mat-mdc-|mdc-list-item|ql-container|gb_)",
+      "reason": "semantic text whitelist replaces Gemini component selectors"
+    },
+    {
+      "pattern": "^rich-textarea ",
+      "reason": "semantic text whitelist replaces Gemini rich-text placeholder selector"
     }
   ]
 }

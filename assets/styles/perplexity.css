@@ -1,0 +1,25 @@
+:root {
+  --fontara-perplexity-sans-ui-fallback: pplxSans, ui-sans-serif, system-ui,
+    -apple-system, "system-ui", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", "Hiragino Sans", "Yu Gothic", Meiryo, "PingFang SC",
+    "Microsoft YaHei", "PingFang TC", "Microsoft JhengHei", "PingFang HK",
+    "Microsoft JhengHei", "PingFang MO", "Microsoft JhengHei",
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --fontara-perplexity-serif-answer-fallback: pplxSerif, pplxSerif, ui-serif,
+    Georgia, Cambria, "Hiragino Mincho ProN", "Yu Mincho", "Songti SC", SimSun,
+    "Songti TC", PMingLiU, "Songti TC", MingLiU_HKSCS, "Songti TC", PMingLiU,
+    AppleMyungjo, Batang, serif;
+}
+
+.font-sans,
+.reset,
+html {
+  font-family: var(--fontara-font),
+    var(--fontara-perplexity-sans-ui-fallback) !important;
+}
+
+html[data-answer-font="serif"] .prose {
+  font-family: var(--fontara-font),
+    var(--fontara-perplexity-serif-answer-fallback) !important;
+}

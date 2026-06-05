@@ -1,0 +1,46 @@
+:root {
+  --fontara-notebooklm-google-sans-text-fallback: "Google Sans Text";
+  --fontara-notebooklm-google-sans-emoji-picker-fallback: "Google Sans",
+    sans-serif;
+  --fontara-notebooklm-google-sans-text-ui-fallback: "Google Sans Text",
+    Roboto, Helvetica, Arial, sans-serif;
+  --fontara-notebooklm-google-sans-display-fallback: "Google Sans";
+}
+
+.date-separator,
+.label-medium-button,
+.mat-label-medium,
+.mat-mdc-button,
+.mat-mdc-checkbox .mat-internal-form-field,
+.mat-mdc-form-field,
+.mat-mdc-form-field-subscript-wrapper,
+.mat-mdc-outlined-button,
+.mat-tonal-button,
+.query-box-input {
+  font-family: var(--fontara-font),
+    var(--fontara-notebooklm-google-sans-text-fallback) !important;
+}
+
+.emoji-keyboard__grid__title,
+.emoji-keyboard__loading-message,
+.emoji-keyboard__search input,
+.emoji-keyboard__search-text,
+.xap-emoji-keyboard .emoji-keyboard__grid__title,
+.xap-emoji-keyboard .emoji-keyboard__loading-message,
+.xap-emoji-keyboard .emoji-keyboard__search input,
+.xap-emoji-keyboard .emoji-keyboard__search-text {
+  font-family: var(--fontara-font),
+    var(--fontara-notebooklm-google-sans-emoji-picker-fallback) !important;
+}
+
+.gb_Eb,
+.gb_Jd {
+  font-family: var(--fontara-font),
+    var(--fontara-notebooklm-google-sans-text-ui-fallback) !important;
+}
+
+.mat-headline-medium,
+h2 {
+  font-family: var(--fontara-font),
+    var(--fontara-notebooklm-google-sans-display-fallback) !important;
+}

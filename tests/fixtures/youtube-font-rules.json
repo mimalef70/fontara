@@ -1,0 +1,28 @@
+{
+  "site": "youtube",
+  "cssFile": "assets/styles/youtube.css",
+  "fallbackPrefix": "--fontara-youtube",
+  "selectorMode": "semantic",
+  "groups": [
+    {
+      "matchedSelector": "body :where(\n  p,\n  span,\n  div,\n  mark,\n  a,\n  h1, h2, h3, h4, h5, h6,\n  li,\n  label,\n  button,\n  input,\n  textarea,\n  select,\n  option,\n  em,\n  strong,\n  b,\n  i,\n  small,\n  time,\n  cite,\n  q,\n  blockquote,\n  figcaption,\n  summary,\n  dt, dd,\n  th, td, caption,\n  legend,\n  [role=\"heading\"],\n  [role=\"button\"],\n  [role=\"menuitem\"],\n  [role=\"option\"],\n  [role=\"tab\"]\n):not(\n  [class*=\"icon\" i],\n  [class*=\"symbol\" i],\n  [class*=\"glyph\" i],\n  [class*=\"material-icons\" i],\n  [class*=\"fa-\"],\n  [class~=\"fa\"],\n  [class*=\"bi-\"],\n  [role=\"img\"],\n  pre *,\n  code, code *,\n  kbd, samp\n)",
+      "fallbackName": "roboto-ui",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    }
+  ],
+  "ignoredSelectors": [],
+  "ignoredSelectorPatterns": [
+    {
+      "pattern": "^\\.yt",
+      "reason": "semantic text whitelist replaces YouTube generated/component classes"
+    },
+    {
+      "pattern": "^#(?:content-text|title|subtitle|description)",
+      "reason": "semantic text whitelist replaces YouTube component ids"
+    },
+    {
+      "pattern": "^(?:yt-|ytd-|tp-yt-)",
+      "reason": "semantic text whitelist replaces YouTube custom element selectors"
+    }
+  ]
+}

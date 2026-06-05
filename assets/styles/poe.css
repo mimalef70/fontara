@@ -1,0 +1,31 @@
+:root {
+  --fontara-poe-system-ui-fallback: -apple-system, system-ui, "system-ui",
+    "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue",
+    sans-serif;
+}
+
+[class*="BotDescriptionDisclaimerSection_disclaimerText__"],
+[class*="BotDescriptionDisclaimerSection_expander__"],
+[class*="BotInfoCard_actionBar__"],
+[class*="BotInfoCardHeader_botName__"],
+[class*="BotInfoCardHeader_creatorHandle__"],
+[class*="BotInfoCardHeader_separator__"],
+[class*="ChatHeader_subText__"],
+[class*="ChatHistoryListItem_formattedDateTime__"],
+[class*="ChatHistoryListItem_overflowButton__"],
+[class*="ChatHistoryListItem_seenPreviewText__"],
+[class*="ChatHistoryListItem_seenTitle__"],
+[class*="ChatMessageActionBar_actionBar__"],
+[class*="ChatMessageFollowupActions_container__"],
+[class*="CommandButton_command_action__"],
+[class*="Message_leftSideMessageBubble__"],
+[class*="Message_messageMetadataText__"],
+[class*="Message_rightSideMessageBubble__"],
+[class*="MessageDate_container__"],
+[class*="Prose_prose__"],
+[class*="SidebarItem_item__"],
+[class*="Tag_tag__"],
+body {
+  font-family: var(--fontara-font),
+    var(--fontara-poe-system-ui-fallback) !important;
+}

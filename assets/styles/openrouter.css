@@ -1,0 +1,26 @@
+:root {
+  --fontara-openrouter-inter-ui-fallback: Inter, "Inter Fallback",
+    ui-sans-serif, system-ui, -apple-system, "system-ui", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --fontara-openrouter-inter-root-fallback: Inter, -apple-system, system-ui,
+    "system-ui", "Helvetica Neue", Helvetica, sans-serif;
+  --fontara-openrouter-monospace-fallback: ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.font-sans,
+body {
+  font-family: var(--fontara-font),
+    var(--fontara-openrouter-inter-ui-fallback) !important;
+}
+
+html {
+  font-family: var(--fontara-font),
+    var(--fontara-openrouter-inter-root-fallback) !important;
+}
+
+kbd {
+  font-family: var(--fontara-font),
+    var(--fontara-openrouter-monospace-fallback) !important;
+}

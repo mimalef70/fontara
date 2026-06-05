@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Arena">
+  <rect width="48" height="48" rx="12" fill="#111111"/>
+  <path fill="#ffffff" d="M23.9 9 38 39h-7.6l-2.5-5.8H19.5L17 39H10L23.9 9Zm1.8 18.8-2-4.8-2 4.8h4Z"/>
+  <path fill="#9ca3af" d="M18.4 30.2h10.8l-2-4.6h-6.8l-2 4.6Z"/>
+</svg>

@@ -1,0 +1,33 @@
+{
+  "site": "perplexity",
+  "cssFile": "assets/styles/perplexity.css",
+  "fallbackPrefix": "--fontara-perplexity",
+  "groups": [
+    {
+      "selectors": [".font-sans", ".reset", "html"],
+      "fallbackName": "sans-ui",
+      "fontFamily": "pplxSans, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", \"Hiragino Sans\", \"Yu Gothic\", Meiryo, \"PingFang SC\", \"Microsoft YaHei\", \"PingFang TC\", \"Microsoft JhengHei\", \"PingFang HK\", \"Microsoft JhengHei\", \"PingFang MO\", \"Microsoft JhengHei\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "sourceDeclarations": [
+        {
+          "property": "font-family",
+          "value": "pplxSans, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", \"Hiragino Sans\", \"Yu Gothic\", Meiryo, \"PingFang SC\", \"Microsoft YaHei\", \"PingFang TC\", \"Microsoft JhengHei\", \"PingFang HK\", \"Microsoft JhengHei\", \"PingFang MO\", \"Microsoft JhengHei\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+        },
+        {
+          "property": "font",
+          "value": "16px / 24px pplxSans, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", \"Hiragino Sans\", \"Yu Gothic\", Meiryo, \"PingFang SC\", \"Microsoft YaHei\", \"PingFang TC\", \"Microsoft JhengHei\", \"PingFang HK\", \"Microsoft JhengHei\", \"PingFang MO\", \"Microsoft JhengHei\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+        },
+        {
+          "property": "font",
+          "value": "14px / 20px pplxSans, ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", \"Hiragino Sans\", \"Yu Gothic\", Meiryo, \"PingFang SC\", \"Microsoft YaHei\", \"PingFang TC\", \"Microsoft JhengHei\", \"PingFang HK\", \"Microsoft JhengHei\", \"PingFang MO\", \"Microsoft JhengHei\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+        }
+      ]
+    },
+    {
+      "matchedSelector": "html[data-answer-font=\"serif\"] .prose",
+      "fallbackName": "serif-answer",
+      "fontFamily": "pplxSerif, pplxSerif, ui-serif, Georgia, Cambria, \"Hiragino Mincho ProN\", \"Yu Mincho\", \"Songti SC\", SimSun, \"Songti TC\", PMingLiU, \"Songti TC\", MingLiU_HKSCS, \"Songti TC\", PMingLiU, AppleMyungjo, Batang, serif"
+    }
+  ],
+  "ignoredSelectors": [],
+  "ignoredSelectorPatterns": []
+}

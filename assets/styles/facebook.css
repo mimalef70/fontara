@@ -1,6 +1,6 @@
 :root {
-  --fontara-gemini-google-sans-flex-ui-fallback: "Google Sans Flex",
-    "Google Sans", "Helvetica Neue", sans-serif;
+  --fontara-facebook-system-ui-fallback: system-ui, -apple-system,
+    "system-ui", ".SFNSText-Regular", sans-serif;
 }
 
 body :where(
@@ -50,5 +50,5 @@ body :where(
   kbd, samp
 ) {
   font-family: var(--fontara-font),
-    var(--fontara-gemini-google-sans-flex-ui-fallback) !important;
+    var(--fontara-facebook-system-ui-fallback) !important;
 }

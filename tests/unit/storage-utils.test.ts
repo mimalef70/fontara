@@ -221,6 +221,37 @@ test("watchLocalStorage suppresses expected storage teardown cleanup warnings", 
   }
 })
 
+test("watchLocalStorage suppresses expected teardown warnings from error-like objects", () => {
+  let warnCalls = 0
+  const originalWarn = console.warn
+
+  Reflect.set(globalThis, "__DEBUG__", true)
+  Reflect.set(globalThis, "chrome", {
+    storage: {
+      onChanged: {
+        addListener() {},
+        removeListener() {
+          throw {
+            message: "Cannot read properties of undefined (reading 'onChanged')"
+          }
+        }
+      }
+    }
+  })
+  console.warn = () => {
+    warnCalls += 1
+  }
+
+  try {
+    const stop = watchLocalStorage({})
+
+    assert.doesNotThrow(stop)
+    assert.equal(warnCalls, 0)
+  } finally {
+    console.warn = originalWarn
+  }
+})
+
 test("watchLocalStorage warns for unexpected storage cleanup failures", () => {
   let warnCalls = 0
   const originalWarn = console.warn

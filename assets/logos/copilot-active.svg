@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Microsoft Copilot">
+  <rect width="64" height="64" rx="14" fill="#0F172A"/>
+  <path d="M18 37.5C18 26.2 26.8 17 38 17H46L38 47H28C22.5 47 18 42.8 18 37.5Z" fill="#22C55E"/>
+  <path d="M22 27C24.9 20.9 31 17 38 17H46L42.4 30.5H29.2C26.2 30.5 23.5 29.2 22 27Z" fill="#38BDF8"/>
+  <path d="M20.1 42.3C21.9 45.1 25 47 28.7 47H38L41.6 33.5H28.3C23.6 33.5 20 37.2 20.1 42.3Z" fill="#A855F7"/>
+  <circle cx="42.5" cy="26.5" r="4.5" fill="#F8FAFC"/>
+</svg>

@@ -20,6 +20,7 @@ type StoredValues = {
 const require = createRequire(import.meta.url)
 const originalCSSExtension = require.extensions[".css"]
 const originalGlobals = {
+  __DEBUG__: Reflect.get(globalThis, "__DEBUG__") as unknown,
   addEventListener: Reflect.get(globalThis, "addEventListener") as unknown,
   cancelAnimationFrame: Reflect.get(
     globalThis,
@@ -144,15 +145,19 @@ afterEach(() => {
 })
 
 function createRuntimeMocks(): {
+  dispatchWindowEvent: (type: string, event: { persisted?: boolean }) => void
   dispatchStorageChange: StorageListener
   getStorageGetCount: (key: string) => number
   getStyleText: (id: string) => string
   getTreeWalkerCount: () => number
+  setRuntimeRemoveError: (error: unknown) => void
   values: StoredValues
 } {
   const elementsById = new Map<string, FakeElement>()
   const listeners: StorageListener[] = []
   const storageGetCounts = new Map<string, number>()
+  const windowListeners = new Map<string, Array<(event: unknown) => void>>()
+  let runtimeRemoveError: unknown = null
   let treeWalkerCount = 0
   const matchingWebsite: WebsiteItem = {
     isActive: true,
@@ -299,8 +304,28 @@ function createRuntimeMocks(): {
     }
   )
   Reflect.set(globalThis, "cancelAnimationFrame", () => {})
-  Reflect.set(globalThis, "addEventListener", () => {})
-  Reflect.set(globalThis, "removeEventListener", () => {})
+  Reflect.set(
+    globalThis,
+    "addEventListener",
+    (type: string, callback: (event: unknown) => void) => {
+      const callbacks = windowListeners.get(type) ?? []
+      callbacks.push(callback)
+      windowListeners.set(type, callbacks)
+    }
+  )
+  Reflect.set(
+    globalThis,
+    "removeEventListener",
+    (type: string, callback: (event: unknown) => void) => {
+      const callbacks = windowListeners.get(type) ?? []
+      windowListeners.set(
+        type,
+        callbacks.filter(
+          (registeredCallback) => registeredCallback !== callback
+        )
+      )
+    }
+  )
   Reflect.set(globalThis, "chrome", {
     runtime: {
       get lastError() {
@@ -311,7 +336,9 @@ function createRuntimeMocks(): {
       },
       onMessage: {
         addListener() {},
-        removeListener() {}
+        removeListener() {
+          if (runtimeRemoveError) throw runtimeRemoveError
+        }
       }
     },
     storage: {
@@ -355,6 +382,11 @@ function createRuntimeMocks(): {
   }
 
   return {
+    dispatchWindowEvent(type, event) {
+      for (const listener of windowListeners.get(type) ?? []) {
+        listener(event)
+      }
+    },
     dispatchStorageChange(changes, areaName) {
       for (const listener of listeners) {
         listener(changes, areaName)
@@ -368,6 +400,9 @@ function createRuntimeMocks(): {
     },
     getTreeWalkerCount() {
       return treeWalkerCount
+    },
+    setRuntimeRemoveError(error) {
+      runtimeRemoveError = error
     },
     values
   }
@@ -387,62 +422,81 @@ async function waitFor(
 
 test("selected custom font changes inject its font-face without a reload", async () => {
   const runtime = createRuntimeMocks()
+  const originalWarn = console.warn
+  let warnCalls = 0
 
-  await import("../../src/inject/index")
-  await waitFor(
-    () => runtime.getStyleText("fontara-font-styles").includes("@font-face"),
-    "expected initial built-in font styles to be injected"
-  )
+  Reflect.set(globalThis, "__DEBUG__", true)
+  console.warn = () => {
+    warnCalls += 1
+  }
 
-  const editableStyle = runtime.getStyleText("fontara-editable-font-style")
-  assert.match(
-    editableStyle,
-    /\[contenteditable\]:not\(\[contenteditable="false" i\]\):not\(#fontara-editable-font-specificity\) p[\s\S]*var\(--fontara-font\), ui-sans-serif, system-ui, sans-serif/
-  )
-  assert.match(
-    editableStyle,
-    /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[id="prompt-textarea"\][\s\S]*var\(--fontara-font\), "ChatGPT Sans", Arial, sans-serif/
-  )
-  assert.match(
-    editableStyle,
-    /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[id="prompt-textarea"\]:not\(#fontara-editable-font-specificity\) \[data-text="true"\]/
-  )
-  assert.match(
-    editableStyle,
-    /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[data-testid="tweetTextarea_0"\]\[role="textbox"\][\s\S]*\[data-text="true"\][\s\S]*var\(--fontara-font\), "TwitterChirp", system-ui, sans-serif/
-  )
-  assert.match(
-    editableStyle,
-    /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[aria-label="Text editor for creating content"\]\[role="textbox"\][\s\S]*:not\(#fontara-editable-font-specificity\) p[\s\S]*var\(--fontara-font\), "LinkedIn Sans", Arial, sans-serif/
-  )
-  assert.doesNotMatch(editableStyle, /> div:nth-of-type/)
-  assert.doesNotMatch(editableStyle, /section\[data-testid=/)
-  assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
-  assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 0)
-  const initialTreeWalkerCount = runtime.getTreeWalkerCount()
+  try {
+    await import("../../src/inject/index")
+    await waitFor(
+      () => runtime.getStyleText("fontara-font-styles").includes("@font-face"),
+      "expected initial built-in font styles to be injected"
+    )
 
-  runtime.values[STORAGE_KEYS.SELECTED_FONT] = "RuntimeCustom-Fontara"
-  runtime.dispatchStorageChange(
-    {
-      [STORAGE_KEYS.SELECTED_FONT]: {
-        newValue: "RuntimeCustom-Fontara",
-        oldValue: DEFAULT_VALUES.SELECTED_FONT
-      }
-    },
-    "local"
-  )
+    const editableStyle = runtime.getStyleText("fontara-editable-font-style")
+    assert.match(
+      editableStyle,
+      /\[contenteditable\]:not\(\[contenteditable="false" i\]\):not\(#fontara-editable-font-specificity\) p[\s\S]*var\(--fontara-font\), ui-sans-serif, system-ui, sans-serif/
+    )
+    assert.match(
+      editableStyle,
+      /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[id="prompt-textarea"\][\s\S]*var\(--fontara-font\), "ChatGPT Sans", Arial, sans-serif/
+    )
+    assert.match(
+      editableStyle,
+      /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[id="prompt-textarea"\]:not\(#fontara-editable-font-specificity\) \[data-text="true"\]/
+    )
+    assert.match(
+      editableStyle,
+      /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[data-testid="tweetTextarea_0"\]\[role="textbox"\][\s\S]*\[data-text="true"\][\s\S]*var\(--fontara-font\), "TwitterChirp", system-ui, sans-serif/
+    )
+    assert.match(
+      editableStyle,
+      /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[aria-label="Text editor for creating content"\]\[role="textbox"\][\s\S]*:not\(#fontara-editable-font-specificity\) p[\s\S]*var\(--fontara-font\), "LinkedIn Sans", Arial, sans-serif/
+    )
+    assert.doesNotMatch(editableStyle, /> div:nth-of-type/)
+    assert.doesNotMatch(editableStyle, /section\[data-testid=/)
+    assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
+    assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 0)
+    const initialTreeWalkerCount = runtime.getTreeWalkerCount()
 
-  await waitFor(
-    () =>
-      runtime
-        .getStyleText("fontara-custom-font-styles")
-        .includes('font-family: "RuntimeCustom-Fontara"'),
-    "expected selected custom font-face to be injected after storage change"
-  )
-  assert.match(
-    runtime.getStyleText("fontara-dynamic-font"),
-    /--fontara-font: "RuntimeCustom-Fontara"/
-  )
-  assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
-  assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 1)
+    runtime.values[STORAGE_KEYS.SELECTED_FONT] = "RuntimeCustom-Fontara"
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SELECTED_FONT]: {
+          newValue: "RuntimeCustom-Fontara",
+          oldValue: DEFAULT_VALUES.SELECTED_FONT
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        runtime
+          .getStyleText("fontara-custom-font-styles")
+          .includes('font-family: "RuntimeCustom-Fontara"'),
+      "expected selected custom font-face to be injected after storage change"
+    )
+    assert.match(
+      runtime.getStyleText("fontara-dynamic-font"),
+      /--fontara-font: "RuntimeCustom-Fontara"/
+    )
+    assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
+    assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 1)
+
+    runtime.setRuntimeRemoveError(
+      new TypeError("Cannot read properties of undefined (reading 'onMessage')")
+    )
+    assert.doesNotThrow(() => {
+      runtime.dispatchWindowEvent("pagehide", { persisted: false })
+    })
+    assert.equal(warnCalls, 0)
+  } finally {
+    console.warn = originalWarn
+  }
 })

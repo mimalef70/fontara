@@ -1,0 +1,51 @@
+:root {
+  --fontara-arena-times-root-fallback: Times;
+  --fontara-arena-basel-grotesk-ui-fallback: baselGrotesk,
+    "baselGrotesk Fallback", ui-sans-serif, system-ui, sans-serif;
+  --fontara-arena-martina-heading-fallback: martinaPlantijn,
+    "martinaPlantijn Fallback", ui-serif, Georgia, Cambria, "Times New Roman",
+    Times, serif;
+  --fontara-arena-basel-grotesk-mono-fallback: baselGroteskMono,
+    "baselGroteskMono Fallback", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+  --fontara-arena-basel-grotesk-emoji-ui-fallback: baselGrotesk,
+    "baselGrotesk Fallback", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --fontara-arena-inter-prose-fallback: Inter, "Inter Fallback", ui-sans-serif,
+    system-ui, sans-serif;
+}
+
+:root,
+html {
+  font-family: var(--fontara-font),
+    var(--fontara-arena-times-root-fallback) !important;
+}
+
+.body-base,
+.prose,
+html.m-0.h-svh.w-full > body.font-sans.__variable_697da2.__variable_3916eb > textarea {
+  font-family: var(--fontara-font),
+    var(--fontara-arena-basel-grotesk-ui-fallback) !important;
+}
+
+.font-heading,
+h2 {
+  font-family: var(--fontara-font),
+    var(--fontara-arena-martina-heading-fallback) !important;
+}
+
+.font-mono {
+  font-family: var(--fontara-font),
+    var(--fontara-arena-basel-grotesk-mono-fallback) !important;
+}
+
+.font-sans {
+  font-family: var(--fontara-font),
+    var(--fontara-arena-basel-grotesk-emoji-ui-fallback) !important;
+}
+
+.prose :where(p, ul, ol, li, blockquote):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  font-family: var(--fontara-font),
+    var(--fontara-arena-inter-prose-fallback) !important;
+}

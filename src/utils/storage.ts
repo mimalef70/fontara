@@ -28,7 +28,17 @@ function debugWarn(message: string, error: unknown): void {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  if (error instanceof Error) return error.message
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message
+  }
+
+  return String(error)
 }
 
 function isExpectedStorageListenerError(error: unknown): boolean {

@@ -1,0 +1,19 @@
+{
+  "site": "whatsapp",
+  "cssFile": "assets/styles/whatsapp.css",
+  "fallbackPrefix": "--fontara-whatsapp",
+  "groups": [
+    {
+      "matchedSelector": ".os-mac.font-fix",
+      "fallbackName": "apple-ui",
+      "fontFamily": "\"SF Pro Text\", \"SF Pro Icons\", system, -apple-system, system-ui, \"system-ui\", \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", \"Kohinoor Devanagari\", sans-serif"
+    },
+    {
+      "matchedSelector": "body",
+      "fallbackName": "segoe-ui",
+      "fontFamily": "\"Segoe UI\", \"Helvetica Neue\", Helvetica, \"Lucida Grande\", Arial, Ubuntu, Cantarell, \"Fira Sans\", sans-serif"
+    }
+  ],
+  "ignoredSelectors": [],
+  "ignoredSelectorPatterns": []
+}

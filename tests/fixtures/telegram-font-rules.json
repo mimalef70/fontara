@@ -1,0 +1,25 @@
+{
+  "site": "telegram",
+  "cssFile": "assets/styles/telegram.css",
+  "fallbackPrefix": "--fontara-telegram",
+  "groups": [
+    {
+      "selectors": ["button", "html", "input"],
+      "fallbackName": "roboto-ui",
+      "fontFamily": "Roboto, -apple-system, \"apple color emoji\", \"system-ui\", \"Segoe UI\", Roboto, Oxygen-Sans, Ubuntu, Cantarell, \"Helvetica Neue\", sans-serif"
+    }
+  ],
+  "ignoredSelectors": [
+    {
+      "matchedSelector": ".emoji-native",
+      "fontFamily": "\"apple color emoji\", \"segoe ui emoji\", \"noto color emoji\", \"android emoji\", emojisymbols, \"emojione mozilla\", \"twemoji mozilla\", \"segoe ui symbol\"",
+      "reason": "emoji-native is an emoji pictogram font target, not readable text"
+    },
+    {
+      "matchedSelector": ".tgico",
+      "fontFamily": "tgico",
+      "reason": "tgico is Telegram's icon font"
+    }
+  ],
+  "ignoredSelectorPatterns": []
+}

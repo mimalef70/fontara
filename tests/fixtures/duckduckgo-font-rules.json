@@ -1,0 +1,75 @@
+{
+  "site": "duckduckgo",
+  "cssFile": "assets/styles/duckduckgo.css",
+  "fallbackPrefix": "--fontara-duckduckgo",
+  "selectorMode": "semantic",
+  "groups": [
+    {
+      "matchedSelector": "body :where(\n  p,\n  span,\n  div,\n  mark,\n  a,\n  h1, h2, h3, h4, h5, h6,\n  li,\n  label,\n  button,\n  input,\n  textarea,\n  select,\n  option,\n  em,\n  strong,\n  b,\n  i,\n  small,\n  time,\n  cite,\n  q,\n  blockquote,\n  figcaption,\n  summary,\n  dt, dd,\n  th, td, caption,\n  legend,\n  [role=\"heading\"],\n  [role=\"button\"],\n  [role=\"menuitem\"],\n  [role=\"option\"],\n  [role=\"tab\"]\n):not(\n  [class*=\"icon\" i],\n  [class*=\"symbol\" i],\n  [class*=\"glyph\" i],\n  [class*=\"material-icons\" i],\n  [class*=\"fa-\"],\n  [class~=\"fa\"],\n  [class*=\"bi-\"],\n  [role=\"img\"],\n  pre *,\n  code, code *,\n  kbd, samp\n)",
+      "fallbackName": "duck-sans-product-ui",
+      "fontFamily": "DuckSansProduct, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Oxygen-Sans, Ubuntu, Cantarell, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif",
+      "sourceDeclarations": [
+        {
+          "property": "font-family",
+          "value": "DuckSansProduct, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Oxygen-Sans, Ubuntu, Cantarell, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif"
+        },
+        {
+          "property": "font-family",
+          "value": "DuckSansProduct, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Oxygen-Sans, Ubuntu, Cantarell, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, sans-serif, DuckSansProduct, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Oxygen-Sans, Ubuntu, Cantarell, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif"
+        },
+        {
+          "property": "font-family",
+          "value": "DuckSansDisplay, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Oxygen-Sans, Ubuntu, Cantarell, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif"
+        }
+      ],
+      "semanticReason": "DuckDuckGo ships generated SERP classes; a scoped text whitelist is more stable than per-build class names."
+    }
+  ],
+  "ignoredSelectors": [
+    {
+      "matchedSelector": ".BPcpYCZXQg3nCFNSsYt7::before",
+      "fontFamily": "ddg-serp-icons",
+      "reason": "DuckDuckGo SERP icon font"
+    },
+    {
+      "matchedSelector": ".ddgsi",
+      "fontFamily": "ddg-serp-icons",
+      "reason": "DuckDuckGo SERP icon font"
+    },
+    {
+      "matchedSelector": ".dropdown__button:not(.dropdown__button--no-icon)::after",
+      "fontFamily": "ddg-serp-icons",
+      "reason": "DuckDuckGo SERP icon font"
+    },
+    {
+      "matchedSelector": ".dropdown--settings--icon .dropdown__button::after",
+      "fontFamily": "ddg-serp-icons",
+      "reason": "DuckDuckGo SERP icon font"
+    },
+    {
+      "matchedSelector": ".DZHFpq3rUWEmzHu77zlF",
+      "fontFamily": "ddg-serp-icons",
+      "reason": "DuckDuckGo SERP icon font"
+    },
+    {
+      "matchedSelector": ".related-searches__item-text::before",
+      "fontFamily": "ddg-serp-icons",
+      "reason": "DuckDuckGo SERP icon font"
+    },
+    {
+      "matchedSelector": ".sG3VWKPgDjJAlSrJSoLP::after",
+      "fontFamily": "ddg-serp-icons",
+      "reason": "DuckDuckGo SERP icon font"
+    }
+  ],
+  "ignoredSelectorPatterns": [
+    {
+      "pattern": "^\\.(?:eVNpHGjtxRBq_gLOfGDr|related-searches__title-(?:long|short)|Sy7z35L7t3PeOHmOWVKK|wZ4JdaHxSAhGy1HoNVja)$",
+      "reason": "semantic text whitelist replaces DuckDuckGo generated text classes"
+    },
+    {
+      "pattern": "^\\.oYI9G526iG1UEym9s8sH > \\.yzCNkXUDJZvVZaIAEY7E$",
+      "reason": "semantic text whitelist replaces DuckDuckGo generated heading link classes"
+    }
+  ]
+}

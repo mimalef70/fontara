@@ -1,0 +1,34 @@
+{
+  "site": "trello",
+  "cssFile": "assets/styles/trello.css",
+  "fallbackPrefix": "--fontara-trello",
+  "selectorMode": "semantic",
+  "groups": [
+    {
+      "matchedSelector": "body :where(\n  p,\n  span,\n  div,\n  mark,\n  a,\n  h1, h2, h3, h4, h5, h6,\n  li,\n  label,\n  button,\n  input,\n  textarea,\n  select,\n  option,\n  em,\n  strong,\n  b,\n  i,\n  small,\n  time,\n  cite,\n  q,\n  blockquote,\n  figcaption,\n  summary,\n  dt, dd,\n  th, td, caption,\n  legend,\n  [role=\"heading\"],\n  [role=\"button\"],\n  [role=\"menuitem\"],\n  [role=\"option\"],\n  [role=\"tab\"]\n):not(\n  [class*=\"icon\" i],\n  [class*=\"symbol\" i],\n  [class*=\"glyph\" i],\n  [class*=\"material-icons\" i],\n  [class*=\"fa-\"],\n  [class~=\"fa\"],\n  [class*=\"bi-\"],\n  [role=\"img\"],\n  pre *,\n  code, code *,\n  kbd, samp\n)",
+      "fallbackName": "atlassian-ui",
+      "fontFamily": "\"Atlassian Sans\", ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", Ubuntu, \"Helvetica Neue\", sans-serif",
+      "sourceDeclarations": [
+        {
+          "property": "font",
+          "value": "14px / 20px \"Atlassian Sans\", ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", Ubuntu, \"Helvetica Neue\", sans-serif"
+        },
+        {
+          "property": "font-family",
+          "value": "\"Atlassian Sans\", ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", Ubuntu, \"Helvetica Neue\", sans-serif"
+        }
+      ]
+    }
+  ],
+  "ignoredSelectors": [],
+  "ignoredSelectorPatterns": [
+    {
+      "pattern": "^\\._(?:11c81d4k|11c8fhey|1tn2fhey)$",
+      "reason": "semantic text whitelist replaces generated Atlassian utility classes"
+    },
+    {
+      "pattern": "^\\.lyE6dN0zPcEtwe$",
+      "reason": "semantic text whitelist replaces generated Trello text class"
+    }
+  ]
+}

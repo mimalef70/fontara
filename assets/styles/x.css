@@ -7,36 +7,61 @@ body {
     "Liberation Mono", "Courier New", monospace;
 }
 
-html,
-body,
-#react-root,
-[role="dialog"],
-[role="menu"],
-[role="button"],
-button,
-input,
-textarea,
-select,
-.css-146c3p1,
-.css-1jxf684,
-.r-poiln3,
-.r-1k78y06,
-.r-4hwcpe,
-body * {
+:where(
+  p,
+  span,
+  div,
+  mark,
+  a,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  li,
+  label,
+  button,
+  input,
+  textarea,
+  select,
+  option,
+  em,
+  strong,
+  b,
+  i,
+  small,
+  time,
+  cite,
+  q,
+  blockquote,
+  figcaption,
+  summary,
+  dt,
+  dd,
+  th,
+  td,
+  caption,
+  legend,
+  [role="heading"],
+  [role="button"],
+  [role="menuitem"],
+  [role="option"],
+  [role="tab"]
+):not(
+  [class*="icon" i],
+  [class*="symbol" i],
+  [class*="glyph" i],
+  [class*="material-icons" i],
+  [class*="fa-"],
+  [class~="fa"],
+  [class*="bi-"],
+  [role="img"],
+  pre *,
+  code,
+  code *,
+  kbd,
+  samp
+) {
   font-family: var(--fontara-font), var(--fontara-x-fallback) !important;
-}
-
-pre,
-pre *,
-code,
-code *,
-samp,
-samp * {
-  font-family: var(--fontara-x-monospace) !important;
-}
-
-svg,
-svg *,
-canvas {
-  font-family: inherit !important;
 }

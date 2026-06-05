@@ -71,7 +71,7 @@ test("mergeWebsiteLists updates versioned defaults and preserves active state", 
       regex: "^https://web\\.whatsapp\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -90,7 +90,7 @@ test("mergeWebsiteLists updates versioned defaults when metadata changes without
       regex: "^https://old-chatgpt\\.example/.*$",
       isActive: false,
       customCss: false,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
   const defaultList: WebsiteItem[] = [
@@ -99,7 +99,7 @@ test("mergeWebsiteLists updates versioned defaults when metadata changes without
       regex: "^https://chatgpt\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -155,7 +155,7 @@ test("mergeWebsiteLists upgrades ChatGPT to CSS-only defaults", () => {
       regex: "^https://chatgpt\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -181,7 +181,7 @@ test("mergeWebsiteLists upgrades Facebook to CSS-only defaults", () => {
       regex: "^https://www\\.facebook\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -207,7 +207,7 @@ test("mergeWebsiteLists upgrades Arena to CSS-only defaults", () => {
       regex: "^https://arena\\.ai/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -233,7 +233,7 @@ test("mergeWebsiteLists upgrades Claude to CSS-only defaults", () => {
       regex: "^https://claude\\.ai/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -259,7 +259,7 @@ test("mergeWebsiteLists upgrades Copilot to CSS-only defaults", () => {
       regex: "^https://copilot\\.microsoft\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -285,7 +285,7 @@ test("mergeWebsiteLists upgrades DeepSeek to CSS-only defaults", () => {
       regex: "^https://chat\\.deepseek\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -311,7 +311,7 @@ test("mergeWebsiteLists upgrades AI Studio to CSS-only defaults", () => {
       regex: "^https://aistudio\\.google\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -337,7 +337,7 @@ test("mergeWebsiteLists upgrades Perplexity to CSS-only defaults", () => {
       regex: "^https://www\\.perplexity\\.ai/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -363,7 +363,7 @@ test("mergeWebsiteLists upgrades Poe to CSS-only defaults", () => {
       regex: "^https://poe\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -389,7 +389,7 @@ test("mergeWebsiteLists upgrades OpenRouter to CSS-only defaults", () => {
       regex: "^https://openrouter\\.ai/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -415,7 +415,7 @@ test("mergeWebsiteLists upgrades NotebookLM to CSS-only defaults", () => {
       regex: "^https://notebooklm\\.google\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -441,7 +441,7 @@ test("mergeWebsiteLists upgrades Qwen to CSS-only defaults", () => {
       regex: "^https://chat\\.qwen\\.ai/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -467,7 +467,7 @@ test("mergeWebsiteLists upgrades Telegram to CSS-only defaults", () => {
       regex: "^https://web\\.telegram\\.org/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -493,7 +493,7 @@ test("mergeWebsiteLists upgrades Trello to CSS-only defaults", () => {
       regex: "^https://trello\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -519,7 +519,7 @@ test("mergeWebsiteLists upgrades Wikipedia to CSS-only defaults", () => {
       regex: "^https://[^/]*\\.wikipedia\\.org/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -545,7 +545,7 @@ test("mergeWebsiteLists upgrades YouTube to CSS-only defaults", () => {
       regex: "^https://www\\.youtube\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -571,7 +571,7 @@ test("mergeWebsiteLists upgrades DuckDuckGo to CSS-only defaults", () => {
       regex: "^https://duckduckgo\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -597,7 +597,7 @@ test("mergeWebsiteLists upgrades Slack to CSS-only defaults", () => {
       regex: "^https://app\\.slack\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -623,7 +623,7 @@ test("mergeWebsiteLists upgrades X to CSS-only defaults", () => {
       regex: "^https://x\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -649,7 +649,7 @@ test("mergeWebsiteLists upgrades Instagram to CSS-only defaults", () => {
       regex: "^https://www\\.instagram\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -675,7 +675,7 @@ test("mergeWebsiteLists upgrades LinkedIn to CSS-only defaults", () => {
       regex: "^https://[^/]*linkedin\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -701,7 +701,7 @@ test("mergeWebsiteLists upgrades Gemini to CSS-only defaults", () => {
       regex: "^https://gemini\\.google\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -727,7 +727,7 @@ test("mergeWebsiteLists upgrades Gmail to CSS-only defaults", () => {
       regex: "^https://mail\\.google\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 
@@ -753,7 +753,7 @@ test("mergeWebsiteLists upgrades Google to CSS-only defaults", () => {
       regex: "^https://www\\.google\\.com/.*$",
       isActive: true,
       customCss: true,
-      version: "4.2.1"
+      version: "4.3.0"
     }
   ]
 

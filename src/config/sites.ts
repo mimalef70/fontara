@@ -8,7 +8,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://chatgpt.com/*",
     siteName: "ChatGPT",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://claude.ai",
@@ -17,7 +17,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://claude.ai/*",
     siteName: "Claude",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://gemini.google.com",
@@ -26,7 +26,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://gemini.google.com/*",
     siteName: "Gemini",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://copilot.microsoft.com",
@@ -35,7 +35,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://copilot.microsoft.com/*",
     siteName: "Copilot",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://www.perplexity.ai",
@@ -44,7 +44,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://www.perplexity.ai/*",
     siteName: "Perplexity",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://poe.com",
@@ -53,7 +53,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://poe.com/*",
     siteName: "Poe",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://openrouter.ai",
@@ -62,7 +62,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://openrouter.ai/*",
     siteName: "OpenRouter",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://chat.deepseek.com",
@@ -71,7 +71,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://chat.deepseek.com/*",
     siteName: "DeepSeek",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://chat.qwen.ai",
@@ -80,7 +80,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://chat.qwen.ai/*",
     siteName: "Qwen",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://notebooklm.google.com",
@@ -89,7 +89,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://notebooklm.google.com/*",
     siteName: "NotebookLM",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://aistudio.google.com",
@@ -98,7 +98,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://aistudio.google.com/*",
     siteName: "AI Studio",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://arena.ai",
@@ -107,7 +107,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://arena.ai/*",
     siteName: "Arena",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://www.google.com",
@@ -116,7 +116,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://www.google.com/*",
     siteName: "Google",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://www.youtube.com",
@@ -125,7 +125,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://www.youtube.com/*",
     siteName: "YouTube",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://mail.google.com",
@@ -134,7 +134,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://mail.google.com/*",
     siteName: "Gmail",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://x.com",
@@ -143,7 +143,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://x.com/*",
     siteName: "X",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://www.linkedin.com",
@@ -152,7 +152,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://*linkedin.com/*",
     siteName: "LinkedIn",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://www.instagram.com",
@@ -161,7 +161,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://www.instagram.com/*",
     siteName: "Instagram",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://www.facebook.com",
@@ -170,7 +170,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://www.facebook.com/*",
     siteName: "Facebook",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://github.com",
@@ -186,7 +186,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://web.whatsapp.com/*",
     siteName: "WhatsApp",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://web.telegram.org",
@@ -195,7 +195,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://web.telegram.org/*",
     siteName: "Telegram",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://app.slack.com",
@@ -204,7 +204,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://app.slack.com/*",
     siteName: "Slack",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://messages.google.com",
@@ -220,7 +220,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://trello.com/*",
     siteName: "Trello",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://www.wikipedia.org",
@@ -229,7 +229,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://*.wikipedia.org/*",
     siteName: "Wikipedia",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://duckduckgo.com",
@@ -238,7 +238,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     pattern: "https://duckduckgo.com/*",
     siteName: "DuckDuckGo",
     customCss: true,
-    version: "4.2.1"
+    version: "4.3.0"
   },
   {
     url: "https://medium.com",

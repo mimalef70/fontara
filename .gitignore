@@ -29,7 +29,7 @@ codetree.txt
 out/
 build/
 dist/
-docs/
+# docs/
 # assets/
 # README.md
 # CONTRIBUTING.md

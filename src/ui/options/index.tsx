@@ -8,8 +8,10 @@ import { createCustomFontDeletionUpdate } from "../../utils/custom-fonts"
 import {
   getFontDataURLFormat,
   getFontFileExtension,
+  isFontFileSignatureSupported,
   isSupportedFontExtension,
-  MAX_CUSTOM_FONT_FILE_SIZE_BYTES
+  MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
+  normalizeFontDataURL
 } from "../../utils/font-data"
 import { getLocalValue, setLocalValues } from "../../utils/storage"
 import ErrorBoundary from "../components/ErrorBoundary"
@@ -29,9 +31,10 @@ function OptionsPage() {
   )
 
   const fontUtils = {
-    generateFileHash: async (file: File) => {
-      const arrayBuffer = await file.arrayBuffer()
-      const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer)
+    generateFileHash: async (fileBytes: Uint8Array) => {
+      const buffer = new ArrayBuffer(fileBytes.byteLength)
+      new Uint8Array(buffer).set(fileBytes)
+      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
     },
@@ -93,7 +96,14 @@ function OptionsPage() {
       return
     }
 
-    const fileHash = await fontUtils.generateFileHash(file)
+    const fileBytes = new Uint8Array(await file.arrayBuffer())
+    if (!isFontFileSignatureSupported(extension, fileBytes)) {
+      toast({ title: "محتوای فایل انتخاب‌شده با فرمت فونت سازگار نیست" })
+      resetSelectedFile()
+      return
+    }
+
+    const fileHash = await fontUtils.generateFileHash(fileBytes)
     const isDuplicate = fontUtils.isFileContentDuplicate(fileHash)
 
     if (isDuplicate) {
@@ -107,7 +117,9 @@ function OptionsPage() {
   }
 
   const handleSaveFont = async () => {
-    if (!selectedFile || !fontName) {
+    const normalizedFontName = fontName.trim()
+
+    if (!selectedFile || !normalizedFontName) {
       toast({ title: "فیلدهای خالی را پر کنید" })
       return
     }
@@ -118,7 +130,7 @@ function OptionsPage() {
       const isDuplicateName = customFontList.some((font) => {
         return (
           (font.name.toLowerCase().trim() || "") ===
-          fontName.toLowerCase().trim()
+          normalizedFontName.toLowerCase()
         )
       })
 
@@ -127,16 +139,20 @@ function OptionsPage() {
       }
 
       const fileHash =
-        selectedFileHash || (await fontUtils.generateFileHash(selectedFile))
+        selectedFileHash ||
+        (await fontUtils.generateFileHash(
+          new Uint8Array(await selectedFile.arrayBuffer())
+        ))
       if (fontUtils.isFileContentDuplicate(fileHash)) {
         throw new Error("این فایل فونت قبلاً آپلود شده است")
       }
 
       const base64Data = await fontUtils.convertToBase64(selectedFile)
-      if (!getFontDataURLFormat(base64Data)) {
+      const extension = getFontFileExtension(selectedFile.name)
+      const normalizedDataURL = normalizeFontDataURL(base64Data, extension)
+      if (!normalizedDataURL || !getFontDataURLFormat(normalizedDataURL)) {
         throw new Error("فایل فونت معتبر نیست")
       }
-      const extension = getFontFileExtension(selectedFile.name)
 
       const suffix = "-Fontara"
       let value: string
@@ -153,8 +169,8 @@ function OptionsPage() {
 
       const fontData: FontData = {
         value: value,
-        name: fontName,
-        data: base64Data,
+        name: normalizedFontName,
+        data: normalizedDataURL,
         fileHash: fileHash,
         type: extension,
         originalFileName: selectedFile.name

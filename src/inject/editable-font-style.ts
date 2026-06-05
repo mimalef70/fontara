@@ -1,4 +1,9 @@
-import { escapeCSSString } from "../utils/font-data"
+import {
+  escapeCSSString,
+  normalizeFontFamilyName,
+  splitFontFamilies
+} from "../utils/font-data"
+import { removeStyle, upsertStyle } from "./style-utils"
 
 const EDITABLE_FONT_ID = "fontara-editable-font-style"
 const CONTENT_EDITABLE_SELECTOR =
@@ -28,30 +33,6 @@ type EditableFontRule = {
 }
 
 let editableFontSignature = ""
-
-function getStyleHost(): HTMLElement {
-  return document.head || document.documentElement
-}
-
-function upsertStyle(id: string, textContent: string): HTMLStyleElement {
-  let styleElement = document.getElementById(id) as HTMLStyleElement | null
-
-  if (!styleElement) {
-    styleElement = document.createElement("style")
-    styleElement.id = id
-    getStyleHost().appendChild(styleElement)
-  }
-
-  if (styleElement.textContent !== textContent) {
-    styleElement.textContent = textContent
-  }
-
-  return styleElement
-}
-
-function removeStyle(id: string): void {
-  document.getElementById(id)?.remove()
-}
 
 function getElementTagName(element: HTMLElement): string {
   return (element.localName || element.tagName).toLowerCase()
@@ -145,56 +126,6 @@ function getTopLevelContentEditableElements(): HTMLElement[] {
     (element) =>
       isContentEditableElement(element) && !hasContentEditableAncestor(element)
   )
-}
-
-function splitFontFamilies(fontFamily: string): string[] {
-  const families: string[] = []
-  let current = ""
-  let quote: '"' | "'" | null = null
-  let escaped = false
-
-  for (const character of fontFamily) {
-    if (escaped) {
-      current += character
-      escaped = false
-      continue
-    }
-
-    if (character === "\\") {
-      current += character
-      escaped = true
-      continue
-    }
-
-    if (quote) {
-      current += character
-      if (character === quote) {
-        quote = null
-      }
-      continue
-    }
-
-    if (character === '"' || character === "'") {
-      current += character
-      quote = character
-      continue
-    }
-
-    if (character === ",") {
-      families.push(current)
-      current = ""
-      continue
-    }
-
-    current += character
-  }
-
-  families.push(current)
-  return families
-}
-
-function normalizeFontFamilyName(fontFamily: string): string {
-  return fontFamily.trim().replace(/^["']+|["']+$/g, "")
 }
 
 function getCleanFontFamily(fontFamily: string): string {

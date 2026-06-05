@@ -1,9 +1,8 @@
 import fontFaceCSS from "../fonts.css"
+import { rewriteFontFaceAssetUrls } from "./font-face-url"
 
 export function getFontFaceCSS(): string {
-  return fontFaceCSS.replace(
-    /url\("assets\/([^"]+)"\)/g,
-    (_, assetPath: string) =>
-      `url("${chrome.runtime.getURL(`assets/${assetPath}`)}")`
+  return rewriteFontFaceAssetUrls(fontFaceCSS, (path) =>
+    chrome.runtime.getURL(path)
   )
 }

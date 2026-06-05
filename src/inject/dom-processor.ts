@@ -1,4 +1,5 @@
 import { EXCLUDED_TAGS, ICON_CLASSES } from "../config/selectors"
+import { normalizeFontFamilyName, splitFontFamilies } from "../utils/font-data"
 
 export type FontWork = {
   fallbackFontFamily: string
@@ -85,10 +86,12 @@ function isIconFontFamily(fontFamily: string): boolean {
 }
 
 function getCleanFontFamily(fontFamily: string): string {
-  return fontFamily
-    .split(",")
-    .map((family) => family.trim().replace(/^["']+|["']+$/g, ""))
-    .filter((family) => Boolean(family) && !family.endsWith("-Fontara"))
+  return splitFontFamilies(fontFamily)
+    .map((family) => family.trim())
+    .filter((family) => {
+      const normalizedFamily = normalizeFontFamilyName(family)
+      return Boolean(normalizedFamily) && !normalizedFamily.endsWith("-Fontara")
+    })
     .join(", ")
 }
 

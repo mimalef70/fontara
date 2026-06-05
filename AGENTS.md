@@ -67,19 +67,6 @@ Required contract:
    and fallback values like `"Google Symbols"` or `"Luminous Symbols"`.
    FontARA site CSS should change readable text, not icon font rendering.
 8. Do not change unrelated site CSS or unrelated tests just to make a task pass.
-9. Add or update a contract test that reads the JSON fixture and verifies:
-   fallback variables, exact normalized selector coverage, and absence of extra
-   `font-family` selector rules. For CSS Modules normalization, the fixture
-   should store the normalized `[class*="...__"]` selector, and tests should
-   assert that the emitted CSS does not contain the original volatile hash
-   suffix. If icon/symbol selectors were present in the source JSON, list them
-   as ignored selectors in the fixture and assert that CSS does not target
-   them.
-   For volatile generated selectors, only add an ignored selector pattern when
-   the user explicitly asked for that cleanup or approved a semantic refactor.
-
-Fixtures live at `tests/fixtures/*-font-rules.json`, and the contract test
-lives at `tests/unit/site-css-json-contract.test.ts`.
 
 ### High-churn selector warning
 

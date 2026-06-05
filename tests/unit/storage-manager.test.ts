@@ -1,11 +1,40 @@
 import assert from "node:assert/strict"
-import test from "node:test"
+import test, { afterEach } from "node:test"
 
 import {
+  ensureStorageValues,
   mergeWebsiteLists,
   normalizeCustomFontList
 } from "../../src/background/storage-manager"
+import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { WebsiteItem } from "../../src/definitions"
+
+const originalChrome = Reflect.get(globalThis, "chrome") as unknown
+
+afterEach(() => {
+  Reflect.set(globalThis, "chrome", originalChrome)
+})
+
+function mockLocalStorage(values: Record<string, unknown>): void {
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      get lastError() {
+        return undefined
+      }
+    },
+    storage: {
+      local: {
+        get(key: string, callback: (items: Record<string, unknown>) => void) {
+          callback({ [key]: values[key] })
+        },
+        set(items: Record<string, unknown>, callback: () => void) {
+          Object.assign(values, items)
+          callback()
+        }
+      }
+    }
+  })
+}
 
 test("mergeWebsiteLists appends new default sites", () => {
   const existingList: WebsiteItem[] = [
@@ -43,6 +72,64 @@ test("mergeWebsiteLists updates versioned defaults and preserves active state", 
       isActive: true,
       customCss: true,
       version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
+test("mergeWebsiteLists updates versioned defaults when metadata changes without a version bump", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://chatgpt.com",
+      regex: "^https://old-chatgpt\\.example/.*$",
+      isActive: false,
+      customCss: false,
+      version: "4.2.1"
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://chatgpt.com",
+      regex: "^https://chatgpt\\.com/.*$",
+      isActive: true,
+      customCss: true,
+      version: "4.2.1"
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
+test("mergeWebsiteLists updates versionless defaults and preserves active state", () => {
+  const existingList: WebsiteItem[] = [
+    {
+      url: "https://github.com",
+      regex: "^https://old-github\\.example/.*$",
+      icon: "assets/logos/old-github.png",
+      pattern: "https://old-github.example/*",
+      siteName: "Old GitHub",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://github.com",
+      regex: "^https://github\\.com/.*$",
+      icon: "assets/logos/github-active.png",
+      pattern: "https://github.com/*",
+      siteName: "GitHub",
+      isActive: true
     }
   ]
 
@@ -693,6 +780,22 @@ test("normalizeCustomFontList backfills missing file hashes", async () => {
   assert.equal(font.originalFileName, "legacy.woff2")
 })
 
+test("normalizeCustomFontList normalizes generic font data URL MIME types", async () => {
+  const [font] = await normalizeCustomFontList([
+    {
+      value: "GenericMimeCustom-Fontara",
+      name: "Generic MIME Custom",
+      data: `data:application/octet-stream;base64,${Buffer.from("font").toString("base64")}`,
+      type: "ttf",
+      originalFileName: "generic.ttf"
+    }
+  ])
+
+  assert.equal(font.data.startsWith("data:font/ttf;base64,"), true)
+  assert.equal(font.type, "ttf")
+  assert.equal(font.fileHash.length, 64)
+})
+
 test("normalizeCustomFontList rejects unsafe custom font records", async () => {
   const fonts = await normalizeCustomFontList([
     {
@@ -710,4 +813,26 @@ test("normalizeCustomFontList rejects unsafe custom font records", async () => {
   ])
 
   assert.deepEqual(fonts, [])
+})
+
+test("ensureStorageValues resets selection when normalization removes the selected custom font", async () => {
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
+      {
+        value: "RemovedCustom-Fontara",
+        name: "Removed Custom",
+        data: `data:text/plain;base64,${Buffer.from("font").toString("base64")}`,
+        type: "woff2"
+      }
+    ],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: "RemovedCustom-Fontara",
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
+  assert.deepEqual(values[STORAGE_KEYS.CUSTOM_FONT_LIST], [])
 })

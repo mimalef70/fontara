@@ -82,6 +82,22 @@ test("extension pages render inside error boundaries", () => {
   assert.match(optionsSource, /<ErrorBoundary title="خطا در بارگذاری تنظیمات/)
 })
 
+test("custom font uploads normalize stored names and data URLs", () => {
+  const optionsSource = fs.readFileSync(
+    path.resolve("src/ui/options/index.tsx"),
+    "utf8"
+  )
+
+  assert.match(optionsSource, /normalizedFontName = fontName\.trim\(\)/)
+  assert.match(
+    optionsSource,
+    /isFontFileSignatureSupported\(extension, fileBytes\)/
+  )
+  assert.match(optionsSource, /normalizeFontDataURL\(base64Data, extension\)/)
+  assert.match(optionsSource, /name: normalizedFontName/)
+  assert.doesNotMatch(optionsSource, /data: base64Data/)
+})
+
 test("UI storage hooks use stable initial value references", () => {
   const storageHookSource = fs.readFileSync(
     path.resolve("src/ui/hooks/use-storage.ts"),

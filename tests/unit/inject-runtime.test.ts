@@ -489,6 +489,26 @@ test("selected custom font changes inject its font-face without a reload", async
     assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
     assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 1)
 
+    runtime.values[STORAGE_KEYS.SELECTED_FONT] = "MissingCustom-Fontara"
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SELECTED_FONT]: {
+          newValue: "MissingCustom-Fontara",
+          oldValue: "RuntimeCustom-Fontara"
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "Vazirmatn-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) && runtime.getStyleText("fontara-custom-font-styles") === "",
+      "expected missing selected custom font to fall back to the default font"
+    )
+    assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 2)
+
     runtime.setRuntimeRemoveError(
       new TypeError("Cannot read properties of undefined (reading 'onMessage')")
     )

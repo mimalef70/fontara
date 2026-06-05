@@ -1,11 +1,28 @@
+import { DEFAULT_FONTS } from "../config/fonts"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
 import {
   getFontDataURLFormat,
   isSafeCustomFontValue,
-  isSupportedFontExtension
+  isSupportedFontExtension,
+  normalizeFontDataURL
 } from "../utils/font-data"
 import { getLocalValue, setLocalValue } from "../utils/storage"
+
+const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
+
+function shouldSyncDefaultSite(
+  existingSite: WebsiteItem,
+  defaultSite: WebsiteItem
+): boolean {
+  return (
+    existingSite.regex !== defaultSite.regex ||
+    existingSite.icon !== defaultSite.icon ||
+    existingSite.pattern !== defaultSite.pattern ||
+    existingSite.siteName !== defaultSite.siteName ||
+    existingSite.customCss !== defaultSite.customCss
+  )
+}
 
 export function mergeWebsiteLists(
   existingList: WebsiteItem[],
@@ -28,12 +45,22 @@ export function mergeWebsiteLists(
 
       if (
         !("version" in existingSite) ||
-        existingSite.version !== defaultSite.version
+        existingSite.version !== defaultSite.version ||
+        shouldSyncDefaultSite(existingSite, defaultSite)
       ) {
         mergedList[existingIndex] = {
           ...defaultSite,
           isActive: existingSite.isActive
         }
+      }
+      continue
+    }
+
+    const existingSite = mergedList[existingIndex]
+    if (shouldSyncDefaultSite(existingSite, defaultSite)) {
+      mergedList[existingIndex] = {
+        ...defaultSite,
+        isActive: existingSite.isActive
       }
     }
   }
@@ -80,11 +107,13 @@ export async function normalizeCustomFontList(
       const data = typeof customFont.data === "string" ? customFont.data : ""
       const type =
         typeof customFont.type === "string" ? customFont.type.toLowerCase() : ""
+      const normalizedData = normalizeFontDataURL(data, type)
 
       if (
         !isSafeCustomFontValue(value) ||
         !name ||
-        !getFontDataURLFormat(data) ||
+        !normalizedData ||
+        !getFontDataURLFormat(normalizedData, type) ||
         !isSupportedFontExtension(type)
       ) {
         return null
@@ -104,7 +133,7 @@ export async function normalizeCustomFontList(
       return {
         value,
         name,
-        data,
+        data: normalizedData,
         type,
         fileHash,
         originalFileName
@@ -113,6 +142,17 @@ export async function normalizeCustomFontList(
   )
 
   return normalizedFonts.filter((font): font is FontData => font !== null)
+}
+
+function isSelectedFontAvailable(
+  selectedFont: string | undefined,
+  customFontList: FontData[]
+): boolean {
+  return (
+    selectedFont === undefined ||
+    BUNDLED_FONT_VALUES.has(selectedFont) ||
+    customFontList.some((font) => font.value === selectedFont)
+  )
 }
 
 export async function ensureStorageValues(): Promise<void> {
@@ -144,12 +184,16 @@ export async function ensureStorageValues(): Promise<void> {
   }
 
   const customFontList = await getLocalValue(STORAGE_KEYS.CUSTOM_FONT_LIST)
+  let normalizedCustomFontList: FontData[]
   if (customFontList === undefined) {
-    storageUpdates[STORAGE_KEYS.CUSTOM_FONT_LIST] =
-      DEFAULT_VALUES.CUSTOM_FONT_LIST
+    normalizedCustomFontList = DEFAULT_VALUES.CUSTOM_FONT_LIST
   } else {
-    storageUpdates[STORAGE_KEYS.CUSTOM_FONT_LIST] =
-      await normalizeCustomFontList(customFontList)
+    normalizedCustomFontList = await normalizeCustomFontList(customFontList)
+  }
+  storageUpdates[STORAGE_KEYS.CUSTOM_FONT_LIST] = normalizedCustomFontList
+
+  if (!isSelectedFontAvailable(selectedFont, normalizedCustomFontList)) {
+    storageUpdates[STORAGE_KEYS.SELECTED_FONT] = DEFAULT_VALUES.SELECTED_FONT
   }
 
   await Promise.all(

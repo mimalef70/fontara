@@ -1,6 +1,6 @@
 import { DEFAULT_FONTS } from "../config/fonts"
 import { CUSTOM_CSS_BY_SITE } from "../config/site-fixes"
-import { STORAGE_KEYS } from "../config/storage"
+import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
 import { createCustomFontFaces } from "../generators/custom-font-face"
 import { getFontFaceCSS } from "../generators/font-face"
@@ -10,6 +10,7 @@ import {
   refreshEditableFontStyles,
   removeEditableFontStyles
 } from "./editable-font-style"
+import { removeStyle, upsertStyle } from "./style-utils"
 
 const FONT_STYLES_ID = "fontara-font-styles"
 const CUSTOM_CSS_ID = "fontara-custom-css-style"
@@ -17,28 +18,9 @@ const CUSTOM_FONT_STYLES_ID = "fontara-custom-font-styles"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
 
-function getStyleHost(): HTMLElement {
-  return document.head || document.documentElement
-}
-
-function upsertStyle(id: string, textContent: string): HTMLStyleElement {
-  let styleElement = document.getElementById(id) as HTMLStyleElement | null
-
-  if (!styleElement) {
-    styleElement = document.createElement("style")
-    styleElement.id = id
-    getStyleHost().appendChild(styleElement)
-  }
-
-  if (styleElement.textContent !== textContent) {
-    styleElement.textContent = textContent
-  }
-
-  return styleElement
-}
-
-function removeStyle(id: string): void {
-  document.getElementById(id)?.remove()
+type SelectedFontState = {
+  customFonts: FontData[]
+  fontName: string
 }
 
 export function removeInlineFontStyles(): void {
@@ -68,16 +50,46 @@ async function getSelectedCustomFonts(
   return customFontList.filter((font) => font.value === selectedFont)
 }
 
+async function getSelectedFontState(
+  selectedFont: string | undefined
+): Promise<SelectedFontState> {
+  if (!selectedFont) {
+    return {
+      customFonts: [],
+      fontName: DEFAULT_VALUES.SELECTED_FONT
+    }
+  }
+
+  if (BUNDLED_FONT_VALUES.has(selectedFont)) {
+    return {
+      customFonts: [],
+      fontName: selectedFont
+    }
+  }
+
+  const customFonts = await getSelectedCustomFonts(selectedFont)
+  if (customFonts.length === 0) {
+    return {
+      customFonts: [],
+      fontName: DEFAULT_VALUES.SELECTED_FONT
+    }
+  }
+
+  return {
+    customFonts,
+    fontName: selectedFont
+  }
+}
+
 export async function injectFontStyles(
   matchingWebsite: WebsiteItem | null
 ): Promise<boolean> {
   upsertStyle(FONT_STYLES_ID, getFontFaceCSS())
   const selectedFont = await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
-  updateFontVariable(selectedFont)
+  const selectedFontState = await getSelectedFontState(selectedFont)
+  updateFontVariable(selectedFontState.fontName)
 
-  const customFontFaces = createCustomFontFaces(
-    await getSelectedCustomFonts(selectedFont)
-  )
+  const customFontFaces = createCustomFontFaces(selectedFontState.customFonts)
   if (customFontFaces) {
     upsertStyle(CUSTOM_FONT_STYLES_ID, customFontFaces)
   } else {

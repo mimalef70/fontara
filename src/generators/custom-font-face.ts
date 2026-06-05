@@ -2,12 +2,9 @@ import type { FontData } from "../definitions"
 import {
   escapeCSSString,
   getFontDataURLFormat,
-  isSafeCustomFontValue
+  isSafeCustomFontValue,
+  normalizeFontDataURL
 } from "../utils/font-data"
-
-export function detectFontFormat(fontData: string): string {
-  return getFontDataURLFormat(fontData) ?? "truetype"
-}
 
 export function createCustomFontFaces(
   customFontList: FontData[] | undefined
@@ -17,16 +14,14 @@ export function createCustomFontFaces(
   }
 
   return customFontList
-    .filter(
-      (font) =>
-        isSafeCustomFontValue(font.value) && getFontDataURLFormat(font.data)
-    )
+    .filter((font) => isSafeCustomFontValue(font.value))
     .map((font) => {
-      const format = getFontDataURLFormat(font.data)
-      if (!format) return ""
+      const normalizedDataURL = normalizeFontDataURL(font.data, font.type)
+      const format = getFontDataURLFormat(normalizedDataURL)
+      if (!normalizedDataURL || !format) return ""
 
       const fontFamily = escapeCSSString(font.value)
-      const fontData = escapeCSSString(font.data)
+      const fontData = escapeCSSString(normalizedDataURL)
 
       return `
         @font-face {

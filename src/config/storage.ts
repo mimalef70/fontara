@@ -1,12 +1,8 @@
 import type { WebsiteItem } from "../definitions"
+import { UI_LANGUAGE_AUTO } from "./i18n"
 import { POPULAR_WEBSITES } from "./sites"
 
-export const STORAGE_KEYS = {
-  EXTENSION_ENABLED: "isExtensionEnabled",
-  SELECTED_FONT: "selectedFont",
-  WEBSITE_LIST: "websiteList",
-  CUSTOM_FONT_LIST: "customFontList"
-} as const
+export { STORAGE_KEYS } from "./storage-keys"
 
 export const DEFAULT_VALUES = {
   EXTENSION_ENABLED: true,
@@ -15,7 +11,8 @@ export const DEFAULT_VALUES = {
     ...website,
     isActive: true
   })),
-  CUSTOM_FONT_LIST: []
+  CUSTOM_FONT_LIST: [],
+  UI_LANGUAGE: UI_LANGUAGE_AUTO
 }
 
 export const URLS = {

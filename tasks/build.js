@@ -3,6 +3,7 @@ const chokidar = require("chokidar")
 const bundleCSS = require("./bundle-css")
 const bundleHTML = require("./bundle-html")
 const bundleJS = require("./bundle-js")
+const bundleLocales = require("./bundle-locales")
 const bundleManifest = require("./bundle-manifest")
 const copyAssets = require("./copy")
 const { getDestDir } = require("./paths")
@@ -25,6 +26,7 @@ async function buildPlatform({ platform, debug, zip }) {
   await bundleJS({ platform, debug })
   await bundleCSS({ platform, debug })
   await bundleManifest({ platform, debug })
+  await bundleLocales({ platform, debug })
   await copyAssets({ platform, debug })
 
   if (zip && !debug) {

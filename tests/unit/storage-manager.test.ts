@@ -862,3 +862,18 @@ test("ensureStorageValues resets selection when normalization removes the select
   assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
   assert.deepEqual(values[STORAGE_KEYS.CUSTOM_FONT_LIST], [])
 })
+
+test("ensureStorageValues initializes and normalizes the UI language preference", async () => {
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.UI_LANGUAGE]: "de"
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.UI_LANGUAGE], DEFAULT_VALUES.UI_LANGUAGE)
+})

@@ -1,4 +1,5 @@
 import { DEFAULT_FONTS } from "../config/fonts"
+import { normalizeUILanguagePreference } from "../config/i18n"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
 import {
@@ -164,6 +165,12 @@ export async function ensureStorageValues(): Promise<void> {
   if (extensionEnabled === undefined) {
     storageUpdates[STORAGE_KEYS.EXTENSION_ENABLED] =
       DEFAULT_VALUES.EXTENSION_ENABLED
+  }
+
+  const uiLanguage = await getLocalValue(STORAGE_KEYS.UI_LANGUAGE)
+  const normalizedUILanguage = normalizeUILanguagePreference(uiLanguage)
+  if (uiLanguage !== normalizedUILanguage) {
+    storageUpdates[STORAGE_KEYS.UI_LANGUAGE] = normalizedUILanguage
   }
 
   const selectedFont = await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)

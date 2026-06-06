@@ -1,10 +1,12 @@
 import { STORAGE_KEYS } from "../../../config/storage"
 import { cn } from "../../../utils/cn"
 import { useStorageValue } from "../../hooks/use-storage"
+import { useI18n } from "../../i18n"
 import { getExtensionEnabledInitialValue } from "../../storage-defaults"
 import { HeartBold } from "../icons"
 
 function Footer() {
+  const { t } = useI18n()
   const [extensionActive] = useStorageValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED,
     getExtensionEnabledInitialValue
@@ -17,18 +19,16 @@ function Footer() {
         "opacity-100": extensionActive
       })}>
       <footer className="w-full flex flex-col gap-2 items-center justify-center">
-        <p className="flex justify-center items-center text-gray-500 gap-1">
-          <span className="font-medium flex items-center gap-1">
-            {" "}
-            طراحی و توسعه با <HeartBold className="size-4 text-[#ff0000]" />{" "}
-            توسط{" "}
-          </span>
+        <p className="flex max-w-full items-center justify-center gap-1 whitespace-nowrap text-center text-[11px] leading-5 text-gray-500">
+          <span className="font-medium">{t("footer.designedBeforeHeart")}</span>
+          <HeartBold className="size-4 shrink-0 text-[#ff0000]" />
+          <span className="font-medium">{t("footer.designedAfterHeart")}</span>
           <a
             href="https://www.linkedin.com/in/mostafaalahyari/"
             target="_blank"
             rel="noopener noreferrer"
             className="font-black text-gray-700 cursor-pointer">
-            مصطفی الهیاری
+            {t("footer.authorName")}
           </a>
         </p>
         <div className="flex items-center justify-center gap-2">
@@ -39,8 +39,8 @@ function Footer() {
             className="flex items-center">
             <img src={muchatLogo} alt="muchat" className="h-3" />
           </a> */}
-          <span className="text-gray-500 mt-2 mb-1">
-            Sponsored by{" "}
+          <span className="mt-2 mb-1 text-center text-xs text-gray-500">
+            {t("footer.sponsoredBy")}{" "}
             <a
               href="https://mu.chat"
               target="_blank"

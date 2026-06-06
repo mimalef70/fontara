@@ -48,7 +48,18 @@ test("UI follows the selected extension font", () => {
     /#root \.fontara-font-preview \{[\s\S]*font-family: var\(--fontara-preview-font\)[\s\S]*!important;/
   )
   assert.match(fontSelectorSource, /"--fontara-preview-font"/)
-  assert.match(fontSelectorSource, /FONT_SAMPLE_TEXT/)
+  assert.match(fontSelectorSource, /fontSelector\.previewText/)
+  assert.match(fontSelectorSource, /fontSelector\.groupTitlePrefix/)
+  assert.match(fontSelectorSource, /localizedName/)
+  assert.match(fontSelectorSource, /localizedAuthor/)
+  assert.match(fontSelectorSource, /getFontDisplayName/)
+  assert.match(
+    fontSelectorSource,
+    /groupTitle = `\$\{t\("fontSelector\.groupTitlePrefix"\)\} \$\{author\}`/
+  )
+  assert.match(fontSelectorSource, /<h3[\s\S]*dir=\{direction\}/)
+  assert.match(fontSelectorSource, /dir="auto"[\s\S]*\{fontName\}/)
+  assert.match(fontSelectorSource, /dir="auto"[\s\S]*\{fontSampleText\}/)
 })
 
 test("drawer keeps focus out of aria-hidden popup content", () => {
@@ -78,8 +89,46 @@ test("extension pages render inside error boundaries", () => {
 
   assert.match(errorBoundarySource, /componentDidCatch/)
   assert.match(errorBoundarySource, /getDerivedStateFromError/)
-  assert.match(popupSource, /<ErrorBoundary title="خطا در بارگذاری پاپ‌آپ/)
-  assert.match(optionsSource, /<ErrorBoundary title="خطا در بارگذاری تنظیمات/)
+  assert.match(errorBoundarySource, /description: string/)
+  assert.match(errorBoundarySource, /direction: TextDirection/)
+  assert.match(popupSource, /<I18nProvider>/)
+  assert.match(optionsSource, /<I18nProvider>/)
+  assert.match(popupSource, /waitForI18nBootstrap/)
+  assert.match(optionsSource, /waitForI18nBootstrap/)
+  assert.match(popupSource, /title=\{t\("popup\.errorTitle"\)\}/)
+  assert.match(optionsSource, /title=\{t\("options\.errorTitle"\)\}/)
+  assert.match(popupSource, /direction=\{direction\}/)
+  assert.match(optionsSource, /direction=\{direction\}/)
+})
+
+test("extension pages bootstrap language direction before React renders", () => {
+  const popupHTML = fs.readFileSync(
+    path.resolve("src/ui/popup/index.html"),
+    "utf8"
+  )
+  const optionsHTML = fs.readFileSync(
+    path.resolve("src/ui/options/index.html"),
+    "utf8"
+  )
+  const bootstrapSource = fs.readFileSync(
+    path.resolve("src/ui/i18n/bootstrap.ts"),
+    "utf8"
+  )
+  const i18nProviderSource = fs.readFileSync(
+    path.resolve("src/ui/i18n/index.tsx"),
+    "utf8"
+  )
+
+  assert.match(popupHTML, /<script src="\.\.\/i18n\/bootstrap\.js"><\/script>/)
+  assert.match(
+    optionsHTML,
+    /<script src="\.\.\/i18n\/bootstrap\.js"><\/script>/
+  )
+  assert.match(bootstrapSource, /document\.documentElement\.dir/)
+  assert.match(bootstrapSource, /chrome\.storage\.local\.get/)
+  assert.match(bootstrapSource, /__FONTARA_I18N_BOOTSTRAP__/)
+  assert.match(i18nProviderSource, /__FONTARA_INITIAL_I18N__/)
+  assert.match(i18nProviderSource, /waitForI18nBootstrap/)
 })
 
 test("options page uses the local shadcn sidebar layout", () => {
@@ -119,8 +168,13 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /<SidebarProvider>/)
   assert.match(
     optionsSource,
-    /<Sidebar collapsible="icon" dir="rtl" side="right">/
+    /<Sidebar collapsible="icon" dir=\{direction\} side=\{sidebarSide\}>/
   )
+  assert.match(optionsSource, /direction === "rtl" \? "right" : "left"/)
+  assert.match(optionsSource, /options\.nav\.language/)
+  assert.match(optionsSource, /languageOptions\.map/)
+  assert.match(optionsSource, /dir=\{direction\}[\s\S]*aria-pressed=\{active\}/)
+  assert.doesNotMatch(optionsSource, /getLanguageOptionDirection/)
   assert.match(optionsSource, /<SidebarMenuButton/)
   assert.match(optionsSource, /<SidebarInset>/)
   assert.match(
@@ -162,12 +216,14 @@ test("popup add custom font action is an icon button beside the selector", () =>
 
   assert.match(popupSource, /<FontSelector \/>[\s\S]*<TooltipProvider/)
   assert.match(popupSource, /flex flex-col gap-3 mb-3/)
-  assert.match(popupSource, /aria-label="افزودن فونت دلخواه"/)
+  assert.match(popupSource, /<div dir=\{direction\}>[\s\S]*<PopularSection \/>/)
+  assert.doesNotMatch(popupSource, /direction: "rtl"/)
+  assert.match(popupSource, /aria-label=\{t\("popup\.addCustomFont"\)\}/)
   assert.match(popupSource, /className="[^"]*size-\[3rem\]/)
   assert.match(popupSource, /<PlusCircle className="size-6" \/>/)
   assert.doesNotMatch(
     popupSource,
-    /<button[\s\S]*<PlusCircle \/>[\s\S]*افزودن فونت دلخواه[\s\S]*<\/button>/
+    /<button[\s\S]*<PlusCircle \/>[\s\S]*popup\.addCustomFont[\s\S]*<\/button>/
   )
 })
 
@@ -184,8 +240,22 @@ test("popup header uses a quieter version badge and green toggle", () => {
   assert.match(headerSource, /!bg-gray-100/)
   assert.match(headerSource, /!text-\[9px\]/)
   assert.match(headerSource, /!text-gray-500/)
+  assert.match(headerSource, /direction === "ltr" && "flex-row-reverse"/)
   assert.doesNotMatch(headerSource, /!bg-red-500/)
   assert.match(switchSource, /data-\[state=checked\]:bg-emerald-500/)
+})
+
+test("popup footer wraps localized credits cleanly", () => {
+  const footerSource = fs.readFileSync(
+    path.resolve("src/ui/components/layout/Footer.tsx"),
+    "utf8"
+  )
+
+  assert.match(footerSource, /max-w-full/)
+  assert.match(footerSource, /whitespace-nowrap/)
+  assert.match(footerSource, /text-\[11px\]/)
+  assert.match(footerSource, /text-center/)
+  assert.match(footerSource, /shrink-0 text-\[#ff0000\]/)
 })
 
 test("checkbox and switch controls stay aligned in rtl layouts", () => {
@@ -209,6 +279,16 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /className="peer sr-only"/)
   assert.match(customUrlToggleSource, /peer-focus-visible:ring-2/)
   assert.match(customUrlToggleSource, /className="relative shrink-0"/)
+  assert.match(customUrlToggleSource, /const \{ direction, t \} = useI18n\(\)/)
+  assert.match(customUrlToggleSource, /dir=\{direction\}/)
+  assert.match(
+    customUrlToggleSource,
+    /dir="ltr"[\s\S]*direction === "ltr" && checkboxControl/
+  )
+  assert.match(customUrlToggleSource, /items-center justify-start gap-1/)
+  assert.match(customUrlToggleSource, /dir="ltr"[\s\S]*<img[\s\S]*<bdi/)
+  assert.match(customUrlToggleSource, /<bdi className="truncate" dir="ltr">/)
+  assert.match(customUrlToggleSource, /direction === "rtl" && checkboxControl/)
 })
 
 test("custom font uploads normalize stored names and data URLs", () => {

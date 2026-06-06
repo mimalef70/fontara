@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { createRoot } from "react-dom/client"
 
 import { STORAGE_KEYS } from "../../config/storage"
@@ -18,18 +19,24 @@ import {
 } from "../components/ui/tooltip"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
+import { I18nProvider, useI18n, waitForI18nBootstrap } from "../i18n"
 import { getExtensionEnabledInitialValue } from "../storage-defaults"
 
 function IndexPopup() {
   useSelectedUIFont()
+  const { direction, language, t } = useI18n()
 
   const [extensionActive] = useStorageValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED,
     getExtensionEnabledInitialValue
   )
 
+  useEffect(() => {
+    document.title = t("common.appName")
+  }, [t])
+
   return (
-    <div className="w-[20rem] h-[570px] py-4">
+    <div className="w-[20rem] h-[570px] py-4" dir={direction} lang={language}>
       <section className="h-full">
         <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
           <div className="relative flex flex-col justify-between h-full">
@@ -55,7 +62,7 @@ function IndexPopup() {
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              aria-label="افزودن فونت دلخواه"
+                              aria-label={t("popup.addCustomFont")}
                               onClick={() => void openOptionsPageSafely()}
                               className="flex size-[3rem] shrink-0 cursor-pointer items-center justify-center rounded-[3px] border-0 bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(0,0,0,0.08)] transition-all duration-300 hover:bg-[#e4efff]">
                               <PlusCircle className="size-6" />
@@ -65,7 +72,7 @@ function IndexPopup() {
                             className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
                             side="top"
                             align="center">
-                            افزودن فونت دلخواه
+                            {t("popup.addCustomFont")}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -82,7 +89,7 @@ function IndexPopup() {
               </div>
 
               <div>
-                <div style={{ direction: "rtl" }}>
+                <div dir={direction}>
                   <div>
                     <PopularSection />
                   </div>
@@ -100,13 +107,33 @@ function IndexPopup() {
   )
 }
 
+function LocalizedPopupRoot() {
+  const { direction, t } = useI18n()
+
+  return (
+    <ErrorBoundary
+      title={t("popup.errorTitle")}
+      description={t("error.description")}
+      reloadLabel={t("error.reload")}
+      direction={direction}>
+      <IndexPopup />
+    </ErrorBoundary>
+  )
+}
+
 const rootElement = document.getElementById("root")
 if (!rootElement) {
   throw new Error("FontAra popup root element was not found.")
 }
+const popupRootElement = rootElement
 
-createRoot(rootElement).render(
-  <ErrorBoundary title="خطا در بارگذاری پاپ‌آپ فونت‌آرا">
-    <IndexPopup />
-  </ErrorBoundary>
-)
+async function mountPopup(): Promise<void> {
+  await waitForI18nBootstrap()
+  createRoot(popupRootElement).render(
+    <I18nProvider>
+      <LocalizedPopupRoot />
+    </I18nProvider>
+  )
+}
+
+void mountPopup()

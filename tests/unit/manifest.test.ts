@@ -13,7 +13,11 @@ type Manifest = {
     match_about_blank?: boolean
     run_at?: string
   }>
+  default_locale?: string
+  description?: string
+  name?: string
   permissions: string[]
+  short_name?: string
 }
 
 function readJSON<T>(filePath: string): T {
@@ -53,4 +57,13 @@ test("manifest keeps extension page CSP locked down", () => {
   assert.match(csp, /font-src 'self' data:/)
   assert.match(csp, /style-src 'self' 'unsafe-inline'/)
   assert.doesNotMatch(csp, /object-src 'self'/)
+})
+
+test("manifest uses browser i18n messages for store-facing text", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+
+  assert.equal(manifest.default_locale, "en")
+  assert.equal(manifest.name, "__MSG_extensionName__")
+  assert.equal(manifest.short_name, "__MSG_extensionShortName__")
+  assert.equal(manifest.description, "__MSG_extensionDescription__")
 })

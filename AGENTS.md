@@ -48,6 +48,28 @@ Project convention:
    `ps/pe`, and `border-s/e` over physical left/right utilities unless the
    component documentation explicitly requires physical positioning.
 
+## Extension i18n
+
+User-facing extension UI text must go through the shared i18n catalog in
+`src/i18n/messages.json` and the local React i18n layer in `src/ui/i18n`. Do not
+add hard-coded Persian, English, or Arabic strings inside React components
+unless the value is product data such as a font name, author name, URL, or brand
+name.
+
+When adding a visible UI string:
+
+1. Add the key to `src/i18n/messages.json` for `en`, `fa`, and `ar`.
+2. Use `useI18n().t(...)` in React components, with interpolation for dynamic
+   values instead of string concatenation.
+3. Use `useI18n().formatNumber(...)` and `formatVersion(...)` for visible
+   numbers and versions.
+4. Keep document `lang`/`dir` controlled by `src/ui/i18n/bootstrap.ts` and
+   `I18nProvider`; do not hard-code page-level `dir="rtl"` in React roots.
+5. Store interface language preference through `STORAGE_KEYS.UI_LANGUAGE`.
+6. For manifest/store-facing text, add entries under the `extension` section of
+   `src/i18n/messages.json`. Build output generates `_locales/*/messages.json`
+   from this catalog; do not edit `_locales` files by hand.
+
 ## Site CSS from matched-selector JSON
 
 When a site CSS file is generated from inspected JSON, use the captured JSON as

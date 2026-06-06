@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "short_name": "FontAra Font Changer",
+  "short_name": "__MSG_extensionShortName__",
   "version": "4.3.0",
   "description": "__MSG_extensionDescription__",
   "author": "Mostafa Alahyari",

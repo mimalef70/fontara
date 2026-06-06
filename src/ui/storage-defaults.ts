@@ -1,3 +1,4 @@
+import { normalizeUILanguagePreference } from "../config/i18n"
 import type { FontData, WebsiteItem } from "../definitions"
 
 export const EMPTY_CUSTOM_FONT_LIST: FontData[] = []
@@ -7,4 +8,8 @@ export function getExtensionEnabledInitialValue(
   value: boolean | undefined
 ): boolean {
   return value !== false
+}
+
+export function getUILanguagePreferenceInitialValue(value: unknown) {
+  return normalizeUILanguagePreference(value)
 }

@@ -1,7 +1,9 @@
 import {
+  Check,
   FileText,
   Globe2,
   Info,
+  Languages,
   ListChecks,
   Settings,
   Trash2,
@@ -11,6 +13,12 @@ import {
 import React, { useState } from "react"
 import { createRoot } from "react-dom/client"
 
+import { version } from "../../../package.json"
+import {
+  type SupportedUILanguage,
+  UI_LANGUAGE_AUTO,
+  type UILanguagePreference
+} from "../../config/i18n"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import type { FontData, WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
@@ -49,37 +57,99 @@ import { Toaster } from "../components/ui/toaster"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
+import { I18nProvider, useI18n, waitForI18nBootstrap } from "../i18n"
+import type { MessageKey } from "../i18n/messages"
 import { EMPTY_CUSTOM_FONT_LIST, EMPTY_WEBSITE_LIST } from "../storage-defaults"
 
-type SettingsSection = "fonts" | "sites" | "status"
+type SettingsSection = "fonts" | "sites" | "language" | "status"
 
 const settingsNavigation: Array<{
   id: SettingsSection
-  label: string
+  labelKey: MessageKey
   icon: React.ComponentType<{ className?: string }>
 }> = [
-  { id: "fonts", label: "فونت‌های دلخواه", icon: Type },
-  { id: "sites", label: "سایت‌ها", icon: Globe2 },
-  { id: "status", label: "وضعیت", icon: ListChecks }
+  { id: "fonts", labelKey: "options.nav.fonts", icon: Type },
+  { id: "sites", labelKey: "options.nav.sites", icon: Globe2 },
+  { id: "language", labelKey: "options.nav.language", icon: Languages },
+  { id: "status", labelKey: "options.nav.status", icon: ListChecks }
 ]
 
-function formatBytes(bytes: number): string {
-  if (bytes <= 0) return "۰ KB"
+const sectionDescriptionKeys: Record<SettingsSection, MessageKey> = {
+  fonts: "options.section.fonts.description",
+  sites: "options.section.sites.description",
+  language: "options.section.language.description",
+  status: "options.section.status.description"
+}
+
+const languageOptions: Array<{
+  descriptionKey: MessageKey
+  labelKey: MessageKey
+  value: UILanguagePreference
+}> = [
+  {
+    value: UI_LANGUAGE_AUTO,
+    labelKey: "language.auto",
+    descriptionKey: "language.autoDescription"
+  },
+  {
+    value: "fa",
+    labelKey: "language.fa",
+    descriptionKey: "language.faDescription"
+  },
+  {
+    value: "en",
+    labelKey: "language.en",
+    descriptionKey: "language.enDescription"
+  },
+  {
+    value: "ar",
+    labelKey: "language.ar",
+    descriptionKey: "language.arDescription"
+  }
+]
+
+function getLanguageLabelKey(language: SupportedUILanguage): MessageKey {
+  switch (language) {
+    case "fa":
+      return "language.fa"
+    case "ar":
+      return "language.ar"
+    case "en":
+      return "language.en"
+  }
+}
+
+function formatBytes(
+  bytes: number,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string,
+  kilobyteUnit: string,
+  megabyteUnit: string
+): string {
+  if (bytes <= 0) return `${formatNumber(0)} ${kilobyteUnit}`
 
   const kilobytes = bytes / 1024
   if (kilobytes < 1024) {
-    return `${new Intl.NumberFormat("fa-IR", {
+    return `${formatNumber(kilobytes, {
       maximumFractionDigits: 1
-    }).format(kilobytes)} KB`
+    })} ${kilobyteUnit}`
   }
 
-  return `${new Intl.NumberFormat("fa-IR", {
+  return `${formatNumber(kilobytes / 1024, {
     maximumFractionDigits: 1
-  }).format(kilobytes / 1024)} MB`
+  })} ${megabyteUnit}`
 }
 
 function OptionsPage() {
   useSelectedUIFont()
+  const {
+    direction,
+    formatNumber,
+    formatVersion,
+    language,
+    preference,
+    setPreference,
+    t
+  } = useI18n()
 
   const [customFontList, setCustomFontList] = useStorageValue<FontData[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
@@ -90,6 +160,10 @@ function OptionsPage() {
     EMPTY_WEBSITE_LIST
   )
   const [activeSection, setActiveSection] = useState<SettingsSection>("fonts")
+  const activeNavigation = settingsNavigation.find(
+    (item) => item.id === activeSection
+  )
+  const sidebarSide = direction === "rtl" ? "right" : "left"
 
   const fontUtils = {
     generateFileHash: async (fileBytes: Uint8Array) => {
@@ -111,7 +185,7 @@ function OptionsPage() {
           if (reader.result && typeof reader.result === "string") {
             resolve(reader.result)
           } else {
-            reject(new Error("Failed to read file"))
+            reject(new Error(t("options.toast.fontProcessingError")))
           }
         }
         reader.onerror = () => reject(reader.error)
@@ -126,6 +200,10 @@ function OptionsPage() {
   const [selectedFileHash, setSelectedFileHash] = useState("")
   const [fontName, setFontName] = useState("")
   const { toast } = useToast()
+
+  React.useEffect(() => {
+    document.title = t("common.settings")
+  }, [t])
 
   const resetSelectedFile = () => {
     setSelectedFile(null)
@@ -145,21 +223,21 @@ function OptionsPage() {
 
     if (!isSupportedFontExtension(extension)) {
       toast({
-        title: "لطفا یک فایل فونت معتبر (ttf, woff, woff2, otf) انتخاب کنید"
+        title: t("options.toast.invalidExtension")
       })
       resetSelectedFile()
       return
     }
 
     if (file.size > MAX_CUSTOM_FONT_FILE_SIZE_BYTES) {
-      toast({ title: "حجم فایل فونت نباید بیشتر از 2 مگابایت باشد" })
+      toast({ title: t("options.toast.fileTooLarge") })
       resetSelectedFile()
       return
     }
 
     const fileBytes = new Uint8Array(await file.arrayBuffer())
     if (!isFontFileSignatureSupported(extension, fileBytes)) {
-      toast({ title: "محتوای فایل انتخاب‌شده با فرمت فونت سازگار نیست" })
+      toast({ title: t("options.toast.invalidSignature") })
       resetSelectedFile()
       return
     }
@@ -168,7 +246,7 @@ function OptionsPage() {
     const isDuplicate = fontUtils.isFileContentDuplicate(fileHash)
 
     if (isDuplicate) {
-      toast({ title: "این فایل فونت قبلاً آپلود شده است" })
+      toast({ title: t("options.toast.duplicateFile") })
       resetSelectedFile()
       return
     }
@@ -181,7 +259,7 @@ function OptionsPage() {
     const normalizedFontName = fontName.trim()
 
     if (!selectedFile || !normalizedFontName) {
-      toast({ title: "فیلدهای خالی را پر کنید" })
+      toast({ title: t("options.toast.emptyFields") })
       return
     }
 
@@ -196,7 +274,7 @@ function OptionsPage() {
       })
 
       if (isDuplicateName) {
-        throw new Error("نام فونت تکراری است")
+        throw new Error(t("options.toast.duplicateFontName"))
       }
 
       const fileHash =
@@ -205,14 +283,14 @@ function OptionsPage() {
           new Uint8Array(await selectedFile.arrayBuffer())
         ))
       if (fontUtils.isFileContentDuplicate(fileHash)) {
-        throw new Error("این فایل فونت قبلاً آپلود شده است")
+        throw new Error(t("options.toast.duplicateFile"))
       }
 
       const base64Data = await fontUtils.convertToBase64(selectedFile)
       const extension = getFontFileExtension(selectedFile.name)
       const normalizedDataURL = normalizeFontDataURL(base64Data, extension)
       if (!normalizedDataURL || !getFontDataURLFormat(normalizedDataURL)) {
-        throw new Error("فایل فونت معتبر نیست")
+        throw new Error(t("options.toast.invalidFontFile"))
       }
 
       const suffix = "-Fontara"
@@ -240,13 +318,16 @@ function OptionsPage() {
       const updatedFonts = [...customFontList, fontData]
       await setCustomFontList(updatedFonts)
 
-      toast({ title: "فونت با موفقیت اضافه شد" })
+      toast({ title: t("options.toast.fontAdded") })
 
       resetSelectedFile()
       setFontName("")
     } catch (error) {
       toast({
-        title: error instanceof Error ? error.message : "خطا در پردازش فونت"
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.fontProcessingError")
       })
     } finally {
       setIsLoading(false)
@@ -264,10 +345,13 @@ function OptionsPage() {
         selectedFont
       )
       await setLocalValues(storageUpdate)
-      toast({ title: "فونت با موفقیت حذف شد" })
+      toast({ title: t("options.toast.fontDeleted") })
     } catch (error) {
       toast({
-        title: error instanceof Error ? error.message : "خطا در حذف فونت"
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.fontDeleteError")
       })
     }
   }
@@ -298,7 +382,9 @@ function OptionsPage() {
     } catch (error) {
       toast({
         title:
-          error instanceof Error ? error.message : "خطا در ذخیره تنظیمات سایت"
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
       })
     }
   }
@@ -312,9 +398,9 @@ function OptionsPage() {
 
   return (
     <ToastProvider>
-      <div className="font-estedad" dir="rtl">
+      <div className="font-estedad" dir={direction} lang={language}>
         <SidebarProvider>
-          <Sidebar collapsible="icon" dir="rtl" side="right">
+          <Sidebar collapsible="icon" dir={direction} side={sidebarSide}>
             <SidebarHeader>
               <div className="flex items-center gap-3 overflow-hidden">
                 <img
@@ -324,16 +410,20 @@ function OptionsPage() {
                 />
                 <div className="min-w-0 group-data-[collapsible=icon]:hidden">
                   <h1 className="truncate text-base font-bold text-[#111827]">
-                    فونت آرا
+                    {t("common.appName")}
                   </h1>
-                  <p className="text-xs text-[#64748b]">تنظیمات افزونه</p>
+                  <p className="text-xs text-[#64748b]">
+                    {t("common.settings")}
+                  </p>
                 </div>
               </div>
             </SidebarHeader>
 
             <SidebarContent>
               <SidebarGroup>
-                <SidebarGroupLabel>بخش‌ها</SidebarGroupLabel>
+                <SidebarGroupLabel>
+                  {t("options.sidebar.sections")}
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {settingsNavigation.map((item) => {
@@ -346,7 +436,7 @@ function OptionsPage() {
                             onClick={() => setActiveSection(item.id)}>
                             <Icon className="size-4 shrink-0" />
                             <span className="truncate group-data-[collapsible=icon]:hidden">
-                              {item.label}
+                              {t(item.labelKey)}
                             </span>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
@@ -361,7 +451,7 @@ function OptionsPage() {
               <div className="flex items-center gap-3 rounded-md bg-[#f8fafc] px-3 py-2 text-xs text-[#64748b]">
                 <Info className="size-4 shrink-0" />
                 <span className="truncate group-data-[collapsible=icon]:hidden">
-                  نسخه ۴.۳
+                  {t("common.version", { version: formatVersion(version) })}
                 </span>
               </div>
             </SidebarFooter>
@@ -373,13 +463,12 @@ function OptionsPage() {
               <SidebarTrigger className="shrink-0" />
               <div>
                 <h2 className="text-lg font-bold text-[#111827]">
-                  {settingsNavigation.find((item) => item.id === activeSection)
-                    ?.label || "تنظیمات"}
+                  {activeNavigation
+                    ? t(activeNavigation.labelKey)
+                    : t("common.settings")}
                 </h2>
                 <p className="text-xs text-[#64748b]">
-                  {activeSection === "fonts" && "مدیریت فونت‌های اضافه‌شده"}
-                  {activeSection === "sites" && "مدیریت سایت‌های پیش‌فرض"}
-                  {activeSection === "status" && "نمای کلی وضعیت تنظیمات"}
+                  {t(sectionDescriptionKeys[activeSection])}
                 </p>
               </div>
             </header>
@@ -391,10 +480,10 @@ function OptionsPage() {
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
-                          افزودن فونت
+                          {t("options.addFont.title")}
                         </h3>
                         <p className="mt-1 text-xs text-[#64748b]">
-                          ttf, woff, woff2, otf تا ۲ MB
+                          {t("options.addFont.subtitle")}
                         </p>
                       </div>
                       <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
@@ -407,7 +496,7 @@ function OptionsPage() {
                         <label
                           htmlFor="custom-font-file"
                           className="mb-2 block text-sm font-medium text-[#334155]">
-                          فایل فونت
+                          {t("options.addFont.fileLabel")}
                         </label>
                         <input
                           id="custom-font-file"
@@ -424,17 +513,17 @@ function OptionsPage() {
                         <label
                           htmlFor="custom-font-name"
                           className="mb-2 block text-sm font-medium text-[#334155]">
-                          نام فونت
+                          {t("options.addFont.nameLabel")}
                         </label>
                         <input
                           id="custom-font-name"
                           type="text"
                           value={fontName}
                           onChange={(event) => setFontName(event.target.value)}
-                          placeholder="نام فونت را وارد کنید"
+                          placeholder={t("options.addFont.namePlaceholder")}
                           className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
                           disabled={isLoading}
-                          dir="rtl"
+                          dir="auto"
                         />
                       </div>
 
@@ -444,7 +533,9 @@ function OptionsPage() {
                         className="h-11 w-full bg-[#2374ff] text-white hover:bg-[#1f66df]"
                         disabled={isLoading}>
                         <Upload className="size-4" />
-                        {isLoading ? "در حال افزودن" : "افزودن فونت"}
+                        {isLoading
+                          ? t("options.addFont.loading")
+                          : t("options.addFont.button")}
                       </Button>
                     </div>
                   </section>
@@ -453,11 +544,18 @@ function OptionsPage() {
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
-                          فونت‌های ذخیره‌شده
+                          {t("options.savedFonts.title")}
                         </h3>
                         <p className="mt-1 text-xs text-[#64748b]">
-                          {customFontList.length} فونت،{" "}
-                          {formatBytes(fontStorageBytes)}
+                          {t("options.customFonts.count", {
+                            count: formatNumber(customFontList.length),
+                            size: formatBytes(
+                              fontStorageBytes,
+                              formatNumber,
+                              t("unit.kb"),
+                              t("unit.mb")
+                            )
+                          })}
                         </p>
                       </div>
                       <div className="flex size-10 items-center justify-center rounded-md bg-[#f8fafc] text-[#64748b]">
@@ -491,14 +589,14 @@ function OptionsPage() {
                               onClick={() => handleDeleteFont(font.value)}
                               disabled={isLoading}>
                               <Trash2 className="size-4" />
-                              حذف
+                              {t("common.delete")}
                             </Button>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-[#dbe3ef] text-sm text-[#64748b]">
-                        فونتی ذخیره نشده است
+                        {t("options.emptyFonts")}
                       </div>
                     )}
                   </section>
@@ -510,11 +608,13 @@ function OptionsPage() {
                   <div className="mb-5 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-bold text-[#111827]">
-                        سایت‌های پیش‌فرض
+                        {t("options.sites.title")}
                       </h3>
                       <p className="mt-1 text-xs text-[#64748b]">
-                        {activeWebsiteCount} فعال از{" "}
-                        {effectiveWebsiteList.length} سایت
+                        {t("options.sites.count", {
+                          active: formatNumber(activeWebsiteCount),
+                          total: formatNumber(effectiveWebsiteList.length)
+                        })}
                       </p>
                     </div>
                     <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
@@ -552,8 +652,8 @@ function OptionsPage() {
                               </div>
                               <div className="truncate text-xs text-[#64748b]">
                                 {website.customCss
-                                  ? "CSS اختصاصی"
-                                  : "حالت عمومی"}
+                                  ? t("options.siteMode.customCss")
+                                  : t("options.siteMode.general")}
                               </div>
                             </div>
                           </div>
@@ -562,9 +662,77 @@ function OptionsPage() {
                             onCheckedChange={() =>
                               void handleWebsiteToggle(website)
                             }
-                            aria-label={`تغییر وضعیت ${website.siteName || website.url}`}
+                            aria-label={t("options.siteToggleAria", {
+                              site: website.siteName || website.url
+                            })}
                           />
                         </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {activeSection === "language" && (
+                <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-[#111827]">
+                        {t("language.title")}
+                      </h3>
+                      <p className="mt-1 text-xs text-[#64748b]">
+                        {t("language.subtitle")}
+                      </p>
+                    </div>
+                    <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <Languages className="size-5" />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {languageOptions.map((option) => {
+                      const active = preference === option.value
+                      const description =
+                        option.value === UI_LANGUAGE_AUTO
+                          ? `${t(option.descriptionKey)} ${t(
+                              "language.resolved",
+                              {
+                                language: t(getLanguageLabelKey(language))
+                              }
+                            )}`
+                          : t(option.descriptionKey)
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          dir={direction}
+                          aria-pressed={active}
+                          onClick={() => void setPreference(option.value)}
+                          className={cn(
+                            "flex min-h-24 items-start justify-between gap-3 rounded-md border p-4 text-start transition",
+                            active
+                              ? "border-[#2374ff] bg-[#f8fbff]"
+                              : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe] hover:bg-[#f8fafc]"
+                          )}>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-[#111827]">
+                              {t(option.labelKey)}
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-[#64748b]">
+                              {description}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                              active
+                                ? "border-[#2374ff] bg-[#2374ff] text-white"
+                                : "border-[#dbe3ef] text-transparent"
+                            )}>
+                            <Check className="size-4" />
+                          </span>
+                        </button>
                       )
                     })}
                   </div>
@@ -576,28 +744,30 @@ function OptionsPage() {
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <Settings className="mb-4 size-5 text-[#2374ff]" />
                     <div className="text-2xl font-bold text-[#111827]">
-                      {customFontList.length}
+                      {formatNumber(customFontList.length)}
                     </div>
                     <div className="mt-1 text-sm text-[#64748b]">
-                      فونت دلخواه
+                      {t("options.status.customFonts")}
                     </div>
                   </section>
 
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <Globe2 className="mb-4 size-5 text-[#2374ff]" />
                     <div className="text-2xl font-bold text-[#111827]">
-                      {activeWebsiteCount}
+                      {formatNumber(activeWebsiteCount)}
                     </div>
-                    <div className="mt-1 text-sm text-[#64748b]">سایت فعال</div>
+                    <div className="mt-1 text-sm text-[#64748b]">
+                      {t("options.status.activeSites")}
+                    </div>
                   </section>
 
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <ListChecks className="mb-4 size-5 text-[#2374ff]" />
                     <div className="text-2xl font-bold text-[#111827]">
-                      {cssOnlyWebsiteCount}
+                      {formatNumber(cssOnlyWebsiteCount)}
                     </div>
                     <div className="mt-1 text-sm text-[#64748b]">
-                      CSS اختصاصی
+                      {t("options.status.cssOnly")}
                     </div>
                   </section>
                 </div>
@@ -611,13 +781,33 @@ function OptionsPage() {
   )
 }
 
+function LocalizedOptionsRoot() {
+  const { direction, t } = useI18n()
+
+  return (
+    <ErrorBoundary
+      title={t("options.errorTitle")}
+      description={t("error.description")}
+      reloadLabel={t("error.reload")}
+      direction={direction}>
+      <OptionsPage />
+    </ErrorBoundary>
+  )
+}
+
 const rootElement = document.getElementById("root")
 if (!rootElement) {
   throw new Error("FontAra options root element was not found.")
 }
+const optionsRootElement = rootElement
 
-createRoot(rootElement).render(
-  <ErrorBoundary title="خطا در بارگذاری تنظیمات فونت‌آرا">
-    <OptionsPage />
-  </ErrorBoundary>
-)
+async function mountOptions(): Promise<void> {
+  await waitForI18nBootstrap()
+  createRoot(optionsRootElement).render(
+    <I18nProvider>
+      <LocalizedOptionsRoot />
+    </I18nProvider>
+  )
+}
+
+void mountOptions()

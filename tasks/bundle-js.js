@@ -21,6 +21,10 @@ const jsEntries = [
   {
     src: "src/ui/options/index.tsx",
     dest: "ui/options/index.js"
+  },
+  {
+    src: "src/ui/i18n/bootstrap.ts",
+    dest: "ui/i18n/bootstrap.js"
   }
 ]
 

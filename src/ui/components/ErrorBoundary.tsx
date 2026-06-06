@@ -1,7 +1,12 @@
 import { Component, type ErrorInfo, type ReactNode } from "react"
 
+import type { TextDirection } from "../../config/i18n"
+
 type ErrorBoundaryProps = {
   children: ReactNode
+  description: string
+  direction: TextDirection
+  reloadLabel: string
   title: string
 }
 
@@ -32,19 +37,17 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     if (this.state.hasError) {
       return (
         <div
-          dir="rtl"
+          dir={this.props.direction}
           className="flex min-h-[220px] flex-col items-center justify-center gap-3 p-6 text-center text-gray-700">
           <h1 className="text-base font-bold text-gray-900">
             {this.props.title}
           </h1>
-          <p className="text-sm leading-6">
-            یک خطای موقت رخ داد. صفحه را دوباره بارگذاری کنید.
-          </p>
+          <p className="text-sm leading-6">{this.props.description}</p>
           <button
             type="button"
             className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-[#2374ff] shadow-sm transition-colors hover:bg-gray-50"
             onClick={this.handleReload}>
-            بارگذاری دوباره
+            {this.props.reloadLabel}
           </button>
         </div>
       )

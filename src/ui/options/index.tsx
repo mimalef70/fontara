@@ -1,9 +1,20 @@
+import {
+  FileText,
+  Globe2,
+  Info,
+  ListChecks,
+  Settings,
+  Trash2,
+  Type,
+  Upload
+} from "lucide-react"
 import React, { useState } from "react"
 import { createRoot } from "react-dom/client"
 
-import { STORAGE_KEYS } from "../../config/storage"
-import type { FontData } from "../../definitions"
+import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
+import type { FontData, WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
+import { cn } from "../../utils/cn"
 import { createCustomFontDeletionUpdate } from "../../utils/custom-fonts"
 import {
   getFontDataURLFormat,
@@ -15,12 +26,57 @@ import {
 } from "../../utils/font-data"
 import { getLocalValue, setLocalValues } from "../../utils/storage"
 import ErrorBoundary from "../components/ErrorBoundary"
+import { Button } from "../components/ui/button"
+import { Switch } from "../components/ui/Switch"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger
+} from "../components/ui/sidebar"
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
-import { EMPTY_CUSTOM_FONT_LIST } from "../storage-defaults"
+import { EMPTY_CUSTOM_FONT_LIST, EMPTY_WEBSITE_LIST } from "../storage-defaults"
+
+type SettingsSection = "fonts" | "sites" | "status"
+
+const settingsNavigation: Array<{
+  id: SettingsSection
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+}> = [
+  { id: "fonts", label: "فونت‌های دلخواه", icon: Type },
+  { id: "sites", label: "سایت‌ها", icon: Globe2 },
+  { id: "status", label: "وضعیت", icon: ListChecks }
+]
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return "۰ KB"
+
+  const kilobytes = bytes / 1024
+  if (kilobytes < 1024) {
+    return `${new Intl.NumberFormat("fa-IR", {
+      maximumFractionDigits: 1
+    }).format(kilobytes)} KB`
+  }
+
+  return `${new Intl.NumberFormat("fa-IR", {
+    maximumFractionDigits: 1
+  }).format(kilobytes / 1024)} MB`
+}
 
 function OptionsPage() {
   useSelectedUIFont()
@@ -29,6 +85,11 @@ function OptionsPage() {
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
+  const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
+    STORAGE_KEYS.WEBSITE_LIST,
+    EMPTY_WEBSITE_LIST
+  )
+  const [activeSection, setActiveSection] = useState<SettingsSection>("fonts")
 
   const fontUtils = {
     generateFileHash: async (fileBytes: Uint8Array) => {
@@ -211,99 +272,339 @@ function OptionsPage() {
     }
   }
 
+  const effectiveWebsiteList =
+    websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
+  const activeWebsiteCount = effectiveWebsiteList.filter(
+    (website) => website.isActive !== false
+  ).length
+  const cssOnlyWebsiteCount = effectiveWebsiteList.filter(
+    (website) => website.customCss === true
+  ).length
+  const fontStorageBytes = customFontList.reduce((total, font) => {
+    return total + new Blob([font.data]).size
+  }, 0)
+
+  const handleWebsiteToggle = async (website: WebsiteItem) => {
+    const currentWebsiteList =
+      websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
+    const updatedWebsiteList = currentWebsiteList.map((item) =>
+      item.url === website.url
+        ? { ...item, isActive: item.isActive === false }
+        : item
+    )
+
+    try {
+      await setWebsiteList(updatedWebsiteList)
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error ? error.message : "خطا در ذخیره تنظیمات سایت"
+      })
+    }
+  }
+
+  const isWebsiteActive = (website: WebsiteItem) => {
+    return (
+      effectiveWebsiteList.find((item) => item.url === website.url)
+        ?.isActive !== false
+    )
+  }
+
   return (
     <ToastProvider>
-      <div className="p-4 max-w-xl mx-auto font-estedad">
-        <div className="bg-white rounded shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <img
-              alt=""
-              src={getExtensionAssetURL("assets/newlogo.svg")}
-              className="w-1/3"
-            />
-            <h2 className="text-xl font-bold text-right ">
-              افزودن فونت دلخواه
-            </h2>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label
-                htmlFor="custom-font-file"
-                className="block text-right mb-2">
-                انتخاب فونت
-              </label>
-              <input
-                id="custom-font-file"
-                ref={fileInputRef}
-                type="file"
-                onChange={handleFileChange}
-                accept=".ttf,.woff,.woff2,.otf"
-                className="w-full p-2 border rounded"
-                disabled={isLoading}
-              />
-              <p className="text-sm text-gray-500 text-right mt-1">
-                فرمت‌های مجاز: ttf, woff, woff2, otf (حداکثر 2 مگابایت)
-              </p>
-            </div>
-
-            <div>
-              <label
-                htmlFor="custom-font-name"
-                className="block text-right mb-2">
-                نام فونت
-              </label>
-              <input
-                id="custom-font-name"
-                type="text"
-                value={fontName}
-                onChange={(e) => setFontName(e.target.value)}
-                placeholder="نام فونت را وارد کنید"
-                className="w-full p-2 border rounded"
-                disabled={isLoading}
-                dir="rtl"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSaveFont}
-              className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
-              disabled={isLoading}>
-              {isLoading ? "در حال افزودن..." : "افزودن فونت"}
-            </button>
-
-            {customFontList.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-right mb-2">
-                  فونت‌های اضافه شده
-                </h3>
-                <div className="space-y-2">
-                  {customFontList.map((font: FontData) => (
-                    <div
-                      key={font.value}
-                      className="flex flex-col p-2 border rounded">
-                      <div className="flex justify-between items-center w-full mb-1">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteFont(font.value)}
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                          disabled={isLoading}>
-                          حذف
-                        </button>
-                        <span>{font.name}</span>
-                      </div>
-                      {font.originalFileName && (
-                        <div className="text-sm text-gray-500 text-right w-full border-t pt-1 mt-1">
-                          نام فایل: {font.originalFileName}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+      <div className="font-estedad" dir="rtl">
+        <SidebarProvider>
+          <Sidebar collapsible="icon" dir="rtl" side="right">
+            <SidebarHeader>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <img
+                  alt=""
+                  src={getExtensionAssetURL("assets/newlogo.svg")}
+                  className="size-10 shrink-0"
+                />
+                <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+                  <h1 className="truncate text-base font-bold text-[#111827]">
+                    فونت آرا
+                  </h1>
+                  <p className="text-xs text-[#64748b]">تنظیمات افزونه</p>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+            </SidebarHeader>
+
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>بخش‌ها</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {settingsNavigation.map((item) => {
+                      const Icon = item.icon
+
+                      return (
+                        <SidebarMenuItem key={item.id}>
+                          <SidebarMenuButton
+                            isActive={activeSection === item.id}
+                            onClick={() => setActiveSection(item.id)}>
+                            <Icon className="size-4 shrink-0" />
+                            <span className="truncate group-data-[collapsible=icon]:hidden">
+                              {item.label}
+                            </span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+
+            <SidebarFooter>
+              <div className="flex items-center gap-3 rounded-md bg-[#f8fafc] px-3 py-2 text-xs text-[#64748b]">
+                <Info className="size-4 shrink-0" />
+                <span className="truncate group-data-[collapsible=icon]:hidden">
+                  نسخه ۴.۳
+                </span>
+              </div>
+            </SidebarFooter>
+            <SidebarRail />
+          </Sidebar>
+
+          <SidebarInset>
+            <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b bg-white/90 px-6 backdrop-blur">
+              <SidebarTrigger className="shrink-0" />
+              <div>
+                <h2 className="text-lg font-bold text-[#111827]">
+                  {settingsNavigation.find((item) => item.id === activeSection)
+                    ?.label || "تنظیمات"}
+                </h2>
+                <p className="text-xs text-[#64748b]">
+                  {activeSection === "fonts" && "مدیریت فونت‌های اضافه‌شده"}
+                  {activeSection === "sites" && "مدیریت سایت‌های پیش‌فرض"}
+                  {activeSection === "status" && "نمای کلی وضعیت تنظیمات"}
+                </p>
+              </div>
+            </header>
+
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+              {activeSection === "fonts" && (
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          افزودن فونت
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          ttf, woff, woff2, otf تا ۲ MB
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <Upload className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label
+                          htmlFor="custom-font-file"
+                          className="mb-2 block text-sm font-medium text-[#334155]">
+                          فایل فونت
+                        </label>
+                        <input
+                          id="custom-font-file"
+                          ref={fileInputRef}
+                          type="file"
+                          onChange={handleFileChange}
+                          accept=".ttf,.woff,.woff2,.otf"
+                          className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 py-2 text-sm text-[#334155] file:ms-3 file:rounded-md file:border-0 file:bg-[#edf3fd] file:px-3 file:py-1.5 file:text-[#2374ff]"
+                          disabled={isLoading}
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="custom-font-name"
+                          className="mb-2 block text-sm font-medium text-[#334155]">
+                          نام فونت
+                        </label>
+                        <input
+                          id="custom-font-name"
+                          type="text"
+                          value={fontName}
+                          onChange={(event) => setFontName(event.target.value)}
+                          placeholder="نام فونت را وارد کنید"
+                          className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                          disabled={isLoading}
+                          dir="rtl"
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={handleSaveFont}
+                        className="h-11 w-full bg-[#2374ff] text-white hover:bg-[#1f66df]"
+                        disabled={isLoading}>
+                        <Upload className="size-4" />
+                        {isLoading ? "در حال افزودن" : "افزودن فونت"}
+                      </Button>
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          فونت‌های ذخیره‌شده
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          {customFontList.length} فونت،{" "}
+                          {formatBytes(fontStorageBytes)}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#f8fafc] text-[#64748b]">
+                        <FileText className="size-5" />
+                      </div>
+                    </div>
+
+                    {customFontList.length > 0 ? (
+                      <div className="space-y-3">
+                        {customFontList.map((font: FontData) => (
+                          <div
+                            key={font.value}
+                            className="flex items-center justify-between gap-3 rounded-md border border-[#e5e7eb] px-3 py-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-[#111827]">
+                                {font.name}
+                              </div>
+                              {font.originalFileName && (
+                                <div
+                                  className="mt-1 truncate text-xs text-[#64748b]"
+                                  dir="ltr">
+                                  {font.originalFileName}
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => handleDeleteFont(font.value)}
+                              disabled={isLoading}>
+                              <Trash2 className="size-4" />
+                              حذف
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-[#dbe3ef] text-sm text-[#64748b]">
+                        فونتی ذخیره نشده است
+                      </div>
+                    )}
+                  </section>
+                </div>
+              )}
+
+              {activeSection === "sites" && (
+                <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-bold text-[#111827]">
+                        سایت‌های پیش‌فرض
+                      </h3>
+                      <p className="mt-1 text-xs text-[#64748b]">
+                        {activeWebsiteCount} فعال از{" "}
+                        {effectiveWebsiteList.length} سایت
+                      </p>
+                    </div>
+                    <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <Globe2 className="size-5" />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {effectiveWebsiteList.map((website) => {
+                      const active = isWebsiteActive(website)
+
+                      return (
+                        <div
+                          key={website.url}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-md border px-3 py-3 transition",
+                            active
+                              ? "border-[#dbeafe] bg-[#f8fbff]"
+                              : "border-[#e5e7eb] bg-white opacity-70"
+                          )}>
+                          <div className="flex min-w-0 items-center gap-3">
+                            {website.icon && (
+                              <img
+                                alt=""
+                                src={getExtensionAssetURL(website.icon)}
+                                className={cn(
+                                  "size-8 rounded-md object-contain",
+                                  !active && "grayscale"
+                                )}
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-[#111827]">
+                                {website.siteName || website.url}
+                              </div>
+                              <div className="truncate text-xs text-[#64748b]">
+                                {website.customCss
+                                  ? "CSS اختصاصی"
+                                  : "حالت عمومی"}
+                              </div>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={active}
+                            onCheckedChange={() =>
+                              void handleWebsiteToggle(website)
+                            }
+                            aria-label={`تغییر وضعیت ${website.siteName || website.url}`}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {activeSection === "status" && (
+                <div className="grid gap-4 md:grid-cols-3">
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <Settings className="mb-4 size-5 text-[#2374ff]" />
+                    <div className="text-2xl font-bold text-[#111827]">
+                      {customFontList.length}
+                    </div>
+                    <div className="mt-1 text-sm text-[#64748b]">
+                      فونت دلخواه
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <Globe2 className="mb-4 size-5 text-[#2374ff]" />
+                    <div className="text-2xl font-bold text-[#111827]">
+                      {activeWebsiteCount}
+                    </div>
+                    <div className="mt-1 text-sm text-[#64748b]">سایت فعال</div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <ListChecks className="mb-4 size-5 text-[#2374ff]" />
+                    <div className="text-2xl font-bold text-[#111827]">
+                      {cssOnlyWebsiteCount}
+                    </div>
+                    <div className="mt-1 text-sm text-[#64748b]">
+                      CSS اختصاصی
+                    </div>
+                  </section>
+                </div>
+              )}
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
         <Toaster />
       </div>
     </ToastProvider>

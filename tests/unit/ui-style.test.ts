@@ -82,6 +82,78 @@ test("extension pages render inside error boundaries", () => {
   assert.match(optionsSource, /<ErrorBoundary title="خطا در بارگذاری تنظیمات/)
 })
 
+test("options page uses the local shadcn sidebar layout", () => {
+  const agentsSource = fs.readFileSync(path.resolve("AGENTS.md"), "utf8")
+  const componentsConfig = fs.readFileSync(
+    path.resolve("components.json"),
+    "utf8"
+  )
+  const packageSource = fs.readFileSync(path.resolve("package.json"), "utf8")
+  const styleSource = fs.readFileSync(path.resolve("src/style.css"), "utf8")
+  const tailwindSource = fs.readFileSync(
+    path.resolve("tailwind.config.js"),
+    "utf8"
+  )
+  const optionsSource = fs.readFileSync(
+    path.resolve("src/ui/options/index.tsx"),
+    "utf8"
+  )
+  const sidebarSource = fs.readFileSync(
+    path.resolve("src/ui/components/ui/sidebar.tsx"),
+    "utf8"
+  )
+
+  assert.match(agentsSource, /shadcn\/ui primitives/)
+  assert.match(agentsSource, /pnpm dlx shadcn@latest add <component>/)
+  assert.match(agentsSource, /src\/ui\/components\/ui/)
+  assert.match(agentsSource, /DeepWiki/)
+  assert.match(agentsSource, /shadcn RTL guidance/)
+  assert.match(agentsSource, /text-start/)
+  assert.match(componentsConfig, /"ui": "@\/ui\/components\/ui"/)
+  assert.match(componentsConfig, /"hooks": "@\/ui\/hooks"/)
+  assert.match(packageSource, /"@radix-ui\/react-dialog"/)
+  assert.match(packageSource, /"@radix-ui\/react-separator"/)
+  assert.match(styleSource, /--sidebar-background/)
+  assert.match(tailwindSource, /sidebar:\s*{[\s\S]*--sidebar-background/)
+  assert.match(optionsSource, /from "..\/components\/ui\/sidebar"/)
+  assert.match(optionsSource, /<SidebarProvider>/)
+  assert.match(
+    optionsSource,
+    /<Sidebar collapsible="icon" dir="rtl" side="right">/
+  )
+  assert.match(optionsSource, /<SidebarMenuButton/)
+  assert.match(optionsSource, /<SidebarInset>/)
+  assert.match(
+    optionsSource,
+    /<header className="[^"]*gap-3[\s\S]*<SidebarTrigger className="shrink-0" \/>[\s\S]*<h2/
+  )
+  assert.match(sidebarSource, /const SidebarProvider = React\.forwardRef/)
+  assert.match(sidebarSource, /const SidebarTrigger = React\.forwardRef/)
+  assert.match(sidebarSource, /children,\s+dir,\s+\.\.\.props/)
+  assert.match(sidebarSource, /<SheetContent\s+dir={dir}/)
+  assert.match(sidebarSource, /data-\[side=right\]:right-0/)
+  assert.match(sidebarSource, /after:start-1\/2/)
+  assert.match(sidebarSource, /<PanelLeft className="rtl:rotate-180" \/>/)
+  assert.match(sidebarSource, /text-start/)
+  assert.match(
+    sidebarSource,
+    /group-has-\[\[data-sidebar=menu-action\]\]\/menu-item:pe-8/
+  )
+  assert.match(sidebarSource, /absolute end-1/)
+  assert.match(sidebarSource, /from "\.\/sheet"/)
+  assert.match(sidebarSource, /from "\.\/separator"/)
+  assert.match(sidebarSource, /from "\.\/input"/)
+  assert.match(sidebarSource, /from "\.\/skeleton"/)
+  assert.match(sidebarSource, /from "\.\.\/\.\.\/hooks\/use-mobile"/)
+  assert.match(sidebarSource, /SidebarMenuAction/)
+  assert.match(sidebarSource, /SidebarSeparator/)
+  assert.match(sidebarSource, /w-\[var\(--sidebar-width\)\]/)
+  assert.doesNotMatch(sidebarSource, /w-\[--sidebar-width/)
+  assert.doesNotMatch(sidebarSource, /after:left-1\/2/)
+  assert.doesNotMatch(sidebarSource, /text-left/)
+  assert.doesNotMatch(sidebarSource, /menu-item:pr-8/)
+})
+
 test("popup add custom font action is an icon button beside the selector", () => {
   const popupSource = fs.readFileSync(
     path.resolve("src/ui/popup/index.tsx"),
@@ -114,6 +186,29 @@ test("popup header uses a quieter version badge and green toggle", () => {
   assert.match(headerSource, /!text-gray-500/)
   assert.doesNotMatch(headerSource, /!bg-red-500/)
   assert.match(switchSource, /data-\[state=checked\]:bg-emerald-500/)
+})
+
+test("checkbox and switch controls stay aligned in rtl layouts", () => {
+  const switchSource = fs.readFileSync(
+    path.resolve("src/ui/components/ui/Switch.tsx"),
+    "utf8"
+  )
+  const customUrlToggleSource = fs.readFileSync(
+    path.resolve("src/ui/components/CustomUrlToggle.tsx"),
+    "utf8"
+  )
+
+  assert.match(switchSource, /\(\{ className, dir = "ltr", \.\.\.props \}/)
+  assert.match(switchSource, /dir=\{dir\}/)
+  assert.match(
+    switchSource,
+    /data-\[state=checked\]:translate-x-5 data-\[state=unchecked\]:translate-x-0/
+  )
+  assert.match(switchSource, /data-\[state=unchecked\]:bg-slate-200/)
+  assert.doesNotMatch(switchSource, /data-\[state=unchecked\]:bg-input/)
+  assert.match(customUrlToggleSource, /className="peer sr-only"/)
+  assert.match(customUrlToggleSource, /peer-focus-visible:ring-2/)
+  assert.match(customUrlToggleSource, /className="relative shrink-0"/)
 })
 
 test("custom font uploads normalize stored names and data URLs", () => {

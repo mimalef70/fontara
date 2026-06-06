@@ -11,6 +11,9 @@
     "allowSyntheticDefaultImports": true,
     "allowArbitraryExtensions": true,
     "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "forceConsistentCasingInFileNames": true,
     "types": ["chrome", "firefox-webext-browser", "node"]
   },

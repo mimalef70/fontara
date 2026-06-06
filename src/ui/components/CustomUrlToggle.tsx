@@ -79,18 +79,18 @@ const CustomUrlToggle = () => {
         className="text-xs cursor-pointer overflow-y-hidden"
         htmlFor="customUrl">
         <div className="flex items-center w-full gap-1">
-          <div className="relative">
+          <div className="relative shrink-0">
             <input
               type="checkbox"
               name="customUrl"
               id="customUrl"
-              className="sr-only"
+              className="peer sr-only"
               checked={active}
               onChange={(e) => void handleUrlToggle(e.target.checked)}
             />
             <span
               aria-hidden="true"
-              className={`h-4 w-4 rounded border transition-all duration-200 flex items-center justify-center cursor-pointer ${
+              className={`flex size-4 cursor-pointer items-center justify-center rounded border transition-all duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[#2474FF]/30 peer-focus-visible:ring-offset-2 ${
                 active
                   ? "bg-[#2474FF] border-[#2474FF]"
                   : "border-gray-300 hover:border-[#2474FF]"

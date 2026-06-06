@@ -1,5 +1,53 @@
 # FontARA Agent Rules
 
+## UI components and shadcn/ui
+
+For extension UI work, prefer shadcn/ui primitives over one-off custom
+components when a matching primitive exists. Add only the components that are
+needed for the current change. For new shadcn/ui components, use the official
+CLI as the default source of truth:
+
+```sh
+pnpm dlx shadcn@latest add <component>
+```
+
+Keep `components.json` aliases aligned with the real project layout before
+running the CLI. For this extension the shadcn aliases point to `src` through
+`@/*`, with `ui` at `@/ui/components/ui`, `hooks` at `@/ui/hooks`, and `utils`
+at `@/utils/cn`.
+
+When the repo's aliases or output paths do not match the extension layout, first
+run the CLI with `--dry-run`, `--diff`, or `--view`, then adapt the generated
+component into the project structure. Do not hand-write a shadcn component from
+memory when the CLI can provide the current implementation.
+
+Project convention:
+
+1. shadcn/ui components live in `src/ui/components/ui`.
+2. Import them from that local component module, matching the existing project
+   style. For example, from `src/ui/options/index.tsx` use:
+
+   ```ts
+   import { Button } from "../components/ui/button"
+   import { SidebarProvider } from "../components/ui/sidebar"
+   ```
+
+3. Keep generated shadcn component APIs recognizable and close to the upstream
+   component names, so future `shadcn add <component>` output can be compared
+   or merged without guesswork.
+4. When adding a new shadcn component, run the CLI first, then use the official
+   shadcn docs and CLI output as the source of truth. If the component behavior,
+   composition, or API is unclear, ask DeepWiki about the shadcn/ui repository
+   before inventing a local pattern.
+5. Do not introduce unrelated UI libraries for primitives already covered by
+   shadcn/ui.
+6. For Persian or RTL extension surfaces, apply the shadcn RTL guidance before
+   shipping: pass `dir="rtl"` where the component accepts direction, keep
+   controls on the visual start side, flip directional icons with RTL variants,
+   and prefer logical Tailwind utilities such as `text-start`, `start/end`,
+   `ps/pe`, and `border-s/e` over physical left/right utilities unless the
+   component documentation explicitly requires physical positioning.
+
 ## Site CSS from matched-selector JSON
 
 When a site CSS file is generated from inspected JSON, use the captured JSON as

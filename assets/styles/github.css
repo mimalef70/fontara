@@ -1,0 +1,20 @@
+:root {
+  --fontara-github-ui-fallback: "Mona Sans VF", -apple-system, "system-ui",
+    "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  --fontara-github-root-fallback: sans-serif;
+}
+
+html {
+  font-family: var(--fontara-font),
+    var(--fontara-github-root-fallback) !important;
+}
+
+[class*="ControlledTooltip-module__tooltipBase__"]::after,
+.markdown-body,
+.prc-Tooltip-Tooltip-JLsri::after,
+.prc-TooltipV2-Tooltip-tLeuB[popover],
+body,
+kbd {
+  font-family: var(--fontara-font), var(--fontara-github-ui-fallback) !important;
+}

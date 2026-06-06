@@ -7,6 +7,7 @@ import deepseek from "../../assets/styles/deepseek.css"
 import duckduckgo from "../../assets/styles/duckduckgo.css"
 import facebook from "../../assets/styles/facebook.css"
 import gemini from "../../assets/styles/gemini.css"
+import github from "../../assets/styles/github.css"
 import gmail from "../../assets/styles/gmail.css"
 import google from "../../assets/styles/google.css"
 import instagram from "../../assets/styles/instagram.css"
@@ -34,6 +35,7 @@ export const CUSTOM_CSS_BY_SITE: Record<string, string> = {
   "https://duckduckgo.com": duckduckgo,
   "https://www.facebook.com": facebook,
   "https://gemini.google.com": gemini,
+  "https://github.com": github,
   "https://mail.google.com": gmail,
   "https://www.google.com": google,
   "https://www.instagram.com": instagram,

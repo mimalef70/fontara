@@ -135,14 +135,14 @@ flowchart TD
 
 ## سایت های پیش فرض
 
-30 سایت popular در `src/config/sites.ts` تعریف شده اند. همه در default فعال هستند. 25 سایت مسیر custom CSS دارند و برای release فعلی version rule آنها 4.3.0 است:
+30 سایت popular در `src/config/sites.ts` تعریف شده اند. همه در default فعال هستند. 26 سایت مسیر custom CSS دارند و برای release فعلی version rule آنها 4.3.0 است:
 
 | سایت | custom CSS | نسخه rule |
 |---|---|---|
 | ChatGPT, Claude, Gemini, Copilot, Perplexity, Poe, OpenRouter, DeepSeek, Qwen, NotebookLM, AI Studio, Arena | بله | 4.3.0 |
-| Google, YouTube, Gmail, X, LinkedIn, Instagram, Facebook | بله | 4.3.0 |
+| Google, YouTube, Gmail, GitHub, X, LinkedIn, Instagram, Facebook | بله | 4.3.0 |
 | WhatsApp, Telegram, Slack, Trello, Wikipedia, DuckDuckGo | بله | 4.3.0 |
-| GitHub, Messages, Medium, Goodreads, Dropbox | خیر | بدون نسخه rule اختصاصی |
+| Messages, Medium, Goodreads, Dropbox | خیر | بدون نسخه rule اختصاصی |
 
 برای این سایت ها اگر `CUSTOM_CSS_BY_SITE[website.url]` موجود باشد، افزونه اسکن DOM را متوقف می کند و فقط style اختصاصی را inject می کند. این مسیر برای سایت های SPA سنگین طراحی شده تا هزینه پردازش DOM کم شود.
 
@@ -401,7 +401,7 @@ flowchart TD
 | متوسط | permission گسترده | `<all_urls>`, `host_permissions`, `all_frames`, `tabs`, `unlimitedStorage` | اگر محصول واقعا همه سایت ها را هدف نمی گیرد، active permissions/optional hosts را بررسی کنید |
 | متوسط | custom CSS های گسترده | در سایت های پرتغییر ممکن است selectorها نیازمند نگهداری دوره ای باشند | برای سایت های حساس exception های code/icon/monospace و تست کاربردی نگه دارید |
 | متوسط | README می گوید unlimited custom fonts | کد محدودیت 2MB per file و محدودیت storage دارد | متن README را دقیق کنید |
-| متوسط | سایت های بدون version rule | سایت های generic مثل GitHub اگر بعدا regex/icon آنها عوض شود باید با migration عمومی همگام شوند | برای تغییرات آینده روی همه سایت های default version یا sync metadata عمومی را حفظ کنید |
+| متوسط | سایت های بدون version rule | سایت های generic مثل Medium اگر بعدا regex/icon آنها عوض شود باید با migration عمومی همگام شوند | برای تغییرات آینده روی همه سایت های default version یا sync metadata عمومی را حفظ کنید |
 | پایین | ذخیره base64 فونت در local storage | افزایش مصرف storage و احتمال quota/performance | تعداد/حجم کل را نشان دهید، `getBytesInUse` را در UI استفاده کنید |
 | پایین | stale build artifacts | خروجی های build قدیمی ممکن است کنار خروجی جدید باقی بمانند | قبل از package source یا release، build root را پاک کنید یا script cleanup بسازید |
 | پایین | Safari target واقعی نیست | zip کرومیوم برای safari-mv3 ساخته می شود | اگر Safari مدنظر است مسیر xcrun/safari-web-extension-converter لازم است |

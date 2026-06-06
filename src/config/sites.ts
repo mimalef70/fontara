@@ -177,7 +177,9 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     regex: "^https://github\\.com/.*$",
     icon: "assets/logos/github-active.png",
     pattern: "https://github.com/*",
-    siteName: "GitHub"
+    siteName: "GitHub",
+    customCss: true,
+    version: "4.3.0"
   },
   {
     url: "https://web.whatsapp.com",

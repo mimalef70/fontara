@@ -114,11 +114,38 @@ test("mergeWebsiteLists updates versioned defaults when metadata changes without
 test("mergeWebsiteLists updates versionless defaults and preserves active state", () => {
   const existingList: WebsiteItem[] = [
     {
+      url: "https://medium.com",
+      regex: "^https://old-medium\\.example/.*$",
+      icon: "assets/logos/old-medium.png",
+      pattern: "https://old-medium.example/*",
+      siteName: "Old Medium",
+      isActive: false
+    }
+  ]
+  const defaultList: WebsiteItem[] = [
+    {
+      url: "https://medium.com",
+      regex: "^https://medium\\.com/.*$",
+      icon: "assets/logos/medium-active.png",
+      pattern: "https://medium.com/*",
+      siteName: "Medium",
+      isActive: true
+    }
+  ]
+
+  assert.deepEqual(mergeWebsiteLists(existingList, defaultList), [
+    {
+      ...defaultList[0],
+      isActive: false
+    }
+  ])
+})
+
+test("mergeWebsiteLists upgrades GitHub to CSS-only defaults", () => {
+  const existingList: WebsiteItem[] = [
+    {
       url: "https://github.com",
-      regex: "^https://old-github\\.example/.*$",
-      icon: "assets/logos/old-github.png",
-      pattern: "https://old-github.example/*",
-      siteName: "Old GitHub",
+      regex: "^https://github\\.com/.*$",
       isActive: false
     }
   ]
@@ -126,10 +153,9 @@ test("mergeWebsiteLists updates versionless defaults and preserves active state"
     {
       url: "https://github.com",
       regex: "^https://github\\.com/.*$",
-      icon: "assets/logos/github-active.png",
-      pattern: "https://github.com/*",
-      siteName: "GitHub",
-      isActive: true
+      isActive: true,
+      customCss: true,
+      version: "4.3.0"
     }
   ]
 

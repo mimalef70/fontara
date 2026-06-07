@@ -2,6 +2,7 @@ import type { WebsiteItem } from "../definitions"
 import { UI_LANGUAGE_AUTO } from "./i18n"
 import { DEFAULT_RTL_SITE_SETTINGS } from "./rtl-sites"
 import { POPULAR_WEBSITES } from "./sites"
+import { DEFAULT_TEXT_STROKE } from "./text-stroke"
 
 export { STORAGE_KEYS } from "./storage-keys"
 
@@ -15,6 +16,7 @@ export const DEFAULT_VALUES = {
   CUSTOM_FONT_LIST: [],
   GOOGLE_FONTS_ENABLED: false,
   SYSTEM_FONTS_ENABLED: false,
+  TEXT_STROKE: DEFAULT_TEXT_STROKE,
   UI_LANGUAGE: UI_LANGUAGE_AUTO,
   RTL_ENABLED: true,
   RTL_SITE_SETTINGS: DEFAULT_RTL_SITE_SETTINGS

@@ -902,6 +902,36 @@ test("ensureStorageValues initializes and normalizes RTL settings", async () => 
   })
 })
 
+test("ensureStorageValues initializes and normalizes text stroke settings", async () => {
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.TEXT_STROKE]: 0.26
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.TEXT_STROKE], 0.3)
+})
+
+test("ensureStorageValues migrates legacy boolean text stroke settings", async () => {
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.TEXT_STROKE_ENABLED]: true
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.TEXT_STROKE], 0.3)
+})
+
 test("ensureStorageValues preserves selected system fonts only when enabled", async () => {
   const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
   assert.ok(selectedSystemFont)

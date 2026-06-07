@@ -4,6 +4,7 @@ import {
   normalizeRtlSiteSettings,
   type RtlSiteSettings
 } from "../config/rtl-sites"
+import { normalizeTextStrokeValue } from "../config/text-stroke"
 import type { FontData, WebsiteItem } from "../definitions"
 
 export const EMPTY_CUSTOM_FONT_LIST: FontData[] = []
@@ -33,6 +34,10 @@ export function getGoogleFontsEnabledInitialValue(
   value: boolean | undefined
 ): boolean {
   return value === true
+}
+
+export function getTextStrokeInitialValue(value: unknown): number {
+  return normalizeTextStrokeValue(value)
 }
 
 export function getRtlSiteSettingsInitialValue(

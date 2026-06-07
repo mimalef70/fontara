@@ -9,6 +9,10 @@ import {
   pauseRtlSupport,
   scheduleApplyRtlIfActive
 } from "./rtl"
+import {
+  injectTextStrokeStyle,
+  removeTextStrokeStyle
+} from "./text-stroke-style"
 
 type ApplyMode = "font-styles" | "full"
 type RuntimeMessageEvent = typeof chrome.runtime.onMessage
@@ -100,9 +104,11 @@ async function applyFontsIfActive(mode: ApplyMode): Promise<void> {
       stopObserving()
       resetProcessedElements()
       removeFontStyles()
+      removeTextStrokeStyle()
       return
     }
 
+    await injectTextStrokeStyle(activationState.matchingWebsite)
     const hasCustomCSS = await injectFontStyles(activationState.matchingWebsite)
 
     if (hasCustomCSS) {
@@ -189,6 +195,7 @@ stopWatchingStorage = watchLocalStorage({
     scheduleApplyFontsIfActive("font-styles"),
   [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: () =>
     scheduleApplyFontsIfActive("font-styles"),
+  [STORAGE_KEYS.TEXT_STROKE]: () => scheduleApplyFontsIfActive("font-styles"),
   [STORAGE_KEYS.RTL_ENABLED]: () => scheduleApplyRtlIfActive(),
   [STORAGE_KEYS.RTL_SITE_SETTINGS]: () => scheduleApplyRtlIfActive()
 })
@@ -214,6 +221,7 @@ function cleanupRuntimeListeners(
   if (options.removeStyles) {
     resetProcessedElements()
     removeFontStyles()
+    removeTextStrokeStyle()
   }
   cleanupRtlSupport()
   stopWatchingStorage?.()

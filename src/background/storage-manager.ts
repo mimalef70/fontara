@@ -2,6 +2,10 @@ import { DEFAULT_FONTS } from "../config/fonts"
 import { normalizeUILanguagePreference } from "../config/i18n"
 import { normalizeRtlSiteSettings } from "../config/rtl-sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
+import {
+  DEFAULT_ACTIVE_TEXT_STROKE,
+  normalizeTextStrokeValue
+} from "../config/text-stroke"
 import type { FontData, WebsiteItem } from "../definitions"
 import {
   getFontDataURLFormat,
@@ -193,6 +197,20 @@ export async function ensureStorageValues(): Promise<void> {
   if (typeof googleFontsEnabled !== "boolean") {
     storageUpdates[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] =
       DEFAULT_VALUES.GOOGLE_FONTS_ENABLED
+  }
+
+  const textStroke = await getLocalValue<number>(STORAGE_KEYS.TEXT_STROKE)
+  const legacyTextStrokeEnabled = await getLocalValue<boolean>(
+    STORAGE_KEYS.TEXT_STROKE_ENABLED
+  )
+  const normalizedTextStroke =
+    textStroke === undefined && typeof legacyTextStrokeEnabled === "boolean"
+      ? legacyTextStrokeEnabled
+        ? DEFAULT_ACTIVE_TEXT_STROKE
+        : DEFAULT_VALUES.TEXT_STROKE
+      : normalizeTextStrokeValue(textStroke)
+  if (textStroke !== normalizedTextStroke) {
+    storageUpdates[STORAGE_KEYS.TEXT_STROKE] = normalizedTextStroke
   }
 
   const rtlSiteSettings = await getLocalValue(STORAGE_KEYS.RTL_SITE_SETTINGS)

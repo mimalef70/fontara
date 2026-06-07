@@ -210,8 +210,14 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_SITE_SETTINGS/)
   assert.match(optionsSource, /STORAGE_KEYS\.SYSTEM_FONTS_ENABLED/)
   assert.match(optionsSource, /STORAGE_KEYS\.GOOGLE_FONTS_ENABLED/)
+  assert.match(optionsSource, /STORAGE_KEYS\.TEXT_STROKE/)
   assert.match(optionsSource, /options\.systemFonts\.title/)
   assert.match(optionsSource, /options\.googleFonts\.title/)
+  assert.match(optionsSource, /options\.textStroke\.title/)
+  assert.match(optionsSource, /TEXT_STROKE_MIN/)
+  assert.match(optionsSource, /TEXT_STROKE_MAX/)
+  assert.match(optionsSource, /TEXT_STROKE_STEP/)
+  assert.match(optionsSource, /type="range"/)
   assert.match(optionsSource, /languageOptions\.map/)
   assert.match(optionsSource, /dir=\{direction\}[\s\S]*aria-pressed=\{active\}/)
   assert.doesNotMatch(optionsSource, /getLanguageOptionDirection/)
@@ -258,6 +264,7 @@ test("popup add custom font action is an icon button beside the selector", () =>
   assert.match(popupSource, /flex flex-col gap-3 mb-3/)
   assert.match(popupSource, /<div dir=\{direction\}>[\s\S]*<PopularSection \/>/)
   assert.match(popupSource, /<RtlSiteToggle \/>/)
+  assert.match(popupSource, /<TextStrokeToggle \/>/)
   assert.doesNotMatch(popupSource, /direction: "rtl"/)
   assert.match(popupSource, /aria-label=\{t\("popup\.addCustomFont"\)\}/)
   assert.match(popupSource, /className="[^"]*size-\[3rem\]/)
@@ -316,6 +323,10 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
     path.resolve("src/ui/components/RtlSiteToggle.tsx"),
     "utf8"
   )
+  const textStrokeToggleSource = fs.readFileSync(
+    path.resolve("src/ui/components/TextStrokeToggle.tsx"),
+    "utf8"
+  )
 
   assert.match(switchSource, /\(\{ className, dir = "ltr", \.\.\.props \}/)
   assert.match(switchSource, /dir=\{dir\}/)
@@ -349,6 +360,13 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(rtlSiteToggleSource, /isRtl && switchControl/)
   assert.match(rtlSiteToggleSource, /getRtlSiteByUrl/)
   assert.match(rtlSiteToggleSource, /popup\.rtl\.currentSite/)
+  assert.match(textStrokeToggleSource, /ChevronLeft/)
+  assert.match(textStrokeToggleSource, /ChevronRight/)
+  assert.match(textStrokeToggleSource, /getNextTextStrokeValue/)
+  assert.match(textStrokeToggleSource, /STORAGE_KEYS\.TEXT_STROKE/)
+  assert.match(textStrokeToggleSource, /popup\.textStroke\.decrease/)
+  assert.match(textStrokeToggleSource, /popup\.textStroke\.increase/)
+  assert.match(textStrokeToggleSource, /popup\.textStroke\.title/)
 })
 
 test("custom font uploads normalize stored names and data URLs", () => {
@@ -380,6 +398,7 @@ test("UI storage hooks use stable initial value references", () => {
     "src/ui/components/FontSelector.tsx",
     "src/ui/components/PopularSection.tsx",
     "src/ui/components/RtlSiteToggle.tsx",
+    "src/ui/components/TextStrokeToggle.tsx",
     "src/ui/components/layout/Header.tsx",
     "src/ui/components/layout/Footer.tsx"
   ]
@@ -397,6 +416,7 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(uiSources, /getRtlEnabledInitialValue/)
   assert.match(uiSources, /getRtlSiteSettingsInitialValue/)
   assert.match(uiSources, /getSystemFontsEnabledInitialValue/)
+  assert.match(uiSources, /getTextStrokeInitialValue/)
   assert.doesNotMatch(uiSources, /STORAGE_KEYS\.CUSTOM_FONT_LIST,\s*\[\s*\]/)
   assert.doesNotMatch(uiSources, /STORAGE_KEYS\.WEBSITE_LIST,\s*\[\s*\]/)
   assert.doesNotMatch(

@@ -51,3 +51,33 @@ export const ICON_CLASS_SUBSTRINGS = [
 ]
 
 export const EXCLUDED_INLINE_STYLE_PARTS = ["font-"]
+
+export const GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS = [
+  "pre",
+  "pre *",
+  "code",
+  '[aria-hidden="true"]',
+  '[class*="fa-"]',
+  ".fa",
+  ".fab",
+  ".fad",
+  ".fal",
+  ".far",
+  ".fas",
+  ".fass",
+  ".fasr",
+  ".fat",
+  ".icofont",
+  '[style*="font-"]',
+  '[class*="icon"]',
+  '[class*="Icon"]',
+  '[class*="symbol"]',
+  '[class*="Symbol"]',
+  ".glyphicon",
+  '[class*="material-symbol"]',
+  '[class*="material-icon"]',
+  "mu",
+  '[class*="mu-"]',
+  ".typcn",
+  '[class*="vjs-"]'
+]

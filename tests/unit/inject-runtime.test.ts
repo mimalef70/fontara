@@ -18,6 +18,7 @@ type StoredValues = {
   [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: boolean
   [STORAGE_KEYS.SELECTED_FONT]: string
   [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: boolean
+  [STORAGE_KEYS.TEXT_STROKE]: number
   [STORAGE_KEYS.WEBSITE_LIST]: WebsiteItem[]
 }
 
@@ -183,6 +184,7 @@ function createRuntimeMocks(): {
     [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
     [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
     [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
+    [STORAGE_KEYS.TEXT_STROKE]: 0,
     [STORAGE_KEYS.WEBSITE_LIST]: [matchingWebsite]
   }
   const bodyElement = new FakeElement("body", elementsById)
@@ -444,8 +446,12 @@ test("selected custom font changes inject its font-face without a reload", async
   try {
     await import("../../src/inject/index")
     await waitFor(
-      () => runtime.getStyleText("fontara-font-styles").includes("@font-face"),
-      "expected initial built-in font styles to be injected"
+      () =>
+        runtime.getStyleText("fontara-font-styles").includes("@font-face") &&
+        runtime
+          .getStyleText("fontara-editable-font-style")
+          .includes("[contenteditable]"),
+      "expected initial built-in and editable font styles to be injected"
     )
 
     const editableStyle = runtime.getStyleText("fontara-editable-font-style")
@@ -474,8 +480,70 @@ test("selected custom font changes inject its font-face without a reload", async
     assert.doesNotMatch(editableStyle, /> div:nth-of-type/)
     assert.doesNotMatch(editableStyle, /section\[data-testid=/)
     assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
+    assert.equal(runtime.getStyleText("fontara-text-stroke-style"), "")
     assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 0)
     const initialTreeWalkerCount = runtime.getTreeWalkerCount()
+
+    runtime.values[STORAGE_KEYS.TEXT_STROKE] = 0.2
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.TEXT_STROKE]: {
+          newValue: 0.2,
+          oldValue: 0
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        runtime
+          .getStyleText("fontara-text-stroke-style")
+          .includes("-webkit-text-stroke: 0.2px !important;"),
+      "expected text stroke to inject the selected global text effect CSS"
+    )
+    assert.match(
+      runtime.getStyleText("fontara-text-stroke-style"),
+      /^\*:not\(pre, pre \*, code,/
+    )
+    assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
+
+    runtime.values[STORAGE_KEYS.TEXT_STROKE] = 0.8
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.TEXT_STROKE]: {
+          newValue: 0.8,
+          oldValue: 0.2
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        runtime
+          .getStyleText("fontara-text-stroke-style")
+          .includes("-webkit-text-stroke: 0.8px !important;"),
+      "expected text stroke to update without a reload"
+    )
+    assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
+
+    runtime.values[STORAGE_KEYS.TEXT_STROKE] = 0
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.TEXT_STROKE]: {
+          newValue: 0,
+          oldValue: 0.8
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () => runtime.getStyleText("fontara-text-stroke-style") === "",
+      "expected disabled text stroke to remove the global text effect CSS"
+    )
+    assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
 
     runtime.values[STORAGE_KEYS.SELECTED_FONT] = "RuntimeCustom-Fontara"
     runtime.dispatchStorageChange(

@@ -30,6 +30,12 @@ import {
   type RtlSiteSettings
 } from "../../config/rtl-sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
+import {
+  normalizeTextStrokeValue,
+  TEXT_STROKE_MAX,
+  TEXT_STROKE_MIN,
+  TEXT_STROKE_STEP
+} from "../../config/text-stroke"
 import type { FontData, WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
@@ -81,7 +87,8 @@ import {
   getGoogleFontsEnabledInitialValue,
   getRtlEnabledInitialValue,
   getRtlSiteSettingsInitialValue,
-  getSystemFontsEnabledInitialValue
+  getSystemFontsEnabledInitialValue,
+  getTextStrokeInitialValue
 } from "../storage-defaults"
 
 type SettingsSection = "fonts" | "sites" | "rtl" | "language" | "status"
@@ -187,6 +194,10 @@ function OptionsPage() {
   const [googleFontsEnabled, setGoogleFontsEnabled] = useStorageValue<boolean>(
     STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
     getGoogleFontsEnabledInitialValue
+  )
+  const [textStroke, setTextStroke] = useStorageValue<number>(
+    STORAGE_KEYS.TEXT_STROKE,
+    getTextStrokeInitialValue
   )
   const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
@@ -521,6 +532,25 @@ function OptionsPage() {
     }
   }
 
+  const handleTextStrokeChange = async (value: number) => {
+    try {
+      await setTextStroke(normalizeTextStrokeValue(value))
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
+  const formattedTextStroke = formatNumber(textStroke, {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+    useGrouping: false
+  })
+
   const handleRtlSiteToggle = async (site: RtlSiteConfig, checked: boolean) => {
     try {
       await setRtlSiteSettings({
@@ -618,7 +648,7 @@ function OptionsPage() {
               {activeSection === "fonts" && (
                 <div className="space-y-6">
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="grid gap-3 lg:grid-cols-3">
                       <div
                         className={cn(
                           "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
@@ -687,6 +717,83 @@ function OptionsPage() {
                           }
                           aria-label={t("options.googleFonts.title")}
                         />
+                      </div>
+
+                      <div
+                        className={cn(
+                          "flex flex-col gap-4 rounded-md border px-4 py-4 transition",
+                          textStroke > 0
+                            ? "border-[#dbeafe] bg-[#f8fbff]"
+                            : "border-[#e5e7eb] bg-white"
+                        )}>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                              <Type className="size-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-sm font-bold text-[#111827]">
+                                {t("options.textStroke.title")}
+                              </h3>
+                              <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                                {t("options.textStroke.description")}
+                              </p>
+                              <p className="mt-2 text-xs text-[#64748b]">
+                                {textStroke > 0
+                                  ? t("options.textStroke.enabled")
+                                  : t("options.textStroke.disabled")}
+                              </p>
+                            </div>
+                          </div>
+                          <bdi className="shrink-0 rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#2374ff]">
+                            +{formattedTextStroke}
+                          </bdi>
+                        </div>
+
+                        <div dir="ltr" className="space-y-2">
+                          <input
+                            type="range"
+                            min={TEXT_STROKE_MIN}
+                            max={TEXT_STROKE_MAX}
+                            step={TEXT_STROKE_STEP}
+                            value={textStroke}
+                            onChange={(event) =>
+                              void handleTextStrokeChange(
+                                Number(event.currentTarget.value)
+                              )
+                            }
+                            aria-label={t("options.textStroke.title")}
+                            className="h-2 w-full cursor-pointer accent-[#2374ff]"
+                          />
+                          <div className="flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
+                            <span>
+                              {formatNumber(TEXT_STROKE_MIN, {
+                                maximumFractionDigits: 1,
+                                minimumFractionDigits: 1,
+                                useGrouping: false
+                              })}
+                            </span>
+                            <span>
+                              {formatNumber(TEXT_STROKE_MAX, {
+                                maximumFractionDigits: 1,
+                                minimumFractionDigits: 1,
+                                useGrouping: false
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#64748b]">
+                            {t("options.textStroke.value", {
+                              value: `+${formattedTextStroke}`
+                            })}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleTextStrokeChange(0)}
+                          className="h-9 rounded-md border border-[#dbe3ef] bg-white px-3 text-xs font-semibold text-[#64748b] transition hover:border-[#bfdbfe] hover:text-[#2374ff]"
+                          disabled={textStroke <= TEXT_STROKE_MIN}>
+                          {t("options.textStroke.reset")}
+                        </button>
                       </div>
                     </div>
                   </section>

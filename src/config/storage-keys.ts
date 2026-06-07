@@ -5,6 +5,8 @@ export const STORAGE_KEYS = {
   CUSTOM_FONT_LIST: "customFontList",
   GOOGLE_FONTS_ENABLED: "googleFontsEnabled",
   SYSTEM_FONTS_ENABLED: "systemFontsEnabled",
+  TEXT_STROKE: "textStroke",
+  TEXT_STROKE_ENABLED: "textStrokeEnabled",
   UI_LANGUAGE: "uiLanguage",
   RTL_ENABLED: "rtlEnabled",
   RTL_SITE_SETTINGS: "rtlSiteSettings"

@@ -10,6 +10,7 @@ import {
   normalizeFontDataURL
 } from "../utils/font-data"
 import { getLocalValue, setLocalValue } from "../utils/storage"
+import { isSystemFontValue } from "../utils/system-fonts"
 
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
 
@@ -148,12 +149,14 @@ export async function normalizeCustomFontList(
 
 function isSelectedFontAvailable(
   selectedFont: string | undefined,
-  customFontList: FontData[]
+  customFontList: FontData[],
+  systemFontsEnabled: boolean
 ): boolean {
   return (
     selectedFont === undefined ||
     BUNDLED_FONT_VALUES.has(selectedFont) ||
-    customFontList.some((font) => font.value === selectedFont)
+    customFontList.some((font) => font.value === selectedFont) ||
+    (systemFontsEnabled && isSystemFontValue(selectedFont))
   )
 }
 
@@ -171,6 +174,14 @@ export async function ensureStorageValues(): Promise<void> {
   const rtlEnabled = await getLocalValue<boolean>(STORAGE_KEYS.RTL_ENABLED)
   if (rtlEnabled === undefined) {
     storageUpdates[STORAGE_KEYS.RTL_ENABLED] = DEFAULT_VALUES.RTL_ENABLED
+  }
+
+  const systemFontsEnabled = await getLocalValue<boolean>(
+    STORAGE_KEYS.SYSTEM_FONTS_ENABLED
+  )
+  if (typeof systemFontsEnabled !== "boolean") {
+    storageUpdates[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] =
+      DEFAULT_VALUES.SYSTEM_FONTS_ENABLED
   }
 
   const rtlSiteSettings = await getLocalValue(STORAGE_KEYS.RTL_SITE_SETTINGS)
@@ -214,7 +225,13 @@ export async function ensureStorageValues(): Promise<void> {
   }
   storageUpdates[STORAGE_KEYS.CUSTOM_FONT_LIST] = normalizedCustomFontList
 
-  if (!isSelectedFontAvailable(selectedFont, normalizedCustomFontList)) {
+  if (
+    !isSelectedFontAvailable(
+      selectedFont,
+      normalizedCustomFontList,
+      systemFontsEnabled === true
+    )
+  ) {
     storageUpdates[STORAGE_KEYS.SELECTED_FONT] = DEFAULT_VALUES.SELECTED_FONT
   }
 

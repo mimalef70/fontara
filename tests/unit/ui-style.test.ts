@@ -50,6 +50,21 @@ test("UI follows the selected extension font", () => {
   assert.match(fontSelectorSource, /"--fontara-preview-font"/)
   assert.match(fontSelectorSource, /fontSelector\.previewText/)
   assert.match(fontSelectorSource, /fontSelector\.groupTitlePrefix/)
+  assert.match(fontSelectorSource, /fontSelector\.systemGroup/)
+  assert.match(fontSelectorSource, /getSystemFontList/)
+  assert.match(fontSelectorSource, /decodeSystemFontValue/)
+  assert.match(fontSelectorSource, /getFontFamily/)
+  assert.match(fontSelectorSource, /<DrawerContent dir=\{direction\}/)
+  assert.match(fontSelectorSource, /isFontRowActive/)
+  assert.match(fontSelectorSource, /isRtl/)
+  assert.match(
+    fontSelectorSource,
+    /grid-cols-\[minmax\(0,1fr\)_minmax\(4\.5rem,7rem\)_1\.25rem\]/
+  )
+  assert.doesNotMatch(
+    fontSelectorSource,
+    /fontara-font-preview[^\n]*mx-auto[^\n]*text-center/
+  )
   assert.match(fontSelectorSource, /localizedName/)
   assert.match(fontSelectorSource, /localizedAuthor/)
   assert.match(fontSelectorSource, /getFontDisplayName/)
@@ -176,6 +191,8 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /RTL_SUPPORTED_SITES\.map/)
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_ENABLED/)
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_SITE_SETTINGS/)
+  assert.match(optionsSource, /STORAGE_KEYS\.SYSTEM_FONTS_ENABLED/)
+  assert.match(optionsSource, /options\.systemFonts\.title/)
   assert.match(optionsSource, /languageOptions\.map/)
   assert.match(optionsSource, /dir=\{direction\}[\s\S]*aria-pressed=\{active\}/)
   assert.doesNotMatch(optionsSource, /getLanguageOptionDirection/)
@@ -360,6 +377,7 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(uiSources, /getExtensionEnabledInitialValue/)
   assert.match(uiSources, /getRtlEnabledInitialValue/)
   assert.match(uiSources, /getRtlSiteSettingsInitialValue/)
+  assert.match(uiSources, /getSystemFontsEnabledInitialValue/)
   assert.doesNotMatch(uiSources, /STORAGE_KEYS\.CUSTOM_FONT_LIST,\s*\[\s*\]/)
   assert.doesNotMatch(uiSources, /STORAGE_KEYS\.WEBSITE_LIST,\s*\[\s*\]/)
   assert.doesNotMatch(

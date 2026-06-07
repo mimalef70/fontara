@@ -8,6 +8,7 @@ import {
 } from "../../src/background/storage-manager"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { WebsiteItem } from "../../src/definitions"
+import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
@@ -898,4 +899,26 @@ test("ensureStorageValues initializes and normalizes RTL settings", async () => 
     ...DEFAULT_VALUES.RTL_SITE_SETTINGS,
     chatgpt: false
   })
+})
+
+test("ensureStorageValues preserves selected system fonts only when enabled", async () => {
+  const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
+  assert.ok(selectedSystemFont)
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: selectedSystemFont,
+    [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: true,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: []
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], selectedSystemFont)
+
+  values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] = false
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
 })

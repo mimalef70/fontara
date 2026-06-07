@@ -5,10 +5,18 @@ import type { SupportedUILanguage } from "../../config/i18n"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { FontData } from "../../definitions"
 import { cn } from "../../utils/cn"
-import { escapeCSSString } from "../../utils/font-data"
+import { formatFontFamilyForCSS } from "../../utils/font-data"
+import {
+  decodeSystemFontValue,
+  getSystemFontList,
+  type SystemFontData
+} from "../../utils/system-fonts"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
-import { EMPTY_CUSTOM_FONT_LIST } from "../storage-defaults"
+import {
+  EMPTY_CUSTOM_FONT_LIST,
+  getSystemFontsEnabledInitialValue
+} from "../storage-defaults"
 import { CheckCircle, Circle, FolderFileFont } from "./icons"
 import { Button } from "./ui/button"
 import {
@@ -27,15 +35,16 @@ type DisplayFont = {
   author?: string
   localizedName?: Partial<Record<SupportedUILanguage, string>>
   localizedAuthor?: Partial<Record<SupportedUILanguage, string>>
+  fontFamily?: string
 }
 
 type FontPreviewStyle = CSSProperties & {
   "--fontara-preview-font": string
 }
 
-function getFontPreviewStyle(fontValue: string): FontPreviewStyle {
+function getFontPreviewStyle(fontFamily: string): FontPreviewStyle {
   return {
-    "--fontara-preview-font": `"${escapeCSSString(fontValue)}"`
+    "--fontara-preview-font": formatFontFamilyForCSS(fontFamily)
   }
 }
 
@@ -44,6 +53,9 @@ const FontSelector = () => {
   const [hoveredFont, setHoveredFont] = useState<string | null>(null)
   const [allFonts, setAllFonts] = useState<DisplayFont[]>(DEFAULT_FONTS)
   const [isOpen, setIsOpen] = useState(false)
+  const [systemFonts, setSystemFonts] = useState<SystemFontData[]>([])
+  const [systemFontsLoading, setSystemFontsLoading] = useState(false)
+  const [systemFontsFailed, setSystemFontsFailed] = useState(false)
   const [selectedFont, setSelectedFont] = useStorageValue<string>(
     STORAGE_KEYS.SELECTED_FONT,
     DEFAULT_FONTS[0].value
@@ -52,20 +64,65 @@ const FontSelector = () => {
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
+  const [systemFontsEnabled] = useStorageValue<boolean>(
+    STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
+    getSystemFontsEnabledInitialValue
+  )
 
   useEffect(() => {
-    if (customFontList) {
-      setAllFonts([...DEFAULT_FONTS, ...customFontList])
+    setAllFonts([...DEFAULT_FONTS, ...customFontList, ...systemFonts])
+  }, [customFontList, systemFonts])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!systemFontsEnabled) {
+      setSystemFonts([])
+      setSystemFontsFailed(false)
+      setSystemFontsLoading(false)
+      return () => {
+        cancelled = true
+      }
     }
-  }, [customFontList])
+
+    setSystemFontsLoading(true)
+    setSystemFontsFailed(false)
+
+    getSystemFontList()
+      .then((fonts) => {
+        if (cancelled) return
+        setSystemFonts(fonts)
+        setSystemFontsFailed(fonts.length === 0)
+      })
+      .catch((error) => {
+        if (__DEBUG__) {
+          console.warn("Failed to load system fonts.", error)
+        }
+        if (!cancelled) {
+          setSystemFonts([])
+          setSystemFontsFailed(true)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSystemFontsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [systemFontsEnabled])
 
   const getFontDisplayName = (font: DisplayFont) =>
     font.localizedName?.[language] || font.name
   const getAuthorLabel = (font: DisplayFont) => {
+    if (decodeSystemFontValue(font.value)) return t("fontSelector.systemGroup")
     if (!font.author) return t("fontSelector.customGroup")
 
     return font.localizedAuthor?.[language] || font.author
   }
+  const getFontFamily = (font: DisplayFont) => font.fontFamily || font.value
 
   const fontsByAuthor = allFonts.reduce<Record<string, DisplayFont[]>>(
     (acc, font) => {
@@ -92,10 +149,16 @@ const FontSelector = () => {
   }
 
   const selectedFontItem = allFonts.find((font) => font.value === selectedFont)
+  const selectedSystemFontFamily = systemFontsEnabled
+    ? decodeSystemFontValue(selectedFont)
+    : null
   const currentFontName = selectedFontItem
     ? getFontDisplayName(selectedFontItem)
-    : t("fontSelector.placeholder")
+    : selectedSystemFontFamily
+      ? selectedSystemFontFamily
+      : t("fontSelector.placeholder")
   const fontSampleText = t("fontSelector.previewText")
+  const isRtl = direction === "rtl"
 
   return (
     <div dir={direction}>
@@ -109,7 +172,7 @@ const FontSelector = () => {
         </span>
       </Button>
       <Drawer open={isOpen} onOpenChange={setIsOpen} direction="bottom">
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent dir={direction} className="max-h-[85vh]">
           <DrawerHeader>
             <DrawerTitle className="text-center">
               {t("fontSelector.title")}
@@ -132,67 +195,120 @@ const FontSelector = () => {
                   <div className="space-y-1">
                     {fonts.map((font) => {
                       const fontName = getFontDisplayName(font)
+                      const isFontRowActive =
+                        hoveredFont === font.value ||
+                        selectedFont === font.value
+                      const statusIcon =
+                        hoveredFont === font.value &&
+                        selectedFont !== font.value ? (
+                          <Circle />
+                        ) : (
+                          selectedFont === font.value && <CheckCircle />
+                        )
 
                       return (
                         <button
+                          dir={direction}
                           type="button"
                           key={`${font.value}-${font.name}`}
                           onClick={() => void handleFontSelect(font.value)}
                           onMouseEnter={() => setHoveredFont(font.value)}
                           onMouseLeave={() => setHoveredFont(null)}
-                          style={getFontPreviewStyle(font.value)}
+                          style={getFontPreviewStyle(getFontFamily(font))}
                           className={cn(
-                            "flex items-center justify-between gap-2 relative p-3 rounded-md cursor-pointer w-full border-0 bg-transparent text-start",
+                            "relative flex min-h-[3.5rem] w-full cursor-pointer items-center rounded-md border-0 bg-transparent p-3 text-start",
                             {
                               "bg-blue-50": selectedFont === font.value,
                               "hover:bg-gray-50": selectedFont !== font.value
                             }
                           )}>
-                          <div className="flex items-center justify-between w-full gap-2">
-                            <span
-                              dir="auto"
+                          {isFontRowActive ? (
+                            <div
+                              dir="ltr"
                               className={cn(
-                                "fontara-font-preview w-[7rem] text-sm font-medium",
-                                {
-                                  "text-[#0D92F4]": selectedFont === font.value
-                                }
+                                "grid w-full items-center gap-3",
+                                isRtl
+                                  ? "grid-cols-[minmax(0,1fr)_minmax(4.5rem,7rem)_1.25rem]"
+                                  : "grid-cols-[minmax(4.5rem,7rem)_minmax(0,1fr)_1.25rem]"
                               )}>
-                              {fontName}
-                            </span>
-                            <span
-                              dir="auto"
+                              {isRtl && (
+                                <span
+                                  dir="auto"
+                                  className={cn(
+                                    "fontara-font-preview min-w-0 truncate text-start text-xs",
+                                    {
+                                      "text-[#0D92F4] opacity-70":
+                                        selectedFont === font.value,
+                                      "text-gray-400":
+                                        selectedFont !== font.value
+                                    }
+                                  )}>
+                                  {fontSampleText}
+                                </span>
+                              )}
+                              <span
+                                dir="auto"
+                                className={cn(
+                                  "fontara-font-preview min-w-0 truncate text-start text-sm font-medium",
+                                  {
+                                    "text-[#0D92F4]":
+                                      selectedFont === font.value
+                                  }
+                                )}>
+                                {fontName}
+                              </span>
+                              {!isRtl && (
+                                <span
+                                  dir="auto"
+                                  className={cn(
+                                    "fontara-font-preview min-w-0 truncate text-start text-xs",
+                                    {
+                                      "text-[#0D92F4] opacity-70":
+                                        selectedFont === font.value,
+                                      "text-gray-400":
+                                        selectedFont !== font.value
+                                    }
+                                  )}>
+                                  {fontSampleText}
+                                </span>
+                              )}
+                              <div
+                                className={cn(
+                                  "flex !size-5 items-center justify-center",
+                                  {
+                                    "text-gray-400": hoveredFont === font.value,
+                                    "text-[#0D92F4]":
+                                      selectedFont === font.value
+                                  }
+                                )}>
+                                {statusIcon}
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              dir="ltr"
                               className={cn(
-                                "fontara-font-preview !w-full mx-auto text-xs",
-                                {
-                                  inline:
-                                    hoveredFont === font.value ||
-                                    selectedFont === font.value,
-                                  hidden:
-                                    hoveredFont !== font.value &&
-                                    selectedFont !== font.value,
-                                  "text-[#0D92F4] opacity-70":
-                                    selectedFont === font.value,
-                                  "text-gray-400": selectedFont !== font.value
-                                }
+                                "grid w-full items-center gap-3",
+                                isRtl
+                                  ? "grid-cols-[minmax(0,1fr)_minmax(4.5rem,7rem)_1.25rem]"
+                                  : "grid-cols-[minmax(4.5rem,7rem)_minmax(0,1fr)_1.25rem]"
                               )}>
-                              {fontSampleText}
-                            </span>
-                          </div>
-                          <div
-                            className={cn(
-                              "!size-5 flex items-center justify-center",
-                              {
-                                "text-gray-400": hoveredFont === font.value,
-                                "text-[#0D92F4]": selectedFont === font.value
-                              }
-                            )}>
-                            {hoveredFont === font.value &&
-                            selectedFont !== font.value ? (
-                              <Circle />
-                            ) : (
-                              selectedFont === font.value && <CheckCircle />
-                            )}
-                          </div>
+                              {isRtl && <span aria-hidden="true" />}
+                              <span
+                                dir="auto"
+                                className={cn(
+                                  "fontara-font-preview min-w-0 truncate text-start text-sm font-medium",
+                                  {
+                                    "text-[#0D92F4]":
+                                      selectedFont === font.value
+                                  }
+                                )}>
+                                {fontName}
+                              </span>
+                              {!isRtl && <span aria-hidden="true" />}
+                              <span aria-hidden="true" className="!size-5" />
+                            </div>
+                          )}
                         </button>
                       )
                     })}
@@ -200,6 +316,16 @@ const FontSelector = () => {
                 </div>
               )
             })}
+            {systemFontsEnabled && systemFontsLoading && (
+              <div className="px-3 py-4 text-center text-xs text-gray-400">
+                {t("fontSelector.systemLoading")}
+              </div>
+            )}
+            {systemFontsEnabled && systemFontsFailed && !systemFontsLoading && (
+              <div className="px-3 py-4 text-center text-xs text-gray-400">
+                {t("fontSelector.systemUnavailable")}
+              </div>
+            )}
           </div>
           <DrawerFooter>
             <DrawerClose asChild>

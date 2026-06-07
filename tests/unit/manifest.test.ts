@@ -16,6 +16,7 @@ type Manifest = {
   default_locale?: string
   description?: string
   name?: string
+  optional_permissions?: string[]
   permissions: string[]
   short_name?: string
 }
@@ -43,6 +44,19 @@ test("manifest grants storage capacity for custom fonts without redundant active
   assert.ok(manifest.permissions.includes("unlimitedStorage"))
   assert.ok(manifest.permissions.includes("tabs"))
   assert.equal(manifest.permissions.includes("activeTab"), false)
+})
+
+test("chromium manifest grants system font access like Dark Reader while firefox omits it", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+  const chromeManifest = readJSON<Manifest>("src/manifest-chrome-mv3.json")
+  const firefoxManifest = readJSON<Manifest>("src/manifest-firefox-mv3.json")
+
+  assert.ok(manifest.permissions.includes("fontSettings"))
+  assert.notEqual(
+    chromeManifest.optional_permissions?.includes("fontSettings"),
+    true
+  )
+  assert.equal(firefoxManifest.permissions.includes("fontSettings"), false)
 })
 
 test("manifest keeps extension page CSP locked down", () => {

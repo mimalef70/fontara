@@ -23,6 +23,12 @@ export function getRtlEnabledInitialValue(value: boolean | undefined): boolean {
   return value !== false
 }
 
+export function getSystemFontsEnabledInitialValue(
+  value: boolean | undefined
+): boolean {
+  return value === true
+}
+
 export function getRtlSiteSettingsInitialValue(
   value: unknown
 ): RtlSiteSettings {

@@ -4,8 +4,9 @@ import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
 import { createCustomFontFaces } from "../generators/custom-font-face"
 import { getFontFaceCSS } from "../generators/font-face"
-import { escapeCSSString } from "../utils/font-data"
+import { formatFontFamilyForCSS } from "../utils/font-data"
 import { getLocalValue } from "../utils/storage"
+import { decodeSystemFontValue } from "../utils/system-fonts"
 import {
   refreshEditableFontStyles,
   removeEditableFontStyles
@@ -67,6 +68,20 @@ async function getSelectedFontState(
     }
   }
 
+  const systemFontFamily = decodeSystemFontValue(selectedFont)
+  if (systemFontFamily) {
+    const systemFontsEnabled = await getLocalValue<boolean>(
+      STORAGE_KEYS.SYSTEM_FONTS_ENABLED
+    )
+
+    if (systemFontsEnabled === true) {
+      return {
+        customFonts: [],
+        fontName: systemFontFamily
+      }
+    }
+  }
+
   const customFonts = await getSelectedCustomFonts(selectedFont)
   if (customFonts.length === 0) {
     return {
@@ -124,13 +139,12 @@ export function removeFontStyles(): void {
 
 export function updateFontVariable(fontName: string | undefined): void {
   if (!fontName) return
-  const safeFontName = escapeCSSString(fontName)
 
   upsertStyle(
     DYNAMIC_FONT_ID,
     `
       :root {
-        --fontara-font: "${safeFontName}";
+        --fontara-font: ${formatFontFamilyForCSS(fontName)};
       }
     `
   )

@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  formatFontFamilyForCSS,
   getFontDataURLFormat,
   isFontFileSignatureSupported,
   splitFontFamilies
@@ -55,5 +56,15 @@ test("splitFontFamilies preserves quoted font names containing commas", () => {
       family.trim()
     ),
     ['"Font, With Comma"', "Arial", "sans-serif"]
+  )
+})
+
+test("formatFontFamilyForCSS quotes real font names but preserves generic families", () => {
+  assert.equal(formatFontFamilyForCSS("Noto Sans Arabic"), '"Noto Sans Arabic"')
+  assert.equal(formatFontFamilyForCSS("system-ui"), "system-ui")
+  assert.equal(formatFontFamilyForCSS(" sans-serif "), "sans-serif")
+  assert.equal(
+    formatFontFamilyForCSS('Font "With Quote"'),
+    '"Font \\"With Quote\\""'
   )
 })

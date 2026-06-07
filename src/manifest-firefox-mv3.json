@@ -9,5 +9,7 @@
         "required": ["none"]
       }
     }
-  }
+  },
+  "permissions": ["storage", "unlimitedStorage", "tabs"],
+  "optional_permissions": []
 }

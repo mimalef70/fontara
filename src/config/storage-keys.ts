@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   SELECTED_FONT: "selectedFont",
   WEBSITE_LIST: "websiteList",
   CUSTOM_FONT_LIST: "customFontList",
+  SYSTEM_FONTS_ENABLED: "systemFontsEnabled",
   UI_LANGUAGE: "uiLanguage",
   RTL_ENABLED: "rtlEnabled",
   RTL_SITE_SETTINGS: "rtlSiteSettings"

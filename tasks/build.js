@@ -8,6 +8,7 @@ const bundleManifest = require("./bundle-manifest")
 const copyAssets = require("./copy")
 const { getDestDir } = require("./paths")
 const { emptyDirectory } = require("./utils")
+const validateBuild = require("./validate-build")
 const zipBuild = require("./zip")
 
 const watchRoots = [
@@ -28,6 +29,7 @@ async function buildPlatform({ platform, debug, zip }) {
   await bundleManifest({ platform, debug })
   await bundleLocales({ platform, debug })
   await copyAssets({ platform, debug })
+  await validateBuild({ platform, debug })
 
   if (zip && !debug) {
     await zipBuild({ platform })

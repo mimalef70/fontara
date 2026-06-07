@@ -3,8 +3,12 @@ import { useEffect } from "react"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import type { FontData } from "../../definitions"
 import { createCustomFontFaces } from "../../generators/custom-font-face"
-import { escapeCSSString } from "../../utils/font-data"
-import { EMPTY_CUSTOM_FONT_LIST } from "../storage-defaults"
+import { formatFontFamilyForCSS } from "../../utils/font-data"
+import { decodeSystemFontValue } from "../../utils/system-fonts"
+import {
+  EMPTY_CUSTOM_FONT_LIST,
+  getSystemFontsEnabledInitialValue
+} from "../storage-defaults"
 import { useStorageValue } from "./use-storage"
 
 const CUSTOM_FONT_STYLE_ID = "fontara-ui-custom-font-styles"
@@ -40,16 +44,24 @@ export function useSelectedUIFont(): void {
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
+  const [systemFontsEnabled] = useStorageValue<boolean>(
+    STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
+    getSystemFontsEnabledInitialValue
+  )
 
   useEffect(() => {
     upsertCustomFontStyles(customFontList)
   }, [customFontList])
 
   useEffect(() => {
-    const fontName = selectedFont || DEFAULT_VALUES.SELECTED_FONT
+    const systemFontFamily = decodeSystemFontValue(selectedFont)
+    const fontName =
+      systemFontsEnabled && systemFontFamily
+        ? systemFontFamily
+        : selectedFont || DEFAULT_VALUES.SELECTED_FONT
     document.documentElement.style.setProperty(
       "--fontara-ui-font",
-      `"${escapeCSSString(fontName)}"`
+      formatFontFamilyForCSS(fontName)
     )
-  }, [selectedFont])
+  }, [selectedFont, systemFontsEnabled])
 }

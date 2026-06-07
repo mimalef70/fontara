@@ -43,6 +43,21 @@ const GENERIC_FONT_DATA_URL_MIME_TYPES = new Set([
   "application/octet-stream",
   "binary/octet-stream"
 ])
+const CSS_GENERIC_FONT_FAMILY_KEYWORDS = new Set([
+  "cursive",
+  "emoji",
+  "fangsong",
+  "fantasy",
+  "math",
+  "monospace",
+  "sans-serif",
+  "serif",
+  "system-ui",
+  "ui-monospace",
+  "ui-rounded",
+  "ui-sans-serif",
+  "ui-serif"
+])
 
 const TRUETYPE_SIGNATURE = [0x00, 0x01, 0x00, 0x00]
 
@@ -233,4 +248,20 @@ export function escapeCSSString(value: string): string {
     .replace(/\n/g, "\\A ")
     .replace(/\r/g, "\\D ")
     .replace(/\f/g, "\\C ")
+}
+
+export function isCSSGenericFontFamily(fontFamily: unknown): boolean {
+  return (
+    typeof fontFamily === "string" &&
+    CSS_GENERIC_FONT_FAMILY_KEYWORDS.has(fontFamily.trim().toLowerCase())
+  )
+}
+
+export function formatFontFamilyForCSS(fontFamily: string): string {
+  const normalizedFontFamily = fontFamily.trim()
+  if (isCSSGenericFontFamily(normalizedFontFamily)) {
+    return normalizedFontFamily.toLowerCase()
+  }
+
+  return `"${escapeCSSString(normalizedFontFamily)}"`
 }

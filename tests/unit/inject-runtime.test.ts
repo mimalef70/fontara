@@ -4,6 +4,7 @@ import test, { afterEach } from "node:test"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontData, WebsiteItem } from "../../src/definitions"
+import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 type StorageListener = (
   changes: Record<string, chrome.storage.StorageChange>,
@@ -14,6 +15,7 @@ type StoredValues = {
   [STORAGE_KEYS.CUSTOM_FONT_LIST]: FontData[]
   [STORAGE_KEYS.EXTENSION_ENABLED]: boolean
   [STORAGE_KEYS.SELECTED_FONT]: string
+  [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: boolean
   [STORAGE_KEYS.WEBSITE_LIST]: WebsiteItem[]
 }
 
@@ -176,6 +178,7 @@ function createRuntimeMocks(): {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [customFont],
     [STORAGE_KEYS.EXTENSION_ENABLED]: true,
     [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
     [STORAGE_KEYS.WEBSITE_LIST]: [matchingWebsite]
   }
   const bodyElement = new FakeElement("body", elementsById)
@@ -510,6 +513,72 @@ test("selected custom font changes inject its font-face without a reload", async
       "expected missing selected custom font to fall back to the default font"
     )
     assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 2)
+
+    const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
+    assert.ok(selectedSystemFont)
+    runtime.values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] = true
+    runtime.values[STORAGE_KEYS.SELECTED_FONT] = selectedSystemFont
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: {
+          newValue: true,
+          oldValue: false
+        },
+        [STORAGE_KEYS.SELECTED_FONT]: {
+          newValue: selectedSystemFont,
+          oldValue: DEFAULT_VALUES.SELECTED_FONT
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "Noto Sans Arabic"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) && runtime.getStyleText("fontara-custom-font-styles") === "",
+      "expected enabled system font selection to update the font variable"
+    )
+
+    const selectedGenericSystemFont = createSystemFontValue("system-ui")
+    assert.ok(selectedGenericSystemFont)
+    runtime.values[STORAGE_KEYS.SELECTED_FONT] = selectedGenericSystemFont
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SELECTED_FONT]: {
+          newValue: selectedGenericSystemFont,
+          oldValue: selectedSystemFont
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: system-ui/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ),
+      "expected generic system font families to stay unquoted"
+    )
+
+    runtime.values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] = false
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: {
+          newValue: false,
+          oldValue: true
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "Vazirmatn-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ),
+      "expected disabled system fonts to fall back to the default font"
+    )
 
     runtime.setRuntimeRemoveError(
       new TypeError("Cannot read properties of undefined (reading 'onMessage')")

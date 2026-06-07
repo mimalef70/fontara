@@ -3,6 +3,7 @@ import {
   Check,
   FileText,
   Globe2,
+  HardDrive,
   Info,
   Languages,
   ListChecks,
@@ -41,6 +42,11 @@ import {
   normalizeFontDataURL
 } from "../../utils/font-data"
 import { getLocalValue, setLocalValues } from "../../utils/storage"
+import {
+  getSystemFontList,
+  isSystemFontAccessSupported,
+  isSystemFontValue
+} from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
 import { Button } from "../components/ui/button"
 import { Switch } from "../components/ui/Switch"
@@ -71,7 +77,8 @@ import {
   EMPTY_CUSTOM_FONT_LIST,
   EMPTY_WEBSITE_LIST,
   getRtlEnabledInitialValue,
-  getRtlSiteSettingsInitialValue
+  getRtlSiteSettingsInitialValue,
+  getSystemFontsEnabledInitialValue
 } from "../storage-defaults"
 
 type SettingsSection = "fonts" | "sites" | "rtl" | "language" | "status"
@@ -169,6 +176,10 @@ function OptionsPage() {
   const [customFontList, setCustomFontList] = useStorageValue<FontData[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
+  )
+  const [systemFontsEnabled, setSystemFontsEnabled] = useStorageValue<boolean>(
+    STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
+    getSystemFontsEnabledInitialValue
   )
   const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
@@ -440,6 +451,43 @@ function OptionsPage() {
     }
   }
 
+  const handleSystemFontsToggle = async (checked: boolean) => {
+    try {
+      if (!checked) {
+        const selectedFont = await getLocalValue<string>(
+          STORAGE_KEYS.SELECTED_FONT
+        )
+        await setLocalValues({
+          [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
+          ...(isSystemFontValue(selectedFont)
+            ? { [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT }
+            : {})
+        })
+        return
+      }
+
+      if (!isSystemFontAccessSupported()) {
+        toast({ title: t("options.toast.systemFontsUnsupported") })
+        return
+      }
+
+      const fonts = await getSystemFontList()
+      if (fonts.length === 0) {
+        toast({ title: t("options.toast.systemFontsUnsupported") })
+        return
+      }
+
+      await setSystemFontsEnabled(true)
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
   const handleRtlSiteToggle = async (site: RtlSiteConfig, checked: boolean) => {
     try {
       await setRtlSiteSettings({
@@ -535,131 +583,172 @@ function OptionsPage() {
 
             <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
               {activeSection === "fonts" && (
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <div className="space-y-6">
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.addFont.title")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {t("options.addFont.subtitle")}
-                        </p>
+                    <div
+                      className={cn(
+                        "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
+                        systemFontsEnabled
+                          ? "border-[#dbeafe] bg-[#f8fbff]"
+                          : "border-[#e5e7eb] bg-white"
+                      )}>
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                          <HardDrive className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-bold text-[#111827]">
+                            {t("options.systemFonts.title")}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {t("options.systemFonts.description")}
+                          </p>
+                          <p className="mt-2 text-xs text-[#64748b]">
+                            {systemFontsEnabled
+                              ? t("options.systemFonts.enabled")
+                              : t("options.systemFonts.disabled")}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
-                        <Upload className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label
-                          htmlFor="custom-font-file"
-                          className="mb-2 block text-sm font-medium text-[#334155]">
-                          {t("options.addFont.fileLabel")}
-                        </label>
-                        <input
-                          id="custom-font-file"
-                          ref={fileInputRef}
-                          type="file"
-                          onChange={handleFileChange}
-                          accept=".ttf,.woff,.woff2,.otf"
-                          className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 py-2 text-sm text-[#334155] file:ms-3 file:rounded-md file:border-0 file:bg-[#edf3fd] file:px-3 file:py-1.5 file:text-[#2374ff]"
-                          disabled={isLoading}
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="custom-font-name"
-                          className="mb-2 block text-sm font-medium text-[#334155]">
-                          {t("options.addFont.nameLabel")}
-                        </label>
-                        <input
-                          id="custom-font-name"
-                          type="text"
-                          value={fontName}
-                          onChange={(event) => setFontName(event.target.value)}
-                          placeholder={t("options.addFont.namePlaceholder")}
-                          className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-                          disabled={isLoading}
-                          dir="auto"
-                        />
-                      </div>
-
-                      <Button
-                        type="button"
-                        onClick={handleSaveFont}
-                        className="h-11 w-full bg-[#2374ff] text-white hover:bg-[#1f66df]"
-                        disabled={isLoading}>
-                        <Upload className="size-4" />
-                        {isLoading
-                          ? t("options.addFont.loading")
-                          : t("options.addFont.button")}
-                      </Button>
+                      <Switch
+                        dir="ltr"
+                        checked={systemFontsEnabled}
+                        onCheckedChange={(checked) =>
+                          void handleSystemFontsToggle(checked)
+                        }
+                        aria-label={t("options.systemFonts.title")}
+                      />
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.savedFonts.title")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {t("options.customFonts.count", {
-                            count: formatNumber(customFontList.length),
-                            size: formatBytes(
-                              fontStorageBytes,
-                              formatNumber,
-                              t("unit.kb"),
-                              t("unit.mb")
-                            )
-                          })}
-                        </p>
+                  <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.addFont.title")}
+                          </h3>
+                          <p className="mt-1 text-xs text-[#64748b]">
+                            {t("options.addFont.subtitle")}
+                          </p>
+                        </div>
+                        <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                          <Upload className="size-5" />
+                        </div>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#f8fafc] text-[#64748b]">
-                        <FileText className="size-5" />
-                      </div>
-                    </div>
 
-                    {customFontList.length > 0 ? (
-                      <div className="space-y-3">
-                        {customFontList.map((font: FontData) => (
-                          <div
-                            key={font.value}
-                            className="flex items-center justify-between gap-3 rounded-md border border-[#e5e7eb] px-3 py-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-[#111827]">
-                                {font.name}
-                              </div>
-                              {font.originalFileName && (
-                                <div
-                                  className="mt-1 truncate text-xs text-[#64748b]"
-                                  dir="ltr">
-                                  {font.originalFileName}
+                      <div className="space-y-4">
+                        <div>
+                          <label
+                            htmlFor="custom-font-file"
+                            className="mb-2 block text-sm font-medium text-[#334155]">
+                            {t("options.addFont.fileLabel")}
+                          </label>
+                          <input
+                            id="custom-font-file"
+                            ref={fileInputRef}
+                            type="file"
+                            onChange={handleFileChange}
+                            accept=".ttf,.woff,.woff2,.otf"
+                            className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 py-2 text-sm text-[#334155] file:ms-3 file:rounded-md file:border-0 file:bg-[#edf3fd] file:px-3 file:py-1.5 file:text-[#2374ff]"
+                            disabled={isLoading}
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="custom-font-name"
+                            className="mb-2 block text-sm font-medium text-[#334155]">
+                            {t("options.addFont.nameLabel")}
+                          </label>
+                          <input
+                            id="custom-font-name"
+                            type="text"
+                            value={fontName}
+                            onChange={(event) =>
+                              setFontName(event.target.value)
+                            }
+                            placeholder={t("options.addFont.namePlaceholder")}
+                            className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                            disabled={isLoading}
+                            dir="auto"
+                          />
+                        </div>
+
+                        <Button
+                          type="button"
+                          onClick={handleSaveFont}
+                          className="h-11 w-full bg-[#2374ff] text-white hover:bg-[#1f66df]"
+                          disabled={isLoading}>
+                          <Upload className="size-4" />
+                          {isLoading
+                            ? t("options.addFont.loading")
+                            : t("options.addFont.button")}
+                        </Button>
+                      </div>
+                    </section>
+
+                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.savedFonts.title")}
+                          </h3>
+                          <p className="mt-1 text-xs text-[#64748b]">
+                            {t("options.customFonts.count", {
+                              count: formatNumber(customFontList.length),
+                              size: formatBytes(
+                                fontStorageBytes,
+                                formatNumber,
+                                t("unit.kb"),
+                                t("unit.mb")
+                              )
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex size-10 items-center justify-center rounded-md bg-[#f8fafc] text-[#64748b]">
+                          <FileText className="size-5" />
+                        </div>
+                      </div>
+
+                      {customFontList.length > 0 ? (
+                        <div className="space-y-3">
+                          {customFontList.map((font: FontData) => (
+                            <div
+                              key={font.value}
+                              className="flex items-center justify-between gap-3 rounded-md border border-[#e5e7eb] px-3 py-3">
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-[#111827]">
+                                  {font.name}
                                 </div>
-                              )}
+                                {font.originalFileName && (
+                                  <div
+                                    className="mt-1 truncate text-xs text-[#64748b]"
+                                    dir="ltr">
+                                    {font.originalFileName}
+                                  </div>
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                onClick={() => handleDeleteFont(font.value)}
+                                disabled={isLoading}>
+                                <Trash2 className="size-4" />
+                                {t("common.delete")}
+                              </Button>
                             </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="shrink-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              onClick={() => handleDeleteFont(font.value)}
-                              disabled={isLoading}>
-                              <Trash2 className="size-4" />
-                              {t("common.delete")}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-[#dbe3ef] text-sm text-[#64748b]">
-                        {t("options.emptyFonts")}
-                      </div>
-                    )}
-                  </section>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-[#dbe3ef] text-sm text-[#64748b]">
+                          {t("options.emptyFonts")}
+                        </div>
+                      )}
+                    </section>
+                  </div>
                 </div>
               )}
 

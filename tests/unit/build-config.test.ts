@@ -20,8 +20,16 @@ test("build pipeline generates WebExtension locales from the i18n catalog", () =
     path.resolve("tasks/bundle-locales.js"),
     "utf8"
   )
+  const validateBuildSource = fs.readFileSync(
+    path.resolve("tasks/validate-build.js"),
+    "utf8"
+  )
 
   assert.match(buildSource, /bundleLocales/)
+  assert.match(buildSource, /validateBuild/)
   assert.match(bundleLocalesSource, /src\/i18n\/messages\.json/)
   assert.match(bundleLocalesSource, /_locales/)
+  assert.match(validateBuildSource, /manifest\.default_locale/)
+  assert.match(validateBuildSource, /_locales/)
+  assert.match(validateBuildSource, /messages\.json/)
 })

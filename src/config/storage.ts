@@ -1,5 +1,6 @@
 import type { WebsiteItem } from "../definitions"
 import { UI_LANGUAGE_AUTO } from "./i18n"
+import { DEFAULT_RTL_SITE_SETTINGS } from "./rtl-sites"
 import { POPULAR_WEBSITES } from "./sites"
 
 export { STORAGE_KEYS } from "./storage-keys"
@@ -12,7 +13,9 @@ export const DEFAULT_VALUES = {
     isActive: true
   })),
   CUSTOM_FONT_LIST: [],
-  UI_LANGUAGE: UI_LANGUAGE_AUTO
+  UI_LANGUAGE: UI_LANGUAGE_AUTO,
+  RTL_ENABLED: true,
+  RTL_SITE_SETTINGS: DEFAULT_RTL_SITE_SETTINGS
 }
 
 export const URLS = {

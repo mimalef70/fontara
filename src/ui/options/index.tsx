@@ -1,4 +1,5 @@
 import {
+  AlignRight,
   Check,
   FileText,
   Globe2,
@@ -19,6 +20,13 @@ import {
   UI_LANGUAGE_AUTO,
   type UILanguagePreference
 } from "../../config/i18n"
+import {
+  isRtlSiteEnabled,
+  normalizeRtlSiteSettings,
+  RTL_SUPPORTED_SITES,
+  type RtlSiteConfig,
+  type RtlSiteSettings
+} from "../../config/rtl-sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import type { FontData, WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
@@ -59,9 +67,14 @@ import { useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
 import { I18nProvider, useI18n, waitForI18nBootstrap } from "../i18n"
 import type { MessageKey } from "../i18n/messages"
-import { EMPTY_CUSTOM_FONT_LIST, EMPTY_WEBSITE_LIST } from "../storage-defaults"
+import {
+  EMPTY_CUSTOM_FONT_LIST,
+  EMPTY_WEBSITE_LIST,
+  getRtlEnabledInitialValue,
+  getRtlSiteSettingsInitialValue
+} from "../storage-defaults"
 
-type SettingsSection = "fonts" | "sites" | "language" | "status"
+type SettingsSection = "fonts" | "sites" | "rtl" | "language" | "status"
 
 const settingsNavigation: Array<{
   id: SettingsSection
@@ -70,6 +83,7 @@ const settingsNavigation: Array<{
 }> = [
   { id: "fonts", labelKey: "options.nav.fonts", icon: Type },
   { id: "sites", labelKey: "options.nav.sites", icon: Globe2 },
+  { id: "rtl", labelKey: "options.nav.rtl", icon: AlignRight },
   { id: "language", labelKey: "options.nav.language", icon: Languages },
   { id: "status", labelKey: "options.nav.status", icon: ListChecks }
 ]
@@ -77,6 +91,7 @@ const settingsNavigation: Array<{
 const sectionDescriptionKeys: Record<SettingsSection, MessageKey> = {
   fonts: "options.section.fonts.description",
   sites: "options.section.sites.description",
+  rtl: "options.section.rtl.description",
   language: "options.section.language.description",
   status: "options.section.status.description"
 }
@@ -159,6 +174,15 @@ function OptionsPage() {
     STORAGE_KEYS.WEBSITE_LIST,
     EMPTY_WEBSITE_LIST
   )
+  const [rtlEnabled, setRtlEnabled] = useStorageValue<boolean>(
+    STORAGE_KEYS.RTL_ENABLED,
+    getRtlEnabledInitialValue
+  )
+  const [rtlSiteSettings, setRtlSiteSettings] =
+    useStorageValue<RtlSiteSettings>(
+      STORAGE_KEYS.RTL_SITE_SETTINGS,
+      getRtlSiteSettingsInitialValue
+    )
   const [activeSection, setActiveSection] = useState<SettingsSection>("fonts")
   const activeNavigation = settingsNavigation.find(
     (item) => item.id === activeSection
@@ -364,6 +388,13 @@ function OptionsPage() {
   const cssOnlyWebsiteCount = effectiveWebsiteList.filter(
     (website) => website.customCss === true
   ).length
+  const normalizedRtlSiteSettings = normalizeRtlSiteSettings(rtlSiteSettings)
+  const activeRtlSiteCount =
+    rtlEnabled === false
+      ? 0
+      : RTL_SUPPORTED_SITES.filter((site) =>
+          isRtlSiteEnabled(normalizedRtlSiteSettings, site.id)
+        ).length
   const fontStorageBytes = customFontList.reduce((total, font) => {
     return total + new Blob([font.data]).size
   }, 0)
@@ -394,6 +425,35 @@ function OptionsPage() {
       effectiveWebsiteList.find((item) => item.url === website.url)
         ?.isActive !== false
     )
+  }
+
+  const handleRtlGlobalToggle = async (checked: boolean) => {
+    try {
+      await setRtlEnabled(checked)
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
+  const handleRtlSiteToggle = async (site: RtlSiteConfig, checked: boolean) => {
+    try {
+      await setRtlSiteSettings({
+        ...normalizedRtlSiteSettings,
+        [site.id]: checked
+      })
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
   }
 
   return (
@@ -673,6 +733,127 @@ function OptionsPage() {
                 </section>
               )}
 
+              {activeSection === "rtl" && (
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.rtl.title")}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          {t("options.rtl.subtitle")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <AlignRight className="size-5" />
+                      </div>
+                    </div>
+
+                    <div
+                      className={cn(
+                        "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
+                        rtlEnabled
+                          ? "border-[#dbeafe] bg-[#f8fbff]"
+                          : "border-[#e5e7eb] bg-white"
+                      )}>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-[#111827]">
+                          {t("options.rtl.globalTitle")}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {t("options.rtl.globalDescription")}
+                        </p>
+                      </div>
+                      <Switch
+                        dir="ltr"
+                        checked={rtlEnabled}
+                        onCheckedChange={(checked) =>
+                          void handleRtlGlobalToggle(checked)
+                        }
+                        aria-label={t("options.rtl.globalTitle")}
+                      />
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.rtl.supportedSitesTitle")}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          {t("options.rtl.supportedSitesDescription", {
+                            active: formatNumber(activeRtlSiteCount),
+                            total: formatNumber(RTL_SUPPORTED_SITES.length)
+                          })}
+                        </p>
+                      </div>
+                      {!rtlEnabled && (
+                        <span className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs text-[#64748b]">
+                          {t("options.rtl.globallyDisabled")}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {RTL_SUPPORTED_SITES.map((site) => {
+                        const siteEnabled = isRtlSiteEnabled(
+                          normalizedRtlSiteSettings,
+                          site.id
+                        )
+                        const active = rtlEnabled !== false && siteEnabled
+
+                        return (
+                          <div
+                            key={site.id}
+                            className={cn(
+                              "flex items-center justify-between gap-3 rounded-md border px-3 py-3 transition",
+                              active
+                                ? "border-[#dbeafe] bg-[#f8fbff]"
+                                : "border-[#e5e7eb] bg-white opacity-70"
+                            )}>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <img
+                                alt=""
+                                src={getExtensionAssetURL(site.icon)}
+                                className={cn(
+                                  "size-8 rounded-md object-contain",
+                                  !active && "grayscale"
+                                )}
+                              />
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-[#111827]">
+                                  {site.siteName}
+                                </div>
+                                <div className="truncate text-xs text-[#64748b]">
+                                  {rtlEnabled === false
+                                    ? t("options.rtl.globallyDisabled")
+                                    : siteEnabled
+                                      ? t("options.rtl.siteEnabled")
+                                      : t("options.rtl.siteDisabled")}
+                                </div>
+                              </div>
+                            </div>
+                            <Switch
+                              dir="ltr"
+                              checked={siteEnabled}
+                              disabled={rtlEnabled === false}
+                              onCheckedChange={(checked) =>
+                                void handleRtlSiteToggle(site, checked)
+                              }
+                              aria-label={t("options.rtl.siteToggleAria", {
+                                site: site.siteName
+                              })}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </section>
+                </div>
+              )}
+
               {activeSection === "language" && (
                 <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                   <div className="mb-5 flex items-center justify-between gap-3">
@@ -740,7 +921,7 @@ function OptionsPage() {
               )}
 
               {activeSection === "status" && (
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <Settings className="mb-4 size-5 text-[#2374ff]" />
                     <div className="text-2xl font-bold text-[#111827]">
@@ -768,6 +949,16 @@ function OptionsPage() {
                     </div>
                     <div className="mt-1 text-sm text-[#64748b]">
                       {t("options.status.cssOnly")}
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <AlignRight className="mb-4 size-5 text-[#2374ff]" />
+                    <div className="text-2xl font-bold text-[#111827]">
+                      {formatNumber(activeRtlSiteCount)}
+                    </div>
+                    <div className="mt-1 text-sm text-[#64748b]">
+                      {t("options.status.rtlSites")}
                     </div>
                   </section>
                 </div>

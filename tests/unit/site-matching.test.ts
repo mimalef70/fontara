@@ -3,6 +3,10 @@ import fs from "node:fs"
 import path from "node:path"
 import test, { afterEach } from "node:test"
 
+import {
+  getRtlSiteByUrl,
+  RTL_SUPPORTED_SITES
+} from "../../src/config/rtl-sites"
 import { POPULAR_WEBSITES } from "../../src/config/sites"
 import { STORAGE_KEYS } from "../../src/config/storage"
 import type { WebsiteItem } from "../../src/definitions"
@@ -122,6 +126,37 @@ test("popular websites are ordered by priority and category", () => {
       "Dropbox"
     ]
   )
+})
+
+test("RTL supported sites mirror the imported sample extension platforms", () => {
+  assert.deepEqual(
+    RTL_SUPPORTED_SITES.map((site) => site.id),
+    [
+      "chatgpt",
+      "claude",
+      "gemini",
+      "copilot",
+      "perplexity",
+      "deepseek",
+      "notebooklm",
+      "aistudio",
+      "qwen",
+      "arena"
+    ]
+  )
+})
+
+test("RTL site matching handles supported host aliases", () => {
+  assert.equal(getRtlSiteByUrl("https://chat.openai.com/c/1")?.id, "chatgpt")
+  assert.equal(getRtlSiteByUrl("https://chatgpt.com/c/1")?.id, "chatgpt")
+  assert.equal(
+    getRtlSiteByUrl("https://www.perplexity.ai/search")?.id,
+    "perplexity"
+  )
+  assert.equal(getRtlSiteByUrl("https://deepseek.com/")?.id, "deepseek")
+  assert.equal(getRtlSiteByUrl("https://chat.qwen.ai/")?.id, "qwen")
+  assert.equal(getRtlSiteByUrl("https://www.arena.ai/")?.id, "arena")
+  assert.equal(getRtlSiteByUrl("https://example.com/"), null)
 })
 
 test("custom URL regex matches the same host over http and https", () => {

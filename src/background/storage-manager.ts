@@ -1,5 +1,6 @@
 import { DEFAULT_FONTS } from "../config/fonts"
 import { normalizeUILanguagePreference } from "../config/i18n"
+import { normalizeRtlSiteSettings } from "../config/rtl-sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type { FontData, WebsiteItem } from "../definitions"
 import {
@@ -165,6 +166,20 @@ export async function ensureStorageValues(): Promise<void> {
   if (extensionEnabled === undefined) {
     storageUpdates[STORAGE_KEYS.EXTENSION_ENABLED] =
       DEFAULT_VALUES.EXTENSION_ENABLED
+  }
+
+  const rtlEnabled = await getLocalValue<boolean>(STORAGE_KEYS.RTL_ENABLED)
+  if (rtlEnabled === undefined) {
+    storageUpdates[STORAGE_KEYS.RTL_ENABLED] = DEFAULT_VALUES.RTL_ENABLED
+  }
+
+  const rtlSiteSettings = await getLocalValue(STORAGE_KEYS.RTL_SITE_SETTINGS)
+  const normalizedRtlSiteSettings = normalizeRtlSiteSettings(rtlSiteSettings)
+  if (
+    JSON.stringify(rtlSiteSettings) !==
+    JSON.stringify(normalizedRtlSiteSettings)
+  ) {
+    storageUpdates[STORAGE_KEYS.RTL_SITE_SETTINGS] = normalizedRtlSiteSettings
   }
 
   const uiLanguage = await getLocalValue(STORAGE_KEYS.UI_LANGUAGE)

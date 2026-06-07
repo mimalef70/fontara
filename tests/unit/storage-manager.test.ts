@@ -877,3 +877,25 @@ test("ensureStorageValues initializes and normalizes the UI language preference"
 
   assert.equal(values[STORAGE_KEYS.UI_LANGUAGE], DEFAULT_VALUES.UI_LANGUAGE)
 })
+
+test("ensureStorageValues initializes and normalizes RTL settings", async () => {
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.RTL_SITE_SETTINGS]: {
+      chatgpt: false,
+      unknown: false
+    }
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.RTL_ENABLED], DEFAULT_VALUES.RTL_ENABLED)
+  assert.deepEqual(values[STORAGE_KEYS.RTL_SITE_SETTINGS], {
+    ...DEFAULT_VALUES.RTL_SITE_SETTINGS,
+    chatgpt: false
+  })
+})

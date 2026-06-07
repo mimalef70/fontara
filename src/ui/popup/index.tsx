@@ -11,6 +11,7 @@ import { PlusCircle } from "../components/icons"
 import Footer from "../components/layout/Footer"
 import Header from "../components/layout/Header"
 import PopularSection from "../components/PopularSection"
+import RtlSiteToggle from "../components/RtlSiteToggle"
 import {
   Tooltip,
   TooltipContent,
@@ -95,6 +96,7 @@ function IndexPopup() {
                   </div>
 
                   <CustomUrlToggle />
+                  <RtlSiteToggle />
                 </div>
               </div>
             </div>

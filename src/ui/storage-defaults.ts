@@ -1,4 +1,9 @@
 import { normalizeUILanguagePreference } from "../config/i18n"
+import {
+  DEFAULT_RTL_SITE_SETTINGS,
+  normalizeRtlSiteSettings,
+  type RtlSiteSettings
+} from "../config/rtl-sites"
 import type { FontData, WebsiteItem } from "../definitions"
 
 export const EMPTY_CUSTOM_FONT_LIST: FontData[] = []
@@ -12,4 +17,16 @@ export function getExtensionEnabledInitialValue(
 
 export function getUILanguagePreferenceInitialValue(value: unknown) {
   return normalizeUILanguagePreference(value)
+}
+
+export function getRtlEnabledInitialValue(value: boolean | undefined): boolean {
+  return value !== false
+}
+
+export function getRtlSiteSettingsInitialValue(
+  value: unknown
+): RtlSiteSettings {
+  return value === undefined
+    ? DEFAULT_RTL_SITE_SETTINGS
+    : normalizeRtlSiteSettings(value)
 }

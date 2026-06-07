@@ -138,9 +138,17 @@ test("storage changes schedule the active injection pipeline", () => {
 
 test("hot selector lookups use Sets", () => {
   const selectorsSource = readSource("src/config/selectors.ts")
+  const domProcessorSource = readSource("src/inject/dom-processor.ts")
 
   assert.match(selectorsSource, /EXCLUDED_TAGS = new Set\(/)
   assert.match(selectorsSource, /ICON_CLASSES = new Set\(/)
+  assert.match(selectorsSource, /ICON_CLASS_PREFIXES/)
+  assert.match(selectorsSource, /ICON_CLASS_SUBSTRINGS/)
+  assert.match(selectorsSource, /EXCLUDED_INLINE_STYLE_PARTS/)
+  assert.match(domProcessorSource, /function hasAriaHidden/)
+  assert.match(domProcessorSource, /function hasExcludedInlineFontStyle/)
+  assert.match(domProcessorSource, /className\.startsWith\(prefix\)/)
+  assert.match(domProcessorSource, /className\.includes\(substring\)/)
 })
 
 test("custom font injection only emits the selected custom font", () => {

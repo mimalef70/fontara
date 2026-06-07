@@ -1,4 +1,10 @@
-import { EXCLUDED_TAGS, ICON_CLASSES } from "../config/selectors"
+import {
+  EXCLUDED_INLINE_STYLE_PARTS,
+  EXCLUDED_TAGS,
+  ICON_CLASS_PREFIXES,
+  ICON_CLASS_SUBSTRINGS,
+  ICON_CLASSES
+} from "../config/selectors"
 import { normalizeFontFamilyName, splitFontFamilies } from "../utils/font-data"
 
 export type FontWork = {
@@ -13,7 +19,13 @@ type FontWorkCollection = {
   walker: TreeWalker
 }
 
-const ICON_FONT_FAMILY_PARTS = ["fontawesome", "material", "icon", "glyphicon"]
+const ICON_FONT_FAMILY_PARTS = [
+  "fontawesome",
+  "font awesome",
+  "material",
+  "icon",
+  "glyphicon"
+]
 const TEXT_CONTROL_TAGS = new Set(["input", "textarea", "select", "option"])
 const ROOT_COLLECTIONS_PER_TIMEOUT = 20
 const WORK_CHUNK_SIZE = 200
@@ -49,15 +61,35 @@ function hasContentEditableAncestorOrSelf(node: HTMLElement): boolean {
 function hasIconClass(node: HTMLElement): boolean {
   for (const className of node.classList) {
     if (ICON_CLASSES.has(className)) return true
+    if (ICON_CLASS_PREFIXES.some((prefix) => className.startsWith(prefix))) {
+      return true
+    }
+    if (
+      ICON_CLASS_SUBSTRINGS.some((substring) => className.includes(substring))
+    ) {
+      return true
+    }
   }
 
   return false
+}
+
+function hasAriaHidden(node: HTMLElement): boolean {
+  return node.getAttribute("aria-hidden")?.toLowerCase() === "true"
+}
+
+function hasExcludedInlineFontStyle(node: HTMLElement): boolean {
+  const styleAttribute = node.getAttribute("style") ?? ""
+  return EXCLUDED_INLINE_STYLE_PARTS.some((part) =>
+    styleAttribute.includes(part)
+  )
 }
 
 function isExcludedSubtree(node: HTMLElement): boolean {
   return (
     EXCLUDED_TAGS.has(node.tagName.toLowerCase()) ||
     hasIconClass(node) ||
+    hasAriaHidden(node) ||
     isContentEditableRoot(node)
   )
 }
@@ -96,7 +128,11 @@ function getCleanFontFamily(fontFamily: string): string {
 }
 
 function addFontWork(node: HTMLElement, work: FontWork[]): void {
-  if (processedElements.has(node) || !hasRenderableText(node)) {
+  if (
+    processedElements.has(node) ||
+    !hasRenderableText(node) ||
+    hasExcludedInlineFontStyle(node)
+  ) {
     return
   }
 

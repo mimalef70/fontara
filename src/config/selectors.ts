@@ -1,6 +1,8 @@
 export const EXCLUDED_TAGS = new Set([
   "script",
   "style",
+  "pre",
+  "code",
   "img",
   "svg",
   "path",
@@ -9,16 +11,22 @@ export const EXCLUDED_TAGS = new Set([
   "polygon",
   "canvas",
   "video",
-  "audio"
+  "audio",
+  "mu"
 ])
 
 export const ICON_CLASSES = new Set([
   "fa",
-  "fas",
-  "far",
-  "fal",
-  "fad",
   "fab",
+  "fad",
+  "fal",
+  "far",
+  "fas",
+  "fass",
+  "fasr",
+  "fat",
+  "icofont",
+  "typcn",
   "material-icons",
   "material-icons-outlined",
   "material-icons-round",
@@ -30,3 +38,16 @@ export const ICON_CLASSES = new Set([
   "dashicons",
   "wp-menu-image"
 ])
+
+export const ICON_CLASS_PREFIXES = ["fa-", "mu-", "vjs-"]
+
+export const ICON_CLASS_SUBSTRINGS = [
+  "icon",
+  "Icon",
+  "symbol",
+  "Symbol",
+  "material-symbol",
+  "material-icon"
+]
+
+export const EXCLUDED_INLINE_STYLE_PARTS = ["font-"]

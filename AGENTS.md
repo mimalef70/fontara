@@ -1,5 +1,35 @@
 # FontARA Agent Rules
 
+## Git commit workflow
+
+When the user asks to commit changes, first inspect the worktree carefully
+before staging anything:
+
+1. Run `git status --short` to list modified, deleted, and untracked files.
+2. Run `git diff` and review the actual unstaged changes with care. Do not rely
+   only on file names or `git status`.
+3. Identify which changes belong to the requested task and which changes are
+   unrelated or user-owned. Never stage unrelated changes just because they are
+   present in the worktree.
+4. Stage files explicitly by path. Avoid broad staging commands such as
+   `git add .` unless every changed file has been reviewed and belongs in the
+   commit.
+5. After staging, run `git diff --cached --stat`,
+   `git diff --cached --name-status`, and inspect any important staged hunks
+   with `git diff --cached` before committing.
+6. Run the relevant verification commands before the commit when practical. For
+   broad extension changes, prefer `pnpm check`, `pnpm build:all`, and
+   `pnpm lint:extension`. For narrow docs-only changes, a focused review is
+   enough.
+7. Write a clear, standard commit message that describes the user-facing or
+   architectural intent, not just the files touched. Prefer concise imperative
+   phrasing, for example `Improve font unicode and RTL handling`.
+8. After committing, run `git status --short` and `git log -1 --oneline` to
+   confirm the worktree state and the exact commit created.
+9. If the user also asks to push, check `git status --branch --short` and
+   `git log --oneline <upstream>..HEAD` before pushing so it is clear which
+   commits will be sent.
+
 ## UI components and shadcn/ui
 
 For extension UI work, prefer shadcn/ui primitives over one-off custom
@@ -202,19 +232,34 @@ template unless the user explicitly asks for a semantic refactor.
   [role="option"],
   [role="tab"]
 ):not(
-  [class*="icon" i],
-  [class*="symbol" i],
-  [class*="glyph" i],
-  [class*="material-icons" i],
-  [class*="fa-"],
-  [class~="fa"],
-  [class*="bi-"],
-  [role="img"],
+  pre,
   pre *,
   code,
   code *,
-  kbd,
-  samp
+  [aria-hidden="true"],
+  [class*="fa-"],
+  .fa,
+  .fab,
+  .fad,
+  .fal,
+  .far,
+  .fas,
+  .fass,
+  .fasr,
+  .fat,
+  .icofont,
+  [style*="font-"],
+  [class*="icon"],
+  [class*="Icon"],
+  [class*="symbol"],
+  [class*="Symbol"],
+  .glyphicon,
+  [class*="material-symbol"],
+  [class*="material-icon"],
+  mu,
+  [class*="mu-"],
+  .typcn,
+  [class*="vjs-"]
 ) {
   font-family: var(--fontara-font), var(--site-text-fallback) !important;
 }

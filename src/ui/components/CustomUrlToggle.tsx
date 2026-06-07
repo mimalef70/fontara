@@ -75,6 +75,7 @@ const CustomUrlToggle = () => {
   )
     return null
 
+  const isRtl = direction === "rtl"
   const hostName = new URL(currentUrl).hostname.slice(0, 25)
   const checkboxControl = (
     <div className="relative shrink-0">
@@ -100,7 +101,7 @@ const CustomUrlToggle = () => {
 
   const siteIdentity = (
     <span
-      className="inline-flex min-w-0 items-center gap-1 align-middle"
+      className="inline-flex min-w-0 max-w-[8.5rem] items-center gap-1 align-middle"
       dir="ltr">
       {currentTab?.favIconUrl && (
         <img
@@ -123,17 +124,19 @@ const CustomUrlToggle = () => {
         className="block cursor-pointer overflow-y-hidden text-xs"
         htmlFor="customUrl">
         <div
-          className="flex w-full items-center justify-between gap-2"
+          className={`flex w-full items-center gap-2 ${
+            isRtl ? "justify-end" : "justify-start"
+          }`}
           dir="ltr">
-          {direction === "ltr" && checkboxControl}
+          {!isRtl && checkboxControl}
           <div
             dir={direction}
-            className="flex min-w-0 flex-1 items-center justify-start gap-1">
+            className="inline-flex min-w-0 max-w-full items-center justify-start gap-1">
             <span className="shrink-0">{t("customUrl.enablePrefix")}</span>
             {siteIdentity}
             <span className="shrink-0">{t("customUrl.enableSuffix")}</span>
           </div>
-          {direction === "rtl" && checkboxControl}
+          {isRtl && checkboxControl}
         </div>
       </label>
     </div>

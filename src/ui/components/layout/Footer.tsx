@@ -6,7 +6,7 @@ import { getExtensionEnabledInitialValue } from "../../storage-defaults"
 import { HeartBold } from "../icons"
 
 function Footer() {
-  const { t } = useI18n()
+  const { direction, t } = useI18n()
   const [extensionActive] = useStorageValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED,
     getExtensionEnabledInitialValue
@@ -19,7 +19,9 @@ function Footer() {
         "opacity-100": extensionActive
       })}>
       <footer className="w-full flex flex-col gap-2 items-center justify-center">
-        <p className="flex max-w-full items-center justify-center gap-1 whitespace-nowrap text-center text-[11px] leading-5 text-gray-500">
+        <p
+          className="flex max-w-full items-center justify-center gap-1 whitespace-nowrap text-center text-[11px] leading-5 text-gray-500"
+          dir={direction}>
           <span className="font-medium">{t("footer.designedBeforeHeart")}</span>
           <HeartBold className="size-4 shrink-0 text-[#ff0000]" />
           <span className="font-medium">{t("footer.designedAfterHeart")}</span>

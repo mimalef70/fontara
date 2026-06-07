@@ -44,10 +44,14 @@ test("UI language preferences normalize and resolve safely", () => {
   assert.equal(getLanguageDirection("en"), "ltr")
 })
 
-test("bundled font metadata exposes English display labels", () => {
+test("bundled font metadata exposes localized display labels", () => {
   assert.ok(
     DEFAULT_FONTS.every(
-      (font) => font.localizedName.en && font.localizedAuthor.en
+      (font) =>
+        font.localizedName.en &&
+        font.localizedAuthor.en &&
+        font.localizedName.ar &&
+        font.localizedAuthor.ar
     )
   )
 
@@ -55,8 +59,10 @@ test("bundled font metadata exposes English display labels", () => {
 
   assert.equal(vazir?.name, "وزیر")
   assert.equal(vazir?.localizedName.en, "Vazir")
+  assert.equal(vazir?.localizedName.ar, "وزير")
   assert.equal(vazir?.author, "زنده یاد صابر راستی کردار")
   assert.equal(vazir?.localizedAuthor.en, "Saber Rastikerdar")
+  assert.equal(vazir?.localizedAuthor.ar, "الراحل صابر راستي كردار")
 })
 
 test("extension locales exist for English, Persian, and Arabic", () => {

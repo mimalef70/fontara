@@ -252,6 +252,7 @@ test("popup footer wraps localized credits cleanly", () => {
   )
 
   assert.match(footerSource, /max-w-full/)
+  assert.match(footerSource, /dir=\{direction\}/)
   assert.match(footerSource, /whitespace-nowrap/)
   assert.match(footerSource, /text-\[11px\]/)
   assert.match(footerSource, /text-center/)
@@ -280,15 +281,21 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /peer-focus-visible:ring-2/)
   assert.match(customUrlToggleSource, /className="relative shrink-0"/)
   assert.match(customUrlToggleSource, /const \{ direction, t \} = useI18n\(\)/)
+  assert.match(customUrlToggleSource, /const isRtl = direction === "rtl"/)
   assert.match(customUrlToggleSource, /dir=\{direction\}/)
   assert.match(
     customUrlToggleSource,
-    /dir="ltr"[\s\S]*direction === "ltr" && checkboxControl/
+    /isRtl \? "justify-end" : "justify-start"/
   )
-  assert.match(customUrlToggleSource, /items-center justify-start gap-1/)
+  assert.match(customUrlToggleSource, /!isRtl && checkboxControl/)
+  assert.match(customUrlToggleSource, /isRtl && checkboxControl/)
+  assert.match(customUrlToggleSource, /max-w-\[8\.5rem\]/)
+  assert.match(
+    customUrlToggleSource,
+    /inline-flex min-w-0 max-w-full items-center justify-start gap-1/
+  )
   assert.match(customUrlToggleSource, /dir="ltr"[\s\S]*<img[\s\S]*<bdi/)
   assert.match(customUrlToggleSource, /<bdi className="truncate" dir="ltr">/)
-  assert.match(customUrlToggleSource, /direction === "rtl" && checkboxControl/)
 })
 
 test("custom font uploads normalize stored names and data URLs", () => {

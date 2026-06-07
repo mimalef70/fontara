@@ -8,6 +8,7 @@ import {
   Info,
   Languages,
   ListChecks,
+  Plus,
   Settings,
   Trash2,
   Type,
@@ -17,6 +18,7 @@ import React, { useState } from "react"
 import { createRoot } from "react-dom/client"
 
 import { version } from "../../../package.json"
+import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
 import {
   type SupportedUILanguage,
   UI_LANGUAGE_AUTO,
@@ -29,6 +31,22 @@ import {
   type RtlSiteConfig,
   type RtlSiteSettings
 } from "../../config/rtl-sites"
+import {
+  addSitePatternToList,
+  createSiteListToggleUpdate,
+  getDisplaySitePattern,
+  isSiteListUrlEnabled,
+  normalizeEnabledByDefault,
+  normalizeSiteList,
+  normalizeSitePattern,
+  removeSitePatternFromList
+} from "../../config/site-list"
+import {
+  normalizeSiteProfiles,
+  removeSiteProfile,
+  removeSiteProfileFontOverrides,
+  upsertSiteProfile
+} from "../../config/site-profiles"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import {
   normalizeTextStrokeValue,
@@ -36,7 +54,7 @@ import {
   TEXT_STROKE_MIN,
   TEXT_STROKE_STEP
 } from "../../config/text-stroke"
-import type { FontData, WebsiteItem } from "../../definitions"
+import type { FontData, SiteProfile, WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
 import { createCustomFontDeletionUpdate } from "../../utils/custom-fonts"
@@ -48,12 +66,18 @@ import {
   MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
   normalizeFontDataURL
 } from "../../utils/font-data"
-import { isGoogleFontValue } from "../../utils/google-font-runtime"
+import {
+  getGoogleFontByValue,
+  getGoogleFontList,
+  isGoogleFontValue
+} from "../../utils/google-fonts"
 import { getLocalValue, setLocalValues } from "../../utils/storage"
 import {
+  decodeSystemFontValue,
   getSystemFontList,
   isSystemFontAccessSupported,
-  isSystemFontValue
+  isSystemFontValue,
+  type SystemFontData
 } from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
 import { Button } from "../components/ui/button"
@@ -84,9 +108,12 @@ import type { MessageKey } from "../i18n/messages"
 import {
   EMPTY_CUSTOM_FONT_LIST,
   EMPTY_WEBSITE_LIST,
+  getEnabledByDefaultInitialValue,
   getGoogleFontsEnabledInitialValue,
   getRtlEnabledInitialValue,
   getRtlSiteSettingsInitialValue,
+  getSitePatternListInitialValue,
+  getSiteProfilesInitialValue,
   getSystemFontsEnabledInitialValue,
   getTextStrokeInitialValue
 } from "../storage-defaults"
@@ -140,6 +167,16 @@ const languageOptions: Array<{
   }
 ]
 
+type SiteFontOption = {
+  label: string
+  value: string
+}
+
+type SiteFontOptionGroup = {
+  label: string
+  options: SiteFontOption[]
+}
+
 function getLanguageLabelKey(language: SupportedUILanguage): MessageKey {
   switch (language) {
     case "fa":
@@ -171,6 +208,13 @@ function formatBytes(
   })} ${megabyteUnit}`
 }
 
+function getDefaultFontLabel(
+  font: DefaultFont,
+  language: SupportedUILanguage
+): string {
+  return font.localizedName[language] || font.name
+}
+
 function OptionsPage() {
   useSelectedUIFont()
   const {
@@ -199,9 +243,25 @@ function OptionsPage() {
     STORAGE_KEYS.TEXT_STROKE,
     getTextStrokeInitialValue
   )
-  const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
+  const [websiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
     EMPTY_WEBSITE_LIST
+  )
+  const [siteProfiles, setSiteProfiles] = useStorageValue<SiteProfile[]>(
+    STORAGE_KEYS.SITE_PROFILES,
+    getSiteProfilesInitialValue
+  )
+  const [enabledByDefault, setEnabledByDefault] = useStorageValue<boolean>(
+    STORAGE_KEYS.ENABLED_BY_DEFAULT,
+    getEnabledByDefaultInitialValue
+  )
+  const [enabledFor] = useStorageValue<string[]>(
+    STORAGE_KEYS.ENABLED_FOR,
+    getSitePatternListInitialValue
+  )
+  const [disabledFor] = useStorageValue<string[]>(
+    STORAGE_KEYS.DISABLED_FOR,
+    getSitePatternListInitialValue
   )
   const [rtlEnabled, setRtlEnabled] = useStorageValue<boolean>(
     STORAGE_KEYS.RTL_ENABLED,
@@ -252,11 +312,50 @@ function OptionsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFileHash, setSelectedFileHash] = useState("")
   const [fontName, setFontName] = useState("")
+  const [sitePatternInput, setSitePatternInput] = useState("")
+  const [siteProfilePatternInput, setSiteProfilePatternInput] = useState("")
+  const [siteProfileFontInput, setSiteProfileFontInput] = useState("")
+  const [siteProfileTextStroke, setSiteProfileTextStroke] = useState(
+    DEFAULT_VALUES.TEXT_STROKE
+  )
+  const [siteProfileUsesGlobalStroke, setSiteProfileUsesGlobalStroke] =
+    useState(true)
+  const [systemFontList, setSystemFontList] = useState<SystemFontData[]>([])
   const { toast } = useToast()
 
   React.useEffect(() => {
     document.title = t("common.settings")
   }, [t])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    if (!systemFontsEnabled) {
+      setSystemFontList([])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    getSystemFontList()
+      .then((fonts) => {
+        if (!cancelled) {
+          setSystemFontList(fonts)
+        }
+      })
+      .catch((error) => {
+        if (__DEBUG__) {
+          console.warn("Failed to load system fonts for site profiles.", error)
+        }
+        if (!cancelled) {
+          setSystemFontList([])
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [systemFontsEnabled])
 
   const resetSelectedFile = () => {
     setSelectedFile(null)
@@ -395,7 +494,8 @@ function OptionsPage() {
       const storageUpdate = createCustomFontDeletionUpdate(
         customFontList,
         fontValue,
-        selectedFont
+        selectedFont,
+        siteProfiles
       )
       await setLocalValues(storageUpdate)
       toast({ title: t("options.toast.fontDeleted") })
@@ -411,8 +511,20 @@ function OptionsPage() {
 
   const effectiveWebsiteList =
     websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
-  const activeWebsiteCount = effectiveWebsiteList.filter(
-    (website) => website.isActive !== false
+  const normalizedEnabledByDefault = normalizeEnabledByDefault(enabledByDefault)
+  const normalizedEnabledFor = normalizeSiteList(enabledFor)
+  const normalizedDisabledFor = normalizeSiteList(disabledFor)
+  const siteListSettings = {
+    disabledFor: normalizedDisabledFor,
+    enabledByDefault: normalizedEnabledByDefault,
+    enabledFor: normalizedEnabledFor
+  }
+  const normalizedSiteProfiles = normalizeSiteProfiles(siteProfiles)
+  const managedSiteList = normalizedEnabledByDefault
+    ? normalizedDisabledFor
+    : normalizedEnabledFor
+  const activeWebsiteCount = effectiveWebsiteList.filter((website) =>
+    isSiteListUrlEnabled(website.url, siteListSettings)
   ).length
   const cssOnlyWebsiteCount = effectiveWebsiteList.filter(
     (website) => website.customCss === true
@@ -427,18 +539,85 @@ function OptionsPage() {
   const fontStorageBytes = customFontList.reduce((total, font) => {
     return total + new Blob([font.data]).size
   }, 0)
+  const googleFontList = React.useMemo(
+    () => (googleFontsEnabled ? getGoogleFontList() : []),
+    [googleFontsEnabled]
+  )
+  const siteFontOptionGroups = React.useMemo<SiteFontOptionGroup[]>(
+    () => [
+      {
+        label: t("fontSelector.bundledGroup"),
+        options: DEFAULT_FONTS.map((font) => ({
+          label: getDefaultFontLabel(font, language),
+          value: font.value
+        }))
+      },
+      {
+        label: t("fontSelector.customGroup"),
+        options: customFontList.map((font) => ({
+          label: font.name,
+          value: font.value
+        }))
+      },
+      {
+        label: t("fontSelector.googleGroup"),
+        options: googleFontList.map((font) => ({
+          label: font.name,
+          value: font.value
+        }))
+      },
+      {
+        label: t("fontSelector.systemGroup"),
+        options: systemFontList.map((font) => ({
+          label: font.name,
+          value: font.value
+        }))
+      }
+    ],
+    [customFontList, googleFontList, language, systemFontList, t]
+  )
+  const siteFontOptions = React.useMemo(
+    () => siteFontOptionGroups.flatMap((group) => group.options),
+    [siteFontOptionGroups]
+  )
+
+  const getSiteProfileFontLabel = React.useCallback(
+    (fontValue: string | undefined): string => {
+      if (!fontValue) return t("options.siteProfiles.globalFont")
+
+      const option = siteFontOptions.find((font) => font.value === fontValue)
+      if (option) return option.label
+
+      const systemFont = decodeSystemFontValue(fontValue)
+      if (systemFont) return systemFont
+
+      const googleFont = getGoogleFontByValue(fontValue)
+      if (googleFont) return googleFont.family
+
+      return fontValue
+    },
+    [siteFontOptions, t]
+  )
 
   const handleWebsiteToggle = async (website: WebsiteItem) => {
     const currentWebsiteList =
       websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
+    const active = isWebsiteActive(website)
     const updatedWebsiteList = currentWebsiteList.map((item) =>
-      item.url === website.url
-        ? { ...item, isActive: item.isActive === false }
-        : item
+      item.url === website.url ? { ...item, isActive: !active } : item
+    )
+    const siteListUpdate = createSiteListToggleUpdate(
+      website.url,
+      siteListSettings,
+      !active
     )
 
     try {
-      await setWebsiteList(updatedWebsiteList)
+      await setLocalValues({
+        [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
+        [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
+        [STORAGE_KEYS.WEBSITE_LIST]: updatedWebsiteList
+      })
     } catch (error) {
       toast({
         title:
@@ -450,10 +629,145 @@ function OptionsPage() {
   }
 
   const isWebsiteActive = (website: WebsiteItem) => {
-    return (
-      effectiveWebsiteList.find((item) => item.url === website.url)
-        ?.isActive !== false
-    )
+    return isSiteListUrlEnabled(website.url, siteListSettings)
+  }
+
+  const handleSiteListModeChange = async (nextEnabledByDefault: boolean) => {
+    try {
+      await setEnabledByDefault(nextEnabledByDefault)
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
+  const handleAddSitePattern = async () => {
+    const pattern = normalizeSitePattern(sitePatternInput)
+
+    if (!pattern) {
+      toast({ title: t("options.toast.invalidSitePattern") })
+      return
+    }
+
+    const listKey = normalizedEnabledByDefault
+      ? STORAGE_KEYS.DISABLED_FOR
+      : STORAGE_KEYS.ENABLED_FOR
+    const updatedList = addSitePatternToList(managedSiteList, pattern)
+
+    try {
+      await setLocalValues({ [listKey]: updatedList })
+      setSitePatternInput("")
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
+  const handleRemoveSitePattern = async (pattern: string) => {
+    const listKey = normalizedEnabledByDefault
+      ? STORAGE_KEYS.DISABLED_FOR
+      : STORAGE_KEYS.ENABLED_FOR
+    const updatedList = removeSitePatternFromList(managedSiteList, pattern)
+
+    try {
+      await setLocalValues({ [listKey]: updatedList })
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
+  const handleSitePatternSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void handleAddSitePattern()
+  }
+
+  const resetSiteProfileForm = () => {
+    setSiteProfilePatternInput("")
+    setSiteProfileFontInput("")
+    setSiteProfileTextStroke(DEFAULT_VALUES.TEXT_STROKE)
+    setSiteProfileUsesGlobalStroke(true)
+  }
+
+  const handleSaveSiteProfile = async () => {
+    const pattern = normalizeSitePattern(siteProfilePatternInput)
+
+    if (!pattern) {
+      toast({ title: t("options.toast.invalidSitePattern") })
+      return
+    }
+
+    if (
+      siteProfileFontInput &&
+      !siteFontOptions.some((font) => font.value === siteProfileFontInput)
+    ) {
+      toast({ title: t("options.toast.unavailableSiteProfileFont") })
+      return
+    }
+
+    if (!siteProfileFontInput && siteProfileUsesGlobalStroke) {
+      toast({ title: t("options.toast.emptySiteProfile") })
+      return
+    }
+
+    const nextProfile: SiteProfile = {
+      pattern,
+      ...(siteProfileFontInput ? { font: siteProfileFontInput } : {}),
+      ...(siteProfileUsesGlobalStroke
+        ? {}
+        : { textStroke: normalizeTextStrokeValue(siteProfileTextStroke) })
+    }
+
+    try {
+      await setSiteProfiles(
+        upsertSiteProfile(normalizedSiteProfiles, nextProfile)
+      )
+      resetSiteProfileForm()
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
+  const handleSiteProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void handleSaveSiteProfile()
+  }
+
+  const handleEditSiteProfile = (profile: SiteProfile) => {
+    setSiteProfilePatternInput(profile.pattern)
+    setSiteProfileFontInput(profile.font ?? "")
+    setSiteProfileTextStroke(profile.textStroke ?? textStroke)
+    setSiteProfileUsesGlobalStroke(profile.textStroke === undefined)
+  }
+
+  const handleRemoveSiteProfile = async (pattern: string) => {
+    try {
+      await setSiteProfiles(removeSiteProfile(normalizedSiteProfiles, pattern))
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
   }
 
   const handleRtlGlobalToggle = async (checked: boolean) => {
@@ -477,6 +791,10 @@ function OptionsPage() {
         )
         await setLocalValues({
           [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
+          [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(
+            normalizedSiteProfiles,
+            isSystemFontValue
+          ),
           ...(isSystemFontValue(selectedFont)
             ? { [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT }
             : {})
@@ -514,6 +832,10 @@ function OptionsPage() {
         )
         await setLocalValues({
           [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
+          [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(
+            normalizedSiteProfiles,
+            isGoogleFontValue
+          ),
           ...(isGoogleFontValue(selectedFont)
             ? { [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT }
             : {})
@@ -545,11 +867,19 @@ function OptionsPage() {
     }
   }
 
-  const formattedTextStroke = formatNumber(textStroke, {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 1,
-    useGrouping: false
-  })
+  const formatTextStrokeDisplay = React.useCallback(
+    (value: number) =>
+      `+${formatNumber(value, {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 1,
+        useGrouping: false
+      })}`,
+    [formatNumber]
+  )
+  const formattedTextStroke = formatTextStrokeDisplay(textStroke)
+  const formattedSiteProfileTextStroke = formatTextStrokeDisplay(
+    siteProfileTextStroke
+  )
 
   const handleRtlSiteToggle = async (site: RtlSiteConfig, checked: boolean) => {
     try {
@@ -746,7 +1076,7 @@ function OptionsPage() {
                             </div>
                           </div>
                           <bdi className="shrink-0 rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#2374ff]">
-                            +{formattedTextStroke}
+                            {formattedTextStroke}
                           </bdi>
                         </div>
 
@@ -783,7 +1113,7 @@ function OptionsPage() {
                           </div>
                           <p className="text-xs text-[#64748b]">
                             {t("options.textStroke.value", {
-                              value: `+${formattedTextStroke}`
+                              value: formattedTextStroke
                             })}
                           </p>
                         </div>
@@ -930,73 +1260,493 @@ function OptionsPage() {
               )}
 
               {activeSection === "sites" && (
-                <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                  <div className="mb-5 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-bold text-[#111827]">
-                        {t("options.sites.title")}
-                      </h3>
-                      <p className="mt-1 text-xs text-[#64748b]">
-                        {t("options.sites.count", {
-                          active: formatNumber(activeWebsiteCount),
-                          total: formatNumber(effectiveWebsiteList.length)
-                        })}
-                      </p>
+                <div className="space-y-6">
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.siteList.title")}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          {normalizedEnabledByDefault
+                            ? t("options.siteList.excludeDescription")
+                            : t("options.siteList.includeDescription")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <ListChecks className="size-5" />
+                      </div>
                     </div>
-                    <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
-                      <Globe2 className="size-5" />
-                    </div>
-                  </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {effectiveWebsiteList.map((website) => {
-                      const active = isWebsiteActive(website)
-
-                      return (
-                        <div
-                          key={website.url}
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                      <div className="space-y-3">
+                        <button
+                          type="button"
+                          aria-pressed={!normalizedEnabledByDefault}
+                          onClick={() => void handleSiteListModeChange(false)}
                           className={cn(
-                            "flex items-center justify-between gap-3 rounded-md border px-3 py-3 transition",
-                            active
-                              ? "border-[#dbeafe] bg-[#f8fbff]"
-                              : "border-[#e5e7eb] bg-white opacity-70"
+                            "flex w-full items-start justify-between gap-3 rounded-md border p-4 text-start transition",
+                            !normalizedEnabledByDefault
+                              ? "border-[#2374ff] bg-[#f8fbff]"
+                              : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe]"
                           )}>
-                          <div className="flex min-w-0 items-center gap-3">
-                            {website.icon && (
-                              <img
-                                alt=""
-                                src={getExtensionAssetURL(website.icon)}
-                                className={cn(
-                                  "size-8 rounded-md object-contain",
-                                  !active && "grayscale"
-                                )}
-                              />
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-[#111827]">
+                              {t("options.siteList.includeMode")}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                              {t("options.siteList.includeModeDescription")}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                              !normalizedEnabledByDefault
+                                ? "border-[#2374ff] bg-[#2374ff] text-white"
+                                : "border-[#dbe3ef] text-transparent"
+                            )}>
+                            <Check className="size-4" />
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          aria-pressed={normalizedEnabledByDefault}
+                          onClick={() => void handleSiteListModeChange(true)}
+                          className={cn(
+                            "flex w-full items-start justify-between gap-3 rounded-md border p-4 text-start transition",
+                            normalizedEnabledByDefault
+                              ? "border-[#2374ff] bg-[#f8fbff]"
+                              : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe]"
+                          )}>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-[#111827]">
+                              {t("options.siteList.excludeMode")}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                              {t("options.siteList.excludeModeDescription")}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                              normalizedEnabledByDefault
+                                ? "border-[#2374ff] bg-[#2374ff] text-white"
+                                : "border-[#dbe3ef] text-transparent"
+                            )}>
+                            <Check className="size-4" />
+                          </span>
+                        </button>
+                      </div>
+
+                      <div className="rounded-md border border-[#e5e7eb] p-4">
+                        <div className="mb-3">
+                          <h4 className="text-sm font-bold text-[#111827]">
+                            {normalizedEnabledByDefault
+                              ? t("options.siteList.disabledListTitle")
+                              : t("options.siteList.enabledListTitle")}
+                          </h4>
+                          <p className="mt-1 text-xs text-[#64748b]">
+                            {t("options.siteList.patternHelp")}
+                          </p>
+                        </div>
+
+                        <form
+                          className="mb-4 flex gap-2"
+                          onSubmit={handleSitePatternSubmit}>
+                          <input
+                            type="text"
+                            value={sitePatternInput}
+                            onChange={(event) =>
+                              setSitePatternInput(event.target.value)
+                            }
+                            placeholder={t("options.siteList.placeholder")}
+                            dir="ltr"
+                            className="h-10 min-w-0 flex-1 rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                          />
+                          <Button
+                            type="submit"
+                            size="icon"
+                            className="h-10 w-10 shrink-0 bg-[#2374ff] text-white hover:bg-[#1f66df]"
+                            aria-label={t("options.siteList.add")}>
+                            <Plus className="size-4" />
+                          </Button>
+                        </form>
+
+                        {managedSiteList.length > 0 ? (
+                          <div className="max-h-64 space-y-2 overflow-y-auto pe-1">
+                            {managedSiteList.map((pattern) => (
+                              <div
+                                key={pattern}
+                                className="flex items-center justify-between gap-2 rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-2">
+                                <bdi className="min-w-0 truncate text-sm font-semibold text-[#111827]">
+                                  {getDisplaySitePattern(pattern)}
+                                </bdi>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                  aria-label={t("options.siteList.remove", {
+                                    site: pattern
+                                  })}
+                                  onClick={() =>
+                                    void handleRemoveSitePattern(pattern)
+                                  }>
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
+                            {normalizedEnabledByDefault
+                              ? t("options.siteList.emptyDisabled")
+                              : t("options.siteList.emptyEnabled")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.siteProfiles.title")}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          {t("options.siteProfiles.description")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <Settings className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                      <form
+                        className="space-y-4 rounded-md border border-[#e5e7eb] p-4"
+                        onSubmit={handleSiteProfileSubmit}>
+                        <div>
+                          <label
+                            htmlFor="site-profile-pattern"
+                            className="mb-2 block text-sm font-medium text-[#334155]">
+                            {t("options.siteProfiles.patternLabel")}
+                          </label>
+                          <input
+                            id="site-profile-pattern"
+                            list="fontara-site-profile-patterns"
+                            type="text"
+                            value={siteProfilePatternInput}
+                            onChange={(event) =>
+                              setSiteProfilePatternInput(event.target.value)
+                            }
+                            placeholder={t(
+                              "options.siteProfiles.patternPlaceholder"
                             )}
+                            dir="ltr"
+                            className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                          />
+                          <datalist id="fontara-site-profile-patterns">
+                            {effectiveWebsiteList.map((website) => {
+                              const pattern = normalizeSitePattern(website.url)
+                              if (!pattern) return null
+
+                              return (
+                                <option
+                                  key={`website-${website.url}`}
+                                  value={pattern}>
+                                  {website.siteName || website.url}
+                                </option>
+                              )
+                            })}
+                            {managedSiteList.map((pattern) => (
+                              <option
+                                key={`managed-${pattern}`}
+                                value={pattern}
+                              />
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="site-profile-font"
+                            className="mb-2 block text-sm font-medium text-[#334155]">
+                            {t("options.siteProfiles.fontLabel")}
+                          </label>
+                          <select
+                            id="site-profile-font"
+                            value={siteProfileFontInput}
+                            onChange={(event) =>
+                              setSiteProfileFontInput(event.target.value)
+                            }
+                            className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15">
+                            <option value="">
+                              {t("options.siteProfiles.globalFont")}
+                            </option>
+                            {siteFontOptionGroups.map((group) =>
+                              group.options.length > 0 ? (
+                                <optgroup key={group.label} label={group.label}>
+                                  {group.options.map((font) => (
+                                    <option key={font.value} value={font.value}>
+                                      {font.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ) : null
+                            )}
+                          </select>
+                        </div>
+
+                        <div className="space-y-3 rounded-md border border-[#eef2f7] bg-[#f8fafc] p-3">
+                          <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-[#111827]">
-                                {website.siteName || website.url}
-                              </div>
-                              <div className="truncate text-xs text-[#64748b]">
-                                {website.customCss
-                                  ? t("options.siteMode.customCss")
-                                  : t("options.siteMode.general")}
-                              </div>
+                              <label
+                                htmlFor="site-profile-stroke-toggle"
+                                className="text-sm font-medium text-[#334155]">
+                                {t("options.siteProfiles.strokeLabel")}
+                              </label>
+                              <p className="mt-1 text-xs text-[#64748b]">
+                                {siteProfileUsesGlobalStroke
+                                  ? t("options.siteProfiles.globalStroke")
+                                  : t("options.siteProfiles.customStroke", {
+                                      value: formattedSiteProfileTextStroke
+                                    })}
+                              </p>
+                            </div>
+                            <Switch
+                              id="site-profile-stroke-toggle"
+                              dir="ltr"
+                              checked={!siteProfileUsesGlobalStroke}
+                              onCheckedChange={(checked) =>
+                                setSiteProfileUsesGlobalStroke(!checked)
+                              }
+                              aria-label={t("options.siteProfiles.strokeLabel")}
+                            />
+                          </div>
+
+                          <div
+                            dir="ltr"
+                            className={cn(
+                              "space-y-2 transition",
+                              siteProfileUsesGlobalStroke && "opacity-50"
+                            )}>
+                            <input
+                              type="range"
+                              min={TEXT_STROKE_MIN}
+                              max={TEXT_STROKE_MAX}
+                              step={TEXT_STROKE_STEP}
+                              value={siteProfileTextStroke}
+                              disabled={siteProfileUsesGlobalStroke}
+                              onChange={(event) =>
+                                setSiteProfileTextStroke(
+                                  normalizeTextStrokeValue(
+                                    Number(event.currentTarget.value)
+                                  )
+                                )
+                              }
+                              aria-label={t("options.siteProfiles.strokeLabel")}
+                              className="h-2 w-full cursor-pointer accent-[#2374ff] disabled:cursor-not-allowed"
+                            />
+                            <div className="flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
+                              <span>
+                                {formatNumber(TEXT_STROKE_MIN, {
+                                  maximumFractionDigits: 1,
+                                  minimumFractionDigits: 1,
+                                  useGrouping: false
+                                })}
+                              </span>
+                              <span>
+                                {formatNumber(TEXT_STROKE_MAX, {
+                                  maximumFractionDigits: 1,
+                                  minimumFractionDigits: 1,
+                                  useGrouping: false
+                                })}
+                              </span>
                             </div>
                           </div>
-                          <Switch
-                            checked={active}
-                            onCheckedChange={() =>
-                              void handleWebsiteToggle(website)
-                            }
-                            aria-label={t("options.siteToggleAria", {
-                              site: website.siteName || website.url
-                            })}
-                          />
                         </div>
-                      )
-                    })}
-                  </div>
-                </section>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="submit"
+                            className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
+                            <Check className="size-4" />
+                            {t("options.siteProfiles.save")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10"
+                            onClick={resetSiteProfileForm}>
+                            {t("options.siteProfiles.reset")}
+                          </Button>
+                        </div>
+                      </form>
+
+                      <div className="rounded-md border border-[#e5e7eb] p-4">
+                        <div className="mb-3">
+                          <h4 className="text-sm font-bold text-[#111827]">
+                            {t("options.siteProfiles.savedTitle")}
+                          </h4>
+                          <p className="mt-1 text-xs text-[#64748b]">
+                            {t("options.siteProfiles.savedDescription", {
+                              count: formatNumber(normalizedSiteProfiles.length)
+                            })}
+                          </p>
+                        </div>
+
+                        {normalizedSiteProfiles.length > 0 ? (
+                          <div className="max-h-80 space-y-2 overflow-y-auto pe-1">
+                            {normalizedSiteProfiles.map((profile) => (
+                              <div
+                                key={profile.pattern}
+                                className="rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-3">
+                                <div className="mb-3 flex items-start justify-between gap-3">
+                                  <bdi className="min-w-0 truncate text-sm font-bold text-[#111827]">
+                                    {getDisplaySitePattern(profile.pattern)}
+                                  </bdi>
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-[#64748b] hover:bg-[#eaf2ff] hover:text-[#2374ff]"
+                                      aria-label={t(
+                                        "options.siteProfiles.edit",
+                                        {
+                                          site: profile.pattern
+                                        }
+                                      )}
+                                      onClick={() =>
+                                        handleEditSiteProfile(profile)
+                                      }>
+                                      <Settings className="size-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                      aria-label={t(
+                                        "options.siteProfiles.remove",
+                                        {
+                                          site: profile.pattern
+                                        }
+                                      )}
+                                      onClick={() =>
+                                        void handleRemoveSiteProfile(
+                                          profile.pattern
+                                        )
+                                      }>
+                                      <Trash2 className="size-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="grid gap-2 text-xs text-[#64748b] sm:grid-cols-2">
+                                  <div className="rounded-md bg-white px-3 py-2">
+                                    <span className="font-semibold text-[#334155]">
+                                      {t("options.siteProfiles.fontValue")}
+                                    </span>{" "}
+                                    <span dir="auto">
+                                      {getSiteProfileFontLabel(profile.font)}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-md bg-white px-3 py-2">
+                                    <span className="font-semibold text-[#334155]">
+                                      {t("options.siteProfiles.strokeValue")}
+                                    </span>{" "}
+                                    <bdi>
+                                      {profile.textStroke === undefined
+                                        ? t("options.siteProfiles.globalStroke")
+                                        : formatTextStrokeDisplay(
+                                            profile.textStroke
+                                          )}
+                                    </bdi>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex min-h-48 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
+                            {t("options.siteProfiles.empty")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.sites.title")}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          {t("options.sites.count", {
+                            active: formatNumber(activeWebsiteCount),
+                            total: formatNumber(effectiveWebsiteList.length)
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <Globe2 className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {effectiveWebsiteList.map((website) => {
+                        const active = isWebsiteActive(website)
+
+                        return (
+                          <div
+                            key={website.url}
+                            className={cn(
+                              "flex items-center justify-between gap-3 rounded-md border px-3 py-3 transition",
+                              active
+                                ? "border-[#dbeafe] bg-[#f8fbff]"
+                                : "border-[#e5e7eb] bg-white opacity-70"
+                            )}>
+                            <div className="flex min-w-0 items-center gap-3">
+                              {website.icon && (
+                                <img
+                                  alt=""
+                                  src={getExtensionAssetURL(website.icon)}
+                                  className={cn(
+                                    "size-8 rounded-md object-contain",
+                                    !active && "grayscale"
+                                  )}
+                                />
+                              )}
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-[#111827]">
+                                  {website.siteName || website.url}
+                                </div>
+                                <div className="truncate text-xs text-[#64748b]">
+                                  {website.customCss
+                                    ? t("options.siteMode.customCss")
+                                    : t("options.siteMode.general")}
+                                </div>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={active}
+                              onCheckedChange={() =>
+                                void handleWebsiteToggle(website)
+                              }
+                              aria-label={t("options.siteToggleAria", {
+                                site: website.siteName || website.url
+                              })}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </section>
+                </div>
               )}
 
               {activeSection === "rtl" && (

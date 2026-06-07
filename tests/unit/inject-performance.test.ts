@@ -130,6 +130,22 @@ test("storage changes schedule the active injection pipeline", () => {
     injectSource,
     /\[STORAGE_KEYS\.WEBSITE_LIST\]: \(\) => scheduleApplyFontsIfActive\(\)/
   )
+  assert.match(
+    injectSource,
+    /\[STORAGE_KEYS\.ENABLED_BY_DEFAULT\]: \(\) => scheduleApplyFontsIfActive\(\)/
+  )
+  assert.match(
+    injectSource,
+    /\[STORAGE_KEYS\.ENABLED_FOR\]: \(\) => scheduleApplyFontsIfActive\(\)/
+  )
+  assert.match(
+    injectSource,
+    /\[STORAGE_KEYS\.DISABLED_FOR\]: \(\) => scheduleApplyFontsIfActive\(\)/
+  )
+  assert.match(
+    injectSource,
+    /\[STORAGE_KEYS\.SITE_PROFILES\]: \(\) =>\s*scheduleApplyFontsIfActive\("font-styles"\)/
+  )
   assert.doesNotMatch(
     injectSource,
     /\[STORAGE_KEYS\.SELECTED_FONT\]:[\s\S]*?applyFontToTreeChunked/

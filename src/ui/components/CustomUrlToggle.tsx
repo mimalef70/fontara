@@ -1,47 +1,84 @@
 import { useEffect, useState } from "react"
 
-import { POPULAR_WEBSITES } from "../../config/sites"
+import {
+  createSiteListToggleUpdate,
+  getDisplaySitePattern,
+  getURLHostOrProtocol,
+  isSiteListUrlEnabled,
+  normalizeEnabledByDefault,
+  normalizeSiteList
+} from "../../config/site-list"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
+import { setLocalValues } from "../../utils/storage"
 import { createRegexFromUrl, getMatchingWebsite } from "../../utils/url"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
-import { EMPTY_WEBSITE_LIST } from "../storage-defaults"
+import {
+  EMPTY_WEBSITE_LIST,
+  getEnabledByDefaultInitialValue,
+  getSitePatternListInitialValue
+} from "../storage-defaults"
 import { Check as CheckIcon } from "./icons"
 
 const CustomUrlToggle = () => {
   const { direction, t } = useI18n()
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null)
-  const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
+  const [websiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
     EMPTY_WEBSITE_LIST
+  )
+  const [enabledByDefault] = useStorageValue<boolean>(
+    STORAGE_KEYS.ENABLED_BY_DEFAULT,
+    getEnabledByDefaultInitialValue
+  )
+  const [enabledFor] = useStorageValue<string[]>(
+    STORAGE_KEYS.ENABLED_FOR,
+    getSitePatternListInitialValue
+  )
+  const [disabledFor] = useStorageValue<string[]>(
+    STORAGE_KEYS.DISABLED_FOR,
+    getSitePatternListInitialValue
   )
 
   const handleUrlToggle = async (checked: boolean) => {
     if (!currentTab?.url) return
 
-    let updatedUrls: WebsiteItem[]
-
     const existingWebsiteIndex = websiteList.findIndex(
       (item) => getMatchingWebsite(currentTab.url, [item]) !== null
     )
+    const siteListUpdate = createSiteListToggleUpdate(
+      currentTab.url,
+      {
+        disabledFor,
+        enabledByDefault,
+        enabledFor
+      },
+      checked
+    )
 
-    if (existingWebsiteIndex === -1) {
-      updatedUrls = [
-        ...websiteList,
-        {
-          url: currentTab.url,
-          regex: createRegexFromUrl(currentTab.url),
-          isActive: true
-        }
-      ]
-    } else {
-      updatedUrls = websiteList.map((item, index) =>
-        index === existingWebsiteIndex ? { ...item, isActive: checked } : item
-      )
-    }
+    const updatedUrls =
+      existingWebsiteIndex === -1 && checked
+        ? [
+            ...websiteList,
+            {
+              url: currentTab.url,
+              regex: createRegexFromUrl(currentTab.url),
+              isActive: true
+            }
+          ]
+        : websiteList.map((item, index) =>
+            index === existingWebsiteIndex
+              ? { ...item, isActive: checked }
+              : item
+          )
+
     try {
-      await setWebsiteList(updatedUrls)
+      await setLocalValues({
+        [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
+        [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
+        [STORAGE_KEYS.WEBSITE_LIST]: updatedUrls
+      })
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to update custom URL setting.", error)
@@ -50,7 +87,13 @@ const CustomUrlToggle = () => {
   }
 
   const isUrlActive = (): boolean => {
-    return getMatchingWebsite(currentTab?.url, websiteList)?.isActive === true
+    if (!currentTab?.url) return false
+
+    return isSiteListUrlEnabled(currentTab.url, {
+      disabledFor: normalizeSiteList(disabledFor),
+      enabledByDefault: normalizeEnabledByDefault(enabledByDefault),
+      enabledFor: normalizeSiteList(enabledFor)
+    })
   }
 
   useEffect(() => {
@@ -67,16 +110,12 @@ const CustomUrlToggle = () => {
   const active = isUrlActive()
   const currentUrl = currentTab?.url
 
-  if (
-    !currentUrl?.startsWith("http") ||
-    POPULAR_WEBSITES.some(
-      (website) => getMatchingWebsite(currentUrl, [website]) !== null
-    )
-  )
-    return null
+  if (!currentUrl?.startsWith("http")) return null
 
   const isRtl = direction === "rtl"
-  const hostName = new URL(currentUrl).hostname.slice(0, 25)
+  const hostName = getDisplaySitePattern(
+    getURLHostOrProtocol(currentUrl)
+  ).slice(0, 25)
   const checkboxControl = (
     <div className="relative shrink-0">
       <input

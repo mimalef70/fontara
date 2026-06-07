@@ -4,10 +4,19 @@ import {
   normalizeRtlSiteSettings,
   type RtlSiteSettings
 } from "../config/rtl-sites"
+import {
+  normalizeEnabledByDefault,
+  normalizeSiteList
+} from "../config/site-list"
+import {
+  EMPTY_SITE_PROFILES,
+  normalizeSiteProfiles
+} from "../config/site-profiles"
 import { normalizeTextStrokeValue } from "../config/text-stroke"
-import type { FontData, WebsiteItem } from "../definitions"
+import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
 
 export const EMPTY_CUSTOM_FONT_LIST: FontData[] = []
+export const EMPTY_SITE_PROFILE_LIST: SiteProfile[] = EMPTY_SITE_PROFILES
 export const EMPTY_WEBSITE_LIST: WebsiteItem[] = []
 
 export function getExtensionEnabledInitialValue(
@@ -38,6 +47,18 @@ export function getGoogleFontsEnabledInitialValue(
 
 export function getTextStrokeInitialValue(value: unknown): number {
   return normalizeTextStrokeValue(value)
+}
+
+export function getEnabledByDefaultInitialValue(value: unknown): boolean {
+  return normalizeEnabledByDefault(value)
+}
+
+export function getSitePatternListInitialValue(value: unknown): string[] {
+  return normalizeSiteList(value)
+}
+
+export function getSiteProfilesInitialValue(value: unknown): SiteProfile[] {
+  return normalizeSiteProfiles(value)
 }
 
 export function getRtlSiteSettingsInitialValue(

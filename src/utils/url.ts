@@ -1,10 +1,18 @@
+import {
+  getActiveWebsiteSitePatterns,
+  isSiteListUrlEnabled,
+  normalizeEnabledByDefault,
+  normalizeSiteList
+} from "../config/site-list"
+import { getSiteProfileForUrl } from "../config/site-profiles"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { WebsiteItem } from "../definitions"
-import { getLocalValue } from "./storage"
+import type { SiteProfile, WebsiteItem } from "../definitions"
+import { getLocalValue, getLocalValues } from "./storage"
 
 export type UrlActivationState = {
   active: boolean
   matchingWebsite: WebsiteItem | null
+  siteProfile: SiteProfile | null
 }
 
 function escapeRegex(value: string): string {
@@ -58,26 +66,73 @@ export async function isUrlActive(currentUrl: string): Promise<boolean> {
 export async function getUrlActivationState(
   currentUrl: string
 ): Promise<UrlActivationState> {
-  let isExtensionEnabled: boolean | undefined
-  try {
-    isExtensionEnabled = await getLocalValue<boolean>(
-      STORAGE_KEYS.EXTENSION_ENABLED
-    )
-  } catch {
-    isExtensionEnabled = DEFAULT_VALUES.EXTENSION_ENABLED
+  let storedValues: {
+    [STORAGE_KEYS.DISABLED_FOR]: string[] | undefined
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: boolean | undefined
+    [STORAGE_KEYS.ENABLED_FOR]: string[] | undefined
+    [STORAGE_KEYS.EXTENSION_ENABLED]: boolean
+    [STORAGE_KEYS.SITE_PROFILES]: SiteProfile[] | undefined
+    [STORAGE_KEYS.WEBSITE_LIST]: WebsiteItem[]
   }
-
-  if (isExtensionEnabled === false) {
-    return {
-      active: false,
-      matchingWebsite: null
+  try {
+    storedValues = await getLocalValues({
+      [STORAGE_KEYS.DISABLED_FOR]: undefined,
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: undefined,
+      [STORAGE_KEYS.ENABLED_FOR]: undefined,
+      [STORAGE_KEYS.EXTENSION_ENABLED]: DEFAULT_VALUES.EXTENSION_ENABLED,
+      [STORAGE_KEYS.SITE_PROFILES]: DEFAULT_VALUES.SITE_PROFILES,
+      [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+    })
+  } catch {
+    storedValues = {
+      [STORAGE_KEYS.DISABLED_FOR]: undefined,
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: undefined,
+      [STORAGE_KEYS.ENABLED_FOR]: undefined,
+      [STORAGE_KEYS.EXTENSION_ENABLED]: DEFAULT_VALUES.EXTENSION_ENABLED,
+      [STORAGE_KEYS.SITE_PROFILES]: DEFAULT_VALUES.SITE_PROFILES,
+      [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
     }
   }
 
-  const websiteList = await getStoredWebsiteList()
+  if (storedValues[STORAGE_KEYS.EXTENSION_ENABLED] === false) {
+    return {
+      active: false,
+      matchingWebsite: null,
+      siteProfile: null
+    }
+  }
+
+  const websiteList = Array.isArray(storedValues[STORAGE_KEYS.WEBSITE_LIST])
+    ? storedValues[STORAGE_KEYS.WEBSITE_LIST]
+    : DEFAULT_VALUES.WEBSITE_LIST
   const matchingWebsite = getMatchingWebsite(currentUrl, websiteList)
+  const enabledByDefault =
+    storedValues[STORAGE_KEYS.ENABLED_BY_DEFAULT] === undefined
+      ? DEFAULT_VALUES.ENABLED_BY_DEFAULT
+      : normalizeEnabledByDefault(storedValues[STORAGE_KEYS.ENABLED_BY_DEFAULT])
+  const enabledFor =
+    storedValues[STORAGE_KEYS.ENABLED_FOR] === undefined
+      ? getActiveWebsiteSitePatterns(websiteList)
+      : normalizeSiteList(storedValues[STORAGE_KEYS.ENABLED_FOR])
+  const disabledFor =
+    storedValues[STORAGE_KEYS.DISABLED_FOR] === undefined
+      ? DEFAULT_VALUES.DISABLED_FOR
+      : normalizeSiteList(storedValues[STORAGE_KEYS.DISABLED_FOR])
+  const active = isSiteListUrlEnabled(currentUrl, {
+    disabledFor,
+    enabledByDefault,
+    enabledFor
+  })
+
   return {
-    active: matchingWebsite?.isActive === true,
-    matchingWebsite
+    active,
+    matchingWebsite,
+    siteProfile: active
+      ? getSiteProfileForUrl(
+          currentUrl,
+          storedValues[STORAGE_KEYS.SITE_PROFILES] ??
+            DEFAULT_VALUES.SITE_PROFILES
+        )
+      : null
   }
 }

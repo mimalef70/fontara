@@ -1,7 +1,7 @@
 import { DEFAULT_FONTS } from "../config/fonts"
 import { CUSTOM_CSS_BY_SITE } from "../config/site-fixes"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { FontData, WebsiteItem } from "../definitions"
+import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
 import { createCustomFontFaces } from "../generators/custom-font-face"
 import { getFontFaceCSS } from "../generators/font-face"
 import { formatFontFamilyForCSS } from "../utils/font-data"
@@ -123,10 +123,13 @@ async function getSelectedFontState(
 }
 
 export async function injectFontStyles(
-  matchingWebsite: WebsiteItem | null
+  matchingWebsite: WebsiteItem | null,
+  siteProfile: SiteProfile | null
 ): Promise<boolean> {
   upsertStyle(FONT_STYLES_ID, getFontFaceCSS())
-  const selectedFont = await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
+  const selectedFont =
+    siteProfile?.font ??
+    (await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT))
   const selectedFontState = await getSelectedFontState(selectedFont)
   updateFontVariable(selectedFontState.fontName)
 

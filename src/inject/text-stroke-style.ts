@@ -1,7 +1,7 @@
 import { GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS } from "../config/selectors"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import { normalizeTextStrokeValue } from "../config/text-stroke"
-import type { WebsiteItem } from "../definitions"
+import type { SiteProfile, WebsiteItem } from "../definitions"
 import { getLocalValue } from "../utils/storage"
 import { removeStyle, upsertStyle } from "./style-utils"
 
@@ -11,14 +11,15 @@ export type TextStrokeConfig = {
   widthPx: number
 }
 
-// Keep site context in this boundary so V5 per-site profiles can override the
-// global text stroke setting without changing the content-script wiring.
+// Keep site context in this boundary so per-site profiles can override the
+// global text stroke setting without leaking storage details into callers.
 export function getTextStrokeConfig(
   value: unknown,
-  _matchingWebsite: WebsiteItem | null
+  _matchingWebsite: WebsiteItem | null,
+  siteProfile: SiteProfile | null
 ): TextStrokeConfig {
   return {
-    widthPx: normalizeTextStrokeValue(value)
+    widthPx: normalizeTextStrokeValue(siteProfile?.textStroke ?? value)
   }
 }
 
@@ -34,7 +35,8 @@ export function createTextStrokeCSS(config: TextStrokeConfig): string {
 }
 
 export async function injectTextStrokeStyle(
-  matchingWebsite: WebsiteItem | null
+  matchingWebsite: WebsiteItem | null,
+  siteProfile: SiteProfile | null
 ): Promise<void> {
   let textStroke: unknown
 
@@ -45,7 +47,7 @@ export async function injectTextStrokeStyle(
   }
 
   const css = createTextStrokeCSS(
-    getTextStrokeConfig(textStroke, matchingWebsite)
+    getTextStrokeConfig(textStroke, matchingWebsite, siteProfile)
   )
   if (css) {
     upsertStyle(TEXT_STROKE_STYLE_ID, css)

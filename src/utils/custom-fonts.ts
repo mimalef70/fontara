@@ -1,10 +1,12 @@
+import { removeSiteProfileFontOverrides } from "../config/site-profiles"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { FontData } from "../definitions"
+import type { FontData, SiteProfile } from "../definitions"
 
 export function createCustomFontDeletionUpdate(
   customFontList: FontData[],
   fontValue: string,
-  selectedFont: string | undefined
+  selectedFont: string | undefined,
+  siteProfiles?: SiteProfile[]
 ): Record<string, unknown> {
   const updatedFonts = customFontList.filter((font) => font.value !== fontValue)
   const storageUpdate: Record<string, unknown> = {
@@ -13,6 +15,13 @@ export function createCustomFontDeletionUpdate(
 
   if (selectedFont === fontValue) {
     storageUpdate[STORAGE_KEYS.SELECTED_FONT] = DEFAULT_VALUES.SELECTED_FONT
+  }
+
+  if (siteProfiles) {
+    storageUpdate[STORAGE_KEYS.SITE_PROFILES] = removeSiteProfileFontOverrides(
+      siteProfiles,
+      (profileFontValue) => profileFontValue === fontValue
+    )
   }
 
   return storageUpdate

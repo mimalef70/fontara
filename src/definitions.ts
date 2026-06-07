@@ -17,3 +17,9 @@ export interface FontData {
   fileHash: string
   originalFileName: string
 }
+
+export interface SiteProfile {
+  pattern: string
+  font?: string
+  textStroke?: number
+}

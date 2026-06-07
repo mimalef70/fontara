@@ -50,3 +50,41 @@ test("deleting an unselected custom font preserves the selected font", () => {
     }
   )
 })
+
+test("deleting a custom font removes only matching per-site font overrides", () => {
+  assert.deepEqual(
+    createCustomFontDeletionUpdate(
+      customFonts,
+      "SelectedCustom-Fontara",
+      "OtherCustom-Fontara",
+      [
+        {
+          font: "SelectedCustom-Fontara",
+          pattern: "chatgpt.com",
+          textStroke: 0.4
+        },
+        {
+          font: "SelectedCustom-Fontara",
+          pattern: "github.com"
+        },
+        {
+          font: "OtherCustom-Fontara",
+          pattern: "example.com"
+        }
+      ]
+    ),
+    {
+      [STORAGE_KEYS.CUSTOM_FONT_LIST]: [customFonts[1]],
+      [STORAGE_KEYS.SITE_PROFILES]: [
+        {
+          pattern: "chatgpt.com",
+          textStroke: 0.4
+        },
+        {
+          font: "OtherCustom-Fontara",
+          pattern: "example.com"
+        }
+      ]
+    }
+  )
+})

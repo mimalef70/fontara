@@ -47,6 +47,9 @@ export function registerIconListeners(): void {
   void updateIconStatus()
 
   watchLocalStorage({
+    [STORAGE_KEYS.DISABLED_FOR]: updateIconStatus,
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: updateIconStatus,
+    [STORAGE_KEYS.ENABLED_FOR]: updateIconStatus,
     [STORAGE_KEYS.EXTENSION_ENABLED]: updateIconStatus,
     [STORAGE_KEYS.WEBSITE_LIST]: updateIconStatus
   })

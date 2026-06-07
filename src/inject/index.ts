@@ -108,8 +108,14 @@ async function applyFontsIfActive(mode: ApplyMode): Promise<void> {
       return
     }
 
-    await injectTextStrokeStyle(activationState.matchingWebsite)
-    const hasCustomCSS = await injectFontStyles(activationState.matchingWebsite)
+    await injectTextStrokeStyle(
+      activationState.matchingWebsite,
+      activationState.siteProfile
+    )
+    const hasCustomCSS = await injectFontStyles(
+      activationState.matchingWebsite,
+      activationState.siteProfile
+    )
 
     if (hasCustomCSS) {
       stopObserving()
@@ -188,6 +194,10 @@ stopWatchingStorage = watchLocalStorage({
     scheduleApplyFontsIfActive()
     scheduleApplyRtlIfActive()
   },
+  [STORAGE_KEYS.ENABLED_BY_DEFAULT]: () => scheduleApplyFontsIfActive(),
+  [STORAGE_KEYS.ENABLED_FOR]: () => scheduleApplyFontsIfActive(),
+  [STORAGE_KEYS.DISABLED_FOR]: () => scheduleApplyFontsIfActive(),
+  [STORAGE_KEYS.SITE_PROFILES]: () => scheduleApplyFontsIfActive("font-styles"),
   [STORAGE_KEYS.WEBSITE_LIST]: () => scheduleApplyFontsIfActive(),
   [STORAGE_KEYS.CUSTOM_FONT_LIST]: () =>
     scheduleApplyFontsIfActive("font-styles"),

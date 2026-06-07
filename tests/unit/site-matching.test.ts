@@ -7,8 +7,18 @@ import {
   getRtlSiteByUrl,
   RTL_SUPPORTED_SITES
 } from "../../src/config/rtl-sites"
+import {
+  addSitePatternToList,
+  isSiteListUrlEnabled,
+  isURLMatched,
+  normalizeSitePattern
+} from "../../src/config/site-list"
+import {
+  getSiteProfileForUrl,
+  normalizeSiteProfiles
+} from "../../src/config/site-profiles"
 import { POPULAR_WEBSITES } from "../../src/config/sites"
-import { STORAGE_KEYS } from "../../src/config/storage"
+import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { WebsiteItem } from "../../src/definitions"
 import {
   createRegexFromUrl,
@@ -27,8 +37,16 @@ function mockLocalStorage(values: Record<string, unknown>): void {
   Reflect.set(globalThis, "chrome", {
     storage: {
       local: {
-        get(key: string, callback: (items: Record<string, unknown>) => void) {
-          callback({ [key]: values[key] })
+        get(
+          key: string | Record<string, unknown>,
+          callback: (items: Record<string, unknown>) => void
+        ) {
+          if (typeof key === "string") {
+            callback({ [key]: values[key] })
+            return
+          }
+
+          callback({ ...key, ...values })
         }
       }
     }
@@ -234,4 +252,176 @@ test("isUrlActive respects the global disabled flag", async () => {
   })
 
   assert.equal(await isUrlActive(`${POPULAR_WEBSITES[0].url}/`), false)
+})
+
+test("site list URL matching mirrors Dark Reader wildcard and path behavior", () => {
+  assert.equal(
+    isURLMatched("https://www.google.com/search", "google.com"),
+    true
+  )
+  assert.equal(
+    isURLMatched("https://mail.google.com/mail/u/0", "google.com"),
+    false
+  )
+  assert.equal(
+    isURLMatched("https://mail.google.com/mail/u/0", "mail.google.*/mail"),
+    true
+  )
+  assert.equal(
+    isURLMatched(
+      "https://leetcode.com/problems/two-sum/",
+      "leetcode.com/problems"
+    ),
+    true
+  )
+  assert.equal(
+    isURLMatched(
+      "https://leetcode.com/problemset/all/",
+      "leetcode.com/problems"
+    ),
+    false
+  )
+  assert.equal(
+    isURLMatched("https://example.com/?q=*", "/example\\.com/"),
+    true
+  )
+})
+
+test("site list helpers keep append order and reject invalid regex patterns", () => {
+  assert.deepEqual(addSitePatternToList(["b.com"], "a.com"), ["b.com", "a.com"])
+  assert.equal(normalizeSitePattern("/(/"), null)
+  assert.equal(normalizeSitePattern("/example\\s+site/"), "/example\\s+site/")
+  assert.equal(
+    isURLMatched("https://example.com/path", "/example\\.com\\/path/"),
+    true
+  )
+})
+
+test("site profiles normalize patterns and resolve the first matching override", () => {
+  assert.deepEqual(
+    normalizeSiteProfiles([
+      { pattern: " https://ChatGPT.com/ ", font: "Vazirmatn-Fontara" },
+      { pattern: "chatgpt.com", textStroke: 0.26 },
+      { pattern: "empty.example.com" },
+      { pattern: "/(/", font: "Samim-Fontara" }
+    ]),
+    [
+      {
+        font: "Vazirmatn-Fontara",
+        pattern: "chatgpt.com",
+        textStroke: 0.3
+      }
+    ]
+  )
+
+  assert.deepEqual(
+    getSiteProfileForUrl("https://chatgpt.com/c/1", [
+      { pattern: "example.com", font: "Samim-Fontara" },
+      { pattern: "chatgpt.com", textStroke: 0.4 }
+    ]),
+    {
+      pattern: "chatgpt.com",
+      textStroke: 0.4
+    }
+  )
+})
+
+test("site list settings support include and exclude modes", () => {
+  assert.equal(
+    isSiteListUrlEnabled("https://example.com/", {
+      disabledFor: [],
+      enabledByDefault: false,
+      enabledFor: ["example.com"]
+    }),
+    true
+  )
+  assert.equal(
+    isSiteListUrlEnabled("https://mail.google.com/mail/u/0", {
+      disabledFor: [],
+      enabledByDefault: false,
+      enabledFor: ["google.com"]
+    }),
+    false
+  )
+  assert.equal(
+    isSiteListUrlEnabled("https://mail.google.com/mail/u/0", {
+      disabledFor: ["mail.google.*/mail"],
+      enabledByDefault: true,
+      enabledFor: []
+    }),
+    false
+  )
+  assert.equal(
+    isSiteListUrlEnabled("https://mail.google.com/mail/u/0", {
+      disabledFor: ["mail.google.*/mail"],
+      enabledByDefault: true,
+      enabledFor: ["mail.google.com"]
+    }),
+    true
+  )
+})
+
+test("getUrlActivationState uses site list settings and keeps website metadata", async () => {
+  mockLocalStorage({
+    [STORAGE_KEYS.DISABLED_FOR]: [],
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+    [STORAGE_KEYS.ENABLED_FOR]: ["example.com"],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        font: "Samim-Fontara",
+        pattern: "example.com",
+        textStroke: 0.4
+      }
+    ],
+    [STORAGE_KEYS.WEBSITE_LIST]: [
+      {
+        isActive: false,
+        regex: "^https?://example\\.com/?.*$",
+        siteName: "Example",
+        url: "https://example.com"
+      }
+    ]
+  })
+
+  const state = await getUrlActivationState("https://example.com/")
+
+  assert.equal(state.active, true)
+  assert.equal(state.matchingWebsite?.siteName, "Example")
+  assert.deepEqual(state.siteProfile, {
+    font: "Samim-Fontara",
+    pattern: "example.com",
+    textStroke: 0.4
+  })
+})
+
+test("default site list values keep existing popular sites active", async () => {
+  mockLocalStorage({
+    [STORAGE_KEYS.ENABLED_FOR]: DEFAULT_VALUES.ENABLED_FOR
+  })
+
+  assert.equal(await isUrlActive(`${POPULAR_WEBSITES[0].url}/`), true)
+})
+
+test("runtime derives missing site list settings from legacy website list before migration", async () => {
+  const legacyWebsiteList = DEFAULT_VALUES.WEBSITE_LIST.map((website, index) =>
+    index === 0 ? { ...website, isActive: false } : website
+  )
+  mockLocalStorage({
+    [STORAGE_KEYS.WEBSITE_LIST]: legacyWebsiteList
+  })
+
+  assert.equal(await isUrlActive(`${legacyWebsiteList[0].url}/`), false)
+  assert.equal(await isUrlActive(`${legacyWebsiteList[1].url}/`), true)
+})
+
+test("default site list values preserve wildcard default site coverage", async () => {
+  mockLocalStorage({
+    [STORAGE_KEYS.ENABLED_FOR]: DEFAULT_VALUES.ENABLED_FOR
+  })
+
+  assert.equal(await isUrlActive("https://en.wikipedia.org/wiki/Font"), true)
+  assert.equal(await isUrlActive("https://jobs.linkedin.com/"), true)
+  assert.equal(DEFAULT_VALUES.ENABLED_FOR.includes("*.wikipedia.org"), true)
+  assert.equal(DEFAULT_VALUES.ENABLED_FOR.includes("*.linkedin.com"), true)
 })

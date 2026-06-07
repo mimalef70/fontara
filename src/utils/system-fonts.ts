@@ -27,7 +27,7 @@ function getRuntimeError(): Error | null {
 function getFontSettingsAPI(): typeof chrome.fontSettings | null {
   if (typeof chrome === "undefined") return null
 
-  return (chrome as ChromeWithFontSettings)["fontSettings"] ?? null
+  return (chrome as ChromeWithFontSettings).fontSettings ?? null
 }
 
 function hasControlCharacter(value: string): boolean {

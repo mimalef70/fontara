@@ -1,6 +1,8 @@
 import type { WebsiteItem } from "../definitions"
 import { UI_LANGUAGE_AUTO } from "./i18n"
 import { DEFAULT_RTL_SITE_SETTINGS } from "./rtl-sites"
+import { getActiveWebsiteSitePatterns } from "./site-list"
+import { EMPTY_SITE_PROFILES } from "./site-profiles"
 import { POPULAR_WEBSITES } from "./sites"
 import { DEFAULT_TEXT_STROKE } from "./text-stroke"
 
@@ -13,6 +15,15 @@ export const DEFAULT_VALUES = {
     ...website,
     isActive: true
   })),
+  ENABLED_BY_DEFAULT: false,
+  ENABLED_FOR: getActiveWebsiteSitePatterns(
+    POPULAR_WEBSITES.map<WebsiteItem>((website) => ({
+      ...website,
+      isActive: true
+    }))
+  ),
+  DISABLED_FOR: [],
+  SITE_PROFILES: EMPTY_SITE_PROFILES,
   CUSTOM_FONT_LIST: [],
   GOOGLE_FONTS_ENABLED: false,
   SYSTEM_FONTS_ENABLED: false,

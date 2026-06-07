@@ -3,7 +3,7 @@ import { createRequire } from "node:module"
 import test, { afterEach } from "node:test"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
-import type { FontData, WebsiteItem } from "../../src/definitions"
+import type { FontData, SiteProfile, WebsiteItem } from "../../src/definitions"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
@@ -14,9 +14,13 @@ type StorageListener = (
 
 type StoredValues = {
   [STORAGE_KEYS.CUSTOM_FONT_LIST]: FontData[]
+  [STORAGE_KEYS.DISABLED_FOR]: string[]
+  [STORAGE_KEYS.ENABLED_BY_DEFAULT]: boolean
+  [STORAGE_KEYS.ENABLED_FOR]: string[]
   [STORAGE_KEYS.EXTENSION_ENABLED]: boolean
   [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: boolean
   [STORAGE_KEYS.SELECTED_FONT]: string
+  [STORAGE_KEYS.SITE_PROFILES]: SiteProfile[]
   [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: boolean
   [STORAGE_KEYS.TEXT_STROKE]: number
   [STORAGE_KEYS.WEBSITE_LIST]: WebsiteItem[]
@@ -180,9 +184,13 @@ function createRuntimeMocks(): {
   }
   const values: StoredValues = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [customFont],
+    [STORAGE_KEYS.DISABLED_FOR]: [],
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+    [STORAGE_KEYS.ENABLED_FOR]: ["example.com"],
     [STORAGE_KEYS.EXTENSION_ENABLED]: true,
     [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
     [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.SITE_PROFILES]: [],
     [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
     [STORAGE_KEYS.TEXT_STROKE]: 0,
     [STORAGE_KEYS.WEBSITE_LIST]: [matchingWebsite]
@@ -721,6 +729,69 @@ test("selected custom font changes inject its font-face without a reload", async
           runtime.getStyleText("fontara-dynamic-font")
         ) && runtime.getStyleText("fontara-google-font-styles") === "",
       "expected disabled Google fonts to fall back to the default font"
+    )
+
+    runtime.values[STORAGE_KEYS.TEXT_STROKE] = 0.1
+    runtime.values[STORAGE_KEYS.SITE_PROFILES] = [
+      {
+        font: "RuntimeCustom-Fontara",
+        pattern: "example.com",
+        textStroke: 0.5
+      }
+    ]
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SITE_PROFILES]: {
+          newValue: runtime.values[STORAGE_KEYS.SITE_PROFILES],
+          oldValue: []
+        },
+        [STORAGE_KEYS.TEXT_STROKE]: {
+          newValue: 0.1,
+          oldValue: 0
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "RuntimeCustom-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) &&
+        runtime
+          .getStyleText("fontara-text-stroke-style")
+          .includes("-webkit-text-stroke: 0.5px"),
+      "expected per-site profile to override global font and text stroke"
+    )
+
+    runtime.values[STORAGE_KEYS.TEXT_STROKE] = 0
+    runtime.values[STORAGE_KEYS.SITE_PROFILES] = []
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SITE_PROFILES]: {
+          newValue: [],
+          oldValue: [
+            {
+              font: "RuntimeCustom-Fontara",
+              pattern: "example.com",
+              textStroke: 0.5
+            }
+          ]
+        },
+        [STORAGE_KEYS.TEXT_STROKE]: {
+          newValue: 0,
+          oldValue: 0.1
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "Vazirmatn-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) && runtime.getStyleText("fontara-text-stroke-style") === "",
+      "expected clearing per-site profile to restore global font and text stroke"
     )
 
     runtime.setRuntimeRemoveError(

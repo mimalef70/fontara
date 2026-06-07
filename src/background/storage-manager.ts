@@ -1,12 +1,21 @@
 import { DEFAULT_FONTS } from "../config/fonts"
 import { normalizeUILanguagePreference } from "../config/i18n"
 import { normalizeRtlSiteSettings } from "../config/rtl-sites"
+import {
+  getActiveWebsiteSitePatterns,
+  normalizeEnabledByDefault,
+  normalizeSiteList
+} from "../config/site-list"
+import {
+  hasSiteProfileOverrides,
+  normalizeSiteProfiles
+} from "../config/site-profiles"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import {
   DEFAULT_ACTIVE_TEXT_STROKE,
   normalizeTextStrokeValue
 } from "../config/text-stroke"
-import type { FontData, WebsiteItem } from "../definitions"
+import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
 import {
   getFontDataURLFormat,
   isSafeCustomFontValue,
@@ -167,6 +176,32 @@ function isSelectedFontAvailable(
   )
 }
 
+function normalizeSiteProfilesForStorage(
+  siteProfiles: unknown,
+  customFontList: FontData[],
+  googleFontsEnabled: boolean,
+  systemFontsEnabled: boolean
+): SiteProfile[] {
+  return normalizeSiteProfiles(siteProfiles)
+    .map((profile) => {
+      if (
+        !profile.font ||
+        isSelectedFontAvailable(
+          profile.font,
+          customFontList,
+          googleFontsEnabled,
+          systemFontsEnabled
+        )
+      ) {
+        return profile
+      }
+
+      const { font: _unavailableFont, ...profileWithoutFont } = profile
+      return profileWithoutFont
+    })
+    .filter(hasSiteProfileOverrides)
+}
+
 export async function ensureStorageValues(): Promise<void> {
   const storageUpdates: Record<string, unknown> = {}
 
@@ -236,13 +271,44 @@ export async function ensureStorageValues(): Promise<void> {
   const websiteList = await getLocalValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST
   )
+  let normalizedWebsiteList: WebsiteItem[]
   if (websiteList === undefined) {
-    storageUpdates[STORAGE_KEYS.WEBSITE_LIST] = DEFAULT_VALUES.WEBSITE_LIST
+    normalizedWebsiteList = DEFAULT_VALUES.WEBSITE_LIST
   } else {
-    storageUpdates[STORAGE_KEYS.WEBSITE_LIST] = mergeWebsiteLists(
+    normalizedWebsiteList = mergeWebsiteLists(
       websiteList,
       DEFAULT_VALUES.WEBSITE_LIST
     )
+  }
+  storageUpdates[STORAGE_KEYS.WEBSITE_LIST] = normalizedWebsiteList
+
+  const enabledByDefault = await getLocalValue<boolean>(
+    STORAGE_KEYS.ENABLED_BY_DEFAULT
+  )
+  const normalizedEnabledByDefault =
+    typeof enabledByDefault === "boolean"
+      ? normalizeEnabledByDefault(enabledByDefault)
+      : DEFAULT_VALUES.ENABLED_BY_DEFAULT
+  if (enabledByDefault !== normalizedEnabledByDefault) {
+    storageUpdates[STORAGE_KEYS.ENABLED_BY_DEFAULT] = normalizedEnabledByDefault
+  }
+
+  const enabledFor = await getLocalValue(STORAGE_KEYS.ENABLED_FOR)
+  const normalizedEnabledFor =
+    enabledFor === undefined
+      ? getActiveWebsiteSitePatterns(normalizedWebsiteList)
+      : normalizeSiteList(enabledFor)
+  if (JSON.stringify(enabledFor) !== JSON.stringify(normalizedEnabledFor)) {
+    storageUpdates[STORAGE_KEYS.ENABLED_FOR] = normalizedEnabledFor
+  }
+
+  const disabledFor = await getLocalValue(STORAGE_KEYS.DISABLED_FOR)
+  const normalizedDisabledFor =
+    disabledFor === undefined
+      ? DEFAULT_VALUES.DISABLED_FOR
+      : normalizeSiteList(disabledFor)
+  if (JSON.stringify(disabledFor) !== JSON.stringify(normalizedDisabledFor)) {
+    storageUpdates[STORAGE_KEYS.DISABLED_FOR] = normalizedDisabledFor
   }
 
   const customFontList = await getLocalValue(STORAGE_KEYS.CUSTOM_FONT_LIST)
@@ -253,6 +319,17 @@ export async function ensureStorageValues(): Promise<void> {
     normalizedCustomFontList = await normalizeCustomFontList(customFontList)
   }
   storageUpdates[STORAGE_KEYS.CUSTOM_FONT_LIST] = normalizedCustomFontList
+
+  const siteProfiles = await getLocalValue(STORAGE_KEYS.SITE_PROFILES)
+  const normalizedSiteProfiles = normalizeSiteProfilesForStorage(
+    siteProfiles,
+    normalizedCustomFontList,
+    googleFontsEnabled === true,
+    systemFontsEnabled === true
+  )
+  if (JSON.stringify(siteProfiles) !== JSON.stringify(normalizedSiteProfiles)) {
+    storageUpdates[STORAGE_KEYS.SITE_PROFILES] = normalizedSiteProfiles
+  }
 
   if (
     !isSelectedFontAvailable(

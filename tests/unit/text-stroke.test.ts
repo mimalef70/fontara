@@ -15,10 +15,14 @@ import {
 
 test("text stroke CSS follows Dark Reader's protected text selector", () => {
   const css = createTextStrokeCSS(
-    getTextStrokeConfig(0.2, {
-      regex: "^https://example\\.com/.*$",
-      url: "https://example.com"
-    })
+    getTextStrokeConfig(
+      0.2,
+      {
+        regex: "^https://example\\.com/.*$",
+        url: "https://example.com"
+      },
+      null
+    )
   )
 
   assert.match(css, /^\*:not\(pre, pre \*, code,/)
@@ -31,7 +35,19 @@ test("text stroke CSS follows Dark Reader's protected text selector", () => {
 })
 
 test("text stroke CSS stays empty when the global setting is off", () => {
-  assert.equal(createTextStrokeCSS(getTextStrokeConfig(0, null)), "")
+  assert.equal(createTextStrokeCSS(getTextStrokeConfig(0, null, null)), "")
+})
+
+test("text stroke config lets per-site profiles override the global value", () => {
+  assert.deepEqual(
+    getTextStrokeConfig(0.1, null, {
+      pattern: "chatgpt.com",
+      textStroke: 0.5
+    }),
+    {
+      widthPx: 0.5
+    }
+  )
 })
 
 test("text stroke values normalize to Dark Reader's 0..1 step scale", () => {

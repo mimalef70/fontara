@@ -6,6 +6,7 @@ import {
   mergeWebsiteLists,
   normalizeCustomFontList
 } from "../../src/background/storage-manager"
+import { getActiveWebsiteSitePatterns } from "../../src/config/site-list"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { WebsiteItem } from "../../src/definitions"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
@@ -26,8 +27,16 @@ function mockLocalStorage(values: Record<string, unknown>): void {
     },
     storage: {
       local: {
-        get(key: string, callback: (items: Record<string, unknown>) => void) {
-          callback({ [key]: values[key] })
+        get(
+          key: string | Record<string, unknown>,
+          callback: (items: Record<string, unknown>) => void
+        ) {
+          if (typeof key === "string") {
+            callback({ [key]: values[key] })
+            return
+          }
+
+          callback({ ...key, ...values })
         },
         set(items: Record<string, unknown>, callback: () => void) {
           Object.assign(values, items)
@@ -900,6 +909,106 @@ test("ensureStorageValues initializes and normalizes RTL settings", async () => 
     ...DEFAULT_VALUES.RTL_SITE_SETTINGS,
     chatgpt: false
   })
+})
+
+test("ensureStorageValues migrates active website settings into the include site list", async () => {
+  const migratedWebsiteList = DEFAULT_VALUES.WEBSITE_LIST.map(
+    (website, index) =>
+      index === 0 ? { ...website, isActive: false } : website
+  )
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.WEBSITE_LIST]: migratedWebsiteList
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(
+    values[STORAGE_KEYS.ENABLED_BY_DEFAULT],
+    DEFAULT_VALUES.ENABLED_BY_DEFAULT
+  )
+  assert.deepEqual(
+    values[STORAGE_KEYS.ENABLED_FOR],
+    getActiveWebsiteSitePatterns(migratedWebsiteList)
+  )
+  assert.deepEqual(values[STORAGE_KEYS.DISABLED_FOR], [])
+})
+
+test("ensureStorageValues normalizes stored site list settings", async () => {
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.DISABLED_FOR]: [" Example.com ", "", "example.com"],
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: "yes",
+    [STORAGE_KEYS.ENABLED_FOR]: ["https://www.google.com/", "google.com"],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.ENABLED_BY_DEFAULT], false)
+  assert.deepEqual(values[STORAGE_KEYS.DISABLED_FOR], ["example.com"])
+  assert.deepEqual(values[STORAGE_KEYS.ENABLED_FOR], [
+    "www.google.com",
+    "google.com"
+  ])
+})
+
+test("ensureStorageValues normalizes per-site profile overrides", async () => {
+  const selectedGoogleFont = createGoogleFontValue("Noto Sans Arabic")
+  const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
+  assert.ok(selectedSystemFont)
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        font: "Samim-Fontara",
+        pattern: " https://ChatGPT.com/ ",
+        textStroke: 0.26
+      },
+      {
+        font: "MissingCustom-Fontara",
+        pattern: "custom.example.com",
+        textStroke: 0.4
+      },
+      {
+        font: selectedGoogleFont,
+        pattern: "google.example.com"
+      },
+      {
+        font: selectedSystemFont,
+        pattern: "system.example.com"
+      },
+      {
+        pattern: "empty.example.com"
+      }
+    ],
+    [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.deepEqual(values[STORAGE_KEYS.SITE_PROFILES], [
+    {
+      font: "Samim-Fontara",
+      pattern: "chatgpt.com",
+      textStroke: 0.3
+    },
+    {
+      pattern: "custom.example.com",
+      textStroke: 0.4
+    }
+  ])
 })
 
 test("ensureStorageValues initializes and normalizes text stroke settings", async () => {

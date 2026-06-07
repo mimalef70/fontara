@@ -14,6 +14,12 @@ async function readPatch(platform) {
   return {}
 }
 
+function getMessageText(messages, key, fallback) {
+  return typeof messages?.[key]?.message === "string"
+    ? messages[key].message
+    : fallback
+}
+
 async function bundleManifest({ platform, debug }) {
   const manifest = await readJSON(absolutePath("src/manifest.json"))
   const patch = await readPatch(platform)
@@ -25,8 +31,22 @@ async function bundleManifest({ platform, debug }) {
   }
 
   if (debug) {
+    const catalog = await readJSON(absolutePath("src/i18n/messages.json"))
+    const defaultMessages = catalog.extension?.en
+
     patchedManifest.name = "FontAra Debug"
+    patchedManifest.short_name = getMessageText(
+      defaultMessages,
+      "extensionShortName",
+      "FontAra"
+    )
+    patchedManifest.description = getMessageText(
+      defaultMessages,
+      "extensionDescription",
+      "FontAra debug build."
+    )
     patchedManifest.version_name = `${packageJSON.version} Debug`
+    delete patchedManifest.default_locale
   }
 
   const outDir = getDestDir({ platform, debug })

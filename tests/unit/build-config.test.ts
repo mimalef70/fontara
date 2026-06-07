@@ -34,6 +34,20 @@ test("build pipeline generates WebExtension locales from the i18n catalog", () =
   assert.match(validateBuildSource, /messages\.json/)
 })
 
+test("debug manifests do not depend on generated WebExtension locale catalogs", () => {
+  const bundleManifestSource = fs.readFileSync(
+    path.resolve("tasks/bundle-manifest.js"),
+    "utf8"
+  )
+
+  assert.match(bundleManifestSource, /if \(debug\)/)
+  assert.match(bundleManifestSource, /src\/i18n\/messages\.json/)
+  assert.match(bundleManifestSource, /patchedManifest\.name = "FontAra Debug"/)
+  assert.match(bundleManifestSource, /patchedManifest\.short_name =/)
+  assert.match(bundleManifestSource, /patchedManifest\.description =/)
+  assert.match(bundleManifestSource, /delete patchedManifest\.default_locale/)
+})
+
 test("Google Fonts catalog is generated at build time without shipping API secrets", () => {
   const generatorSource = fs.readFileSync(
     path.resolve("tasks/generate-google-fonts.js"),

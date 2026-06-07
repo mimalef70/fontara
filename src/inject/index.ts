@@ -187,6 +187,8 @@ stopWatchingStorage = watchLocalStorage({
     scheduleApplyFontsIfActive("font-styles"),
   [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: () =>
     scheduleApplyFontsIfActive("font-styles"),
+  [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: () =>
+    scheduleApplyFontsIfActive("font-styles"),
   [STORAGE_KEYS.RTL_ENABLED]: () => scheduleApplyRtlIfActive(),
   [STORAGE_KEYS.RTL_SITE_SETTINGS]: () => scheduleApplyRtlIfActive()
 })

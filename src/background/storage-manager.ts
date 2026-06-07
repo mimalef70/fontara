@@ -9,6 +9,7 @@ import {
   isSupportedFontExtension,
   normalizeFontDataURL
 } from "../utils/font-data"
+import { getGoogleFontByValue } from "../utils/google-fonts"
 import { getLocalValue, setLocalValue } from "../utils/storage"
 import { isSystemFontValue } from "../utils/system-fonts"
 
@@ -150,12 +151,14 @@ export async function normalizeCustomFontList(
 function isSelectedFontAvailable(
   selectedFont: string | undefined,
   customFontList: FontData[],
+  googleFontsEnabled: boolean,
   systemFontsEnabled: boolean
 ): boolean {
   return (
     selectedFont === undefined ||
     BUNDLED_FONT_VALUES.has(selectedFont) ||
     customFontList.some((font) => font.value === selectedFont) ||
+    (googleFontsEnabled && getGoogleFontByValue(selectedFont) !== null) ||
     (systemFontsEnabled && isSystemFontValue(selectedFont))
   )
 }
@@ -182,6 +185,14 @@ export async function ensureStorageValues(): Promise<void> {
   if (typeof systemFontsEnabled !== "boolean") {
     storageUpdates[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] =
       DEFAULT_VALUES.SYSTEM_FONTS_ENABLED
+  }
+
+  const googleFontsEnabled = await getLocalValue<boolean>(
+    STORAGE_KEYS.GOOGLE_FONTS_ENABLED
+  )
+  if (typeof googleFontsEnabled !== "boolean") {
+    storageUpdates[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] =
+      DEFAULT_VALUES.GOOGLE_FONTS_ENABLED
   }
 
   const rtlSiteSettings = await getLocalValue(STORAGE_KEYS.RTL_SITE_SETTINGS)
@@ -229,6 +240,7 @@ export async function ensureStorageValues(): Promise<void> {
     !isSelectedFontAvailable(
       selectedFont,
       normalizedCustomFontList,
+      googleFontsEnabled === true,
       systemFontsEnabled === true
     )
   ) {

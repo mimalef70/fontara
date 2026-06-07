@@ -5,6 +5,10 @@ import type { FontData, WebsiteItem } from "../definitions"
 import { createCustomFontFaces } from "../generators/custom-font-face"
 import { getFontFaceCSS } from "../generators/font-face"
 import { formatFontFamilyForCSS } from "../utils/font-data"
+import {
+  decodeGoogleFontValue,
+  loadGoogleFontFaceCSS
+} from "../utils/google-font-runtime"
 import { getLocalValue } from "../utils/storage"
 import { decodeSystemFontValue } from "../utils/system-fonts"
 import {
@@ -17,11 +21,13 @@ const FONT_STYLES_ID = "fontara-font-styles"
 const CUSTOM_CSS_ID = "fontara-custom-css-style"
 const CUSTOM_FONT_STYLES_ID = "fontara-custom-font-styles"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
+const GOOGLE_FONT_STYLES_ID = "fontara-google-font-styles"
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
 
 type SelectedFontState = {
   customFonts: FontData[]
   fontName: string
+  googleFontCSS: string | null
 }
 
 export function removeInlineFontStyles(): void {
@@ -57,14 +63,31 @@ async function getSelectedFontState(
   if (!selectedFont) {
     return {
       customFonts: [],
-      fontName: DEFAULT_VALUES.SELECTED_FONT
+      fontName: DEFAULT_VALUES.SELECTED_FONT,
+      googleFontCSS: null
     }
   }
 
   if (BUNDLED_FONT_VALUES.has(selectedFont)) {
     return {
       customFonts: [],
-      fontName: selectedFont
+      fontName: selectedFont,
+      googleFontCSS: null
+    }
+  }
+
+  const googleFontFamily = decodeGoogleFontValue(selectedFont)
+  if (googleFontFamily) {
+    const googleFontsEnabled = await getLocalValue<boolean>(
+      STORAGE_KEYS.GOOGLE_FONTS_ENABLED
+    )
+
+    if (googleFontsEnabled === true) {
+      return {
+        customFonts: [],
+        fontName: googleFontFamily,
+        googleFontCSS: await loadGoogleFontFaceCSS(selectedFont)
+      }
     }
   }
 
@@ -77,7 +100,8 @@ async function getSelectedFontState(
     if (systemFontsEnabled === true) {
       return {
         customFonts: [],
-        fontName: systemFontFamily
+        fontName: systemFontFamily,
+        googleFontCSS: null
       }
     }
   }
@@ -86,13 +110,15 @@ async function getSelectedFontState(
   if (customFonts.length === 0) {
     return {
       customFonts: [],
-      fontName: DEFAULT_VALUES.SELECTED_FONT
+      fontName: DEFAULT_VALUES.SELECTED_FONT,
+      googleFontCSS: null
     }
   }
 
   return {
     customFonts,
-    fontName: selectedFont
+    fontName: selectedFont,
+    googleFontCSS: null
   }
 }
 
@@ -103,6 +129,12 @@ export async function injectFontStyles(
   const selectedFont = await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT)
   const selectedFontState = await getSelectedFontState(selectedFont)
   updateFontVariable(selectedFontState.fontName)
+
+  if (selectedFontState.googleFontCSS) {
+    upsertStyle(GOOGLE_FONT_STYLES_ID, selectedFontState.googleFontCSS)
+  } else {
+    removeStyle(GOOGLE_FONT_STYLES_ID)
+  }
 
   const customFontFaces = createCustomFontFaces(selectedFontState.customFonts)
   if (customFontFaces) {
@@ -133,6 +165,7 @@ export function removeFontStyles(): void {
   removeStyle(DYNAMIC_FONT_ID)
   removeEditableFontStyles()
   removeStyle(CUSTOM_FONT_STYLES_ID)
+  removeStyle(GOOGLE_FONT_STYLES_ID)
   removeStyle(CUSTOM_CSS_ID)
   removeInlineFontStyles()
 }

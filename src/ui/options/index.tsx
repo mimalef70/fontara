@@ -1,6 +1,7 @@
 import {
   AlignRight,
   Check,
+  Cloud,
   FileText,
   Globe2,
   HardDrive,
@@ -41,6 +42,7 @@ import {
   MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
   normalizeFontDataURL
 } from "../../utils/font-data"
+import { isGoogleFontValue } from "../../utils/google-font-runtime"
 import { getLocalValue, setLocalValues } from "../../utils/storage"
 import {
   getSystemFontList,
@@ -76,6 +78,7 @@ import type { MessageKey } from "../i18n/messages"
 import {
   EMPTY_CUSTOM_FONT_LIST,
   EMPTY_WEBSITE_LIST,
+  getGoogleFontsEnabledInitialValue,
   getRtlEnabledInitialValue,
   getRtlSiteSettingsInitialValue,
   getSystemFontsEnabledInitialValue
@@ -180,6 +183,10 @@ function OptionsPage() {
   const [systemFontsEnabled, setSystemFontsEnabled] = useStorageValue<boolean>(
     STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
     getSystemFontsEnabledInitialValue
+  )
+  const [googleFontsEnabled, setGoogleFontsEnabled] = useStorageValue<boolean>(
+    STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
+    getGoogleFontsEnabledInitialValue
   )
   const [websiteList, setWebsiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
@@ -488,6 +495,32 @@ function OptionsPage() {
     }
   }
 
+  const handleGoogleFontsToggle = async (checked: boolean) => {
+    try {
+      if (!checked) {
+        const selectedFont = await getLocalValue<string>(
+          STORAGE_KEYS.SELECTED_FONT
+        )
+        await setLocalValues({
+          [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
+          ...(isGoogleFontValue(selectedFont)
+            ? { [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT }
+            : {})
+        })
+        return
+      }
+
+      await setGoogleFontsEnabled(true)
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
   const handleRtlSiteToggle = async (site: RtlSiteConfig, checked: boolean) => {
     try {
       await setRtlSiteSettings({
@@ -585,39 +618,76 @@ function OptionsPage() {
               {activeSection === "fonts" && (
                 <div className="space-y-6">
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div
-                      className={cn(
-                        "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
-                        systemFontsEnabled
-                          ? "border-[#dbeafe] bg-[#f8fbff]"
-                          : "border-[#e5e7eb] bg-white"
-                      )}>
-                      <div className="flex min-w-0 items-start gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
-                          <HardDrive className="size-5" />
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <div
+                        className={cn(
+                          "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
+                          systemFontsEnabled
+                            ? "border-[#dbeafe] bg-[#f8fbff]"
+                            : "border-[#e5e7eb] bg-white"
+                        )}>
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                            <HardDrive className="size-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-bold text-[#111827]">
+                              {t("options.systemFonts.title")}
+                            </h3>
+                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                              {t("options.systemFonts.description")}
+                            </p>
+                            <p className="mt-2 text-xs text-[#64748b]">
+                              {systemFontsEnabled
+                                ? t("options.systemFonts.enabled")
+                                : t("options.systemFonts.disabled")}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-[#111827]">
-                            {t("options.systemFonts.title")}
-                          </h3>
-                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                            {t("options.systemFonts.description")}
-                          </p>
-                          <p className="mt-2 text-xs text-[#64748b]">
-                            {systemFontsEnabled
-                              ? t("options.systemFonts.enabled")
-                              : t("options.systemFonts.disabled")}
-                          </p>
-                        </div>
+                        <Switch
+                          dir="ltr"
+                          checked={systemFontsEnabled}
+                          onCheckedChange={(checked) =>
+                            void handleSystemFontsToggle(checked)
+                          }
+                          aria-label={t("options.systemFonts.title")}
+                        />
                       </div>
-                      <Switch
-                        dir="ltr"
-                        checked={systemFontsEnabled}
-                        onCheckedChange={(checked) =>
-                          void handleSystemFontsToggle(checked)
-                        }
-                        aria-label={t("options.systemFonts.title")}
-                      />
+
+                      <div
+                        className={cn(
+                          "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
+                          googleFontsEnabled
+                            ? "border-[#dbeafe] bg-[#f8fbff]"
+                            : "border-[#e5e7eb] bg-white"
+                        )}>
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                            <Cloud className="size-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-bold text-[#111827]">
+                              {t("options.googleFonts.title")}
+                            </h3>
+                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                              {t("options.googleFonts.description")}
+                            </p>
+                            <p className="mt-2 text-xs text-[#64748b]">
+                              {googleFontsEnabled
+                                ? t("options.googleFonts.enabled")
+                                : t("options.googleFonts.disabled")}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          dir="ltr"
+                          checked={googleFontsEnabled}
+                          onCheckedChange={(checked) =>
+                            void handleGoogleFontsToggle(checked)
+                          }
+                          aria-label={t("options.googleFonts.title")}
+                        />
+                      </div>
                     </div>
                   </section>
 

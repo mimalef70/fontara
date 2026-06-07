@@ -4,6 +4,7 @@ import test, { afterEach } from "node:test"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontData, WebsiteItem } from "../../src/definitions"
+import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 type StorageListener = (
@@ -14,6 +15,7 @@ type StorageListener = (
 type StoredValues = {
   [STORAGE_KEYS.CUSTOM_FONT_LIST]: FontData[]
   [STORAGE_KEYS.EXTENSION_ENABLED]: boolean
+  [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: boolean
   [STORAGE_KEYS.SELECTED_FONT]: string
   [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: boolean
   [STORAGE_KEYS.WEBSITE_LIST]: WebsiteItem[]
@@ -30,6 +32,7 @@ const originalGlobals = {
   ) as unknown,
   chrome: Reflect.get(globalThis, "chrome") as unknown,
   document: Reflect.get(globalThis, "document") as unknown,
+  fetch: Reflect.get(globalThis, "fetch") as unknown,
   HTMLElement: Reflect.get(globalThis, "HTMLElement") as unknown,
   MutationObserver: Reflect.get(globalThis, "MutationObserver") as unknown,
   Node: Reflect.get(globalThis, "Node") as unknown,
@@ -177,6 +180,7 @@ function createRuntimeMocks(): {
   const values: StoredValues = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [customFont],
     [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
     [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
     [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
     [STORAGE_KEYS.WEBSITE_LIST]: [matchingWebsite]
@@ -360,6 +364,10 @@ function createRuntimeMocks(): {
             storageGetCounts.set(key, (storageGetCounts.get(key) ?? 0) + 1)
           }
           callback({ ...keys, ...values })
+        },
+        set(items: Record<string, unknown>, callback: () => void) {
+          Object.assign(values, items)
+          callback()
         }
       },
       onChanged: {
@@ -578,6 +586,73 @@ test("selected custom font changes inject its font-face without a reload", async
           runtime.getStyleText("fontara-dynamic-font")
         ),
       "expected disabled system fonts to fall back to the default font"
+    )
+
+    const selectedGoogleFont = createGoogleFontValue("Noto Sans Arabic")
+    const googleFontCSS = `
+      /* arabic */
+      @font-face {
+        font-family: 'Noto Sans Arabic';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/notosansarabic/v30/test.woff2) format('woff2');
+        unicode-range: U+0600-06FF;
+      }
+    `
+    Reflect.set(globalThis, "fetch", async () => {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => googleFontCSS
+      }
+    })
+    runtime.values[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] = true
+    runtime.values[STORAGE_KEYS.SELECTED_FONT] = selectedGoogleFont
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: {
+          newValue: true,
+          oldValue: false
+        },
+        [STORAGE_KEYS.SELECTED_FONT]: {
+          newValue: selectedGoogleFont,
+          oldValue: selectedGenericSystemFont
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "Noto Sans Arabic"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) &&
+        runtime
+          .getStyleText("fontara-google-font-styles")
+          .includes(
+            "https://fonts.gstatic.com/s/notosansarabic/v30/test.woff2"
+          ),
+      "expected enabled Google font selection to inject sanitized font-face CSS"
+    )
+
+    runtime.values[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] = false
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: {
+          newValue: false,
+          oldValue: true
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "Vazirmatn-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) && runtime.getStyleText("fontara-google-font-styles") === "",
+      "expected disabled Google fonts to fall back to the default font"
     )
 
     runtime.setRuntimeRemoveError(

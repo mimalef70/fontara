@@ -51,15 +51,32 @@ test("UI follows the selected extension font", () => {
   assert.match(fontSelectorSource, /fontSelector\.previewText/)
   assert.match(fontSelectorSource, /fontSelector\.groupTitlePrefix/)
   assert.match(fontSelectorSource, /fontSelector\.systemGroup/)
+  assert.match(fontSelectorSource, /from "react-window"/)
+  assert.match(fontSelectorSource, /<List/)
+  assert.match(fontSelectorSource, /rowComponent=\{FontListRow\}/)
+  assert.match(fontSelectorSource, /rowCount=\{fontListRows\.length\}/)
+  assert.match(fontSelectorSource, /style=\{\{ height: FONT_LIST_HEIGHT \}\}/)
+  assert.match(
+    fontSelectorSource,
+    /style=\{\{ height: "100%", width: "100%" \}\}/
+  )
+  assert.match(fontSelectorSource, /getGoogleFontList\(\)/)
+  assert.doesNotMatch(fontSelectorSource, /GOOGLE_FONT_SEARCH_RESULT_LIMIT/)
+  assert.doesNotMatch(fontSelectorSource, /GOOGLE_FONT_RECOMMENDED_LIMIT/)
   assert.match(fontSelectorSource, /getSystemFontList/)
   assert.match(fontSelectorSource, /decodeSystemFontValue/)
   assert.match(fontSelectorSource, /getFontFamily/)
   assert.match(fontSelectorSource, /<DrawerContent dir=\{direction\}/)
   assert.match(fontSelectorSource, /isFontRowActive/)
-  assert.match(fontSelectorSource, /isRtl/)
+  assert.match(fontSelectorSource, /RTL_TEXT_PATTERN/)
+  assert.match(fontSelectorSource, /isFontNameRtl/)
   assert.match(
     fontSelectorSource,
-    /grid-cols-\[minmax\(0,1fr\)_minmax\(4\.5rem,7rem\)_1\.25rem\]/
+    /grid-cols-\[1\.25rem_minmax\(0,1fr\)_minmax\(4\.5rem,7rem\)\]/
+  )
+  assert.match(
+    fontSelectorSource,
+    /grid-cols-\[minmax\(4\.5rem,7rem\)_minmax\(0,1fr\)_1\.25rem\]/
   )
   assert.doesNotMatch(
     fontSelectorSource,
@@ -192,7 +209,9 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_ENABLED/)
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_SITE_SETTINGS/)
   assert.match(optionsSource, /STORAGE_KEYS\.SYSTEM_FONTS_ENABLED/)
+  assert.match(optionsSource, /STORAGE_KEYS\.GOOGLE_FONTS_ENABLED/)
   assert.match(optionsSource, /options\.systemFonts\.title/)
+  assert.match(optionsSource, /options\.googleFonts\.title/)
   assert.match(optionsSource, /languageOptions\.map/)
   assert.match(optionsSource, /dir=\{direction\}[\s\S]*aria-pressed=\{active\}/)
   assert.doesNotMatch(optionsSource, /getLanguageOptionDirection/)

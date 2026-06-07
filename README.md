@@ -67,3 +67,18 @@ FontARA is now built as a pure WebExtension. The source manifest files live in `
 - `pnpm build` builds and packages Chrome MV3 in `build/chrome-mv3-prod.zip`.
 - `pnpm build:all` builds and packages all configured MV3 targets.
 - `pnpm test` runs the unit tests.
+
+#### Google Fonts catalog
+
+The extension ships a generated Google Fonts catalog, so normal builds do not
+need a Google API key. To refresh that catalog from Google Fonts Developer API
+v1, provide the key through your shell, a CI secret, or a local gitignored
+`.env.local` file:
+
+```bash
+GOOGLE_FONTS_API_KEY="your-key" pnpm generate:google-fonts
+```
+
+For local development, copy `.env.example` to `.env.local` and fill the key.
+Never commit a real Google API key. Runtime font loading uses the public CSS2
+endpoint for the selected font only.

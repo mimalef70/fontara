@@ -25,6 +25,7 @@ codetree.txt
 
 # local env files
 .env*
+!.env.example
 
 out/
 build/

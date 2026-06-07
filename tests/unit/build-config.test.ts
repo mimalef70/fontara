@@ -33,3 +33,31 @@ test("build pipeline generates WebExtension locales from the i18n catalog", () =
   assert.match(validateBuildSource, /_locales/)
   assert.match(validateBuildSource, /messages\.json/)
 })
+
+test("Google Fonts catalog is generated at build time without shipping API secrets", () => {
+  const generatorSource = fs.readFileSync(
+    path.resolve("tasks/generate-google-fonts.js"),
+    "utf8"
+  )
+  const packageSource = fs.readFileSync(path.resolve("package.json"), "utf8")
+  const generatedSource = fs.readFileSync(
+    path.resolve("src/config/generated/google-fonts.ts"),
+    "utf8"
+  )
+  const gitignoreSource = fs.readFileSync(path.resolve(".gitignore"), "utf8")
+  const envExampleSource = fs.readFileSync(path.resolve(".env.example"), "utf8")
+
+  assert.match(packageSource, /generate:google-fonts/)
+  assert.match(generatorSource, /GOOGLE_FONTS_API_KEY/)
+  assert.match(generatorSource, /\.env\.local/)
+  assert.match(generatorSource, /webfonts\/v1\/webfonts/)
+  assert.match(gitignoreSource, /\.env\*/)
+  assert.match(gitignoreSource, /!\.env\.example/)
+  assert.match(envExampleSource, /^GOOGLE_FONTS_API_KEY=$/m)
+  assert.doesNotMatch(envExampleSource, /AIza/)
+  assert.match(generatedSource, /google-fonts-developer-api-v1/)
+  assert.doesNotMatch(generatedSource, /AIza/)
+  assert.doesNotMatch(generatedSource, /GOOGLE_FONTS_API_KEY/)
+  assert.doesNotMatch(generatedSource, /fonts\.gstatic\.com/)
+  assert.doesNotMatch(generatedSource, /"files"/)
+})

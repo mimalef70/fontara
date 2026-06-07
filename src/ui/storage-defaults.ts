@@ -29,6 +29,12 @@ export function getSystemFontsEnabledInitialValue(
   return value === true
 }
 
+export function getGoogleFontsEnabledInitialValue(
+  value: boolean | undefined
+): boolean {
+  return value === true
+}
+
 export function getRtlSiteSettingsInitialValue(
   value: unknown
 ): RtlSiteSettings {

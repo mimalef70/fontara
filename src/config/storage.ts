@@ -13,6 +13,7 @@ export const DEFAULT_VALUES = {
     isActive: true
   })),
   CUSTOM_FONT_LIST: [],
+  GOOGLE_FONTS_ENABLED: false,
   SYSTEM_FONTS_ENABLED: false,
   UI_LANGUAGE: UI_LANGUAGE_AUTO,
   RTL_ENABLED: true,

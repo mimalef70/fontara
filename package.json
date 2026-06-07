@@ -17,6 +17,7 @@
     "debug": "node tasks/cli.js build --debug --chrome-mv3",
     "debug:firefox": "node tasks/cli.js build --debug --firefox-mv3",
     "debug:opera": "node tasks/cli.js build --debug --opera-mv3",
+    "generate:google-fonts": "node tasks/generate-google-fonts.js",
     "build": "node tasks/cli.js build --release --chrome-mv3",
     "build:all": "node tasks/cli.js build --release --all",
     "build:chrome": "node tasks/cli.js build --release --chrome-mv3",
@@ -54,6 +55,7 @@
     "lucide-react": "^1.17.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
+    "react-window": "^2.2.7",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2"

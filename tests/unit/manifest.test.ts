@@ -68,9 +68,11 @@ test("manifest keeps extension page CSP locked down", () => {
   assert.match(csp, /object-src 'none'/)
   assert.match(csp, /base-uri 'none'/)
   assert.match(csp, /form-action 'none'/)
-  assert.match(csp, /font-src 'self' data:/)
+  assert.match(csp, /font-src 'self' data: https:\/\/fonts\.gstatic\.com/)
+  assert.match(csp, /connect-src https:\/\/fonts\.googleapis\.com/)
   assert.match(csp, /style-src 'self' 'unsafe-inline'/)
   assert.doesNotMatch(csp, /object-src 'self'/)
+  assert.doesNotMatch(csp, /connect-src 'none'/)
 })
 
 test("manifest uses browser i18n messages for store-facing text", () => {

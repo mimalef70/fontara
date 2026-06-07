@@ -8,6 +8,7 @@ import {
 } from "../../src/background/storage-manager"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { WebsiteItem } from "../../src/definitions"
+import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
@@ -918,6 +919,43 @@ test("ensureStorageValues preserves selected system fonts only when enabled", as
   assert.equal(values[STORAGE_KEYS.SELECTED_FONT], selectedSystemFont)
 
   values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] = false
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
+})
+
+test("ensureStorageValues preserves selected Google fonts only when enabled", async () => {
+  const selectedGoogleFont = createGoogleFontValue("Noto Sans Arabic")
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: selectedGoogleFont,
+    [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: []
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], selectedGoogleFont)
+
+  values[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] = false
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
+})
+
+test("ensureStorageValues resets unknown selected Google font values", async () => {
+  const unknownGoogleFont = createGoogleFontValue("Missing Font")
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: unknownGoogleFont,
+    [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: []
+  }
+  mockLocalStorage(values)
+
   await ensureStorageValues()
 
   assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)

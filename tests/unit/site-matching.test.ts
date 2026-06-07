@@ -146,6 +146,18 @@ test("RTL supported sites mirror the imported sample extension platforms", () =>
   )
 })
 
+test("RTL host matching keeps wildcard support explicit", () => {
+  const rtlSitesSource = fs.readFileSync(
+    path.resolve("src/config/rtl-sites.ts"),
+    "utf8"
+  )
+
+  assert.match(rtlSitesSource, /Keep matches exact/)
+  assert.match(rtlSitesSource, /wildcardMatches\?: string\[\]/)
+  assert.match(rtlSitesSource, /hostMatchesExact/)
+  assert.match(rtlSitesSource, /hostMatchesWildcard/)
+})
+
 test("RTL site matching handles supported host aliases", () => {
   assert.equal(getRtlSiteByUrl("https://chat.openai.com/c/1")?.id, "chatgpt")
   assert.equal(getRtlSiteByUrl("https://chatgpt.com/c/1")?.id, "chatgpt")
@@ -154,9 +166,16 @@ test("RTL site matching handles supported host aliases", () => {
     "perplexity"
   )
   assert.equal(getRtlSiteByUrl("https://deepseek.com/")?.id, "deepseek")
+  assert.equal(getRtlSiteByUrl("https://chat.deepseek.com/")?.id, "deepseek")
+  assert.equal(getRtlSiteByUrl("https://www.deepseek.com/")?.id, "deepseek")
   assert.equal(getRtlSiteByUrl("https://chat.qwen.ai/")?.id, "qwen")
+  assert.equal(getRtlSiteByUrl("https://qwen.ai/")?.id, "qwen")
   assert.equal(getRtlSiteByUrl("https://www.arena.ai/")?.id, "arena")
   assert.equal(getRtlSiteByUrl("https://example.com/"), null)
+  assert.equal(getRtlSiteByUrl("https://docs.deepseek.com/"), null)
+  assert.equal(getRtlSiteByUrl("https://foo.qwen.ai/"), null)
+  assert.equal(getRtlSiteByUrl("https://labs.perplexity.ai/"), null)
+  assert.equal(getRtlSiteByUrl("https://foo.arena.ai/"), null)
 })
 
 test("custom URL regex matches the same host over http and https", () => {

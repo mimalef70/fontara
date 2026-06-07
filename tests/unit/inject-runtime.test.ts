@@ -440,15 +440,17 @@ test("selected custom font changes inject its font-face without a reload", async
     const editableStyle = runtime.getStyleText("fontara-editable-font-style")
     assert.match(
       editableStyle,
-      /\[contenteditable\]:not\(\[contenteditable="false" i\]\):not\(#fontara-editable-font-specificity\) p[\s\S]*var\(--fontara-font\), ui-sans-serif, system-ui, sans-serif/
+      /\[contenteditable\]:not\(\[contenteditable="false" i\]\)[\s\S]*:not\(#fontara-editable-font-specificity\) p[\s\S]*var\(--fontara-font\), ui-sans-serif, system-ui, sans-serif/
     )
+    assert.match(editableStyle, /\.cm-editor/)
+    assert.match(editableStyle, /\.monaco-editor/)
     assert.match(
       editableStyle,
       /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[id="prompt-textarea"\][\s\S]*var\(--fontara-font\), "ChatGPT Sans", Arial, sans-serif/
     )
     assert.match(
       editableStyle,
-      /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[id="prompt-textarea"\]:not\(#fontara-editable-font-specificity\) \[data-text="true"\]/
+      /div\[contenteditable\]:not\(\[contenteditable="false" i\]\)\[id="prompt-textarea"\][\s\S]*:not\(#fontara-editable-font-specificity\) \[data-text="true"\]/
     )
     assert.match(
       editableStyle,

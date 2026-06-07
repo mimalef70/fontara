@@ -1,7 +1,7 @@
 import { applyFontToTreesChunked } from "./dom-processor"
 import {
   containsContentEditableElement,
-  EDITABLE_SELECTOR_ATTRIBUTES,
+  EDITABLE_OBSERVER_ATTRIBUTES,
   isContentEditableElement,
   isInsideContentEditableElement,
   refreshEditableFontStyles
@@ -124,7 +124,7 @@ export function startObserving(): void {
     subtree: true,
     childList: true,
     attributes: true,
-    attributeFilter: ["contenteditable", ...EDITABLE_SELECTOR_ATTRIBUTES]
+    attributeFilter: EDITABLE_OBSERVER_ATTRIBUTES
   })
 }
 

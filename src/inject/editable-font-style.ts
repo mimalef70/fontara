@@ -8,6 +8,27 @@ import { removeStyle, upsertStyle } from "./style-utils"
 const EDITABLE_FONT_ID = "fontara-editable-font-style"
 const CONTENT_EDITABLE_SELECTOR =
   '[contenteditable]:not([contenteditable="false" i])'
+const CODE_EDITABLE_GUARD_SELECTORS = [
+  "code",
+  "pre",
+  '[role="code"]',
+  "[data-language]",
+  ".CodeMirror",
+  ".cm-editor",
+  ".cm-content",
+  ".cm-line",
+  ".monaco-editor",
+  ".ace_editor",
+  '[class~="code" i]',
+  '[class*="code-block" i]',
+  '[class*="codeblock" i]',
+  '[class*="code-editor" i]',
+  '[class*="code_editor" i]',
+  '[class*="codemirror" i]',
+  '[class*="monaco" i]'
+]
+const CODE_EDITABLE_GUARD_SELECTOR = `:is(${CODE_EDITABLE_GUARD_SELECTORS.join(", ")})`
+const EDITABLE_CODE_SCOPE_GUARD = `:not(${CODE_EDITABLE_GUARD_SELECTOR}):not(${CODE_EDITABLE_GUARD_SELECTOR} *)`
 const CONTENT_EDITABLE_INLINE_FONT_SELECTOR = [
   `${CONTENT_EDITABLE_SELECTOR}[style*="fontara-font"]`,
   `${CONTENT_EDITABLE_SELECTOR} [style*="fontara-font"]`
@@ -26,6 +47,9 @@ export const EDITABLE_SELECTOR_ATTRIBUTES = [
   "role",
   "name"
 ]
+// High-churn selector attributes are sampled during rebuilds, but only
+// contenteditable changes should invalidate editable font CSS automatically.
+export const EDITABLE_OBSERVER_ATTRIBUTES = ["contenteditable"]
 
 type EditableFontRule = {
   css: string
@@ -96,6 +120,10 @@ export function isContentEditableElement(element: HTMLElement): boolean {
   )
 }
 
+function isCodeEditableElement(element: HTMLElement): boolean {
+  return Boolean(element.closest?.(CODE_EDITABLE_GUARD_SELECTOR))
+}
+
 function hasContentEditableAncestor(element: HTMLElement): boolean {
   let parent = element.parentElement
 
@@ -114,9 +142,18 @@ export function isInsideContentEditableElement(element: HTMLElement): boolean {
 }
 
 export function containsContentEditableElement(element: HTMLElement): boolean {
-  if (isContentEditableElement(element)) return true
+  if (isContentEditableElement(element) && !isCodeEditableElement(element)) {
+    return true
+  }
 
-  return Boolean(element.querySelector?.(CONTENT_EDITABLE_SELECTOR))
+  const editableElements =
+    element.querySelectorAll?.<HTMLElement>(CONTENT_EDITABLE_SELECTOR) ?? []
+
+  for (const editableElement of editableElements) {
+    if (!isCodeEditableElement(editableElement)) return true
+  }
+
+  return false
 }
 
 function getTopLevelContentEditableElements(): HTMLElement[] {
@@ -124,7 +161,9 @@ function getTopLevelContentEditableElements(): HTMLElement[] {
     document.querySelectorAll<HTMLElement>(CONTENT_EDITABLE_SELECTOR)
   ).filter(
     (element) =>
-      isContentEditableElement(element) && !hasContentEditableAncestor(element)
+      isContentEditableElement(element) &&
+      !hasContentEditableAncestor(element) &&
+      !isCodeEditableElement(element)
   )
 }
 
@@ -153,17 +192,20 @@ function getEditableFontSample(element: HTMLElement): HTMLElement {
 }
 
 function getEditableFontTargets(selector: string): string[] {
-  const guardedSelector = `${selector}${EDITABLE_SPECIFICITY_GUARD}`
+  const guardedSelector = `${selector}${EDITABLE_CODE_SCOPE_GUARD}${EDITABLE_SPECIFICITY_GUARD}`
   return [
     guardedSelector,
-    `${guardedSelector} *`,
+    `${guardedSelector} *${EDITABLE_CODE_SCOPE_GUARD}`,
     ...EDITABLE_TEXT_SELECTORS.map(
-      (textSelector) => `${guardedSelector} ${textSelector}`
+      (textSelector) =>
+        `${guardedSelector} ${textSelector}${EDITABLE_CODE_SCOPE_GUARD}`
     )
   ]
 }
 
 function createEditableFontRule(element: HTMLElement): EditableFontRule | null {
+  if (isCodeEditableElement(element)) return null
+
   const selector = getStableEditableSelector(element)
   if (!selector) return null
 

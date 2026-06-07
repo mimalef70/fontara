@@ -20,6 +20,9 @@ export type RtlSiteConfig = {
   matches: string[]
   siteName: string
   url: string
+  // Keep matches exact; use wildcardMatches only when every subdomain should
+  // intentionally share the same RTL adapter.
+  wildcardMatches?: string[]
 }
 
 export const RTL_SUPPORTED_SITES: RtlSiteConfig[] = [
@@ -107,7 +110,11 @@ function normalizeHost(hostname: string): string {
   return hostname.trim().toLowerCase()
 }
 
-function hostMatches(hostname: string, domain: string): boolean {
+function hostMatchesExact(hostname: string, domain: string): boolean {
+  return normalizeHost(hostname) === normalizeHost(domain)
+}
+
+function hostMatchesWildcard(hostname: string, domain: string): boolean {
   const normalizedHost = normalizeHost(hostname)
   const normalizedDomain = normalizeHost(domain)
 
@@ -123,8 +130,12 @@ export function getRtlSiteByHostname(
   if (!hostname) return null
 
   return (
-    RTL_SUPPORTED_SITES.find((site) =>
-      site.matches.some((domain) => hostMatches(hostname, domain))
+    RTL_SUPPORTED_SITES.find(
+      (site) =>
+        site.matches.some((domain) => hostMatchesExact(hostname, domain)) ||
+        site.wildcardMatches?.some((domain) =>
+          hostMatchesWildcard(hostname, domain)
+        )
     ) ?? null
   )
 }

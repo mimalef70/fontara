@@ -18,21 +18,6 @@ const Header = () => {
   const handleExtensionToggle = async (checked: boolean) => {
     try {
       await setExtensionActive(checked)
-
-      // Update all tabs
-      const tabs = await chrome.tabs.query({})
-      for (const tab of tabs) {
-        if (tab.id && tab.url?.startsWith("http")) {
-          try {
-            await chrome.tabs.sendMessage(tab.id, {
-              action: "toggle",
-              isExtensionEnabled: checked
-            })
-          } catch (_error) {
-            // Silent catch for inactive tabs
-          }
-        }
-      }
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to update extension enabled state.", error)

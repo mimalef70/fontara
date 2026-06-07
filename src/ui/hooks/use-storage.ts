@@ -26,6 +26,12 @@ export function useStorageValue<T>(
   const [value, setValue] = React.useState<T>(() =>
     resolveInitialValue(undefined)
   )
+  const valueRef = React.useRef(value)
+
+  const setSyncedValue = React.useCallback((nextValue: T) => {
+    valueRef.current = nextValue
+    setValue(nextValue)
+  }, [])
 
   React.useEffect(() => {
     let mounted = true
@@ -33,7 +39,7 @@ export function useStorageValue<T>(
     getLocalValue<T>(key)
       .then((storedValue) => {
         if (mounted) {
-          setValue(resolveInitialValue(storedValue))
+          setSyncedValue(resolveInitialValue(storedValue))
         }
       })
       .catch((error) => {
@@ -47,7 +53,9 @@ export function useStorageValue<T>(
       areaName: string
     ) => {
       if (areaName !== "local" || !changes[key]) return
-      setValue(resolveInitialValue(changes[key].newValue as T | undefined))
+      setSyncedValue(
+        resolveInitialValue(changes[key].newValue as T | undefined)
+      )
     }
 
     chrome.storage.onChanged.addListener(listener)
@@ -55,26 +63,26 @@ export function useStorageValue<T>(
       mounted = false
       chrome.storage.onChanged.removeListener(listener)
     }
-  }, [key, resolveInitialValue])
+  }, [key, resolveInitialValue, setSyncedValue])
 
   const updateValue = React.useCallback(
     async (nextValue: T | ((current: T) => T)) => {
+      const previousValue = valueRef.current
       const resolvedValue =
         typeof nextValue === "function"
-          ? (nextValue as (current: T) => T)(value)
+          ? (nextValue as (current: T) => T)(previousValue)
           : nextValue
 
-      const previousValue = value
-      setValue(resolvedValue)
+      setSyncedValue(resolvedValue)
 
       try {
         await setLocalValue(key, resolvedValue)
       } catch (error) {
-        setValue(previousValue)
+        setSyncedValue(previousValue)
         throw error
       }
     },
-    [key, value]
+    [key, setSyncedValue]
   )
 
   return [value, updateValue]

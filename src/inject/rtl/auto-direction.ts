@@ -104,8 +104,7 @@ export class RtlAutoDirection {
     return null
   }
 
-  private detectDirection(element: HTMLElement): "ltr" | "rtl" {
-    const firstChar = this.extractFromEditable(element)
+  private detectDirection(firstChar: string | null): "ltr" | "rtl" {
     if (!firstChar) return "ltr"
 
     return isRtlCharacter(firstChar) ? "rtl" : "ltr"
@@ -120,8 +119,11 @@ export class RtlAutoDirection {
     element.style.removeProperty("text-align")
   }
 
-  private applyDetectedDirection(element: HTMLElement): void {
-    const direction = this.detectDirection(element)
+  private applyDetectedDirection(
+    element: HTMLElement,
+    firstChar: string | null
+  ): void {
+    const direction = this.detectDirection(firstChar)
     element.dir = direction
 
     if (direction === "rtl") {
@@ -145,7 +147,7 @@ export class RtlAutoDirection {
         this.preserveNativeBidi(element)
         return
       }
-      this.applyDetectedDirection(element)
+      this.applyDetectedDirection(element, firstChar)
       return
     }
 
@@ -165,7 +167,7 @@ export class RtlAutoDirection {
       }
     }
 
-    this.applyDetectedDirection(element)
+    this.applyDetectedDirection(element, firstChar)
   }
 
   private attachAutoDirection(element: HTMLElement): void {

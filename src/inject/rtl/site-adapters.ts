@@ -199,6 +199,7 @@ function createStandardAdapter(config: StandardAdapterConfig): RtlSiteAdapter {
   ]
   const codeGuard = joinSelectors(codeGuardSelectors)
   const mathGuard = joinSelectors(mathGuardSelectors)
+  const uiExclude = joinSelectors(uiExcludeSelectors)
   let globalStyle: HTMLStyleElement | null = null
 
   const engine = new RtlEngine({
@@ -209,8 +210,7 @@ function createStandardAdapter(config: StandardAdapterConfig): RtlSiteAdapter {
       Boolean(
         (codeGuard && element.closest(codeGuard)) ||
           (mathGuard && element.closest(mathGuard)) ||
-          (uiExcludeSelectors.length > 0 &&
-            element.closest(joinSelectors(uiExcludeSelectors)))
+          (uiExclude && element.closest(uiExclude))
       ),
     rtlRegex: RTL_SCRIPT_REGEX,
     rtlStyle: config.rtlStyle ?? { unicodeBidi: "isolate" },

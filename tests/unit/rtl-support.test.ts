@@ -1,9 +1,296 @@
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
-import test from "node:test"
+import test, { afterEach } from "node:test"
 
+import { RtlAutoDirection } from "../../src/inject/rtl/auto-direction"
+import { RtlEngine } from "../../src/inject/rtl/rtl-engine"
 import { isRtlText } from "../../src/inject/rtl/text-direction"
+
+const ORIGINAL_GLOBALS = [
+  "document",
+  "Element",
+  "HTMLElement",
+  "HTMLInputElement",
+  "HTMLTextAreaElement",
+  "MutationObserver",
+  "Node",
+  "NodeFilter",
+  "window"
+].map((key) => ({
+  exists: key in globalThis,
+  key,
+  value: Reflect.get(globalThis, key)
+}))
+
+class FakeClassList {
+  private values = new Set<string>()
+
+  add(className: string): void {
+    this.values.add(className)
+  }
+
+  contains(className: string): boolean {
+    return this.values.has(className)
+  }
+
+  remove(className: string): void {
+    this.values.delete(className)
+  }
+}
+
+class FakeStyleDeclaration {
+  direction = ""
+  textAlign = ""
+  private properties = new Map<string, string>()
+
+  getPropertyValue(property: string): string {
+    if (property === "direction") return this.direction
+    if (property === "text-align") return this.textAlign
+    return this.properties.get(property) ?? ""
+  }
+
+  removeProperty(property: string): string {
+    const previousValue = this.getPropertyValue(property)
+    this.properties.delete(property)
+
+    if (property === "direction") {
+      this.direction = ""
+    } else if (property === "text-align") {
+      this.textAlign = ""
+    }
+
+    return previousValue
+  }
+
+  setProperty(property: string, value: string): void {
+    this.properties.set(property, value)
+
+    if (property === "direction") {
+      this.direction = value
+    } else if (property === "text-align") {
+      this.textAlign = value
+    }
+  }
+}
+
+class FakeTextNode {
+  nodeType = 3
+
+  constructor(public textContent: string) {}
+}
+
+class FakeElement {
+  attributes = new Map<string, string>()
+  childNodes: Array<FakeElement | FakeTextNode> = []
+  classList = new FakeClassList()
+  isConnected = true
+  isContentEditable = false
+  nodeType = 1
+  parentElement: FakeElement | null = null
+  shadowRoot: FakeElement | null = null
+  style = new FakeStyleDeclaration()
+  tagName: string
+  textContent = ""
+
+  constructor(public localName = "div") {
+    this.tagName = localName.toUpperCase()
+  }
+
+  get dir(): string {
+    return this.getAttribute("dir") ?? ""
+  }
+
+  set dir(value: string) {
+    this.setAttribute("dir", value)
+  }
+
+  addEventListener(type: string, listener: () => void): void {
+    const listeners = this.listeners.get(type) ?? []
+    listeners.push(listener)
+    this.listeners.set(type, listeners)
+  }
+
+  appendChild<T extends FakeElement | FakeTextNode>(child: T): T {
+    if (child instanceof FakeElement) {
+      child.parentElement = this
+    }
+    this.childNodes.push(child)
+    return child
+  }
+
+  closest(selector: string): FakeElement | null {
+    let current: FakeElement | null = this
+
+    while (current) {
+      if (current.matches(selector)) return current
+      current = current.parentElement
+    }
+
+    return null
+  }
+
+  dispatchEvent(type: string): void {
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener()
+    }
+  }
+
+  getAttribute(attribute: string): string | null {
+    return this.attributes.get(attribute) ?? null
+  }
+
+  matches(selector: string): boolean {
+    return selector
+      .split(",")
+      .map((part) => part.trim())
+      .some((part) => this.matchesSingleSelector(part))
+  }
+
+  querySelectorAll(selector: string): FakeElement[] {
+    const matches: FakeElement[] = []
+
+    for (const child of this.childNodes) {
+      if (!(child instanceof FakeElement)) continue
+      if (child.matches(selector)) matches.push(child)
+      matches.push(...child.querySelectorAll(selector))
+    }
+
+    return matches
+  }
+
+  removeAttribute(attribute: string): void {
+    this.attributes.delete(attribute)
+    if (attribute === "contenteditable") {
+      this.isContentEditable = false
+    }
+  }
+
+  removeEventListener(type: string, listener: () => void): void {
+    this.listeners.set(
+      type,
+      (this.listeners.get(type) ?? []).filter(
+        (registeredListener) => registeredListener !== listener
+      )
+    )
+  }
+
+  setAttribute(attribute: string, value: string): void {
+    this.attributes.set(attribute, value)
+    if (attribute === "contenteditable") {
+      this.isContentEditable = value.toLowerCase() !== "false"
+    }
+  }
+
+  private listeners = new Map<string, Array<() => void>>()
+
+  private matchesSingleSelector(selector: string): boolean {
+    if (!selector) return false
+    if (selector === "*") return true
+    if (selector === this.localName) return true
+    if (selector === '[contenteditable]:not([contenteditable="false"])') {
+      return this.isContentEditable
+    }
+    if (selector.startsWith("input")) {
+      return this instanceof FakeInputElement
+    }
+    if (selector === "textarea") {
+      return this instanceof FakeTextAreaElement
+    }
+
+    return false
+  }
+}
+
+class FakeHTMLElement extends FakeElement {}
+
+class FakeInputElement extends FakeHTMLElement {
+  type = "text"
+  value = ""
+
+  constructor() {
+    super("input")
+  }
+}
+
+class FakeTextAreaElement extends FakeHTMLElement {
+  value = ""
+
+  constructor() {
+    super("textarea")
+  }
+}
+
+class FakeMutationObserver {
+  disconnect(): void {}
+  observe(): void {}
+}
+
+afterEach(() => {
+  for (const { exists, key, value } of ORIGINAL_GLOBALS) {
+    if (exists) {
+      Reflect.set(globalThis, key, value)
+    } else {
+      Reflect.deleteProperty(globalThis, key)
+    }
+  }
+})
+
+function installRtlDom(editableNodes: FakeHTMLElement[]): void {
+  const html = new FakeHTMLElement("html")
+  const body = new FakeHTMLElement("body")
+  html.appendChild(body)
+  editableNodes.forEach((node) => {
+    body.appendChild(node)
+  })
+
+  Reflect.set(globalThis, "Element", FakeElement)
+  Reflect.set(globalThis, "HTMLElement", FakeHTMLElement)
+  Reflect.set(globalThis, "HTMLInputElement", FakeInputElement)
+  Reflect.set(globalThis, "HTMLTextAreaElement", FakeTextAreaElement)
+  Reflect.set(globalThis, "MutationObserver", FakeMutationObserver)
+  Reflect.set(globalThis, "Node", {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3
+  })
+  Reflect.set(globalThis, "NodeFilter", {
+    SHOW_TEXT: 4
+  })
+  Reflect.set(globalThis, "window", {
+    location: { hostname: "chatgpt.com" }
+  })
+  Reflect.set(globalThis, "document", {
+    body,
+    createTreeWalker(root: FakeElement) {
+      const textNodes = collectTextNodes(root)
+      let index = 0
+
+      return {
+        nextNode() {
+          return textNodes[index++] ?? null
+        }
+      }
+    },
+    documentElement: html,
+    querySelectorAll(selector: string) {
+      return html.querySelectorAll(selector)
+    }
+  })
+}
+
+function collectTextNodes(root: FakeElement): FakeTextNode[] {
+  const textNodes: FakeTextNode[] = []
+
+  for (const child of root.childNodes) {
+    if (child instanceof FakeTextNode) {
+      textNodes.push(child)
+    } else {
+      textNodes.push(...collectTextNodes(child))
+    }
+  }
+
+  return textNodes
+}
 
 test("RTL runtime is wired as an independent feature", () => {
   const injectSource = fs.readFileSync(
@@ -55,6 +342,22 @@ test("RTL adapters preserve sample platform coverage without font injection", ()
   assert.match(siteAdaptersSource, /ms-chat-session/)
   assert.match(autoDirectionSource, /EDITABLE_SELECTOR/)
   assert.match(autoDirectionSource, /GEMINI_UI_SKIP/)
+  assert.match(
+    autoDirectionSource,
+    /applyDetectedDirection\(\s*element: HTMLElement,\s*firstChar: string \| null\s*\)/
+  )
+  assert.doesNotMatch(
+    autoDirectionSource,
+    /detectDirection\(element: HTMLElement\)/
+  )
+  assert.match(
+    siteAdaptersSource,
+    /const uiExclude = joinSelectors\(uiExcludeSelectors\)/
+  )
+  assert.doesNotMatch(
+    siteAdaptersSource,
+    /element\.closest\(joinSelectors\(uiExcludeSelectors\)\)/
+  )
   assert.doesNotMatch(siteAdaptersSource, /Vazirmatn/)
   assert.doesNotMatch(siteAdaptersSource, /@font-face/)
 })
@@ -63,4 +366,65 @@ test("RTL text detection covers Arabic and Hebrew scripts", () => {
   assert.equal(isRtlText("سلام دنیا"), true)
   assert.equal(isRtlText("שלום עולם"), true)
   assert.equal(isRtlText("hello world"), false)
+})
+
+test("RTL engine applies and restores directional styles", () => {
+  installRtlDom([])
+  const element = new FakeHTMLElement("article")
+  element.setAttribute("dir", "ltr")
+  element.style.setProperty("direction", "ltr")
+  element.style.setProperty("text-align", "left")
+
+  const engine = new RtlEngine({ rtlClass: "fontara-rtl-text" })
+  engine.applyRTL(element as unknown as Element)
+
+  assert.equal(element.getAttribute("dir"), "rtl")
+  assert.equal(element.style.getPropertyValue("direction"), "rtl")
+  assert.equal(element.style.getPropertyValue("text-align"), "right")
+  assert.equal(element.style.getPropertyValue("unicode-bidi"), "plaintext")
+  assert.equal(element.classList.contains("fontara-rtl-text"), true)
+
+  engine.restoreStyles()
+
+  assert.equal(element.getAttribute("dir"), "ltr")
+  assert.equal(element.style.getPropertyValue("direction"), "ltr")
+  assert.equal(element.style.getPropertyValue("text-align"), "left")
+  assert.equal(element.style.getPropertyValue("unicode-bidi"), "")
+  assert.equal(element.classList.contains("fontara-rtl-text"), false)
+})
+
+test("RTL auto direction updates inputs and restores original values", () => {
+  const input = new FakeInputElement()
+  input.value = "hello"
+  input.setAttribute("dir", "ltr")
+  input.style.direction = "ltr"
+  input.style.textAlign = "left"
+  installRtlDom([input])
+
+  const autoDirection = new RtlAutoDirection()
+  autoDirection.enable()
+
+  assert.equal(input.getAttribute("dir"), "ltr")
+  assert.equal(input.style.direction, "")
+  assert.equal(input.style.textAlign, "")
+
+  input.value = "سلام"
+  input.dispatchEvent("input")
+
+  assert.equal(input.getAttribute("dir"), "rtl")
+  assert.equal(input.style.direction, "rtl")
+  assert.equal(input.style.textAlign, "right")
+
+  input.value = "hello"
+  input.dispatchEvent("input")
+
+  assert.equal(input.getAttribute("dir"), "ltr")
+  assert.equal(input.style.direction, "")
+  assert.equal(input.style.textAlign, "")
+
+  autoDirection.disable()
+
+  assert.equal(input.getAttribute("dir"), "ltr")
+  assert.equal(input.style.direction, "ltr")
+  assert.equal(input.style.textAlign, "left")
 })

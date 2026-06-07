@@ -3,6 +3,8 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 
+import { FONTARA_TEXT_UNICODE_RANGE } from "../../src/config/font-unicode-range"
+
 function readSource(filePath: string): string {
   return fs.readFileSync(path.resolve(filePath), "utf8")
 }
@@ -60,6 +62,26 @@ test("contenteditable editors use stylesheet font application", () => {
   assert.match(editableFontStyleSource, /fontara-editable-font-style/)
   assert.match(editableFontStyleSource, /\[contenteditable\]/)
   assert.match(editableFontStyleSource, /var\(--fontara-font\)/)
+  assert.match(editableFontStyleSource, /CODE_EDITABLE_GUARD_SELECTORS/)
+  assert.match(editableFontStyleSource, /\.cm-editor/)
+  assert.match(editableFontStyleSource, /\.monaco-editor/)
+  assert.match(editableFontStyleSource, /\[class~="code" i\]/)
+  assert.match(editableFontStyleSource, /\[class\*="code-block" i\]/)
+  assert.match(editableFontStyleSource, /function isCodeEditableElement/)
+  assert.match(
+    editableFontStyleSource,
+    /for \(const editableElement of editableElements\)/
+  )
+  assert.match(
+    editableFontStyleSource,
+    /if \(isCodeEditableElement\(element\)\) return null/
+  )
+  assert.match(editableFontStyleSource, /High-churn selector attributes/)
+  assert.doesNotMatch(editableFontStyleSource, /\[class\*="code" i\]/)
+  assert.doesNotMatch(
+    editableFontStyleSource,
+    /Array\.from\(\s*element\.querySelectorAll/
+  )
   assert.doesNotMatch(editableFontStyleSource, /nth-of-type/)
   assert.doesNotMatch(editableFontStyleSource, /parts\.join\(" > "\)/)
   assert.doesNotMatch(editableFontStyleSource, /const EDITABLE_FONT_CSS/)
@@ -84,11 +106,11 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /isInsideContentEditableElement/)
   assert.match(observerSource, /containsContentEditableElement/)
   assert.match(observerSource, /removedNodes/)
-  assert.match(observerSource, /EDITABLE_SELECTOR_ATTRIBUTES/)
-  assert.match(
-    observerSource,
-    /attributeFilter: \["contenteditable", \.\.\.EDITABLE_SELECTOR_ATTRIBUTES\]/
-  )
+  assert.match(observerSource, /EDITABLE_OBSERVER_ATTRIBUTES/)
+  assert.match(observerSource, /attributeFilter: EDITABLE_OBSERVER_ATTRIBUTES/)
+  assert.doesNotMatch(observerSource, /EDITABLE_SELECTOR_ATTRIBUTES/)
+  assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*aria-label/)
+  assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*role/)
   assert.doesNotMatch(observerSource, /applyFontToTree\(/)
 })
 
@@ -138,6 +160,17 @@ test("custom font injection only emits the selected custom font", () => {
   )
 })
 
+test("bundled font face CSS is memoized after URL rewriting", () => {
+  const fontFaceSource = readSource("src/generators/font-face.ts")
+
+  assert.match(fontFaceSource, /let cachedFontFaceCSS: string \| null = null/)
+  assert.match(
+    fontFaceSource,
+    /cachedFontFaceCSS \?\?= rewriteFontFaceAssetUrls/
+  )
+  assert.match(fontFaceSource, /return cachedFontFaceCSS/)
+})
+
 test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
   const fontsCSS = readSource("src/fonts.css")
   const fontFaceBlocks = fontsCSS.match(/@font-face \{[\s\S]*?\n\}/g) ?? []
@@ -154,6 +187,16 @@ test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
       .length,
     fontFaceBlocks.length
   )
+  assert.equal(
+    fontFaceBlocks.filter((block) =>
+      block.includes(`unicode-range: ${FONTARA_TEXT_UNICODE_RANGE};`)
+    ).length,
+    fontFaceBlocks.length
+  )
+  assert.match(fontsCSS, /U\+200B-200F/)
+  assert.match(fontsCSS, /U\+202A-202F/)
+  assert.match(fontsCSS, /U\+0870-089F/)
+  assert.match(fontsCSS, /U\+08A0-08FF/)
   assert.doesNotMatch(fontsCSS, /data:font/)
   assert.match(fontsCSS, /assets\/fonts\/azarmehr\/AzarMehr\[wght\]\.woff2/)
   assert.match(fontsCSS, /assets\/fonts\/arad\/Arad-VF\.woff2/)

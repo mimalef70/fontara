@@ -1,8 +1,12 @@
 import fontFaceCSS from "../fonts.css"
 import { rewriteFontFaceAssetUrls } from "./font-face-url"
 
+let cachedFontFaceCSS: string | null = null
+
 export function getFontFaceCSS(): string {
-  return rewriteFontFaceAssetUrls(fontFaceCSS, (path) =>
+  cachedFontFaceCSS ??= rewriteFontFaceAssetUrls(fontFaceCSS, (path) =>
     chrome.runtime.getURL(path)
   )
+
+  return cachedFontFaceCSS
 }

@@ -24,6 +24,7 @@ test("UI message catalogs cover the same keys for every supported language", () 
   assert.equal(UI_MESSAGES.en["options.nav.language"], "Language")
   assert.equal(UI_MESSAGES.fa["options.nav.language"], "زبان")
   assert.equal(UI_MESSAGES.ar["options.nav.language"], "اللغة")
+  assert.equal(UI_MESSAGES.fa["footer.sponsoredBy"], "با حمایت")
 })
 
 test("UI language preferences normalize and resolve safely", () => {

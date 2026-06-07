@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+import { FONTARA_TEXT_UNICODE_RANGE } from "../../src/config/font-unicode-range"
 import { createCustomFontFaces } from "../../src/generators/custom-font-face"
 
 test("createCustomFontFaces creates reusable font-face CSS", () => {
@@ -18,6 +19,7 @@ test("createCustomFontFaces creates reusable font-face CSS", () => {
   assert.match(css, /font-family: "CustomFont-Fontara"/)
   assert.match(css, /format\("woff2"\)/)
   assert.match(css, /font-display: swap/)
+  assert.ok(css.includes(`unicode-range: ${FONTARA_TEXT_UNICODE_RANGE};`))
 })
 
 test("createCustomFontFaces normalizes generic font data URL MIME types", () => {

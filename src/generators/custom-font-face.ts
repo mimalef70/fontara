@@ -1,3 +1,4 @@
+import { FONTARA_TEXT_UNICODE_RANGE } from "../config/font-unicode-range"
 import type { FontData } from "../definitions"
 import {
   escapeCSSString,
@@ -30,6 +31,7 @@ export function createCustomFontFaces(
           font-weight: normal;
           font-style: normal;
           font-display: swap;
+          unicode-range: ${FONTARA_TEXT_UNICODE_RANGE};
         }
       `
     })

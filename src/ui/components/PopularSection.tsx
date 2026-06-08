@@ -13,8 +13,9 @@ import { setLocalValues } from "../../utils/storage"
 import { useStorageValue } from "../hooks/use-storage"
 import {
   EMPTY_WEBSITE_LIST,
+  getDisabledForInitialValue,
   getEnabledByDefaultInitialValue,
-  getSitePatternListInitialValue
+  getEnabledForInitialValue
 } from "../storage-defaults"
 import {
   Tooltip,
@@ -34,11 +35,11 @@ function PopularUrl() {
   )
   const [enabledFor] = useStorageValue<string[]>(
     STORAGE_KEYS.ENABLED_FOR,
-    getSitePatternListInitialValue
+    getEnabledForInitialValue
   )
   const [disabledFor] = useStorageValue<string[]>(
     STORAGE_KEYS.DISABLED_FOR,
-    getSitePatternListInitialValue
+    getDisabledForInitialValue
   )
 
   const toggleActive = async (website: WebsiteItem) => {

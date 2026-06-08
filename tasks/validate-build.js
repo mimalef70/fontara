@@ -8,8 +8,22 @@ async function validateBuild({ platform, debug }) {
   const manifest = await readJSON(path.join(outDir, "manifest.json"))
   const catalog = await readJSON(absolutePath("src/i18n/messages.json"))
   const extensionLocales = Object.keys(catalog.extension || {})
+  const localesDir = path.join(outDir, "_locales")
+  const hasLocalesDir = await pathExists(localesDir)
+
+  if (hasLocalesDir && !manifest.default_locale) {
+    throw new Error(
+      `Manifest default_locale is missing while _locales exists: ${localesDir}`
+    )
+  }
 
   if (!manifest.default_locale) return
+
+  if (!hasLocalesDir) {
+    throw new Error(
+      `Manifest default_locale is set but _locales is missing: ${localesDir}`
+    )
+  }
 
   if (!extensionLocales.includes(manifest.default_locale)) {
     throw new Error(

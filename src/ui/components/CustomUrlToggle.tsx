@@ -16,8 +16,9 @@ import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
   EMPTY_WEBSITE_LIST,
+  getDisabledForInitialValue,
   getEnabledByDefaultInitialValue,
-  getSitePatternListInitialValue
+  getEnabledForInitialValue
 } from "../storage-defaults"
 import { Check as CheckIcon } from "./icons"
 
@@ -34,11 +35,11 @@ const CustomUrlToggle = () => {
   )
   const [enabledFor] = useStorageValue<string[]>(
     STORAGE_KEYS.ENABLED_FOR,
-    getSitePatternListInitialValue
+    getEnabledForInitialValue
   )
   const [disabledFor] = useStorageValue<string[]>(
     STORAGE_KEYS.DISABLED_FOR,
-    getSitePatternListInitialValue
+    getDisabledForInitialValue
   )
 
   const handleUrlToggle = async (checked: boolean) => {

@@ -108,11 +108,12 @@ import type { MessageKey } from "../i18n/messages"
 import {
   EMPTY_CUSTOM_FONT_LIST,
   EMPTY_WEBSITE_LIST,
+  getDisabledForInitialValue,
   getEnabledByDefaultInitialValue,
+  getEnabledForInitialValue,
   getGoogleFontsEnabledInitialValue,
   getRtlEnabledInitialValue,
   getRtlSiteSettingsInitialValue,
-  getSitePatternListInitialValue,
   getSiteProfilesInitialValue,
   getSystemFontsEnabledInitialValue,
   getTextStrokeInitialValue
@@ -257,11 +258,11 @@ function OptionsPage() {
   )
   const [enabledFor] = useStorageValue<string[]>(
     STORAGE_KEYS.ENABLED_FOR,
-    getSitePatternListInitialValue
+    getEnabledForInitialValue
   )
   const [disabledFor] = useStorageValue<string[]>(
     STORAGE_KEYS.DISABLED_FOR,
-    getSitePatternListInitialValue
+    getDisabledForInitialValue
   )
   const [rtlEnabled, setRtlEnabled] = useStorageValue<boolean>(
     STORAGE_KEYS.RTL_ENABLED,

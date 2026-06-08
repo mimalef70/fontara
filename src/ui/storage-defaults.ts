@@ -12,6 +12,7 @@ import {
   EMPTY_SITE_PROFILES,
   normalizeSiteProfiles
 } from "../config/site-profiles"
+import { DEFAULT_VALUES } from "../config/storage"
 import { normalizeTextStrokeValue } from "../config/text-stroke"
 import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
 
@@ -53,8 +54,16 @@ export function getEnabledByDefaultInitialValue(value: unknown): boolean {
   return normalizeEnabledByDefault(value)
 }
 
-export function getSitePatternListInitialValue(value: unknown): string[] {
-  return normalizeSiteList(value)
+export function getEnabledForInitialValue(value: unknown): string[] {
+  return value === undefined
+    ? DEFAULT_VALUES.ENABLED_FOR
+    : normalizeSiteList(value)
+}
+
+export function getDisabledForInitialValue(value: unknown): string[] {
+  return value === undefined
+    ? DEFAULT_VALUES.DISABLED_FOR
+    : normalizeSiteList(value)
 }
 
 export function getSiteProfilesInitialValue(value: unknown): SiteProfile[] {

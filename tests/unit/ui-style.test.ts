@@ -436,7 +436,17 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(uiSources, /getSystemFontsEnabledInitialValue/)
   assert.match(uiSources, /getTextStrokeInitialValue/)
   assert.match(uiSources, /getEnabledByDefaultInitialValue/)
-  assert.match(uiSources, /getSitePatternListInitialValue/)
+  assert.match(uiSources, /getEnabledForInitialValue/)
+  assert.match(uiSources, /getDisabledForInitialValue/)
+  assert.match(
+    uiSources,
+    /STORAGE_KEYS\.ENABLED_FOR,[\s\S]{0,120}getEnabledForInitialValue/
+  )
+  assert.match(
+    uiSources,
+    /STORAGE_KEYS\.DISABLED_FOR,[\s\S]{0,120}getDisabledForInitialValue/
+  )
+  assert.doesNotMatch(uiSources, /getSitePatternListInitialValue/)
   assert.doesNotMatch(uiSources, /STORAGE_KEYS\.CUSTOM_FONT_LIST,\s*\[\s*\]/)
   assert.doesNotMatch(uiSources, /STORAGE_KEYS\.WEBSITE_LIST,\s*\[\s*\]/)
   assert.doesNotMatch(uiSources, /STORAGE_KEYS\.ENABLED_FOR,\s*\[\s*\]/)

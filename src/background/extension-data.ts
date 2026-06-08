@@ -1,5 +1,5 @@
 import type { FontaraShortcuts, FontaraTabInfo } from "../definitions"
-import { isUrlActive } from "../utils/url"
+import { getUrlActivationStateFromSettings } from "../utils/url"
 
 export type CommandURLDetails = {
   tab?: chrome.tabs.Tab | null
@@ -58,11 +58,15 @@ export async function collectShortcuts(): Promise<FontaraShortcuts> {
   }, {})
 }
 
-export async function collectActiveTabInfo(): Promise<FontaraTabInfo> {
+export async function collectActiveTabInfo(
+  settings: Record<string, unknown>
+): Promise<FontaraTabInfo> {
   const tab = await getActiveTab()
   const url = tab?.url ?? null
   const isSupported = isSupportedPageURL(url)
-  const active = isSupported ? await isUrlActive(url) : false
+  const active = isSupported
+    ? getUrlActivationStateFromSettings(url, settings).active
+    : false
 
   return {
     favIconUrl: tab?.favIconUrl ?? null,

@@ -336,6 +336,10 @@ test("options page exposes extension hotkey controls", () => {
     path.resolve("src/background/extension-data.ts"),
     "utf8"
   )
+  const iconManagerSource = fs.readFileSync(
+    path.resolve("src/background/icon-manager.ts"),
+    "utf8"
+  )
 
   assert.match(hotkeysSource, /chrome\.commands\.getAll/)
   assert.match(hotkeysSource, /commandName: "toggle"/)
@@ -362,6 +366,13 @@ test("options page exposes extension hotkey controls", () => {
   assert.doesNotMatch(extensionSource, /getMatchingWebsite/)
   assert.match(commandSettingsSource, /createSiteListToggleUpdate/)
   assert.match(extensionDataSource, /collectActiveTabInfo/)
+  assert.match(extensionDataSource, /getUrlActivationStateFromSettings/)
+  assert.doesNotMatch(extensionDataSource, /isUrlActive/)
+  assert.match(iconManagerSource, /getBackgroundSettings/)
+  assert.match(iconManagerSource, /getUrlActivationStateFromSettings/)
+  assert.doesNotMatch(iconManagerSource, /isUrlActive/)
+  assert.doesNotMatch(iconManagerSource, /watchLocalStorage/)
+  assert.match(extensionSource, /updateIconStatus\(data\.settings\)/)
   assert.match(extensionDataHookSource, /ExtensionDataContext/)
   assert.match(extensionDataHookSource, /ExtensionDataProvider/)
   assert.match(extensionDataHookSource, /fontaraConnector\.subscribeToChanges/)

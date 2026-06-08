@@ -138,8 +138,10 @@ export class ExtensionRuntime {
   }
 
   private static async reportChanges(): Promise<void> {
-    reportChanges(await ExtensionRuntime.collectData())
-    await updateIconStatus()
+    const data = await ExtensionRuntime.collectData()
+
+    reportChanges(data)
+    await updateIconStatus(data.settings)
   }
 
   private static async createDocumentMessage(document: { url: string }) {
@@ -188,11 +190,11 @@ export class ExtensionRuntime {
 
   static async collectData(): Promise<FontaraExtensionData> {
     await ExtensionRuntime.ensureStarted()
-    const [settings, shortcuts, activeTab] = await Promise.all([
+    const [settings, shortcuts] = await Promise.all([
       getBackgroundSettings(),
-      collectShortcuts(),
-      collectActiveTabInfo()
+      collectShortcuts()
     ])
+    const activeTab = await collectActiveTabInfo(settings)
 
     return {
       activeTab,

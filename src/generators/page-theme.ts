@@ -1,4 +1,9 @@
-import { CUSTOM_CSS_BY_SITE } from "../config/site-fixes"
+import { getCustomCSSForSite } from "../config/site-fixes"
+import {
+  type FontaraRtlActivationState,
+  type FontaraSiteActivationState,
+  resolveFontaraSiteConfig
+} from "../config/site-manager"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import type {
   FontaraApplyMode,
@@ -7,11 +12,6 @@ import type {
   FontaraRtlThemeCommandData,
   FontData
 } from "../definitions"
-import { getRtlActivationStateFromSettings } from "../utils/rtl"
-import {
-  getUrlActivationStateFromSettings,
-  type UrlActivationState
-} from "../utils/url"
 import { getFontFaceCSS } from "./font-face"
 import { resolveFontSelection } from "./font-selection"
 import { createTextStrokeCSS, getTextStrokeConfig } from "./text-stroke"
@@ -45,7 +45,7 @@ function getCustomFontList(settings: Record<string, unknown>): FontData[] {
 
 async function createFontThemeData(
   settings: Record<string, unknown>,
-  activationState: UrlActivationState,
+  activationState: FontaraSiteActivationState,
   applyMode: FontaraApplyMode
 ): Promise<FontaraFontThemeCommandData> {
   if (!activationState.active) {
@@ -75,11 +75,7 @@ async function createFontThemeData(
       DEFAULT_VALUES.SYSTEM_FONTS_ENABLED
     )
   })
-  const customCSS =
-    activationState.matchingWebsite?.customCss &&
-    activationState.matchingWebsite.url
-      ? (CUSTOM_CSS_BY_SITE[activationState.matchingWebsite.url] ?? null)
-      : null
+  const customCSS = getCustomCSSForSite(activationState)
   const textStrokeCSS = createTextStrokeCSS(
     getTextStrokeConfig(
       settings[STORAGE_KEYS.TEXT_STROKE],
@@ -101,14 +97,8 @@ async function createFontThemeData(
 }
 
 function createRtlThemeData(
-  currentUrl: string,
-  settings: Record<string, unknown>
+  activationState: FontaraRtlActivationState
 ): FontaraRtlThemeCommandData {
-  const activationState = getRtlActivationStateFromSettings(
-    currentUrl,
-    settings
-  )
-
   return {
     active: activationState.active,
     siteId:
@@ -123,14 +113,11 @@ export async function createFontaraPageThemeData(
   settings: Record<string, unknown>,
   applyMode: FontaraApplyMode = "full"
 ): Promise<FontaraPageThemeCommandData> {
-  const activationState = getUrlActivationStateFromSettings(
-    currentUrl,
-    settings
-  )
+  const siteConfig = resolveFontaraSiteConfig(currentUrl, settings)
 
   const [font, rtl] = await Promise.all([
-    createFontThemeData(settings, activationState, applyMode),
-    Promise.resolve(createRtlThemeData(currentUrl, settings))
+    createFontThemeData(settings, siteConfig.font, applyMode),
+    Promise.resolve(createRtlThemeData(siteConfig.rtl))
   ])
 
   return {

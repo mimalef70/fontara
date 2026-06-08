@@ -1,5 +1,5 @@
+import { getFontaraSiteActivationState } from "../config/site-manager"
 import { ICON_PATHS } from "../config/storage"
-import { getUrlActivationStateFromSettings } from "../utils/url"
 import { getBackgroundSettings } from "./settings-manager"
 
 type IconPath = Parameters<typeof chrome.action.setIcon>[0]["path"]
@@ -35,7 +35,7 @@ export async function updateIconStatus(
   try {
     const currentUrl = await getCurrentTabURL()
     const active = isSupportedPageURL(currentUrl)
-      ? getUrlActivationStateFromSettings(
+      ? getFontaraSiteActivationState(
           currentUrl,
           settings ?? (await getBackgroundSettings())
         ).active

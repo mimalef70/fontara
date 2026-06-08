@@ -1,21 +1,11 @@
 import {
-  getRtlSiteByUrl,
-  isRtlSiteEnabled,
-  normalizeRtlSiteSettings,
-  type RtlSiteConfig,
-  type RtlSiteSettings
-} from "../config/rtl-sites"
+  type FontaraRtlActivationState,
+  getFontaraRtlActivationState
+} from "../config/site-manager"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import { getLocalValues } from "./storage"
 
-export type RtlActivationState = {
-  active: boolean
-  globalEnabled: boolean
-  masterEnabled: boolean
-  matchingSite: RtlSiteConfig | null
-  siteEnabled: boolean
-  siteSettings: RtlSiteSettings
-}
+export type RtlActivationState = FontaraRtlActivationState
 
 export async function getRtlActivationState(
   currentUrl: string
@@ -47,27 +37,5 @@ export function getRtlActivationStateFromSettings(
   currentUrl: string,
   settings: Record<string, unknown>
 ): RtlActivationState {
-  const matchingSite = getRtlSiteByUrl(currentUrl)
-  const siteSettings = normalizeRtlSiteSettings(
-    settings[STORAGE_KEYS.RTL_SITE_SETTINGS]
-  )
-  const normalizedMasterEnabled =
-    settings[STORAGE_KEYS.EXTENSION_ENABLED] !== false
-  const normalizedGlobalEnabled = settings[STORAGE_KEYS.RTL_ENABLED] !== false
-  const siteEnabled = matchingSite
-    ? isRtlSiteEnabled(siteSettings, matchingSite.id)
-    : false
-
-  return {
-    active:
-      normalizedMasterEnabled &&
-      normalizedGlobalEnabled &&
-      siteEnabled &&
-      matchingSite !== null,
-    globalEnabled: normalizedGlobalEnabled,
-    masterEnabled: normalizedMasterEnabled,
-    matchingSite,
-    siteEnabled,
-    siteSettings
-  }
+  return getFontaraRtlActivationState(currentUrl, settings)
 }

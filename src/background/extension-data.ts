@@ -1,5 +1,5 @@
+import { getFontaraSiteActivationState } from "../config/site-manager"
 import type { FontaraShortcuts, FontaraTabInfo } from "../definitions"
-import { getUrlActivationStateFromSettings } from "../utils/url"
 
 export type CommandURLDetails = {
   tab?: chrome.tabs.Tab | null
@@ -65,7 +65,7 @@ export async function collectActiveTabInfo(
   const url = tab?.url ?? null
   const isSupported = isSupportedPageURL(url)
   const active = isSupported
-    ? getUrlActivationStateFromSettings(url, settings).active
+    ? getFontaraSiteActivationState(url, settings).active
     : false
 
   return {

@@ -24,6 +24,7 @@ import whatsapp from "../../assets/styles/whatsapp.css"
 import wikipedia from "../../assets/styles/wikipedia.css"
 import x from "../../assets/styles/x.css"
 import youtube from "../../assets/styles/youtube.css"
+import type { FontaraSiteActivationState } from "./site-manager"
 
 export const CUSTOM_CSS_BY_SITE: Record<string, string> = {
   "https://aistudio.google.com": aistudio,
@@ -52,4 +53,17 @@ export const CUSTOM_CSS_BY_SITE: Record<string, string> = {
   "https://www.wikipedia.org": wikipedia,
   "https://www.youtube.com": youtube,
   "https://x.com": x
+}
+
+export function getCustomCSSForSite(
+  activationState: FontaraSiteActivationState
+): string | null {
+  if (
+    !activationState.matchingWebsite?.customCss ||
+    !activationState.matchingWebsite.url
+  ) {
+    return null
+  }
+
+  return CUSTOM_CSS_BY_SITE[activationState.matchingWebsite.url] ?? null
 }

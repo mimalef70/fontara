@@ -19,6 +19,7 @@ import {
   normalizeSiteList,
   normalizeSitePattern
 } from "../../src/config/site-list"
+import { resolveFontaraSiteConfig } from "../../src/config/site-manager"
 import {
   getSiteProfileForUrl,
   normalizeSiteProfiles
@@ -530,6 +531,35 @@ test("getUrlActivationStateFromSettings resolves activation from a normalized sn
     pattern: "example.com",
     textStroke: 0.4
   })
+})
+
+test("FontARA site manager resolves font, profile, and RTL config together", () => {
+  const config = resolveFontaraSiteConfig("https://chatgpt.com/c/1", {
+    [STORAGE_KEYS.DISABLED_FOR]: [],
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+    [STORAGE_KEYS.ENABLED_FOR]: ["chatgpt.com"],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.RTL_ENABLED]: true,
+    [STORAGE_KEYS.RTL_SITE_SETTINGS]: DEFAULT_VALUES.RTL_SITE_SETTINGS,
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        font: "Samim-Fontara",
+        pattern: "chatgpt.com",
+        textStroke: 0.4
+      }
+    ],
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  })
+
+  assert.equal(config.font.active, true)
+  assert.equal(config.font.matchingWebsite?.siteName, "ChatGPT")
+  assert.deepEqual(config.font.siteProfile, {
+    font: "Samim-Fontara",
+    pattern: "chatgpt.com",
+    textStroke: 0.4
+  })
+  assert.equal(config.rtl.active, true)
+  assert.equal(config.rtl.matchingSite?.id, "chatgpt")
 })
 
 test("default site list values keep existing popular sites active", async () => {

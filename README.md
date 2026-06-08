@@ -34,7 +34,7 @@ Have fun experimenting with different fonts and settings with your browser. Find
 <a href="https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/firefox.svg" alt="Mozilla Firefox" width="45" /></a>
 <a href="https://addons.opera.com/en/extensions/details/fontara-font-changer/"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/opera.svg" alt="Opera" width="45" /></a>
 <a href="#"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/safari.svg" alt="Safari" width="45" /></a>
-<a href="#"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/microsoft-edge.svg" alt="Microsoft Edge" width="45" /></a>
+<a href="https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/"><img src="https://mimalef70.github.io/fontara/images/demo/browsers/microsoft-edge.svg" alt="Microsoft Edge" width="45" /></a>
 
 ---
 

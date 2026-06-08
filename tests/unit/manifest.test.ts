@@ -51,6 +51,19 @@ test("manifest grants storage capacity for custom fonts without redundant active
   assert.equal(manifest.permissions.includes("activeTab"), false)
 })
 
+test("manifest enables context menus like Dark Reader", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+  const firefoxManifest = readJSON<Manifest>("src/manifest-firefox-mv3.json")
+
+  assert.equal(manifest.permissions.includes("contextMenus"), false)
+  assert.ok(manifest.optional_permissions?.includes("contextMenus"))
+  assert.ok(firefoxManifest.permissions.includes("contextMenus"))
+  assert.equal(
+    firefoxManifest.optional_permissions?.includes("contextMenus"),
+    false
+  )
+})
+
 test("manifest exposes only font assets to web pages", () => {
   const manifest = readJSON<Manifest>("src/manifest.json")
   const webAccessibleResources = manifest.web_accessible_resources ?? []

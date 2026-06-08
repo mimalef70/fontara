@@ -350,6 +350,8 @@ export async function normalizeStorageValues(
     [STORAGE_KEYS.RTL_SITE_SETTINGS]: normalizeRtlSiteSettings(
       values[STORAGE_KEYS.RTL_SITE_SETTINGS]
     ),
+    [STORAGE_KEYS.CONTEXT_MENUS_ENABLED]:
+      values[STORAGE_KEYS.CONTEXT_MENUS_ENABLED] === true,
     [STORAGE_KEYS.SYNC_SETTINGS]: values[STORAGE_KEYS.SYNC_SETTINGS] !== false
   }
 }

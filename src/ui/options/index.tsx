@@ -11,6 +11,7 @@ import {
   Info,
   Languages,
   ListChecks,
+  Menu,
   Plus,
   RotateCcw,
   Settings,
@@ -138,6 +139,7 @@ import type { MessageKey } from "../i18n/messages"
 import {
   EMPTY_CUSTOM_FONT_LIST,
   EMPTY_WEBSITE_LIST,
+  getContextMenusEnabledInitialValue,
   getDisabledForInitialValue,
   getEnabledByDefaultInitialValue,
   getEnabledForInitialValue,
@@ -255,6 +257,33 @@ function getDefaultFontLabel(
   return font.localizedName[language] || font.name
 }
 
+const CONTEXT_MENU_PERMISSION = "contextMenus"
+
+function isFirefoxBrowser(): boolean {
+  return navigator.userAgent.toLowerCase().includes("firefox")
+}
+
+function requestContextMenusPermission(): Promise<boolean> {
+  if (isFirefoxBrowser() || !chrome.permissions?.request) {
+    return Promise.resolve(true)
+  }
+
+  return new Promise((resolve, reject) => {
+    chrome.permissions.request(
+      { permissions: [CONTEXT_MENU_PERMISSION] },
+      (hasPermission) => {
+        const error = chrome.runtime?.lastError
+        if (error) {
+          reject(new Error(error.message))
+          return
+        }
+
+        resolve(hasPermission)
+      }
+    )
+  })
+}
+
 function downloadTextFile(fileName: string, content: string): void {
   const url = URL.createObjectURL(
     new Blob([content], { type: "application/json" })
@@ -334,6 +363,11 @@ function OptionsPage() {
     STORAGE_KEYS.SYNC_SETTINGS,
     getSyncSettingsInitialValue
   )
+  const [contextMenusEnabled, setContextMenusEnabled] =
+    useStorageValue<boolean>(
+      STORAGE_KEYS.CONTEXT_MENUS_ENABLED,
+      getContextMenusEnabledInitialValue
+    )
   const [activeSection, setActiveSection] = useState<SettingsSection>("fonts")
   const activeNavigation = settingsNavigation.find(
     (item) => item.id === activeSection
@@ -674,6 +708,27 @@ function OptionsPage() {
         console.warn("Failed to update Font Ara sync settings.", error)
       }
       toast({ title: t("options.toast.syncError") })
+    }
+  }
+
+  const handleContextMenusToggle = async (checked: boolean) => {
+    try {
+      if (checked && !(await requestContextMenusPermission())) {
+        toast({ title: t("options.toast.contextMenusPermissionDenied") })
+        return
+      }
+
+      await setContextMenusEnabled(checked)
+      toast({
+        title: checked
+          ? t("options.toast.contextMenusEnabled")
+          : t("options.toast.contextMenusDisabled")
+      })
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to update Font Ara context menu setting.", error)
+      }
+      toast({ title: t("options.toast.contextMenusError") })
     }
   }
 
@@ -2218,6 +2273,49 @@ function OptionsPage() {
                           {t("options.sync.customFontsExcluded")}
                         </p>
                       </div>
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.contextMenus.title")}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {contextMenusEnabled
+                            ? t("options.contextMenus.enabledDescription")
+                            : t("options.contextMenus.disabledDescription")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <Menu className="size-5" />
+                      </div>
+                    </div>
+
+                    <div
+                      className={cn(
+                        "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
+                        contextMenusEnabled
+                          ? "border-[#dbeafe] bg-[#f8fbff]"
+                          : "border-[#e5e7eb] bg-white"
+                      )}>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-[#111827]">
+                          {t("options.contextMenus.toggleLabel")}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {t("options.contextMenus.toggleDescription")}
+                        </p>
+                      </div>
+                      <Switch
+                        dir="ltr"
+                        checked={contextMenusEnabled}
+                        onCheckedChange={(checked) =>
+                          void handleContextMenusToggle(checked)
+                        }
+                        aria-label={t("options.contextMenus.toggleAria")}
+                      />
                     </div>
                   </section>
 

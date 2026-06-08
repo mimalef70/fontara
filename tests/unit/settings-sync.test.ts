@@ -22,6 +22,7 @@ test("settings sync excludes custom font files and custom font references", asyn
     ...DEFAULT_VALUES,
     [STORAGE_KEYS.SELECTED_FONT]: localCustomFont.value,
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [localCustomFont],
+    [STORAGE_KEYS.CONTEXT_MENUS_ENABLED]: true,
     [STORAGE_KEYS.SITE_PROFILES]: [
       {
         pattern: "example.com",
@@ -48,6 +49,7 @@ test("settings sync excludes custom font files and custom font references", asyn
       font: "Sahel-Fontara"
     }
   ])
+  assert.equal(syncedSettings[STORAGE_KEYS.CONTEXT_MENUS_ENABLED], true)
   assert.equal(syncedSettings[STORAGE_KEYS.SYNC_SETTINGS], true)
 })
 

@@ -41,6 +41,12 @@ export function getSyncSettingsInitialValue(
   return value !== false
 }
 
+export function getContextMenusEnabledInitialValue(
+  value: boolean | undefined
+): boolean {
+  return value === true
+}
+
 export function getSystemFontsEnabledInitialValue(
   value: boolean | undefined
 ): boolean {

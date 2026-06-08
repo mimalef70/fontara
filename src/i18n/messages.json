@@ -12,6 +12,22 @@
       "extensionDescription": {
         "message": "Improve Persian, Arabic, Kurdish, and Dari text rendering across the web with your favorite fonts.",
         "description": "Description of the extension."
+      },
+      "contextMenuTitle": {
+        "message": "Font Ara",
+        "description": "Root context menu title."
+      },
+      "contextMenuToggleEverywhere": {
+        "message": "Toggle everywhere",
+        "description": "Context menu item for toggling the extension globally."
+      },
+      "contextMenuToggleSite": {
+        "message": "Toggle for this site",
+        "description": "Context menu item for toggling the current site."
+      },
+      "contextMenuOpenSettings": {
+        "message": "Open settings",
+        "description": "Context menu item for opening extension settings."
       }
     },
     "fa": {
@@ -26,6 +42,22 @@
       "extensionDescription": {
         "message": "نمایش متن‌های فارسی، عربی، کردی و دری را در وب با فونت دلخواهتان بهتر کنید.",
         "description": "Description of the extension."
+      },
+      "contextMenuTitle": {
+        "message": "فونت آرا",
+        "description": "Root context menu title."
+      },
+      "contextMenuToggleEverywhere": {
+        "message": "تغییر وضعیت همه‌جا",
+        "description": "Context menu item for toggling the extension globally."
+      },
+      "contextMenuToggleSite": {
+        "message": "تغییر وضعیت برای این سایت",
+        "description": "Context menu item for toggling the current site."
+      },
+      "contextMenuOpenSettings": {
+        "message": "باز کردن تنظیمات",
+        "description": "Context menu item for opening extension settings."
       }
     },
     "ar": {
@@ -40,6 +72,22 @@
       "extensionDescription": {
         "message": "حسّن عرض النصوص الفارسية والعربية والكردية والدرية على الويب باستخدام خطوطك المفضلة.",
         "description": "Description of the extension."
+      },
+      "contextMenuTitle": {
+        "message": "فونت آرا",
+        "description": "Root context menu title."
+      },
+      "contextMenuToggleEverywhere": {
+        "message": "التبديل في كل المواقع",
+        "description": "Context menu item for toggling the extension globally."
+      },
+      "contextMenuToggleSite": {
+        "message": "التبديل لهذا الموقع",
+        "description": "Context menu item for toggling the current site."
+      },
+      "contextMenuOpenSettings": {
+        "message": "فتح الإعدادات",
+        "description": "Context menu item for opening extension settings."
       }
     }
   },
@@ -111,6 +159,12 @@
       "options.backup.resetTitle": "Reset settings",
       "options.backup.resetWarningDescription": "Are you sure you want to remove all your settings? You cannot restore them later.",
       "options.backup.resetWarningTitle": "Remove all settings?",
+      "options.contextMenus.disabledDescription": "Right-click shortcuts are hidden",
+      "options.contextMenus.enabledDescription": "Right-click shortcuts are available on web pages",
+      "options.contextMenus.title": "Use context menus",
+      "options.contextMenus.toggleAria": "Enable context menus",
+      "options.contextMenus.toggleDescription": "Add Font Ara actions to the browser right-click menu.",
+      "options.contextMenus.toggleLabel": "Enable context menus",
       "options.sync.customFontsExcluded": "Custom fonts stay on this device because browser sync storage is small. Use export/import to move custom fonts manually.",
       "options.sync.disabledDescription": "Only this browser keeps these settings",
       "options.sync.enabledDescription": "Syncs through your browser account when browser sync is enabled",
@@ -202,6 +256,10 @@
       "options.toast.duplicateFile": "This font file has already been uploaded",
       "options.toast.duplicateFontName": "Font name already exists",
       "options.toast.emptyFields": "Fill in the empty fields",
+      "options.toast.contextMenusDisabled": "Context menus disabled",
+      "options.toast.contextMenusEnabled": "Context menus enabled",
+      "options.toast.contextMenusError": "Could not update context menu settings",
+      "options.toast.contextMenusPermissionDenied": "Context menu permission was not granted",
       "options.toast.fileTooLarge": "Font files cannot be larger than 2 MB",
       "options.toast.fontAdded": "Font added successfully",
       "options.toast.fontDeleted": "Font deleted successfully",
@@ -304,6 +362,12 @@
       "options.backup.resetTitle": "بازنشانی تنظیمات",
       "options.backup.resetWarningDescription": "مطمئنید می‌خواهید همه تنظیمات را حذف کنید؟ بعدا نمی‌توانید آن‌ها را برگردانید.",
       "options.backup.resetWarningTitle": "همه تنظیمات حذف شود؟",
+      "options.contextMenus.disabledDescription": "میان‌برهای راست‌کلیک مخفی هستند",
+      "options.contextMenus.enabledDescription": "میان‌برهای راست‌کلیک روی صفحات وب در دسترس هستند",
+      "options.contextMenus.title": "استفاده از منوی راست‌کلیک",
+      "options.contextMenus.toggleAria": "فعال‌سازی منوی راست‌کلیک",
+      "options.contextMenus.toggleDescription": "اکشن‌های فونت‌آرا را به منوی راست‌کلیک مرورگر اضافه می‌کند.",
+      "options.contextMenus.toggleLabel": "فعال‌سازی منوی راست‌کلیک",
       "options.sync.customFontsExcluded": "فونت‌های دلخواه فقط روی همین دستگاه می‌مانند، چون فضای همگام‌سازی مرورگر محدود است. برای جابه‌جایی فونت‌های دلخواه از خروجی/ورود تنظیمات استفاده کنید.",
       "options.sync.disabledDescription": "تنظیمات فقط روی همین مرورگر نگه داشته می‌شود",
       "options.sync.enabledDescription": "وقتی همگام‌سازی مرورگر فعال باشد، با حساب مرورگر بین دستگاه‌ها هماهنگ می‌شود",
@@ -395,6 +459,10 @@
       "options.toast.duplicateFile": "این فایل فونت قبلاً آپلود شده است",
       "options.toast.duplicateFontName": "نام فونت تکراری است",
       "options.toast.emptyFields": "فیلدهای خالی را پر کنید",
+      "options.toast.contextMenusDisabled": "منوی راست‌کلیک غیرفعال شد",
+      "options.toast.contextMenusEnabled": "منوی راست‌کلیک فعال شد",
+      "options.toast.contextMenusError": "خطا در تغییر تنظیمات منوی راست‌کلیک",
+      "options.toast.contextMenusPermissionDenied": "اجازه منوی راست‌کلیک داده نشد",
       "options.toast.fileTooLarge": "حجم فایل فونت نباید بیشتر از ۲ مگابایت باشد",
       "options.toast.fontAdded": "فونت با موفقیت اضافه شد",
       "options.toast.fontDeleted": "فونت با موفقیت حذف شد",
@@ -497,6 +565,12 @@
       "options.backup.resetTitle": "إعادة ضبط الإعدادات",
       "options.backup.resetWarningDescription": "هل أنت متأكد من أنك تريد حذف جميع إعداداتك؟ لن تتمكن من استعادتها لاحقًا.",
       "options.backup.resetWarningTitle": "حذف جميع الإعدادات؟",
+      "options.contextMenus.disabledDescription": "اختصارات النقر بزر الفأرة الأيمن مخفية",
+      "options.contextMenus.enabledDescription": "اختصارات النقر بزر الفأرة الأيمن متاحة على صفحات الويب",
+      "options.contextMenus.title": "استخدام قوائم السياق",
+      "options.contextMenus.toggleAria": "تفعيل قوائم السياق",
+      "options.contextMenus.toggleDescription": "أضف إجراءات فونت آرا إلى قائمة النقر بزر الفأرة الأيمن في المتصفح.",
+      "options.contextMenus.toggleLabel": "تفعيل قوائم السياق",
       "options.sync.customFontsExcluded": "تبقى الخطوط المخصصة على هذا الجهاز لأن مساحة مزامنة المتصفح محدودة. استخدم التصدير/الاستيراد لنقل الخطوط المخصصة يدويًا.",
       "options.sync.disabledDescription": "تُحفظ الإعدادات في هذا المتصفح فقط",
       "options.sync.enabledDescription": "تتم المزامنة عبر حساب المتصفح عندما تكون مزامنة المتصفح مفعلة",
@@ -588,6 +662,10 @@
       "options.toast.duplicateFile": "تم رفع ملف الخط هذا من قبل",
       "options.toast.duplicateFontName": "اسم الخط موجود مسبقًا",
       "options.toast.emptyFields": "املأ الحقول الفارغة",
+      "options.toast.contextMenusDisabled": "تم تعطيل قوائم السياق",
+      "options.toast.contextMenusEnabled": "تم تفعيل قوائم السياق",
+      "options.toast.contextMenusError": "تعذر تحديث إعدادات قوائم السياق",
+      "options.toast.contextMenusPermissionDenied": "لم يتم منح إذن قوائم السياق",
       "options.toast.fileTooLarge": "لا يمكن أن يتجاوز ملف الخط ٢ MB",
       "options.toast.fontAdded": "تمت إضافة الخط بنجاح",
       "options.toast.fontDeleted": "تم حذف الخط بنجاح",

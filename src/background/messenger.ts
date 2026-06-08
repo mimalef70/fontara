@@ -6,7 +6,10 @@ import type {
   FontaraUIMessage
 } from "../definitions"
 import {
-  MESSAGE_TYPES_BG_TO_UI,
+  createFontaraBackgroundChangesMessage,
+  createFontaraMessageErrorResponse,
+  createFontaraMessageResponse,
+  isFontaraUIMessage,
   MESSAGE_TYPES_UI_TO_BG
 } from "../utils/message"
 
@@ -30,16 +33,6 @@ const ALLOWED_UI_PAGE_PATHS = [
 let adapter: FontaraMessengerAdapter | null = null
 let initialized = false
 let subscriberCount = 0
-
-function isFontaraUIMessage(message: unknown): message is FontaraUIMessage {
-  if (typeof message !== "object" || message === null) return false
-
-  const type = (message as { type?: unknown }).type
-  return (
-    typeof type === "string" &&
-    (Object.values(MESSAGE_TYPES_UI_TO_BG) as string[]).includes(type)
-  )
-}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -114,8 +107,10 @@ function messageListener(
   }
 
   void handleMessage(message)
-    .then((data) => sendResponse({ data }))
-    .catch((error) => sendResponse({ error: getErrorMessage(error) }))
+    .then((data) => sendResponse(createFontaraMessageResponse(data)))
+    .catch((error) =>
+      sendResponse(createFontaraMessageErrorResponse(getErrorMessage(error)))
+    )
 
   return true
 }
@@ -132,8 +127,5 @@ export function initMessenger(nextAdapter: FontaraMessengerAdapter): void {
 export function reportChanges(data: FontaraExtensionData): void {
   if (subscriberCount === 0) return
 
-  chrome.runtime.sendMessage({
-    data,
-    type: MESSAGE_TYPES_BG_TO_UI.CHANGES
-  })
+  chrome.runtime.sendMessage(createFontaraBackgroundChangesMessage(data))
 }

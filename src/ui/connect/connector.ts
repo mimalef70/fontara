@@ -1,5 +1,4 @@
 import type {
-  FontaraBackgroundMessage,
   FontaraExtensionData,
   FontaraImportedSettingsResult,
   FontaraMessageResponse,
@@ -7,7 +6,7 @@ import type {
   FontaraUIMessage
 } from "../../definitions"
 import {
-  MESSAGE_TYPES_BG_TO_UI,
+  isFontaraBackgroundMessage,
   MESSAGE_TYPES_UI_TO_BG
 } from "../../utils/message"
 
@@ -39,8 +38,8 @@ class FontaraConnector {
     })
   }
 
-  private onChangesReceived = (message: FontaraBackgroundMessage): void => {
-    if (message?.type !== MESSAGE_TYPES_BG_TO_UI.CHANGES) return
+  private onChangesReceived = (message: unknown): void => {
+    if (!isFontaraBackgroundMessage(message)) return
 
     this.publishChanges(message.data)
   }

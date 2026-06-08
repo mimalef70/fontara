@@ -3,6 +3,7 @@ import type {
   FontaraContentScriptMessage
 } from "../definitions"
 import {
+  isFontaraContentScriptMessage,
   MESSAGE_TYPES_BG_TO_CS,
   MESSAGE_TYPES_CS_TO_BG
 } from "../utils/message"
@@ -27,19 +28,6 @@ const documentsByTab = new Map<number, Map<number, FontaraTrackedDocument>>()
 
 let initialized = false
 let createDocumentMessage: DocumentMessageFactory | null = null
-
-function isFontaraContentMessage(
-  message: unknown
-): message is FontaraContentScriptMessage {
-  if (typeof message !== "object" || message === null) return false
-
-  const value = message as Partial<FontaraContentScriptMessage>
-  return (
-    typeof value.scriptId === "string" &&
-    typeof value.type === "string" &&
-    (Object.values(MESSAGE_TYPES_CS_TO_BG) as string[]).includes(value.type)
-  )
-}
 
 function getSenderTabId(sender: chrome.runtime.MessageSender): number | null {
   return typeof sender.tab?.id === "number" ? sender.tab.id : null
@@ -90,7 +78,7 @@ function messageListener(
   message: unknown,
   sender: chrome.runtime.MessageSender
 ): boolean {
-  if (!isFontaraContentMessage(message)) {
+  if (!isFontaraContentScriptMessage(message)) {
     return false
   }
 

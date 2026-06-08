@@ -7,6 +7,7 @@ import {
   MESSAGE_TYPES_BG_TO_CS,
   MESSAGE_TYPES_CS_TO_BG
 } from "../utils/message"
+import { RuntimeStateManager } from "./runtime-state-manager"
 
 export type FontaraTrackedDocument = {
   documentId: string | null
@@ -24,10 +25,168 @@ type TabManagerOptions = {
   createDocumentMessage?: DocumentMessageFactory
 }
 
+type PersistedDocumentsByTab = Record<string, FontaraTrackedDocument[]>
+
+type TabManagerRuntimeState = {
+  documentsByTab: PersistedDocumentsByTab
+  savedAt: number
+}
+
+export const TAB_MANAGER_RUNTIME_STATE_KEY = "__fontara_tab_manager_state__"
+const DEFAULT_TAB_MANAGER_RUNTIME_STATE: TabManagerRuntimeState = {
+  documentsByTab: {},
+  savedAt: 0
+}
+
 const documentsByTab = new Map<number, Map<number, FontaraTrackedDocument>>()
 
 let initialized = false
 let createDocumentMessage: DocumentMessageFactory | null = null
+let runtimeStateManager = createRuntimeStateManager()
+let restoreDocumentsPromise: Promise<void> | null = null
+let documentsRestored = false
+
+function debugWarn(message: string, error: unknown): void {
+  if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+    console.warn(message, error)
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function isTrackedDocument(value: unknown): value is FontaraTrackedDocument {
+  return (
+    isRecord(value) &&
+    (typeof value.documentId === "string" || value.documentId === null) &&
+    typeof value.frameId === "number" &&
+    typeof value.isTopFrame === "boolean" &&
+    typeof value.scriptId === "string" &&
+    typeof value.url === "string"
+  )
+}
+
+function normalizeTabManagerRuntimeState(
+  value: unknown
+): TabManagerRuntimeState {
+  if (!isRecord(value)) return DEFAULT_TAB_MANAGER_RUNTIME_STATE
+
+  const documentsByTabValue = isRecord(value.documentsByTab)
+    ? value.documentsByTab
+    : {}
+  const documentsByTab: PersistedDocumentsByTab = {}
+
+  for (const [tabId, documents] of Object.entries(documentsByTabValue)) {
+    if (!/^\d+$/.test(tabId) || !Array.isArray(documents)) continue
+
+    const normalizedDocuments = documents.filter(isTrackedDocument)
+    if (normalizedDocuments.length > 0) {
+      documentsByTab[tabId] = normalizedDocuments
+    }
+  }
+
+  return {
+    documentsByTab,
+    savedAt: typeof value.savedAt === "number" ? value.savedAt : 0
+  }
+}
+
+function createRuntimeStateManager(): RuntimeStateManager<TabManagerRuntimeState> {
+  return new RuntimeStateManager<TabManagerRuntimeState>({
+    defaults: DEFAULT_TAB_MANAGER_RUNTIME_STATE,
+    key: TAB_MANAGER_RUNTIME_STATE_KEY,
+    normalize: normalizeTabManagerRuntimeState,
+    warn: debugWarn
+  })
+}
+
+function serializeTrackedDocuments(): TabManagerRuntimeState {
+  const persistedDocuments: PersistedDocumentsByTab = {}
+
+  for (const [tabId, documents] of documentsByTab) {
+    if (documents.size === 0) continue
+
+    persistedDocuments[String(tabId)] = [...documents.values()]
+  }
+
+  return {
+    documentsByTab: persistedDocuments,
+    savedAt: Date.now()
+  }
+}
+
+function persistTrackedDocuments(): void {
+  void runtimeStateManager.save(serializeTrackedDocuments())
+}
+
+function getOpenTabIds(): Promise<Set<number> | null> {
+  if (typeof chrome === "undefined" || !chrome.tabs?.query) {
+    return Promise.resolve(null)
+  }
+
+  return new Promise((resolve) => {
+    try {
+      chrome.tabs.query({}, (tabs) => {
+        resolve(
+          new Set(
+            (tabs ?? [])
+              .map((tab) => tab.id)
+              .filter((tabId): tabId is number => typeof tabId === "number")
+          )
+        )
+      })
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+async function restoreTrackedDocuments(): Promise<void> {
+  if (documentsRestored) return
+  if (restoreDocumentsPromise) return restoreDocumentsPromise
+
+  restoreDocumentsPromise = Promise.all([
+    runtimeStateManager.load(),
+    getOpenTabIds()
+  ])
+    .then(([state, openTabIds]) => {
+      let prunedStaleDocuments = false
+
+      for (const [tabIdValue, documents] of Object.entries(
+        state.documentsByTab
+      )) {
+        const tabId = Number(tabIdValue)
+        if (!Number.isInteger(tabId)) continue
+        if (openTabIds && !openTabIds.has(tabId)) {
+          prunedStaleDocuments = true
+          continue
+        }
+
+        let trackedDocuments = documentsByTab.get(tabId)
+        if (!trackedDocuments) {
+          trackedDocuments = new Map()
+          documentsByTab.set(tabId, trackedDocuments)
+        }
+
+        for (const document of documents) {
+          if (!trackedDocuments.has(document.frameId)) {
+            trackedDocuments.set(document.frameId, document)
+          }
+        }
+      }
+
+      documentsRestored = true
+      if (prunedStaleDocuments) {
+        persistTrackedDocuments()
+      }
+    })
+    .finally(() => {
+      restoreDocumentsPromise = null
+    })
+
+  return restoreDocumentsPromise
+}
 
 function getSenderTabId(sender: chrome.runtime.MessageSender): number | null {
   return typeof sender.tab?.id === "number" ? sender.tab.id : null
@@ -62,6 +221,7 @@ function upsertDocument(
     scriptId: message.scriptId,
     url: message.data.url
   })
+  persistTrackedDocuments()
 }
 
 function removeDocument(tabId: number, frameId: number): void {
@@ -72,6 +232,7 @@ function removeDocument(tabId: number, frameId: number): void {
   if (documents.size === 0) {
     documentsByTab.delete(tabId)
   }
+  persistTrackedDocuments()
 }
 
 function messageListener(
@@ -234,19 +395,24 @@ export function initTabManager(options: TabManagerOptions = {}): void {
     createDocumentMessage = options.createDocumentMessage
   }
 
+  void restoreTrackedDocuments()
+
   if (initialized) return
 
   chrome.runtime.onMessage.addListener(messageListener)
   chrome.tabs.onRemoved.addListener((tabId) => {
     documentsByTab.delete(tabId)
+    persistTrackedDocuments()
   })
   initialized = true
 }
 
-export function notifyContentScriptsAboutSettingsChange(
+export async function notifyContentScriptsAboutSettingsChange(
   factory: DocumentMessageFactory = createDocumentMessage ??
     createSettingsChangedMessage
-): void {
+): Promise<void> {
+  await restoreTrackedDocuments()
+
   const trackedTabIds = new Set<number>()
 
   for (const [tabId, documents] of documentsByTab) {
@@ -265,4 +431,13 @@ export function getTrackedDocumentCountForTesting(): number {
     count += documents.size
   }
   return count
+}
+
+export function resetTabManagerStateForTesting(): void {
+  documentsByTab.clear()
+  initialized = false
+  createDocumentMessage = null
+  runtimeStateManager = createRuntimeStateManager()
+  restoreDocumentsPromise = null
+  documentsRestored = false
 }

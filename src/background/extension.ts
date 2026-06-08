@@ -157,7 +157,7 @@ export class ExtensionRuntime {
   ): Promise<void> {
     await ExtensionRuntime.ensureStarted()
     const resolvedSettings = settings ?? (await getBackgroundSettings())
-    notifyContentScriptsAboutSettingsChange((document) =>
+    await notifyContentScriptsAboutSettingsChange((document) =>
       ExtensionRuntime.createContentCommandMessage(
         document.url,
         resolvedSettings

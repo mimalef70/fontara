@@ -12,6 +12,7 @@ import {
   Languages,
   ListChecks,
   Plus,
+  RotateCcw,
   Settings,
   ShieldCheck,
   Trash2,
@@ -79,6 +80,7 @@ import {
 import {
   createSettingsBackup,
   createSettingsBackupFileName,
+  createSettingsResetValues,
   FONTARA_SETTINGS_STORAGE_KEYS,
   getSettingsBackupDefaults,
   normalizeSettingsBackup,
@@ -97,6 +99,17 @@ import {
   type SystemFontData
 } from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from "../components/ui/alert-dialog"
 import { Button } from "../components/ui/button"
 import { Switch } from "../components/ui/Switch"
 import {
@@ -356,6 +369,7 @@ function OptionsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isBackupBusy, setIsBackupBusy] = useState(false)
   const [isImportWarningVisible, setIsImportWarningVisible] = useState(false)
+  const [isResetWarningVisible, setIsResetWarningVisible] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFileHash, setSelectedFileHash] = useState("")
   const [fontName, setFontName] = useState("")
@@ -621,6 +635,24 @@ function OptionsPage() {
     } finally {
       setIsBackupBusy(false)
       event.currentTarget.value = ""
+    }
+  }
+
+  const handleResetSettings = async () => {
+    setIsBackupBusy(true)
+
+    try {
+      await setLocalValues(await createSettingsResetValues())
+      setIsImportWarningVisible(false)
+      setIsResetWarningVisible(false)
+      toast({ title: t("options.toast.settingsReset") })
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to reset Font Ara settings.", error)
+      }
+      toast({ title: t("options.toast.settingsResetError") })
+    } finally {
+      setIsBackupBusy(false)
     }
   }
 
@@ -2115,40 +2147,7 @@ function OptionsPage() {
               )}
 
               {activeSection === "backup" && (
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.backup.exportTitle")}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {t("options.backup.exportDescription")}
-                        </p>
-                      </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
-                        <FileDown className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3 rounded-md border border-[#dbeafe] bg-[#f8fbff] px-4 py-3">
-                        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
-                        <p className="text-xs leading-5 text-[#334155]">
-                          {t("options.backup.exportNote")}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => void handleExportSettings()}
-                        disabled={isBackupBusy}
-                        className="h-11 bg-[#2374ff] text-white hover:bg-[#1f66df]">
-                        <Download className="size-4" />
-                        {t("options.backup.exportButton")}
-                      </Button>
-                    </div>
-                  </section>
-
+                <div className="grid gap-6 xl:grid-cols-3">
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <input
                       ref={settingsImportInputRef}
@@ -2211,6 +2210,92 @@ function OptionsPage() {
                         </div>
                       )}
                     </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.backup.exportTitle")}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {t("options.backup.exportDescription")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <FileDown className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 rounded-md border border-[#dbeafe] bg-[#f8fbff] px-4 py-3">
+                        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
+                        <p className="text-xs leading-5 text-[#334155]">
+                          {t("options.backup.exportNote")}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => void handleExportSettings()}
+                        disabled={isBackupBusy}
+                        className="h-11 bg-[#2374ff] text-white hover:bg-[#1f66df]">
+                        <Download className="size-4" />
+                        {t("options.backup.exportButton")}
+                      </Button>
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.backup.resetTitle")}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {t("options.backup.resetDescription")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-red-50 text-red-600">
+                        <RotateCcw className="size-5" />
+                      </div>
+                    </div>
+
+                    <AlertDialog
+                      open={isResetWarningVisible}
+                      onOpenChange={setIsResetWarningVisible}>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isBackupBusy}
+                          className="h-11 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">
+                          <RotateCcw className="size-4" />
+                          {t("options.backup.resetButton")}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent dir={direction}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t("options.backup.resetWarningTitle")}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t("options.backup.resetWarningDescription")}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isBackupBusy}>
+                            {t("options.backup.cancelButton")}
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => void handleResetSettings()}
+                            disabled={isBackupBusy}
+                            className="bg-red-600 text-white hover:bg-red-700">
+                            <RotateCcw className="size-4" />
+                            {t("options.backup.resetConfirmButton")}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </section>
                 </div>
               )}

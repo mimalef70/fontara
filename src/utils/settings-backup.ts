@@ -198,3 +198,9 @@ export async function normalizeSettingsBackup(
     settings: await normalizeStorageValues(acceptedValues)
   }
 }
+
+export async function createSettingsResetValues(): Promise<
+  Record<string, unknown>
+> {
+  return normalizeStorageValues(getSettingsBackupDefaults())
+}

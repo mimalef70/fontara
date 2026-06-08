@@ -205,6 +205,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /direction === "rtl" \? "right" : "left"/)
   assert.match(optionsSource, /options\.nav\.language/)
   assert.match(optionsSource, /options\.nav\.rtl/)
+  assert.match(optionsSource, /options\.nav\.backup/)
   assert.match(optionsSource, /RTL_SUPPORTED_SITES\.map/)
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_ENABLED/)
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_SITE_SETTINGS/)
@@ -221,6 +222,18 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.textStroke\.title/)
   assert.match(optionsSource, /options\.siteList\.title/)
   assert.match(optionsSource, /options\.siteProfiles\.title/)
+  assert.match(optionsSource, /createSettingsBackup/)
+  assert.match(optionsSource, /parseSettingsBackupText/)
+  assert.match(optionsSource, /normalizeSettingsBackup/)
+  assert.match(optionsSource, /getSettingsBackupDefaults/)
+  assert.match(optionsSource, /FONTARA_SETTINGS_STORAGE_KEYS/)
+  assert.match(
+    optionsSource,
+    /type="file"[\s\S]*accept="application\/json,\.json"/
+  )
+  assert.match(optionsSource, /options\.backup\.importWarningTitle/)
+  assert.match(optionsSource, /options\.toast\.settingsImported/)
+  assert.match(optionsSource, /options\.toast\.settingsExported/)
   assert.match(optionsSource, /createWebsiteSiteListToggleUpdate/)
   assert.match(optionsSource, /upsertSiteProfile/)
   assert.match(optionsSource, /removeSiteProfileFontOverrides/)

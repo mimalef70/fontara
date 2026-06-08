@@ -1,4 +1,3 @@
-import { DEFAULT_FONTS } from "../config/fonts"
 import { normalizeUILanguagePreference } from "../config/i18n"
 import { normalizeRtlSiteSettings } from "../config/rtl-sites"
 import {
@@ -7,201 +6,22 @@ import {
   normalizeEnabledSiteList,
   normalizeSiteList
 } from "../config/site-list"
-import {
-  hasSiteProfileOverrides,
-  normalizeSiteProfiles
-} from "../config/site-profiles"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import {
   DEFAULT_ACTIVE_TEXT_STROKE,
   normalizeTextStrokeValue
 } from "../config/text-stroke"
-import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
-import {
-  getFontDataURLFormat,
-  isSafeCustomFontValue,
-  isSupportedFontExtension,
-  normalizeFontDataURL
-} from "../utils/font-data"
-import { getGoogleFontByValue } from "../utils/google-fonts"
+import type { FontData } from "../definitions"
 import { getLocalValue, setLocalValue } from "../utils/storage"
-import { isSystemFontValue } from "../utils/system-fonts"
+import {
+  isSelectedFontAvailable,
+  mergeWebsiteLists,
+  normalizeCustomFontList,
+  normalizeSiteProfilesForStorage,
+  normalizeWebsiteListForStorage
+} from "../utils/storage-normalization"
 
-const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
-
-function shouldSyncDefaultSite(
-  existingSite: WebsiteItem,
-  defaultSite: WebsiteItem
-): boolean {
-  return (
-    existingSite.regex !== defaultSite.regex ||
-    existingSite.icon !== defaultSite.icon ||
-    existingSite.pattern !== defaultSite.pattern ||
-    existingSite.siteName !== defaultSite.siteName ||
-    existingSite.customCss !== defaultSite.customCss
-  )
-}
-
-export function mergeWebsiteLists(
-  existingList: WebsiteItem[],
-  defaultList: WebsiteItem[]
-): WebsiteItem[] {
-  const mergedList = [...existingList]
-
-  for (const defaultSite of defaultList) {
-    const existingIndex = mergedList.findIndex(
-      (site) => site.url === defaultSite.url
-    )
-
-    if (existingIndex === -1) {
-      mergedList.push(defaultSite)
-      continue
-    }
-
-    if ("version" in defaultSite) {
-      const existingSite = mergedList[existingIndex]
-
-      if (
-        !("version" in existingSite) ||
-        existingSite.version !== defaultSite.version ||
-        shouldSyncDefaultSite(existingSite, defaultSite)
-      ) {
-        mergedList[existingIndex] = {
-          ...defaultSite,
-          isActive: existingSite.isActive
-        }
-      }
-      continue
-    }
-
-    const existingSite = mergedList[existingIndex]
-    if (shouldSyncDefaultSite(existingSite, defaultSite)) {
-      mergedList[existingIndex] = {
-        ...defaultSite,
-        isActive: existingSite.isActive
-      }
-    }
-  }
-
-  return mergedList
-}
-
-function dataURLToBytes(dataURL: string): Uint8Array {
-  const [, base64Data] = dataURL.split(",", 2)
-  if (!base64Data) {
-    return new TextEncoder().encode(dataURL)
-  }
-
-  const binary = atob(base64Data)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-  return bytes
-}
-
-async function createSHA256Hash(data: Uint8Array): Promise<string> {
-  const buffer = new ArrayBuffer(data.byteLength)
-  new Uint8Array(buffer).set(data)
-
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("")
-}
-
-export async function normalizeCustomFontList(
-  customFontList: unknown
-): Promise<FontData[]> {
-  if (!Array.isArray(customFontList)) {
-    return DEFAULT_VALUES.CUSTOM_FONT_LIST
-  }
-
-  const normalizedFonts = await Promise.all(
-    customFontList.map(async (font) => {
-      const customFont = font as Partial<FontData>
-      const value = customFont.value
-      const name =
-        typeof customFont.name === "string" ? customFont.name.trim() : ""
-      const data = typeof customFont.data === "string" ? customFont.data : ""
-      const type =
-        typeof customFont.type === "string" ? customFont.type.toLowerCase() : ""
-      const normalizedData = normalizeFontDataURL(data, type)
-
-      if (
-        !isSafeCustomFontValue(value) ||
-        !name ||
-        !normalizedData ||
-        !getFontDataURLFormat(normalizedData, type) ||
-        !isSupportedFontExtension(type)
-      ) {
-        return null
-      }
-
-      const fileHash =
-        typeof customFont.fileHash === "string" &&
-        /^[a-f0-9]{64}$/i.test(customFont.fileHash)
-          ? customFont.fileHash
-          : await createSHA256Hash(dataURLToBytes(data))
-      const originalFileName =
-        typeof customFont.originalFileName === "string" &&
-        customFont.originalFileName.trim()
-          ? customFont.originalFileName.trim()
-          : name
-
-      return {
-        value,
-        name,
-        data: normalizedData,
-        type,
-        fileHash,
-        originalFileName
-      }
-    })
-  )
-
-  return normalizedFonts.filter((font): font is FontData => font !== null)
-}
-
-function isSelectedFontAvailable(
-  selectedFont: string | undefined,
-  customFontList: FontData[],
-  googleFontsEnabled: boolean,
-  systemFontsEnabled: boolean
-): boolean {
-  return (
-    selectedFont === undefined ||
-    BUNDLED_FONT_VALUES.has(selectedFont) ||
-    customFontList.some((font) => font.value === selectedFont) ||
-    (googleFontsEnabled && getGoogleFontByValue(selectedFont) !== null) ||
-    (systemFontsEnabled && isSystemFontValue(selectedFont))
-  )
-}
-
-function normalizeSiteProfilesForStorage(
-  siteProfiles: unknown,
-  customFontList: FontData[],
-  googleFontsEnabled: boolean,
-  systemFontsEnabled: boolean
-): SiteProfile[] {
-  return normalizeSiteProfiles(siteProfiles)
-    .map((profile) => {
-      if (
-        !profile.font ||
-        isSelectedFontAvailable(
-          profile.font,
-          customFontList,
-          googleFontsEnabled,
-          systemFontsEnabled
-        )
-      ) {
-        return profile
-      }
-
-      const { font: _unavailableFont, ...profileWithoutFont } = profile
-      return profileWithoutFont
-    })
-    .filter(hasSiteProfileOverrides)
-}
+export { mergeWebsiteLists, normalizeCustomFontList }
 
 export async function ensureStorageValues(): Promise<void> {
   const storageUpdates: Record<string, unknown> = {}
@@ -269,18 +89,11 @@ export async function ensureStorageValues(): Promise<void> {
     storageUpdates[STORAGE_KEYS.SELECTED_FONT] = DEFAULT_VALUES.SELECTED_FONT
   }
 
-  const websiteList = await getLocalValue<WebsiteItem[]>(
-    STORAGE_KEYS.WEBSITE_LIST
-  )
-  let normalizedWebsiteList: WebsiteItem[]
-  if (websiteList === undefined) {
-    normalizedWebsiteList = DEFAULT_VALUES.WEBSITE_LIST
-  } else {
-    normalizedWebsiteList = mergeWebsiteLists(
-      websiteList,
-      DEFAULT_VALUES.WEBSITE_LIST
-    )
-  }
+  const websiteList = await getLocalValue(STORAGE_KEYS.WEBSITE_LIST)
+  const normalizedWebsiteList =
+    websiteList === undefined
+      ? DEFAULT_VALUES.WEBSITE_LIST
+      : normalizeWebsiteListForStorage(websiteList)
   storageUpdates[STORAGE_KEYS.WEBSITE_LIST] = normalizedWebsiteList
 
   const enabledByDefault = await getLocalValue<boolean>(

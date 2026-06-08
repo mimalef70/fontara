@@ -2,7 +2,10 @@ import {
   AlignRight,
   Check,
   Cloud,
+  Download,
+  FileDown,
   FileText,
+  FileUp,
   Globe2,
   HardDrive,
   Info,
@@ -10,6 +13,7 @@ import {
   ListChecks,
   Plus,
   Settings,
+  ShieldCheck,
   Trash2,
   Type,
   Upload
@@ -73,6 +77,14 @@ import {
   isGoogleFontValue
 } from "../../utils/google-fonts"
 import {
+  createSettingsBackup,
+  createSettingsBackupFileName,
+  FONTARA_SETTINGS_STORAGE_KEYS,
+  getSettingsBackupDefaults,
+  normalizeSettingsBackup,
+  parseSettingsBackupText
+} from "../../utils/settings-backup"
+import {
   getLocalValue,
   getLocalValues,
   setLocalValues
@@ -124,7 +136,13 @@ import {
   getTextStrokeInitialValue
 } from "../storage-defaults"
 
-type SettingsSection = "fonts" | "sites" | "rtl" | "language" | "status"
+type SettingsSection =
+  | "fonts"
+  | "sites"
+  | "rtl"
+  | "language"
+  | "backup"
+  | "status"
 
 const settingsNavigation: Array<{
   id: SettingsSection
@@ -135,6 +153,7 @@ const settingsNavigation: Array<{
   { id: "sites", labelKey: "options.nav.sites", icon: Globe2 },
   { id: "rtl", labelKey: "options.nav.rtl", icon: AlignRight },
   { id: "language", labelKey: "options.nav.language", icon: Languages },
+  { id: "backup", labelKey: "options.nav.backup", icon: FileDown },
   { id: "status", labelKey: "options.nav.status", icon: ListChecks }
 ]
 
@@ -143,6 +162,7 @@ const sectionDescriptionKeys: Record<SettingsSection, MessageKey> = {
   sites: "options.section.sites.description",
   rtl: "options.section.rtl.description",
   language: "options.section.language.description",
+  backup: "options.section.backup.description",
   status: "options.section.status.description"
 }
 
@@ -219,6 +239,24 @@ function getDefaultFontLabel(
   language: SupportedUILanguage
 ): string {
   return font.localizedName[language] || font.name
+}
+
+function downloadTextFile(fileName: string, content: string): void {
+  const url = URL.createObjectURL(
+    new Blob([content], { type: "application/json" })
+  )
+  const link = document.createElement("a")
+  link.href = url
+  link.download = fileName
+  link.rel = "noopener"
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+function readTextFile(file: File): Promise<string> {
+  return file.text()
 }
 
 function OptionsPage() {
@@ -314,7 +352,10 @@ function OptionsPage() {
   }
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const settingsImportInputRef = React.useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isBackupBusy, setIsBackupBusy] = useState(false)
+  const [isImportWarningVisible, setIsImportWarningVisible] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFileHash, setSelectedFileHash] = useState("")
   const [fontName, setFontName] = useState("")
@@ -512,6 +553,74 @@ function OptionsPage() {
             ? error.message
             : t("options.toast.fontDeleteError")
       })
+    }
+  }
+
+  const handleExportSettings = async () => {
+    setIsBackupBusy(true)
+
+    try {
+      const storedValues = await getLocalValues(getSettingsBackupDefaults())
+      const normalizedBackup = await normalizeSettingsBackup(storedValues)
+      const backup = createSettingsBackup(normalizedBackup.settings, {
+        extensionVersion: version
+      })
+      downloadTextFile(
+        createSettingsBackupFileName(),
+        JSON.stringify(backup, null, 2)
+      )
+      toast({
+        title: t("options.toast.settingsExported"),
+        description: t("options.toast.settingsExportedDescription", {
+          count: formatNumber(FONTARA_SETTINGS_STORAGE_KEYS.length)
+        })
+      })
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to export Font Ara settings.", error)
+      }
+      toast({ title: t("options.toast.settingsExportError") })
+    } finally {
+      setIsBackupBusy(false)
+    }
+  }
+
+  const handleChooseSettingsImportFile = () => {
+    settingsImportInputRef.current?.click()
+  }
+
+  const handleSettingsImportFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.currentTarget.files?.[0]
+    if (!file) return
+
+    setIsBackupBusy(true)
+
+    try {
+      const parsedBackup = parseSettingsBackupText(await readTextFile(file))
+      const normalizedBackup = await normalizeSettingsBackup(
+        parsedBackup.settings
+      )
+      await setLocalValues(normalizedBackup.settings)
+      setIsImportWarningVisible(false)
+      toast({
+        title: t("options.toast.settingsImported"),
+        description: t("options.toast.settingsImportedDescription", {
+          count: formatNumber(normalizedBackup.importedKeyCount)
+        })
+      })
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to import Font Ara settings.", error)
+      }
+      toast({
+        title: t("options.toast.settingsImportError"),
+        description: t("options.toast.settingsImportInvalid")
+      })
+    } finally {
+      setIsBackupBusy(false)
+      event.currentTarget.value = ""
     }
   }
 
@@ -2003,6 +2112,107 @@ function OptionsPage() {
                     })}
                   </div>
                 </section>
+              )}
+
+              {activeSection === "backup" && (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.backup.exportTitle")}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {t("options.backup.exportDescription")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <FileDown className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 rounded-md border border-[#dbeafe] bg-[#f8fbff] px-4 py-3">
+                        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
+                        <p className="text-xs leading-5 text-[#334155]">
+                          {t("options.backup.exportNote")}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => void handleExportSettings()}
+                        disabled={isBackupBusy}
+                        className="h-11 bg-[#2374ff] text-white hover:bg-[#1f66df]">
+                        <Download className="size-4" />
+                        {t("options.backup.exportButton")}
+                      </Button>
+                    </div>
+                  </section>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <input
+                      ref={settingsImportInputRef}
+                      type="file"
+                      accept="application/json,.json"
+                      className="hidden"
+                      onChange={handleSettingsImportFileChange}
+                    />
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.backup.importTitle")}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {t("options.backup.importDescription")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <FileUp className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsImportWarningVisible(true)}
+                        disabled={isBackupBusy}
+                        className="h-11">
+                        <FileUp className="size-4" />
+                        {t("options.backup.importButton")}
+                      </Button>
+
+                      {isImportWarningVisible && (
+                        <div className="rounded-md border border-[#fde68a] bg-[#fffbeb] p-4">
+                          <h4 className="text-sm font-bold text-[#92400e]">
+                            {t("options.backup.importWarningTitle")}
+                          </h4>
+                          <p className="mt-2 text-xs leading-5 text-[#92400e]">
+                            {t("options.backup.importWarningDescription")}
+                          </p>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              onClick={handleChooseSettingsImportFile}
+                              disabled={isBackupBusy}
+                              className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
+                              <Upload className="size-4" />
+                              {t("options.backup.chooseFileButton")}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setIsImportWarningVisible(false)}
+                              disabled={isBackupBusy}
+                              className="h-10">
+                              {t("options.backup.cancelButton")}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </div>
               )}
 
               {activeSection === "status" && (

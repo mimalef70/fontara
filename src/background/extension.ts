@@ -169,9 +169,8 @@ export class ExtensionRuntime {
     changes: Record<string, chrome.storage.StorageChange>
   ): Promise<void> {
     await ExtensionRuntime.ensureStarted()
-    const settings =
-      (await syncBackgroundSettingsCacheFromLocalChanges(changes)) ??
-      (await getBackgroundSettings())
+    const settings = await syncBackgroundSettingsCacheFromLocalChanges(changes)
+    if (!settings) return
 
     await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(settings)
     ExtensionRuntime.scheduleReportChanges()

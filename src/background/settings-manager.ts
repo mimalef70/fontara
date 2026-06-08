@@ -75,34 +75,53 @@ export async function writeBackgroundSettings(
   })
   const changedValues = pickChangedValues(currentValues, normalizedValues)
 
-  if (Object.keys(changedValues).length > 0) {
-    await setLocalValues(changedValues)
-  }
-
   cachedSettings = normalizedValues
   settingsReadPromise = null
+
+  if (Object.keys(changedValues).length > 0) {
+    try {
+      await setLocalValues(changedValues)
+    } catch (error) {
+      cachedSettings = currentValues
+      throw error
+    }
+  }
+
   return normalizedValues
 }
 
 export async function syncBackgroundSettingsCacheFromLocalChanges(
   changes: LocalStorageChanges
 ): Promise<Record<string, unknown> | null> {
-  if (!cachedSettings) return null
-
   const defaults = getSettingsBackupDefaults()
   let hasSettingsChange = false
-  const nextValues = { ...cachedSettings }
+  const currentSettings = cachedSettings
 
-  for (const [key, change] of Object.entries(changes)) {
+  for (const key of Object.keys(changes)) {
     if (!hasOwn(defaults, key)) continue
 
     hasSettingsChange = true
+  }
+
+  if (!hasSettingsChange) return null
+  if (!currentSettings) return getBackgroundSettings()
+
+  const nextValues = { ...currentSettings }
+  for (const [key, change] of Object.entries(changes)) {
+    if (!hasOwn(defaults, key)) continue
+
     nextValues[key] = getStorageChangeValue(change, defaults[key])
   }
 
-  if (!hasSettingsChange) return cachedSettings
-
   const normalizedValues = await normalizeStorageValues(nextValues)
+  const effectiveChangedValues = pickChangedValues(
+    currentSettings,
+    normalizedValues
+  )
+  if (Object.keys(effectiveChangedValues).length === 0) {
+    return null
+  }
+
   const changedValues = pickChangedValues(nextValues, normalizedValues)
   cachedSettings = normalizedValues
   settingsReadPromise = null

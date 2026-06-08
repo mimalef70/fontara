@@ -102,6 +102,28 @@ test("background settings manager writes only changed normalized values", async 
   assert.equal(nextSettings, cachedSettings)
 })
 
+test("background settings manager ignores echoed local writes", async () => {
+  const storage = installChromeStorageMock({
+    [STORAGE_KEYS.SELECTED_FONT]: "Estedad-Fontara"
+  })
+
+  await getBackgroundSettings()
+  await writeBackgroundSettings({
+    [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara"
+  })
+  const echoedSettings = await syncBackgroundSettingsCacheFromLocalChanges({
+    [STORAGE_KEYS.SELECTED_FONT]: {
+      newValue: "Vazirmatn-Fontara",
+      oldValue: "Estedad-Fontara"
+    }
+  })
+  const cachedSettings = await getBackgroundSettings()
+
+  assert.equal(echoedSettings, null)
+  assert.equal(storage.getReadCount(), 1)
+  assert.equal(cachedSettings[STORAGE_KEYS.SELECTED_FONT], "Vazirmatn-Fontara")
+})
+
 test("background settings manager patches cache from local storage changes", async () => {
   const storage = installChromeStorageMock({
     [STORAGE_KEYS.SELECTED_FONT]: "Estedad-Fontara"
@@ -118,6 +140,22 @@ test("background settings manager patches cache from local storage changes", asy
 
   assert.equal(storage.getReadCount(), 1)
   assert.equal(cachedSettings[STORAGE_KEYS.SELECTED_FONT], "Vazirmatn-Fontara")
+})
+
+test("background settings manager resolves cold local storage changes", async () => {
+  const storage = installChromeStorageMock({
+    [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara"
+  })
+
+  const settings = await syncBackgroundSettingsCacheFromLocalChanges({
+    [STORAGE_KEYS.SELECTED_FONT]: {
+      newValue: "Vazirmatn-Fontara",
+      oldValue: "Estedad-Fontara"
+    }
+  })
+
+  assert.equal(storage.getReadCount(), 1)
+  assert.equal(settings?.[STORAGE_KEYS.SELECTED_FONT], "Vazirmatn-Fontara")
 })
 
 test("background settings manager writes normalized local storage changes", async () => {

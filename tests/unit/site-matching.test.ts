@@ -248,7 +248,7 @@ test("isUrlActive respects the global disabled flag", async () => {
   assert.equal(await isUrlActive(`${POPULAR_WEBSITES[0].url}/`), false)
 })
 
-test("site list URL matching mirrors Dark Reader wildcard and path behavior", () => {
+test("site list URL matching supports wildcard and path behavior", () => {
   assert.equal(
     isURLMatched("https://www.google.com/search", "google.com"),
     true

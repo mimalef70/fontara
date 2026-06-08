@@ -57,7 +57,7 @@ test("system font list uses font ids, deduplicates, and sorts display names", ()
   )
 })
 
-test("system font list falls back to Dark Reader's generic families when fontSettings is unavailable", async () => {
+test("system font list falls back to generic families when fontSettings is unavailable", async () => {
   Reflect.set(globalThis, "chrome", {
     runtime: {
       getURL() {
@@ -77,7 +77,7 @@ test("system font list falls back to Dark Reader's generic families when fontSet
   )
 })
 
-test("generic system font fallbacks match Dark Reader's cross-browser list", () => {
+test("generic system font fallbacks cover cross-browser families", () => {
   assert.deepEqual(
     getGenericSystemFontList().map((font) => font.fontFamily),
     ["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"]

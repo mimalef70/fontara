@@ -19,16 +19,22 @@ export const FONTARA_COMMANDS = {
 export type FontaraCommand =
   (typeof FONTARA_COMMANDS)[keyof typeof FONTARA_COMMANDS]
 
-type CommandDetails = {
+export type CommandDetails = {
   tab?: chrome.tabs.Tab | null
   url?: string | null
 }
+
+export type FontaraCommandRunner = (
+  command: string,
+  details?: CommandDetails
+) => Promise<void>
 
 type CommandsAPI = typeof chrome.commands
 
 const COMMAND_DEBOUNCE_DELAY_MS = 75
 
 let commandListenerRegistered = false
+let commandRunner: FontaraCommandRunner | null = null
 
 function debugWarn(message: string, error?: unknown): void {
   if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
@@ -165,6 +171,11 @@ export async function runFontaraCommand(
   command: string,
   details: CommandDetails = {}
 ): Promise<void> {
+  if (commandRunner) {
+    await commandRunner(command, details)
+    return
+  }
+
   try {
     switch (command) {
       case FONTARA_COMMANDS.TOGGLE_EXTENSION:
@@ -177,6 +188,12 @@ export async function runFontaraCommand(
   } catch (error) {
     debugWarn("Failed to run FontAra command.", error)
   }
+}
+
+export function setFontaraCommandRunner(
+  runner: FontaraCommandRunner | null
+): void {
+  commandRunner = runner
 }
 
 const runDebouncedCommand = debounce(

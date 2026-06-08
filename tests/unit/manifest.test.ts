@@ -60,7 +60,7 @@ test("manifest grants storage capacity for custom fonts without redundant active
   assert.equal(manifest.permissions.includes("activeTab"), false)
 })
 
-test("manifest enables context menus like Dark Reader", () => {
+test("manifest enables context menus for extension commands", () => {
   const manifest = readJSON<Manifest>("src/manifest.json")
   const firefoxManifest = readJSON<Manifest>("src/manifest-firefox-mv3.json")
 
@@ -113,7 +113,7 @@ test("manifest exposes only font assets to web pages", () => {
   )
 })
 
-test("chromium manifest grants system font access like Dark Reader while firefox omits it", () => {
+test("chromium manifest grants system font access while firefox omits it", () => {
   const manifest = readJSON<Manifest>("src/manifest.json")
   const chromeManifest = readJSON<Manifest>("src/manifest-chrome-mv3.json")
   const firefoxManifest = readJSON<Manifest>("src/manifest-firefox-mv3.json")

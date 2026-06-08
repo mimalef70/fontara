@@ -10,7 +10,7 @@ import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
-import { setLocalValues } from "../../utils/storage"
+import { fontaraConnector } from "../connect/connector"
 import { useStorageValue } from "../hooks/use-storage"
 import {
   EMPTY_WEBSITE_LIST,
@@ -76,7 +76,7 @@ function PopularUrl() {
     }
 
     try {
-      await setLocalValues({
+      await fontaraConnector.changeSettings({
         [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
         [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
         [STORAGE_KEYS.WEBSITE_LIST]: updatedUrls

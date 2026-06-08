@@ -83,17 +83,10 @@ import {
 import {
   createSettingsBackup,
   createSettingsBackupFileName,
-  createSettingsResetValues,
   FONTARA_SETTINGS_STORAGE_KEYS,
-  getSettingsBackupDefaults,
-  normalizeSettingsBackup,
   parseSettingsBackupText
 } from "../../utils/settings-backup"
-import {
-  getLocalValue,
-  getLocalValues,
-  setLocalValues
-} from "../../utils/storage"
+import { getLocalValue, getLocalValues } from "../../utils/storage"
 import {
   decodeSystemFontValue,
   getSystemFontList,
@@ -134,6 +127,7 @@ import {
 } from "../components/ui/sidebar"
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
+import { fontaraConnector } from "../connect/connector"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
@@ -600,7 +594,7 @@ function OptionsPage() {
         selectedFont,
         siteProfiles
       )
-      await setLocalValues(storageUpdate)
+      await fontaraConnector.changeSettings(storageUpdate)
       toast({ title: t("options.toast.fontDeleted") })
     } catch (error) {
       toast({
@@ -616,9 +610,8 @@ function OptionsPage() {
     setIsBackupBusy(true)
 
     try {
-      const storedValues = await getLocalValues(getSettingsBackupDefaults())
-      const normalizedBackup = await normalizeSettingsBackup(storedValues)
-      const backup = createSettingsBackup(normalizedBackup.settings, {
+      const extensionData = await fontaraConnector.getData()
+      const backup = createSettingsBackup(extensionData.settings, {
         extensionVersion: version
       })
       downloadTextFile(
@@ -655,15 +648,14 @@ function OptionsPage() {
 
     try {
       const parsedBackup = parseSettingsBackupText(await readTextFile(file))
-      const normalizedBackup = await normalizeSettingsBackup(
+      const importedSettings = await fontaraConnector.importSettings(
         parsedBackup.settings
       )
-      await setLocalValues(normalizedBackup.settings)
       setIsImportWarningVisible(false)
       toast({
         title: t("options.toast.settingsImported"),
         description: t("options.toast.settingsImportedDescription", {
-          count: formatNumber(normalizedBackup.importedKeyCount)
+          count: formatNumber(importedSettings.importedKeyCount)
         })
       })
     } catch (error) {
@@ -684,7 +676,7 @@ function OptionsPage() {
     setIsBackupBusy(true)
 
     try {
-      await setLocalValues(await createSettingsResetValues())
+      await fontaraConnector.resetSettings()
       setIsImportWarningVisible(false)
       setIsResetWarningVisible(false)
       toast({ title: t("options.toast.settingsReset") })
@@ -791,7 +783,7 @@ function OptionsPage() {
         }
 
         if (!cancelled && Object.keys(updates).length > 0) {
-          await setLocalValues(updates)
+          await fontaraConnector.changeSettings(updates)
         }
       } catch (error) {
         if (__DEBUG__) {
@@ -899,7 +891,7 @@ function OptionsPage() {
     )
 
     try {
-      await setLocalValues({
+      await fontaraConnector.changeSettings({
         [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
         [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
         [STORAGE_KEYS.WEBSITE_LIST]: updatedWebsiteList
@@ -945,7 +937,7 @@ function OptionsPage() {
     const updatedList = addSitePatternToList(managedSiteList, pattern)
 
     try {
-      await setLocalValues({ [listKey]: updatedList })
+      await fontaraConnector.changeSettings({ [listKey]: updatedList })
       setSitePatternInput("")
     } catch (error) {
       toast({
@@ -964,7 +956,7 @@ function OptionsPage() {
     const updatedList = removeSitePatternFromList(managedSiteList, pattern)
 
     try {
-      await setLocalValues({ [listKey]: updatedList })
+      await fontaraConnector.changeSettings({ [listKey]: updatedList })
     } catch (error) {
       toast({
         title:
@@ -1075,7 +1067,7 @@ function OptionsPage() {
         const selectedFont = await getLocalValue<string>(
           STORAGE_KEYS.SELECTED_FONT
         )
-        await setLocalValues({
+        await fontaraConnector.changeSettings({
           [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
           [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(
             normalizedSiteProfiles,
@@ -1116,7 +1108,7 @@ function OptionsPage() {
         const selectedFont = await getLocalValue<string>(
           STORAGE_KEYS.SELECTED_FONT
         )
-        await setLocalValues({
+        await fontaraConnector.changeSettings({
           [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
           [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(
             normalizedSiteProfiles,

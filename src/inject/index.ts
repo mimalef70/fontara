@@ -1,4 +1,9 @@
 import { STORAGE_KEYS } from "../config/storage"
+import type { FontaraContentScriptMessage } from "../definitions"
+import {
+  MESSAGE_TYPES_BG_TO_CS,
+  MESSAGE_TYPES_CS_TO_BG
+} from "../utils/message"
 import { watchLocalStorage } from "../utils/storage"
 import { getUrlActivationState } from "../utils/url"
 import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
@@ -16,6 +21,15 @@ import {
 
 type ApplyMode = "font-styles" | "full"
 type RuntimeMessageEvent = typeof chrome.runtime.onMessage
+type RuntimeControlMessage = {
+  action?: string
+  scriptId?: string
+  type?: string
+}
+
+const scriptId = `${Date.now().toString(36)}-${Math.random()
+  .toString(36)
+  .slice(2)}`
 
 let disposed = false
 let applyFontsQueuedMode: ApplyMode | null = null
@@ -72,6 +86,52 @@ function getRuntimeMessageEvent(): RuntimeMessageEvent | null {
   if (typeof chrome === "undefined") return null
 
   return chrome.runtime?.onMessage ?? null
+}
+
+function isTopFrame(): boolean {
+  try {
+    return window === window.top
+  } catch {
+    return false
+  }
+}
+
+function sendDocumentLifecycleMessage(
+  type:
+    | typeof MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    | typeof MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET
+    | typeof MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME
+): void {
+  if (disposed) return
+
+  const message: FontaraContentScriptMessage = {
+    data: {
+      isTopFrame: isTopFrame(),
+      url: window.location.href
+    },
+    scriptId,
+    type
+  }
+
+  try {
+    const runtime = chrome.runtime
+    if (!runtime || typeof runtime.sendMessage !== "function") {
+      return
+    }
+
+    runtime.sendMessage(message, () => {
+      const error = chrome.runtime?.lastError
+      if (error && isExtensionContextInvalidated(error)) {
+        cleanupRuntimeListeners({ removeStyles: true })
+      }
+    })
+  } catch (error) {
+    if (isExtensionContextInvalidated(error)) {
+      cleanupRuntimeListeners({ removeStyles: true })
+      return
+    }
+    debugWarn("Failed to send FontAra document lifecycle message.", error)
+  }
 }
 
 function runWhenBodyIsReady(callback: () => void | Promise<void>): () => void {
@@ -279,7 +339,16 @@ stopWatchingUrlChanges = watchUrlChanges(() => {
   scheduleApplyRtlIfActive()
 })
 
-function handleRuntimeMessage(message: { action?: string }): void {
+function handleRuntimeMessage(message: RuntimeControlMessage): void {
+  if (
+    message?.type === MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED &&
+    (!message.scriptId || message.scriptId === scriptId)
+  ) {
+    scheduleApplyFontsIfActive()
+    scheduleApplyRtlIfActive()
+    return
+  }
+
   if (message?.action === "toggle" || message?.action === "toggleExtension") {
     scheduleApplyFontsIfActive()
     scheduleApplyRtlIfActive()
@@ -327,6 +396,7 @@ function handlePageHide(event: PageTransitionEvent): void {
   pauseRtlSupport()
 
   if (!event.persisted) {
+    sendDocumentLifecycleMessage(MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET)
     cleanupRuntimeListeners()
   }
 }
@@ -344,6 +414,7 @@ function handleFreeze(): void {
 }
 
 function handleResume(): void {
+  sendDocumentLifecycleMessage(MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME)
   scheduleApplyFontsIfActive()
   scheduleApplyRtlIfActive()
 }
@@ -365,6 +436,7 @@ try {
 }
 
 if (!disposed) {
+  sendDocumentLifecycleMessage(MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT)
   addEventListener("pagehide", handlePageHide)
   addEventListener("pageshow", handlePageShow)
   addEventListener("freeze", handleFreeze)

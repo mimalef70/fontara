@@ -1,34 +1,7 @@
-import { URLS } from "../config/storage"
-import { registerCommandListeners } from "./command-manager"
-import { registerContextMenuListeners } from "./context-menu-manager"
-import { registerIconListeners } from "./icon-manager"
-import {
-  ensureStorageValues,
-  registerSettingsSyncListeners
-} from "./storage-manager"
+import { ExtensionRuntime } from "./extension"
 
-function logStorageError(error: unknown): void {
-  if (__DEBUG__) {
-    console.warn("Failed to initialize FontAra storage.", error)
+void ExtensionRuntime.start().catch((error) => {
+  if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+    console.warn("Failed to start FontAra runtime.", error)
   }
-}
-
-void ensureStorageValues().catch(logStorageError)
-registerSettingsSyncListeners()
-registerIconListeners()
-registerCommandListeners()
-registerContextMenuListeners()
-
-chrome.runtime.onInstalled.addListener((details) => {
-  void (async () => {
-    await ensureStorageValues().catch(logStorageError)
-
-    if (details.reason === "install") {
-      await chrome.tabs.create({ url: URLS.WELCOME_PAGE })
-    } else if (details.reason === "update") {
-      await chrome.tabs.create({ url: URLS.CHANGELOG })
-    }
-  })()
 })
-
-chrome.runtime.setUninstallURL(URLS.UNINSTALL_FORM)

@@ -231,9 +231,9 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.siteProfiles\.title/)
   assert.match(optionsSource, /createSettingsBackup/)
   assert.match(optionsSource, /parseSettingsBackupText/)
-  assert.match(optionsSource, /normalizeSettingsBackup/)
-  assert.match(optionsSource, /getSettingsBackupDefaults/)
-  assert.match(optionsSource, /createSettingsResetValues/)
+  assert.match(optionsSource, /fontaraConnector\.getData/)
+  assert.match(optionsSource, /fontaraConnector\.importSettings/)
+  assert.match(optionsSource, /fontaraConnector\.resetSettings/)
   assert.match(optionsSource, /FONTARA_SETTINGS_STORAGE_KEYS/)
   assert.match(
     optionsSource,
@@ -304,7 +304,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.doesNotMatch(sidebarSource, /menu-item:pr-8/)
 })
 
-test("options page exposes Dark Reader style hotkey controls", () => {
+test("options page exposes extension hotkey controls", () => {
   const hotkeysSource = fs.readFileSync(
     path.resolve("src/ui/components/HotkeysSettings.tsx"),
     "utf8"
@@ -501,6 +501,8 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(storageHookSource, /valueRef = React\.useRef\(value\)/)
   assert.match(storageHookSource, /setSyncedValue = React\.useCallback/)
   assert.match(storageHookSource, /valueRef\.current/)
+  assert.match(storageHookSource, /fontaraConnector\.changeSettings/)
+  assert.doesNotMatch(uiSources, /setLocalValues/)
   assert.doesNotMatch(storageHookSource, /\[key, value\]/)
   assert.match(uiSources, /EMPTY_CUSTOM_FONT_LIST/)
   assert.match(uiSources, /EMPTY_WEBSITE_LIST/)

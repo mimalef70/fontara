@@ -1,6 +1,7 @@
 import * as React from "react"
 
-import { getLocalValue, setLocalValue } from "../../utils/storage"
+import { getLocalValue } from "../../utils/storage"
+import { fontaraConnector } from "../connect/connector"
 
 type Initializer<T> = T | ((value: T | undefined) => T)
 
@@ -76,7 +77,7 @@ export function useStorageValue<T>(
       setSyncedValue(resolvedValue)
 
       try {
-        await setLocalValue(key, resolvedValue)
+        await fontaraConnector.changeSettings({ [key]: resolvedValue })
       } catch (error) {
         setSyncedValue(previousValue)
         throw error

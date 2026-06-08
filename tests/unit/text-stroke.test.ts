@@ -13,7 +13,7 @@ import {
   getTextStrokeConfig
 } from "../../src/inject/text-stroke-style"
 
-test("text stroke CSS follows Dark Reader's protected text selector", () => {
+test("text stroke CSS follows the protected text selector", () => {
   const css = createTextStrokeCSS(
     getTextStrokeConfig(
       0.2,
@@ -50,7 +50,7 @@ test("text stroke config lets per-site profiles override the global value", () =
   )
 })
 
-test("text stroke values normalize to Dark Reader's 0..1 step scale", () => {
+test("text stroke values normalize to the 0..1 step scale", () => {
   assert.equal(normalizeTextStrokeValue(-1), TEXT_STROKE_MIN)
   assert.equal(normalizeTextStrokeValue(2), TEXT_STROKE_MAX)
   assert.equal(normalizeTextStrokeValue(0.24), 0.2)

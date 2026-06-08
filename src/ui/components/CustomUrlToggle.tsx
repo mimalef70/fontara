@@ -11,8 +11,8 @@ import {
 } from "../../config/site-list"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
-import { setLocalValues } from "../../utils/storage"
 import { createRegexFromUrl, getMatchingWebsite } from "../../utils/url"
+import { fontaraConnector } from "../connect/connector"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
@@ -76,7 +76,7 @@ const CustomUrlToggle = () => {
           )
 
     try {
-      await setLocalValues({
+      await fontaraConnector.changeSettings({
         [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
         [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
         [STORAGE_KEYS.WEBSITE_LIST]: updatedUrls

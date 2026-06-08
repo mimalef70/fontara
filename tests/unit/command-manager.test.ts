@@ -1,12 +1,16 @@
 import assert from "node:assert/strict"
 import test, { afterEach } from "node:test"
 
-import { runFontaraCommand } from "../../src/background/command-manager"
+import {
+  runFontaraCommand,
+  setFontaraCommandRunner
+} from "../../src/background/command-manager"
 import { STORAGE_KEYS } from "../../src/config/storage"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
 afterEach(() => {
+  setFontaraCommandRunner(null)
   Reflect.set(globalThis, "chrome", originalChrome)
 })
 
@@ -95,6 +99,26 @@ test("FontAra commands toggle the current website", async () => {
       url: "https://example.com/path",
       regex: "^https?://example\\.com/?.*$",
       isActive: false
+    }
+  ])
+})
+
+test("FontAra commands delegate to the runtime when a runner is registered", async () => {
+  const calls: Array<{ command: string; url?: string | null }> = []
+
+  setFontaraCommandRunner(async (command, details) => {
+    calls.push({
+      command,
+      url: details?.url
+    })
+  })
+
+  await runFontaraCommand("addSite", { url: "https://example.com/path" })
+
+  assert.deepEqual(calls, [
+    {
+      command: "addSite",
+      url: "https://example.com/path"
     }
   ])
 })

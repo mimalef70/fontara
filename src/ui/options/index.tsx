@@ -86,7 +86,6 @@ import {
   FONTARA_SETTINGS_STORAGE_KEYS,
   parseSettingsBackupText
 } from "../../utils/settings-backup"
-import { getLocalValue, getLocalValues } from "../../utils/storage"
 import {
   decodeSystemFontValue,
   getSystemFontList,
@@ -314,6 +313,10 @@ function OptionsPage() {
   const [customFontList, setCustomFontList] = useStorageValue<FontData[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
+  )
+  const [selectedFont] = useStorageValue<string>(
+    STORAGE_KEYS.SELECTED_FONT,
+    DEFAULT_VALUES.SELECTED_FONT
   )
   const [systemFontsEnabled, setSystemFontsEnabled] = useStorageValue<boolean>(
     STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
@@ -585,9 +588,6 @@ function OptionsPage() {
 
   const handleDeleteFont = async (fontValue: string) => {
     try {
-      const selectedFont = await getLocalValue<string>(
-        STORAGE_KEYS.SELECTED_FONT
-      )
       const storageUpdate = createCustomFontDeletionUpdate(
         customFontList,
         fontValue,
@@ -754,65 +754,6 @@ function OptionsPage() {
       : RTL_SUPPORTED_SITES.filter((site) =>
           isRtlSiteEnabled(normalizedRtlSiteSettings, site.id)
         ).length
-
-  React.useEffect(() => {
-    let cancelled = false
-
-    const reconcileStoredSiteLists = async () => {
-      try {
-        const storedValues = await getLocalValues<Record<string, unknown>>({
-          [STORAGE_KEYS.DISABLED_FOR]: undefined,
-          [STORAGE_KEYS.ENABLED_FOR]: undefined
-        })
-        const updates: Record<string, unknown> = {}
-        const rawEnabledFor = storedValues[STORAGE_KEYS.ENABLED_FOR]
-        const rawDisabledFor = storedValues[STORAGE_KEYS.DISABLED_FOR]
-
-        if (rawEnabledFor !== undefined) {
-          const normalized = normalizeEnabledSiteList(rawEnabledFor)
-          if (JSON.stringify(rawEnabledFor) !== JSON.stringify(normalized)) {
-            updates[STORAGE_KEYS.ENABLED_FOR] = normalized
-          }
-        }
-
-        if (rawDisabledFor !== undefined) {
-          const normalized = normalizeSiteList(rawDisabledFor)
-          if (JSON.stringify(rawDisabledFor) !== JSON.stringify(normalized)) {
-            updates[STORAGE_KEYS.DISABLED_FOR] = normalized
-          }
-        }
-
-        if (!cancelled && Object.keys(updates).length > 0) {
-          await fontaraConnector.changeSettings(updates)
-        }
-      } catch (error) {
-        if (__DEBUG__) {
-          console.warn("Failed to reconcile stored site lists.", error)
-        }
-      }
-    }
-
-    const handleSiteListStorageChange = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      areaName: string
-    ) => {
-      if (areaName !== "local") return
-      if (
-        changes[STORAGE_KEYS.DISABLED_FOR] ||
-        changes[STORAGE_KEYS.ENABLED_FOR]
-      ) {
-        void reconcileStoredSiteLists()
-      }
-    }
-
-    void reconcileStoredSiteLists()
-    chrome.storage.onChanged.addListener(handleSiteListStorageChange)
-
-    return () => {
-      cancelled = true
-      chrome.storage.onChanged.removeListener(handleSiteListStorageChange)
-    }
-  }, [])
 
   const fontStorageBytes = customFontList.reduce((total, font) => {
     return total + new Blob([font.data]).size
@@ -1067,9 +1008,6 @@ function OptionsPage() {
   const handleSystemFontsToggle = async (checked: boolean) => {
     try {
       if (!checked) {
-        const selectedFont = await getLocalValue<string>(
-          STORAGE_KEYS.SELECTED_FONT
-        )
         await fontaraConnector.changeSettings({
           [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
           [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(
@@ -1108,9 +1046,6 @@ function OptionsPage() {
   const handleGoogleFontsToggle = async (checked: boolean) => {
     try {
       if (!checked) {
-        const selectedFont = await getLocalValue<string>(
-          STORAGE_KEYS.SELECTED_FONT
-        )
         await fontaraConnector.changeSettings({
           [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
           [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(

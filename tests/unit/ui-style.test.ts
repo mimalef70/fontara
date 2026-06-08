@@ -552,12 +552,11 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(uiSources, /getEnabledByDefaultInitialValue/)
   assert.match(uiSources, /getEnabledForInitialValue/)
   assert.match(uiSources, /getDisabledForInitialValue/)
-  assert.match(uiSources, /getLocalValues/)
-  assert.match(uiSources, /reconcileStoredSiteLists/)
-  assert.match(uiSources, /normalizeEnabledSiteList\(rawEnabledFor\)/)
-  assert.match(uiSources, /handleSiteListStorageChange/)
-  assert.match(uiSources, /chrome\.storage\.onChanged\.addListener/)
-  assert.match(uiSources, /chrome\.storage\.onChanged\.removeListener/)
+  assert.doesNotMatch(uiSources, /getLocalValue/)
+  assert.doesNotMatch(uiSources, /getLocalValues/)
+  assert.doesNotMatch(uiSources, /reconcileStoredSiteLists/)
+  assert.doesNotMatch(uiSources, /handleSiteListStorageChange/)
+  assert.doesNotMatch(uiSources, /chrome\.storage\.onChanged/)
   assert.match(
     uiSources,
     /STORAGE_KEYS\.ENABLED_FOR,[\s\S]{0,120}getEnabledForInitialValue/

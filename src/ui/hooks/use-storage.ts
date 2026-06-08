@@ -1,7 +1,7 @@
 import * as React from "react"
 
-import { getLocalValue } from "../../utils/storage"
 import { fontaraConnector } from "../connect/connector"
+import { useExtensionData } from "./use-extension-data"
 
 type Initializer<T> = T | ((value: T | undefined) => T)
 
@@ -9,6 +9,7 @@ export function useStorageValue<T>(
   key: string,
   initialValue?: Initializer<T>
 ): [T, (value: T | ((current: T) => T)) => Promise<void>] {
+  const extensionData = useExtensionData()
   const initialValueRef = React.useRef(initialValue)
   initialValueRef.current = initialValue
 
@@ -35,36 +36,12 @@ export function useStorageValue<T>(
   }, [])
 
   React.useEffect(() => {
-    let mounted = true
+    if (!extensionData) return
 
-    getLocalValue<T>(key)
-      .then((storedValue) => {
-        if (mounted) {
-          setSyncedValue(resolveInitialValue(storedValue))
-        }
-      })
-      .catch((error) => {
-        if (__DEBUG__) {
-          console.warn(`Failed to read ${key} from extension storage.`, error)
-        }
-      })
-
-    const listener = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      areaName: string
-    ) => {
-      if (areaName !== "local" || !changes[key]) return
-      setSyncedValue(
-        resolveInitialValue(changes[key].newValue as T | undefined)
-      )
-    }
-
-    chrome.storage.onChanged.addListener(listener)
-    return () => {
-      mounted = false
-      chrome.storage.onChanged.removeListener(listener)
-    }
-  }, [key, resolveInitialValue, setSyncedValue])
+    setSyncedValue(
+      resolveInitialValue(extensionData.settings[key] as T | undefined)
+    )
+  }, [extensionData, key, resolveInitialValue, setSyncedValue])
 
   const updateValue = React.useCallback(
     async (nextValue: T | ((current: T) => T)) => {

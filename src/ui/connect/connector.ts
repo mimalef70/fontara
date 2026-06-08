@@ -15,6 +15,7 @@ type ChangeSubscriber = (data: FontaraExtensionData) => void
 
 class FontaraConnector {
   private changeSubscribers = new Set<ChangeSubscriber>()
+  private latestData: FontaraExtensionData | null = null
 
   private sendRequest<T>(message: FontaraUIMessage): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -41,14 +42,47 @@ class FontaraConnector {
   private onChangesReceived = (message: FontaraBackgroundMessage): void => {
     if (message?.type !== MESSAGE_TYPES_BG_TO_UI.CHANGES) return
 
+    this.publishChanges(message.data)
+  }
+
+  private publishChanges(data: FontaraExtensionData): void {
+    if (this.changeSubscribers.size === 0) {
+      this.latestData = null
+      return
+    }
+
+    this.latestData = data
+
     for (const subscriber of this.changeSubscribers) {
-      subscriber(message.data)
+      subscriber(data)
+    }
+  }
+
+  private notifyWithLatestData(callback: ChangeSubscriber): void {
+    const data = this.latestData
+    if (!data) return
+
+    queueMicrotask(() => {
+      if (this.changeSubscribers.has(callback)) {
+        callback(data)
+      }
+    })
+  }
+
+  private clearLatestDataIfIdle(): void {
+    if (this.changeSubscribers.size === 0) {
+      this.latestData = null
     }
   }
 
   getData(): Promise<FontaraExtensionData> {
     return this.sendRequest<FontaraExtensionData>({
       type: MESSAGE_TYPES_UI_TO_BG.GET_DATA
+    }).then((data) => {
+      if (this.changeSubscribers.size > 0) {
+        this.latestData = data
+      }
+      return data
     })
   }
 
@@ -86,17 +120,14 @@ class FontaraConnector {
 
   subscribeToChanges(callback: ChangeSubscriber): void {
     this.changeSubscribers.add(callback)
+    this.notifyWithLatestData(callback)
 
     if (this.changeSubscribers.size === 1) {
       chrome.runtime.onMessage.addListener(this.onChangesReceived)
       void this.sendRequest<FontaraExtensionData>({
         type: MESSAGE_TYPES_UI_TO_BG.SUBSCRIBE_TO_CHANGES
       })
-        .then((data) => {
-          for (const subscriber of this.changeSubscribers) {
-            subscriber(data)
-          }
-        })
+        .then((data) => this.publishChanges(data))
         .catch((error) => {
           if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
             console.warn(
@@ -113,6 +144,7 @@ class FontaraConnector {
 
     if (this.changeSubscribers.size === 0) {
       chrome.runtime.onMessage.removeListener(this.onChangesReceived)
+      this.clearLatestDataIfIdle()
       void this.sendRequest<boolean>({
         type: MESSAGE_TYPES_UI_TO_BG.UNSUBSCRIBE_FROM_CHANGES
       }).catch(() => {})

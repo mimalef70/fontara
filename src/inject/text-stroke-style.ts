@@ -1,38 +1,16 @@
-import { GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS } from "../config/selectors"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import { normalizeTextStrokeValue } from "../config/text-stroke"
 import type { SiteProfile, WebsiteItem } from "../definitions"
+import {
+  createTextStrokeCSS,
+  getTextStrokeConfig,
+  type TextStrokeConfig
+} from "../generators/text-stroke"
 import { getLocalValue } from "../utils/storage"
 import { removeStyle, upsertStyle } from "./style-utils"
 
 const TEXT_STROKE_STYLE_ID = "fontara-text-stroke-style"
 
-export type TextStrokeConfig = {
-  widthPx: number
-}
-
-// Keep site context in this boundary so per-site profiles can override the
-// global text stroke setting without leaking storage details into callers.
-export function getTextStrokeConfig(
-  value: unknown,
-  _matchingWebsite: WebsiteItem | null,
-  siteProfile: SiteProfile | null
-): TextStrokeConfig {
-  return {
-    widthPx: normalizeTextStrokeValue(siteProfile?.textStroke ?? value)
-  }
-}
-
-export function createTextStrokeCSS(config: TextStrokeConfig): string {
-  if (config.widthPx <= 0) return ""
-
-  return [
-    `*:not(${GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS.join(", ")}) {`,
-    `  -webkit-text-stroke: ${config.widthPx}px !important;`,
-    `  text-stroke: ${config.widthPx}px !important;`,
-    "}"
-  ].join("\n")
-}
+export { createTextStrokeCSS, getTextStrokeConfig, type TextStrokeConfig }
 
 export async function injectTextStrokeStyle(
   matchingWebsite: WebsiteItem | null,
@@ -58,4 +36,13 @@ export async function injectTextStrokeStyle(
 
 export function removeTextStrokeStyle(): void {
   removeStyle(TEXT_STROKE_STYLE_ID)
+}
+
+export function injectResolvedTextStrokeStyle(css: string): void {
+  if (css) {
+    upsertStyle(TEXT_STROKE_STYLE_ID, css)
+    return
+  }
+
+  removeTextStrokeStyle()
 }

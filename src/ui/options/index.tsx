@@ -40,7 +40,7 @@ import {
   type RtlSiteSettings
 } from "../../config/rtl-sites"
 import {
-  addSitePatternToList,
+  createSiteListPatternAddUpdate,
   createWebsiteSiteListToggleUpdate,
   getDisplaySitePattern,
   isSiteListUrlEnabled,
@@ -931,13 +931,16 @@ function OptionsPage() {
       return
     }
 
-    const listKey = normalizedEnabledByDefault
-      ? STORAGE_KEYS.DISABLED_FOR
-      : STORAGE_KEYS.ENABLED_FOR
-    const updatedList = addSitePatternToList(managedSiteList, pattern)
+    const siteListUpdate = createSiteListPatternAddUpdate(
+      pattern,
+      siteListSettings
+    )
 
     try {
-      await fontaraConnector.changeSettings({ [listKey]: updatedList })
+      await fontaraConnector.changeSettings({
+        [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
+        [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor
+      })
       setSitePatternInput("")
     } catch (error) {
       toast({

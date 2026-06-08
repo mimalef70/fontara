@@ -5,6 +5,7 @@ import test, { afterEach } from "node:test"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontData, SiteProfile, WebsiteItem } from "../../src/definitions"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
+import { MESSAGE_TYPES_BG_TO_CS } from "../../src/utils/message"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 type StorageListener = (
@@ -160,6 +161,7 @@ function createRuntimeMocks(): {
   getStorageGetCount: (key: string) => number
   getStyleText: (id: string) => string
   getTreeWalkerCount: () => number
+  dispatchRuntimeMessage: (message: unknown) => void
   setRuntimeRemoveError: (error: unknown) => void
   values: StoredValues
   window: {
@@ -180,6 +182,7 @@ function createRuntimeMocks(): {
 } {
   const elementsById = new Map<string, FakeElement>()
   const listeners: StorageListener[] = []
+  const runtimeMessageListeners: Array<(message: unknown) => void> = []
   const storageGetCounts = new Map<string, number>()
   const windowListeners = new Map<string, Array<(event: unknown) => void>>()
   let runtimeRemoveError: unknown = null
@@ -386,7 +389,9 @@ function createRuntimeMocks(): {
         return `chrome-extension://fontara/${path}`
       },
       onMessage: {
-        addListener() {},
+        addListener(listener: (message: unknown) => void) {
+          runtimeMessageListeners.push(listener)
+        },
         removeListener() {
           if (runtimeRemoveError) throw runtimeRemoveError
         }
@@ -446,6 +451,11 @@ function createRuntimeMocks(): {
     dispatchStorageChange(changes, areaName) {
       for (const listener of listeners) {
         listener(changes, areaName)
+      }
+    },
+    dispatchRuntimeMessage(message) {
+      for (const listener of runtimeMessageListeners) {
+        listener(message)
       }
     },
     getStorageGetCount(key) {
@@ -524,7 +534,7 @@ test("selected custom font changes inject its font-face without a reload", async
     assert.doesNotMatch(editableStyle, /section\[data-testid=/)
     assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
     assert.equal(runtime.getStyleText("fontara-text-stroke-style"), "")
-    assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 0)
+    assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 1)
 
     runtime.window.history.pushState({}, "", "https://other.example.com/")
 
@@ -602,6 +612,9 @@ test("selected custom font changes inject its font-face without a reload", async
     )
     assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
 
+    const customFontListReadCountBeforeCustomFont = runtime.getStorageGetCount(
+      STORAGE_KEYS.CUSTOM_FONT_LIST
+    )
     runtime.values[STORAGE_KEYS.SELECTED_FONT] = "RuntimeCustom-Fontara"
     runtime.dispatchStorageChange(
       {
@@ -625,8 +638,13 @@ test("selected custom font changes inject its font-face without a reload", async
       /--fontara-font: "RuntimeCustom-Fontara"/
     )
     assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
-    assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 1)
+    assert.ok(
+      runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST) >
+        customFontListReadCountBeforeCustomFont
+    )
 
+    const customFontListReadCountBeforeMissingCustomFont =
+      runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST)
     runtime.values[STORAGE_KEYS.SELECTED_FONT] = "MissingCustom-Fontara"
     runtime.dispatchStorageChange(
       {
@@ -645,7 +663,10 @@ test("selected custom font changes inject its font-face without a reload", async
         ) && runtime.getStyleText("fontara-custom-font-styles") === "",
       "expected missing selected custom font to fall back to the default font"
     )
-    assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 2)
+    assert.ok(
+      runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST) >
+        customFontListReadCountBeforeMissingCustomFont
+    )
 
     const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
     assert.ok(selectedSystemFont)
@@ -841,6 +862,60 @@ test("selected custom font changes inject its font-face without a reload", async
           runtime.getStyleText("fontara-dynamic-font")
         ) && runtime.getStyleText("fontara-text-stroke-style") === "",
       "expected clearing per-site profile to restore global font and text stroke"
+    )
+
+    const selectedFontReadCountBeforeResolvedCommand =
+      runtime.getStorageGetCount(STORAGE_KEYS.SELECTED_FONT)
+    runtime.dispatchRuntimeMessage({
+      data: {
+        font: {
+          active: true,
+          applyMode: "font-styles",
+          customCSS: null,
+          customFontCSS: "",
+          fontFaceCSS: "",
+          fontName: "Resolved Font",
+          googleFontCSS: null,
+          textStrokeCSS: ""
+        },
+        rtl: {
+          active: false,
+          siteId: null
+        }
+      },
+      type: MESSAGE_TYPES_BG_TO_CS.APPLY_THEME
+    })
+
+    await waitFor(
+      () =>
+        /--fontara-font: "Resolved Font"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ),
+      "expected resolved background command to update the font variable"
+    )
+
+    runtime.values[STORAGE_KEYS.SELECTED_FONT] = "RuntimeCustom-Fontara"
+    runtime.dispatchStorageChange(
+      {
+        [STORAGE_KEYS.SELECTED_FONT]: {
+          newValue: "RuntimeCustom-Fontara",
+          oldValue: DEFAULT_VALUES.SELECTED_FONT
+        }
+      },
+      "local"
+    )
+
+    await waitFor(
+      () =>
+        /--fontara-font: "RuntimeCustom-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ),
+      "expected storage fallback to keep applying changes when background does not answer"
+    )
+    assert.ok(
+      runtime.getStorageGetCount(STORAGE_KEYS.SELECTED_FONT) >
+        selectedFontReadCountBeforeResolvedCommand,
+      "expected storage fallback to re-read the selected font after a missed background command"
     )
 
     runtime.setRuntimeRemoveError(

@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react"
-
 import {
   createSiteListToggleUpdate,
   getDisplaySitePattern,
@@ -13,6 +11,7 @@ import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
 import { createRegexFromUrl, getMatchingWebsite } from "../../utils/url"
 import { fontaraConnector } from "../connect/connector"
+import { useExtensionData } from "../hooks/use-extension-data"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
@@ -25,7 +24,7 @@ import { Check as CheckIcon } from "./icons"
 
 const CustomUrlToggle = () => {
   const { direction, t } = useI18n()
-  const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null)
+  const currentTab = useExtensionData()?.activeTab ?? null
   const [websiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
     EMPTY_WEBSITE_LIST
@@ -44,13 +43,14 @@ const CustomUrlToggle = () => {
   )
 
   const handleUrlToggle = async (checked: boolean) => {
-    if (!currentTab?.url) return
+    const currentUrl = currentTab?.url
+    if (!currentUrl) return
 
     const existingWebsiteIndex = websiteList.findIndex(
-      (item) => getMatchingWebsite(currentTab.url, [item]) !== null
+      (item) => getMatchingWebsite(currentUrl, [item]) !== null
     )
     const siteListUpdate = createSiteListToggleUpdate(
-      currentTab.url,
+      currentUrl,
       {
         disabledFor,
         enabledByDefault,
@@ -64,8 +64,8 @@ const CustomUrlToggle = () => {
         ? [
             ...websiteList,
             {
-              url: currentTab.url,
-              regex: createRegexFromUrl(currentTab.url),
+              url: currentUrl,
+              regex: createRegexFromUrl(currentUrl),
               isActive: true
             }
           ]
@@ -98,21 +98,10 @@ const CustomUrlToggle = () => {
     })
   }
 
-  useEffect(() => {
-    const getActiveTab = async () => {
-      const tabs = await chrome.tabs.query({
-        active: true,
-        currentWindow: true
-      })
-      setCurrentTab(tabs[0])
-    }
-    getActiveTab()
-  }, [])
-
   const active = isUrlActive()
   const currentUrl = currentTab?.url
 
-  if (!currentUrl?.startsWith("http")) return null
+  if (!currentTab?.isSupported || !currentUrl) return null
 
   const isRtl = direction === "rtl"
   const hostName = getDisplaySitePattern(
@@ -144,9 +133,9 @@ const CustomUrlToggle = () => {
     <span
       className="inline-flex min-w-0 max-w-[8.5rem] items-center gap-1 align-middle"
       dir="ltr">
-      {currentTab?.favIconUrl && (
+      {currentTab.favIconUrl && (
         <img
-          src={currentTab.favIconUrl || "/placeholder.svg"}
+          src={currentTab.favIconUrl}
           className="!size-4 shrink-0 object-contain"
           alt="site icon"
         />

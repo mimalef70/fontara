@@ -20,7 +20,6 @@ export type RtlActivationState = {
 export async function getRtlActivationState(
   currentUrl: string
 ): Promise<RtlActivationState> {
-  const matchingSite = getRtlSiteByUrl(currentUrl)
   let storedValues: {
     [STORAGE_KEYS.EXTENSION_ENABLED]: boolean
     [STORAGE_KEYS.RTL_ENABLED]: boolean
@@ -41,13 +40,20 @@ export async function getRtlActivationState(
     }
   }
 
+  return getRtlActivationStateFromSettings(currentUrl, storedValues)
+}
+
+export function getRtlActivationStateFromSettings(
+  currentUrl: string,
+  settings: Record<string, unknown>
+): RtlActivationState {
+  const matchingSite = getRtlSiteByUrl(currentUrl)
   const siteSettings = normalizeRtlSiteSettings(
-    storedValues[STORAGE_KEYS.RTL_SITE_SETTINGS]
+    settings[STORAGE_KEYS.RTL_SITE_SETTINGS]
   )
   const normalizedMasterEnabled =
-    storedValues[STORAGE_KEYS.EXTENSION_ENABLED] !== false
-  const normalizedGlobalEnabled =
-    storedValues[STORAGE_KEYS.RTL_ENABLED] !== false
+    settings[STORAGE_KEYS.EXTENSION_ENABLED] !== false
+  const normalizedGlobalEnabled = settings[STORAGE_KEYS.RTL_ENABLED] !== false
   const siteEnabled = matchingSite
     ? isRtlSiteEnabled(siteSettings, matchingSite.id)
     : false

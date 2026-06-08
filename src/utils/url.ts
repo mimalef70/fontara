@@ -16,6 +16,24 @@ export type UrlActivationState = {
   siteProfile: SiteProfile | null
 }
 
+function getSetting<T>(
+  settings: Record<string, unknown>,
+  key: string,
+  fallback: T
+): T {
+  const value = settings[key]
+  return value === undefined ? fallback : (value as T)
+}
+
+function getWebsiteListFromSettings(
+  settings: Record<string, unknown>
+): WebsiteItem[] {
+  const value = settings[STORAGE_KEYS.WEBSITE_LIST]
+  return Array.isArray(value)
+    ? (value as WebsiteItem[])
+    : DEFAULT_VALUES.WEBSITE_LIST
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -67,7 +85,7 @@ export async function isUrlActive(currentUrl: string): Promise<boolean> {
 export async function getUrlActivationState(
   currentUrl: string
 ): Promise<UrlActivationState> {
-  let storedValues: {
+  let storedValues: Record<string, unknown> & {
     [STORAGE_KEYS.DISABLED_FOR]: string[] | undefined
     [STORAGE_KEYS.ENABLED_BY_DEFAULT]: boolean | undefined
     [STORAGE_KEYS.ENABLED_FOR]: string[] | undefined
@@ -95,7 +113,14 @@ export async function getUrlActivationState(
     }
   }
 
-  if (storedValues[STORAGE_KEYS.EXTENSION_ENABLED] === false) {
+  return getUrlActivationStateFromSettings(currentUrl, storedValues)
+}
+
+export function getUrlActivationStateFromSettings(
+  currentUrl: string,
+  settings: Record<string, unknown>
+): UrlActivationState {
+  if (settings[STORAGE_KEYS.EXTENSION_ENABLED] === false) {
     return {
       active: false,
       matchingWebsite: null,
@@ -103,22 +128,23 @@ export async function getUrlActivationState(
     }
   }
 
-  const websiteList = Array.isArray(storedValues[STORAGE_KEYS.WEBSITE_LIST])
-    ? storedValues[STORAGE_KEYS.WEBSITE_LIST]
-    : DEFAULT_VALUES.WEBSITE_LIST
+  const websiteList = getWebsiteListFromSettings(settings)
   const matchingWebsite = getMatchingWebsite(currentUrl, websiteList)
-  const enabledByDefault =
-    storedValues[STORAGE_KEYS.ENABLED_BY_DEFAULT] === undefined
-      ? DEFAULT_VALUES.ENABLED_BY_DEFAULT
-      : normalizeEnabledByDefault(storedValues[STORAGE_KEYS.ENABLED_BY_DEFAULT])
+  const enabledByDefault = normalizeEnabledByDefault(
+    getSetting(
+      settings,
+      STORAGE_KEYS.ENABLED_BY_DEFAULT,
+      DEFAULT_VALUES.ENABLED_BY_DEFAULT
+    )
+  )
   const enabledFor =
-    storedValues[STORAGE_KEYS.ENABLED_FOR] === undefined
+    settings[STORAGE_KEYS.ENABLED_FOR] === undefined
       ? getActiveWebsiteSitePatterns(websiteList)
-      : normalizeEnabledSiteList(storedValues[STORAGE_KEYS.ENABLED_FOR])
+      : normalizeEnabledSiteList(settings[STORAGE_KEYS.ENABLED_FOR])
   const disabledFor =
-    storedValues[STORAGE_KEYS.DISABLED_FOR] === undefined
+    settings[STORAGE_KEYS.DISABLED_FOR] === undefined
       ? DEFAULT_VALUES.DISABLED_FOR
-      : normalizeSiteList(storedValues[STORAGE_KEYS.DISABLED_FOR])
+      : normalizeSiteList(settings[STORAGE_KEYS.DISABLED_FOR])
   const active = isSiteListUrlEnabled(currentUrl, {
     disabledFor,
     enabledByDefault,
@@ -131,8 +157,11 @@ export async function getUrlActivationState(
     siteProfile: active
       ? getSiteProfileForUrl(
           currentUrl,
-          storedValues[STORAGE_KEYS.SITE_PROFILES] ??
+          getSetting(
+            settings,
+            STORAGE_KEYS.SITE_PROFILES,
             DEFAULT_VALUES.SITE_PROFILES
+          )
         )
       : null
   }

@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react"
-
 import {
   getRtlSiteByUrl,
   isRtlSiteEnabled,
@@ -8,6 +6,7 @@ import {
 } from "../../config/rtl-sites"
 import { STORAGE_KEYS } from "../../config/storage"
 import { getExtensionAssetURL } from "../../utils/assets"
+import { useExtensionData } from "../hooks/use-extension-data"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
@@ -18,7 +17,7 @@ import { Switch } from "./ui/Switch"
 
 const RtlSiteToggle = () => {
   const { direction, t } = useI18n()
-  const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab | null>(null)
+  const currentTab = useExtensionData()?.activeTab ?? null
   const [rtlEnabled, setRtlEnabled] = useStorageValue<boolean>(
     STORAGE_KEYS.RTL_ENABLED,
     getRtlEnabledInitialValue
@@ -29,21 +28,10 @@ const RtlSiteToggle = () => {
       getRtlSiteSettingsInitialValue
     )
 
-  useEffect(() => {
-    const getActiveTab = async () => {
-      const tabs = await chrome.tabs.query({
-        active: true,
-        currentWindow: true
-      })
-      setCurrentTab(tabs[0])
-    }
-    void getActiveTab()
-  }, [])
-
-  const currentUrl = currentTab?.url
+  const currentUrl = currentTab?.url ?? undefined
   const matchingSite = getRtlSiteByUrl(currentUrl)
 
-  if (!matchingSite || !currentUrl?.startsWith("http")) return null
+  if (!matchingSite || !currentTab?.isSupported || !currentUrl) return null
 
   const isRtl = direction === "rtl"
   const normalizedSettings = normalizeRtlSiteSettings(rtlSiteSettings)

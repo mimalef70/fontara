@@ -192,4 +192,134 @@ test("tab manager tracks content documents and notifies them about settings chan
   removedTabListeners[0](7)
 
   assert.equal(getTrackedDocumentCountForTesting(), 0)
+
+  sentMessages.length = 0
+  initTabManager({
+    createDocumentMessage: (document) => ({
+      data: {
+        font: {
+          active: false,
+          applyMode: "full",
+          customCSS: null,
+          customFontCSS: "",
+          fontFaceCSS: "",
+          fontName: "Vazirmatn-Fontara",
+          googleFontCSS: null,
+          textStrokeCSS: ""
+        },
+        rtl: {
+          active: document.url.includes("chatgpt.com"),
+          siteId: document.url.includes("chatgpt.com") ? "chatgpt" : null
+        }
+      },
+      type: MESSAGE_TYPES_BG_TO_CS.APPLY_THEME
+    })
+  })
+
+  runtimeMessageListeners[0](
+    {
+      data: {
+        isTopFrame: true,
+        url: "https://chatgpt.com/"
+      },
+      scriptId: "script-command",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      frameId: 0,
+      tab: { id: 8 } as chrome.tabs.Tab
+    }
+  )
+
+  assert.deepEqual(sentMessages, [
+    {
+      message: {
+        data: {
+          font: {
+            active: false,
+            applyMode: "full",
+            customCSS: null,
+            customFontCSS: "",
+            fontFaceCSS: "",
+            fontName: "Vazirmatn-Fontara",
+            googleFontCSS: null,
+            textStrokeCSS: ""
+          },
+          rtl: {
+            active: true,
+            siteId: "chatgpt"
+          }
+        },
+        scriptId: "script-command",
+        type: MESSAGE_TYPES_BG_TO_CS.APPLY_THEME
+      },
+      options: { frameId: 0 },
+      tabId: 8
+    }
+  ])
+
+  sentMessages.length = 0
+  runtimeMessageListeners[0](
+    {
+      data: {
+        isTopFrame: true,
+        url: "https://example.com/inactive"
+      },
+      scriptId: "script-command",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE
+    },
+    {
+      frameId: 0,
+      tab: { id: 8 } as chrome.tabs.Tab
+    }
+  )
+
+  assert.deepEqual(sentMessages, [
+    {
+      message: {
+        data: {
+          font: {
+            active: false,
+            applyMode: "full",
+            customCSS: null,
+            customFontCSS: "",
+            fontFaceCSS: "",
+            fontName: "Vazirmatn-Fontara",
+            googleFontCSS: null,
+            textStrokeCSS: ""
+          },
+          rtl: {
+            active: false,
+            siteId: null
+          }
+        },
+        scriptId: "script-command",
+        type: MESSAGE_TYPES_BG_TO_CS.APPLY_THEME
+      },
+      options: { frameId: 0 },
+      tabId: 8
+    }
+  ])
+
+  sentMessages.length = 0
+  notifyContentScriptsAboutSettingsChange((document) => ({
+    scriptId: "ignored-script-id",
+    type: document.url.includes("chatgpt.com")
+      ? MESSAGE_TYPES_BG_TO_CS.CLEAN_UP
+      : MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+  }))
+
+  assert.deepEqual(sentMessages, [
+    {
+      message: {
+        scriptId: "script-command",
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: { frameId: 0 },
+      tabId: 8
+    }
+  ])
+
+  removedTabListeners[0](8)
+  assert.equal(getTrackedDocumentCountForTesting(), 0)
 })

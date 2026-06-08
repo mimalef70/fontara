@@ -7,7 +7,7 @@ import {
   MESSAGE_TYPES_CS_TO_BG
 } from "../utils/message"
 
-type DocumentInfo = {
+export type FontaraTrackedDocument = {
   documentId: string | null
   frameId: number
   isTopFrame: boolean
@@ -15,9 +15,18 @@ type DocumentInfo = {
   url: string
 }
 
-const documentsByTab = new Map<number, Map<number, DocumentInfo>>()
+type DocumentMessageFactory = (
+  document: FontaraTrackedDocument
+) => FontaraContentCommandMessage | Promise<FontaraContentCommandMessage>
+
+type TabManagerOptions = {
+  createDocumentMessage?: DocumentMessageFactory
+}
+
+const documentsByTab = new Map<number, Map<number, FontaraTrackedDocument>>()
 
 let initialized = false
+let createDocumentMessage: DocumentMessageFactory | null = null
 
 function isFontaraContentMessage(
   message: unknown
@@ -95,7 +104,15 @@ function messageListener(
   switch (message.type) {
     case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT:
     case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME:
+    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE:
       upsertDocument(tabId, frameId, documentId, message)
+      if (createDocumentMessage) {
+        const documents = documentsByTab.get(tabId)
+        const document = documents?.get(frameId)
+        if (document) {
+          sendDocumentMessageFromFactory(tabId, document, createDocumentMessage)
+        }
+      }
       break
     case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET:
       removeDocument(tabId, frameId)
@@ -107,7 +124,7 @@ function messageListener(
 
 function sendDocumentMessage(
   tabId: number,
-  document: DocumentInfo,
+  document: FontaraTrackedDocument,
   message: FontaraContentCommandMessage
 ): void {
   const sendOptions: chrome.tabs.MessageSendOptions[] = document.documentId
@@ -144,7 +161,62 @@ function sendDocumentMessage(
   sendNext()
 }
 
-export function initTabManager(): void {
+function createSettingsChangedMessage(): FontaraContentCommandMessage {
+  return {
+    type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+  }
+}
+
+function isPromiseLikeMessage(
+  message: FontaraContentCommandMessage | Promise<FontaraContentCommandMessage>
+): message is Promise<FontaraContentCommandMessage> {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    "then" in message &&
+    typeof message.then === "function"
+  )
+}
+
+function sendResolvedDocumentMessage(
+  tabId: number,
+  document: FontaraTrackedDocument,
+  message: FontaraContentCommandMessage
+): void {
+  sendDocumentMessage(tabId, document, {
+    ...message,
+    scriptId: document.scriptId
+  })
+}
+
+function sendDocumentMessageFromFactory(
+  tabId: number,
+  document: FontaraTrackedDocument,
+  factory: DocumentMessageFactory
+): void {
+  try {
+    const message = factory(document)
+
+    if (!isPromiseLikeMessage(message)) {
+      sendResolvedDocumentMessage(tabId, document, message)
+      return
+    }
+
+    void message
+      .catch(() => createSettingsChangedMessage())
+      .then((resolvedMessage) => {
+        sendResolvedDocumentMessage(tabId, document, resolvedMessage)
+      })
+  } catch {
+    sendResolvedDocumentMessage(tabId, document, createSettingsChangedMessage())
+  }
+}
+
+export function initTabManager(options: TabManagerOptions = {}): void {
+  if (options.createDocumentMessage) {
+    createDocumentMessage = options.createDocumentMessage
+  }
+
   if (initialized) return
 
   chrome.runtime.onMessage.addListener(messageListener)
@@ -154,13 +226,13 @@ export function initTabManager(): void {
   initialized = true
 }
 
-export function notifyContentScriptsAboutSettingsChange(): void {
+export function notifyContentScriptsAboutSettingsChange(
+  factory: DocumentMessageFactory = createDocumentMessage ??
+    createSettingsChangedMessage
+): void {
   for (const [tabId, documents] of documentsByTab) {
     for (const document of documents.values()) {
-      sendDocumentMessage(tabId, document, {
-        scriptId: document.scriptId,
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      })
+      sendDocumentMessageFromFactory(tabId, document, factory)
     }
   }
 }

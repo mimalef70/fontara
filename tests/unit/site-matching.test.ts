@@ -9,6 +9,7 @@ import {
 } from "../../src/config/rtl-sites"
 import {
   addSitePatternToList,
+  createSiteListPatternAddUpdate,
   createWebsiteSiteListToggleUpdate,
   getDisplaySitePattern,
   getWebsiteSitePatterns,
@@ -29,6 +30,7 @@ import {
   createRegexFromUrl,
   getMatchingWebsite,
   getUrlActivationState,
+  getUrlActivationStateFromSettings,
   isUrlActive
 } from "../../src/utils/url"
 
@@ -444,6 +446,26 @@ test("popular website toggles update every configured site pattern", () => {
   )
 })
 
+test("manual exclude removes matching enabled overrides", () => {
+  const update = createSiteListPatternAddUpdate("chatgpt.com", {
+    disabledFor: [],
+    enabledByDefault: true,
+    enabledFor: ["chatgpt.com"]
+  })
+
+  assert.deepEqual(update, {
+    disabledFor: ["chatgpt.com"],
+    enabledFor: []
+  })
+  assert.equal(
+    isSiteListUrlEnabled("https://chatgpt.com/", {
+      ...update,
+      enabledByDefault: true
+    }),
+    false
+  )
+})
+
 test("getUrlActivationState uses site list settings and keeps website metadata", async () => {
   mockLocalStorage({
     [STORAGE_KEYS.DISABLED_FOR]: [],
@@ -468,6 +490,38 @@ test("getUrlActivationState uses site list settings and keeps website metadata",
   })
 
   const state = await getUrlActivationState("https://example.com/")
+
+  assert.equal(state.active, true)
+  assert.equal(state.matchingWebsite?.siteName, "Example")
+  assert.deepEqual(state.siteProfile, {
+    font: "Samim-Fontara",
+    pattern: "example.com",
+    textStroke: 0.4
+  })
+})
+
+test("getUrlActivationStateFromSettings resolves activation from a normalized snapshot", () => {
+  const state = getUrlActivationStateFromSettings("https://example.com/", {
+    [STORAGE_KEYS.DISABLED_FOR]: [],
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+    [STORAGE_KEYS.ENABLED_FOR]: ["example.com"],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        font: "Samim-Fontara",
+        pattern: "example.com",
+        textStroke: 0.4
+      }
+    ],
+    [STORAGE_KEYS.WEBSITE_LIST]: [
+      {
+        isActive: false,
+        regex: "^https?://example\\.com/?.*$",
+        siteName: "Example",
+        url: "https://example.com"
+      }
+    ]
+  })
 
   assert.equal(state.active, true)
   assert.equal(state.matchingWebsite?.siteName, "Example")

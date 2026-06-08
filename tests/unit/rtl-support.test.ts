@@ -3,9 +3,12 @@ import fs from "node:fs"
 import path from "node:path"
 import test, { afterEach } from "node:test"
 
+import { DEFAULT_RTL_SITE_SETTINGS } from "../../src/config/rtl-sites"
+import { STORAGE_KEYS } from "../../src/config/storage"
 import { RtlAutoDirection } from "../../src/inject/rtl/auto-direction"
 import { RtlEngine } from "../../src/inject/rtl/rtl-engine"
 import { isRtlText } from "../../src/inject/rtl/text-direction"
+import { getRtlActivationStateFromSettings } from "../../src/utils/rtl"
 
 const ORIGINAL_GLOBALS = [
   "document",
@@ -293,22 +296,69 @@ function collectTextNodes(root: FakeElement): FakeTextNode[] {
 }
 
 test("RTL runtime is wired as an independent feature", () => {
-  const injectSource = fs.readFileSync(
-    path.resolve("src/inject/index.ts"),
+  const runtimeSource = fs.readFileSync(
+    path.resolve("src/inject/content-runtime.ts"),
+    "utf8"
+  )
+  const schedulerSource = fs.readFileSync(
+    path.resolve("src/inject/content-theme-scheduler.ts"),
+    "utf8"
+  )
+  const storageSource = fs.readFileSync(
+    path.resolve("src/inject/content-storage.ts"),
     "utf8"
   )
   const rtlManagerSource = fs.readFileSync(
     path.resolve("src/inject/rtl/index.ts"),
     "utf8"
   )
+  const themeApplierSource = fs.readFileSync(
+    path.resolve("src/inject/theme-applier.ts"),
+    "utf8"
+  )
+  const pageThemeSource = fs.readFileSync(
+    path.resolve("src/generators/page-theme.ts"),
+    "utf8"
+  )
 
-  assert.match(injectSource, /scheduleApplyRtlIfActive/)
-  assert.match(injectSource, /STORAGE_KEYS\.RTL_ENABLED/)
-  assert.match(injectSource, /STORAGE_KEYS\.RTL_SITE_SETTINGS/)
-  assert.match(injectSource, /cleanupRtlSupport/)
-  assert.match(rtlManagerSource, /getRtlActivationState/)
+  assert.match(schedulerSource, /createFontaraPageThemeData/)
+  assert.match(schedulerSource, /applyResolvedPageTheme/)
+  assert.match(themeApplierSource, /applyResolvedRtlSupport/)
+  assert.match(storageSource, /STORAGE_KEYS\.RTL_ENABLED/)
+  assert.match(storageSource, /STORAGE_KEYS\.RTL_SITE_SETTINGS/)
+  assert.match(runtimeSource, /cleanupRtlSupport/)
+  assert.match(pageThemeSource, /getRtlActivationStateFromSettings/)
+  assert.doesNotMatch(rtlManagerSource, /getRtlActivationState/)
+  assert.doesNotMatch(rtlManagerSource, /scheduleApplyRtlIfActive/)
   assert.match(rtlManagerSource, /createRtlSiteAdapter/)
   assert.match(rtlManagerSource, /RtlAutoDirection/)
+})
+
+test("RTL activation resolves from a settings snapshot", () => {
+  const activeState = getRtlActivationStateFromSettings(
+    "https://chatgpt.com/c/1",
+    {
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.RTL_ENABLED]: true,
+      [STORAGE_KEYS.RTL_SITE_SETTINGS]: DEFAULT_RTL_SITE_SETTINGS
+    }
+  )
+  const disabledState = getRtlActivationStateFromSettings(
+    "https://chatgpt.com/c/1",
+    {
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.RTL_ENABLED]: true,
+      [STORAGE_KEYS.RTL_SITE_SETTINGS]: {
+        ...DEFAULT_RTL_SITE_SETTINGS,
+        chatgpt: false
+      }
+    }
+  )
+
+  assert.equal(activeState.active, true)
+  assert.equal(activeState.matchingSite?.id, "chatgpt")
+  assert.equal(disabledState.active, false)
+  assert.equal(disabledState.siteEnabled, false)
 })
 
 test("RTL adapters preserve sample platform coverage without font injection", () => {

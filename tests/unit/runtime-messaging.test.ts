@@ -32,6 +32,7 @@ test("background messenger routes UI requests and reports subscribed changes", a
   const sentMessages: unknown[] = []
   const extensionData: FontaraExtensionData = {
     activeTab: {
+      favIconUrl: "https://example.com/favicon.ico",
       id: 1,
       isActive: true,
       isSupported: true,

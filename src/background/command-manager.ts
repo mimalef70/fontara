@@ -1,15 +1,10 @@
-import {
-  createSiteListToggleUpdate,
-  getActiveWebsiteSitePatterns,
-  isSiteListUrlEnabled,
-  normalizeEnabledByDefault,
-  normalizeEnabledSiteList,
-  normalizeSiteList
-} from "../config/site-list"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { WebsiteItem } from "../definitions"
 import { getLocalValues, setLocalValues } from "../utils/storage"
-import { createRegexFromUrl, getMatchingWebsite } from "../utils/url"
+import {
+  createToggleCurrentSiteSettings,
+  createToggleExtensionSettings
+} from "./command-settings"
+import { getCommandURL } from "./extension-data"
 
 export const FONTARA_COMMANDS = {
   TOGGLE_EXTENSION: "toggle",
@@ -73,39 +68,12 @@ function debounce<T extends unknown[]>(
   }
 }
 
-function isSupportedCommandURL(url: string | null | undefined): url is string {
-  return typeof url === "string" && /^https?:\/\//i.test(url)
-}
-
-function getActiveTab(): Promise<chrome.tabs.Tab | null> {
-  if (typeof chrome === "undefined" || !chrome.tabs?.query) {
-    return Promise.resolve(null)
-  }
-
-  return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      resolve(tabs[0] ?? null)
-    })
-  })
-}
-
-async function getCommandURL(details: CommandDetails): Promise<string | null> {
-  if (isSupportedCommandURL(details.url)) return details.url
-  if (isSupportedCommandURL(details.tab?.url)) return details.tab.url
-
-  const activeTab = await getActiveTab()
-  return isSupportedCommandURL(activeTab?.url) ? activeTab.url : null
-}
-
 async function toggleExtension(): Promise<void> {
   const values = await getLocalValues({
     [STORAGE_KEYS.EXTENSION_ENABLED]: DEFAULT_VALUES.EXTENSION_ENABLED
   })
 
-  await setLocalValues({
-    [STORAGE_KEYS.EXTENSION_ENABLED]:
-      values[STORAGE_KEYS.EXTENSION_ENABLED] === false
-  })
+  await setLocalValues(createToggleExtensionSettings(values))
 }
 
 async function toggleCurrentSite(details: CommandDetails): Promise<void> {
@@ -118,53 +86,7 @@ async function toggleCurrentSite(details: CommandDetails): Promise<void> {
     [STORAGE_KEYS.ENABLED_FOR]: undefined,
     [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
   })
-  const websiteList = Array.isArray(storedValues[STORAGE_KEYS.WEBSITE_LIST])
-    ? (storedValues[STORAGE_KEYS.WEBSITE_LIST] as WebsiteItem[])
-    : DEFAULT_VALUES.WEBSITE_LIST
-  const enabledByDefault = normalizeEnabledByDefault(
-    storedValues[STORAGE_KEYS.ENABLED_BY_DEFAULT]
-  )
-  const enabledFor =
-    storedValues[STORAGE_KEYS.ENABLED_FOR] === undefined
-      ? getActiveWebsiteSitePatterns(websiteList)
-      : normalizeEnabledSiteList(storedValues[STORAGE_KEYS.ENABLED_FOR])
-  const disabledFor =
-    storedValues[STORAGE_KEYS.DISABLED_FOR] === undefined
-      ? DEFAULT_VALUES.DISABLED_FOR
-      : normalizeSiteList(storedValues[STORAGE_KEYS.DISABLED_FOR])
-  const siteListSettings = {
-    disabledFor,
-    enabledByDefault,
-    enabledFor
-  }
-  const checked = !isSiteListUrlEnabled(url, siteListSettings)
-  const existingWebsiteIndex = websiteList.findIndex(
-    (item) => getMatchingWebsite(url, [item]) !== null
-  )
-  const siteListUpdate = createSiteListToggleUpdate(
-    url,
-    siteListSettings,
-    checked
-  )
-  const updatedWebsiteList =
-    existingWebsiteIndex === -1 && checked
-      ? [
-          ...websiteList,
-          {
-            url,
-            regex: createRegexFromUrl(url),
-            isActive: true
-          }
-        ]
-      : websiteList.map((item, index) =>
-          index === existingWebsiteIndex ? { ...item, isActive: checked } : item
-        )
-
-  await setLocalValues({
-    [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
-    [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
-    [STORAGE_KEYS.WEBSITE_LIST]: updatedWebsiteList
-  })
+  await setLocalValues(createToggleCurrentSiteSettings(url, storedValues))
 }
 
 export async function runFontaraCommand(

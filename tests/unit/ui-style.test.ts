@@ -256,6 +256,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.toast\.settingsExported/)
   assert.match(optionsSource, /options\.toast\.settingsReset/)
   assert.match(optionsSource, /options\.toast\.syncEnabled/)
+  assert.match(optionsSource, /createSiteListPatternAddUpdate/)
   assert.match(optionsSource, /createWebsiteSiteListToggleUpdate/)
   assert.match(optionsSource, /upsertSiteProfile/)
   assert.match(optionsSource, /removeSiteProfileFontOverrides/)
@@ -317,6 +318,22 @@ test("options page exposes extension hotkey controls", () => {
     path.resolve("src/background/command-manager.ts"),
     "utf8"
   )
+  const extensionDataHookSource = fs.readFileSync(
+    path.resolve("src/ui/hooks/use-extension-data.ts"),
+    "utf8"
+  )
+  const commandSettingsSource = fs.readFileSync(
+    path.resolve("src/background/command-settings.ts"),
+    "utf8"
+  )
+  const extensionSource = fs.readFileSync(
+    path.resolve("src/background/extension.ts"),
+    "utf8"
+  )
+  const extensionDataSource = fs.readFileSync(
+    path.resolve("src/background/extension-data.ts"),
+    "utf8"
+  )
 
   assert.match(hotkeysSource, /chrome\.commands\.getAll/)
   assert.match(hotkeysSource, /commandName: "toggle"/)
@@ -335,6 +352,19 @@ test("options page exposes extension hotkey controls", () => {
   assert.match(backgroundSource, /chrome\.commands/)
   assert.match(backgroundSource, /onCommand\.addListener/)
   assert.match(backgroundSource, /COMMAND_DEBOUNCE_DELAY_MS = 75/)
+  assert.match(backgroundSource, /createToggleCurrentSiteSettings/)
+  assert.match(backgroundSource, /getCommandURL/)
+  assert.doesNotMatch(backgroundSource, /createSiteListToggleUpdate/)
+  assert.doesNotMatch(backgroundSource, /getMatchingWebsite/)
+  assert.doesNotMatch(extensionSource, /createSiteListToggleUpdate/)
+  assert.doesNotMatch(extensionSource, /getMatchingWebsite/)
+  assert.match(commandSettingsSource, /createSiteListToggleUpdate/)
+  assert.match(extensionDataSource, /collectActiveTabInfo/)
+  assert.match(extensionDataHookSource, /fontaraConnector\.subscribeToChanges/)
+  assert.match(
+    extensionDataHookSource,
+    /fontaraConnector\.unsubscribeFromChanges/
+  )
 })
 
 test("popup add custom font action is an icon button beside the selector", () => {
@@ -427,6 +457,8 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /peer-focus-visible:ring-2/)
   assert.match(customUrlToggleSource, /className="relative shrink-0"/)
   assert.match(customUrlToggleSource, /const \{ direction, t \} = useI18n\(\)/)
+  assert.match(customUrlToggleSource, /useExtensionData\(\)\?\.activeTab/)
+  assert.doesNotMatch(customUrlToggleSource, /chrome\.tabs\.query/)
   assert.match(customUrlToggleSource, /const isRtl = direction === "rtl"/)
   assert.match(customUrlToggleSource, /dir=\{direction\}/)
   assert.match(
@@ -448,6 +480,8 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /STORAGE_KEYS\.ENABLED_FOR/)
   assert.match(customUrlToggleSource, /STORAGE_KEYS\.DISABLED_FOR/)
   assert.match(rtlSiteToggleSource, /const isRtl = direction === "rtl"/)
+  assert.match(rtlSiteToggleSource, /useExtensionData\(\)\?\.activeTab/)
+  assert.doesNotMatch(rtlSiteToggleSource, /chrome\.tabs\.query/)
   assert.match(rtlSiteToggleSource, /!isRtl && switchControl/)
   assert.match(rtlSiteToggleSource, /isRtl && switchControl/)
   assert.match(rtlSiteToggleSource, /getRtlSiteByUrl/)

@@ -15,10 +15,13 @@ export const MESSAGE_TYPES_BG_TO_UI = {
 export const MESSAGE_TYPES_CS_TO_BG = {
   DOCUMENT_CONNECT: "fontara-cs-bg-document-connect",
   DOCUMENT_FORGET: "fontara-cs-bg-document-forget",
+  DOCUMENT_UPDATE: "fontara-cs-bg-document-update",
   DOCUMENT_RESUME: "fontara-cs-bg-document-resume"
 } as const
 
 export const MESSAGE_TYPES_BG_TO_CS = {
+  APPLY_THEME: "fontara-bg-cs-apply-theme",
+  CLEAN_UP: "fontara-bg-cs-clean-up",
   SETTINGS_CHANGED: "fontara-bg-cs-settings-changed"
 } as const
 

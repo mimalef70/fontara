@@ -515,6 +515,18 @@ export function createWebsiteSiteListToggleUpdate(
   )
 }
 
+export function createSiteListPatternAddUpdate(
+  pattern: string,
+  settings: SiteListSettings
+): Pick<SiteListSettings, "disabledFor" | "enabledFor"> {
+  const normalizedPattern = normalizeSitePattern(pattern)
+  return createSiteListToggleUpdateForPatterns(
+    normalizedPattern ? [normalizedPattern] : [],
+    settings,
+    !settings.enabledByDefault
+  )
+}
+
 export function getActiveWebsiteSitePatterns(
   websites: WebsiteItem[]
 ): string[] {

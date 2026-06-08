@@ -1,3 +1,5 @@
+import type { RtlSiteId } from "./config/rtl-sites"
+
 export interface WebsiteItem {
   url: string
   regex: string
@@ -29,6 +31,7 @@ export type FontaraSettings = Record<string, unknown>
 export type FontaraShortcuts = Partial<Record<"addSite" | "toggle", string>>
 
 export interface FontaraTabInfo {
+  favIconUrl: string | null
   id: number | null
   isActive: boolean
   isSupported: boolean
@@ -45,6 +48,29 @@ export interface FontaraExtensionData {
 export interface FontaraImportedSettingsResult {
   ignoredKeyCount: number
   importedKeyCount: number
+}
+
+export type FontaraApplyMode = "font-styles" | "full"
+
+export interface FontaraFontThemeCommandData {
+  active: boolean
+  applyMode: FontaraApplyMode
+  customCSS: string | null
+  customFontCSS: string
+  fontFaceCSS: string
+  fontName: string
+  googleFontCSS: string | null
+  textStrokeCSS: string
+}
+
+export interface FontaraRtlThemeCommandData {
+  active: boolean
+  siteId: RtlSiteId | null
+}
+
+export interface FontaraPageThemeCommandData {
+  font: FontaraFontThemeCommandData
+  rtl: FontaraRtlThemeCommandData
 }
 
 export type FontaraUIMessage =
@@ -90,13 +116,24 @@ export type FontaraContentScriptMessage = {
   type:
     | "fontara-cs-bg-document-connect"
     | "fontara-cs-bg-document-forget"
+    | "fontara-cs-bg-document-update"
     | "fontara-cs-bg-document-resume"
 }
 
-export type FontaraContentCommandMessage = {
-  scriptId?: string
-  type: "fontara-bg-cs-settings-changed"
-}
+export type FontaraContentCommandMessage =
+  | {
+      data: FontaraPageThemeCommandData
+      scriptId?: string
+      type: "fontara-bg-cs-apply-theme"
+    }
+  | {
+      scriptId?: string
+      type: "fontara-bg-cs-clean-up"
+    }
+  | {
+      scriptId?: string
+      type: "fontara-bg-cs-settings-changed"
+    }
 
 export type FontaraMessageResponse<T = unknown> = {
   data?: T

@@ -115,47 +115,184 @@ test("mutation observer coalesces added nodes before processing", () => {
 })
 
 test("storage changes schedule the active injection pipeline", () => {
-  const injectSource = readSource("src/inject/index.ts")
+  const schedulerSource = readSource("src/inject/content-theme-scheduler.ts")
+  const storageSource = readSource("src/inject/content-storage.ts")
+  const runtimeSource = readSource("src/inject/content-runtime.ts")
 
-  assert.match(injectSource, /function scheduleApplyFontsIfActive/)
-  assert.match(injectSource, /function watchUrlChanges/)
-  assert.match(injectSource, /type ApplyMode = "font-styles" \| "full"/)
-  assert.match(injectSource, /queueMicrotask/)
-  assert.match(injectSource, /applyFontsRunning/)
-  assert.match(injectSource, /applyFontsQueuedMode/)
-  assert.match(injectSource, /historyObject\[methodName\] = wrappedMethod/)
-  assert.match(injectSource, /addEventListener\("popstate"/)
-  assert.match(injectSource, /addEventListener\("hashchange"/)
-  assert.match(injectSource, /window\.setInterval\(handlePossibleUrlChange/)
-  assert.match(injectSource, /stopWatchingUrlChanges/)
+  assert.match(schedulerSource, /function scheduleApplyFontsIfActive/)
+  assert.match(schedulerSource, /function scheduleStorageFallbackApply/)
+  assert.match(schedulerSource, /createFontaraPageThemeData/)
+  assert.doesNotMatch(schedulerSource, /injectFontStyles/)
+  assert.doesNotMatch(schedulerSource, /injectTextStrokeStyle/)
+  assert.doesNotMatch(schedulerSource, /scheduleApplyRtlIfActive/)
+  assert.match(schedulerSource, /let backgroundCommandsEnabled = false/)
   assert.match(
-    injectSource,
-    /\[STORAGE_KEYS\.SELECTED_FONT\]: \(\) =>\s*scheduleApplyFontsIfActive\("font-styles"\)/
+    schedulerSource,
+    /requestResolvedPageThemeOrFallback\(\s*MESSAGE_TYPES_CS_TO_BG\.DOCUMENT_UPDATE,\s*mode\s*\)/
   )
   assert.match(
-    injectSource,
-    /\[STORAGE_KEYS\.WEBSITE_LIST\]: \(\) => scheduleApplyFontsIfActive\(\)/
+    schedulerSource,
+    /type ContentApplyMode = "font-styles" \| "full"/
+  )
+  assert.match(schedulerSource, /queueMicrotask/)
+  assert.match(schedulerSource, /applyFontsRunning/)
+  assert.match(schedulerSource, /applyFontsQueuedMode/)
+  assert.match(runtimeSource, /from "\.\/content-theme-scheduler"/)
+  assert.match(runtimeSource, /from "\.\/content-storage"/)
+  assert.match(
+    runtimeSource,
+    /watchContentThemeStorageChanges\(themeScheduler\)/
+  )
+  assert.match(runtimeSource, /stopWatchingUrlChanges/)
+  assert.match(storageSource, /watchLocalStorage/)
+  assert.match(
+    storageSource,
+    /\[STORAGE_KEYS\.SELECTED_FONT\]: \(\) =>\s*scheduler\.scheduleStorageFallbackApply\("font-styles"\)/
   )
   assert.match(
-    injectSource,
-    /\[STORAGE_KEYS\.ENABLED_BY_DEFAULT\]: \(\) => scheduleApplyFontsIfActive\(\)/
+    storageSource,
+    /\[STORAGE_KEYS\.WEBSITE_LIST\]: \(\) =>\s*scheduler\.scheduleStorageFallbackApply\(\)/
   )
   assert.match(
-    injectSource,
-    /\[STORAGE_KEYS\.ENABLED_FOR\]: \(\) => scheduleApplyFontsIfActive\(\)/
+    storageSource,
+    /\[STORAGE_KEYS\.ENABLED_BY_DEFAULT\]: \(\) =>\s*scheduler\.scheduleStorageFallbackApply\(\)/
   )
   assert.match(
-    injectSource,
-    /\[STORAGE_KEYS\.DISABLED_FOR\]: \(\) => scheduleApplyFontsIfActive\(\)/
+    storageSource,
+    /\[STORAGE_KEYS\.ENABLED_FOR\]: \(\) =>\s*scheduler\.scheduleStorageFallbackApply\(\)/
   )
   assert.match(
-    injectSource,
-    /\[STORAGE_KEYS\.SITE_PROFILES\]: \(\) =>\s*scheduleApplyFontsIfActive\("font-styles"\)/
+    storageSource,
+    /\[STORAGE_KEYS\.DISABLED_FOR\]: \(\) =>\s*scheduler\.scheduleStorageFallbackApply\(\)/
+  )
+  assert.match(
+    storageSource,
+    /\[STORAGE_KEYS\.SITE_PROFILES\]: \(\) =>\s*scheduler\.scheduleStorageFallbackApply\("font-styles"\)/
   )
   assert.doesNotMatch(
-    injectSource,
+    schedulerSource,
     /\[STORAGE_KEYS\.SELECTED_FONT\]:[\s\S]*?applyFontToTreeChunked/
   )
+  assert.doesNotMatch(runtimeSource, /STORAGE_KEYS\.SELECTED_FONT/)
+  assert.doesNotMatch(runtimeSource, /watchLocalStorage/)
+  assert.doesNotMatch(runtimeSource, /function scheduleApplyFontsIfActive/)
+  assert.doesNotMatch(runtimeSource, /applyFontsQueuedMode/)
+  assert.doesNotMatch(runtimeSource, /resolvedThemeRevision/)
+})
+
+test("content lifecycle helpers own body and URL observers", () => {
+  const lifecycleSource = readSource("src/inject/content-lifecycle.ts")
+  const runtimeSource = readSource("src/inject/content-runtime.ts")
+
+  assert.match(lifecycleSource, /export function runWhenBodyIsReady/)
+  assert.match(lifecycleSource, /export function watchUrlChanges/)
+  assert.match(lifecycleSource, /export function isTopFrame/)
+  assert.match(lifecycleSource, /observer\.observe\(document\.documentElement/)
+  assert.match(lifecycleSource, /historyObject\[methodName\] = wrappedMethod/)
+  assert.match(lifecycleSource, /addEventListener\("popstate"/)
+  assert.match(lifecycleSource, /addEventListener\("hashchange"/)
+  assert.match(lifecycleSource, /window\.setInterval\(handlePossibleUrlChange/)
+  assert.match(lifecycleSource, /queueMicrotask\(handlePossibleUrlChange\)/)
+  assert.doesNotMatch(runtimeSource, /function runWhenBodyIsReady/)
+  assert.doesNotMatch(runtimeSource, /function watchUrlChanges/)
+  assert.doesNotMatch(runtimeSource, /function isTopFrame/)
+  assert.doesNotMatch(
+    runtimeSource,
+    /historyObject\[methodName\] = wrappedMethod/
+  )
+})
+
+test("content page lifecycle owns page event handlers", () => {
+  const pageLifecycleSource = readSource("src/inject/content-page-lifecycle.ts")
+  const runtimeSource = readSource("src/inject/content-runtime.ts")
+
+  assert.match(pageLifecycleSource, /export function watchContentPageLifecycle/)
+  assert.match(pageLifecycleSource, /function handlePageHide/)
+  assert.match(pageLifecycleSource, /function handlePageShow/)
+  assert.match(pageLifecycleSource, /function handleFreeze/)
+  assert.match(pageLifecycleSource, /function handleResume/)
+  assert.match(pageLifecycleSource, /addEventListener\("pagehide"/)
+  assert.match(pageLifecycleSource, /removeEventListener\("pagehide"/)
+  assert.match(pageLifecycleSource, /pauseRtlSupport/)
+  assert.match(runtimeSource, /watchContentPageLifecycle/)
+  assert.doesNotMatch(runtimeSource, /function handlePageHide/)
+  assert.doesNotMatch(runtimeSource, /function handlePageShow/)
+  assert.doesNotMatch(runtimeSource, /addEventListener\("pagehide"/)
+})
+
+test("content messaging helpers own runtime messaging and teardown errors", () => {
+  const messagingSource = readSource("src/inject/content-messaging.ts")
+  const runtimeSource = readSource("src/inject/content-runtime.ts")
+
+  assert.match(messagingSource, /export function sendDocumentLifecycleMessage/)
+  assert.match(messagingSource, /export function getRuntimeMessageEvent/)
+  assert.match(messagingSource, /export function isExtensionContextInvalidated/)
+  assert.match(
+    messagingSource,
+    /export function isExpectedRuntimeTeardownError/
+  )
+  assert.match(messagingSource, /runtime\.sendMessage\(message/)
+  assert.match(messagingSource, /chrome\.runtime\?\.lastError/)
+  assert.match(messagingSource, /onExtensionContextInvalidated/)
+  assert.match(runtimeSource, /from "\.\/content-messaging"/)
+  assert.match(runtimeSource, /sendDocumentLifecycleMessage/)
+  assert.doesNotMatch(runtimeSource, /function getErrorMessage/)
+  assert.doesNotMatch(runtimeSource, /function getRuntimeMessageEvent/)
+  assert.doesNotMatch(runtimeSource, /function isExtensionContextInvalidated/)
+  assert.doesNotMatch(runtimeSource, /chrome\.runtime/)
+})
+
+test("content runtime command routing is separated from runtime wiring", () => {
+  const commandSource = readSource("src/inject/content-runtime-commands.ts")
+  const runtimeSource = readSource("src/inject/content-runtime.ts")
+
+  assert.match(commandSource, /handleContentRuntimeCommandMessage/)
+  assert.match(commandSource, /MESSAGE_TYPES_BG_TO_CS\.APPLY_THEME/)
+  assert.match(commandSource, /MESSAGE_TYPES_BG_TO_CS\.CLEAN_UP/)
+  assert.match(commandSource, /MESSAGE_TYPES_BG_TO_CS\.SETTINGS_CHANGED/)
+  assert.match(commandSource, /isMessageForScript/)
+  assert.match(commandSource, /scheduler\.applyThemeCommand/)
+  assert.match(commandSource, /scheduler\.cleanUpThemeCommand/)
+  assert.match(commandSource, /scheduler\.scheduleLegacyApply\("full"\)/)
+  assert.match(runtimeSource, /handleContentRuntimeCommandMessage/)
+  assert.doesNotMatch(runtimeSource, /MESSAGE_TYPES_BG_TO_CS/)
+  assert.doesNotMatch(runtimeSource, /applyThemeCommand\(message\.data\)/)
+  assert.doesNotMatch(runtimeSource, /cleanUpThemeCommand\(\)/)
+})
+
+test("content script entrypoint delegates to runtime bootstrap", () => {
+  const injectSource = readSource("src/inject/index.ts")
+
+  assert.match(injectSource, /from "\.\/content-runtime"/)
+  assert.match(injectSource, /startContentRuntime\(\)/)
+  assert.doesNotMatch(injectSource, /watchLocalStorage/)
+  assert.doesNotMatch(injectSource, /createFontaraPageThemeData/)
+  assert.doesNotMatch(injectSource, /MESSAGE_TYPES_/)
+  assert.doesNotMatch(injectSource, /addEventListener/)
+})
+
+test("content theme executor is separated from lifecycle wiring", () => {
+  const runtimeSource = readSource("src/inject/content-runtime.ts")
+  const themeApplierSource = readSource("src/inject/theme-applier.ts")
+
+  assert.match(
+    themeApplierSource,
+    /export async function applyResolvedPageTheme/
+  )
+  assert.match(themeApplierSource, /export function cleanupResolvedPageTheme/)
+  assert.match(themeApplierSource, /export function cleanupFontTheme/)
+  assert.match(themeApplierSource, /applyFontToTreeChunked/)
+  assert.match(themeApplierSource, /injectResolvedFontStyles/)
+  assert.match(themeApplierSource, /injectResolvedTextStrokeStyle/)
+  assert.match(themeApplierSource, /applyResolvedRtlSupport/)
+  assert.match(themeApplierSource, /startObserving/)
+  assert.match(runtimeSource, /from "\.\/theme-applier"/)
+  assert.doesNotMatch(runtimeSource, /from "\.\/font-style-manager"/)
+  assert.doesNotMatch(runtimeSource, /from "\.\/text-stroke-style"/)
+  assert.doesNotMatch(runtimeSource, /from "\.\/dom-processor"/)
+  assert.doesNotMatch(runtimeSource, /applyFontToTreeChunked/)
+  assert.doesNotMatch(runtimeSource, /injectResolvedFontStyles/)
+  assert.doesNotMatch(runtimeSource, /applyResolvedRtlSupport/)
 })
 
 test("hot selector lookups use Sets", () => {
@@ -177,17 +314,19 @@ test("hot selector lookups use Sets", () => {
 
 test("custom font injection only emits the selected custom font", () => {
   const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
+  const fontSelectionSource = readSource("src/generators/font-selection.ts")
 
-  assert.match(fontStyleManagerSource, /function getSelectedCustomFonts/)
-  assert.match(fontStyleManagerSource, /BUNDLED_FONT_VALUES/)
+  assert.match(fontSelectionSource, /function getSelectedCustomFonts/)
+  assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES/)
+  assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES\.has\(value\)/)
+  assert.match(fontSelectionSource, /font\.value === selectedFont/)
+  assert.match(fontStyleManagerSource, /resolveFontSelection\(selectedFont/)
   assert.match(
-    fontStyleManagerSource,
-    /BUNDLED_FONT_VALUES\.has\(selectedFont\)/
+    fontSelectionSource,
+    /createCustomFontFaces\(selectedCustomFonts\)/
   )
-  assert.match(fontStyleManagerSource, /font\.value === selectedFont/)
-  assert.match(fontStyleManagerSource, /getSelectedCustomFonts\(selectedFont\)/)
   assert.doesNotMatch(
-    fontStyleManagerSource,
+    fontSelectionSource,
     /createCustomFontFaces\(customFontList\)/
   )
 })

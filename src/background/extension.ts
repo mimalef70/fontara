@@ -1,41 +1,37 @@
-import {
-  createSiteListToggleUpdate,
-  getActiveWebsiteSitePatterns,
-  isSiteListUrlEnabled,
-  normalizeEnabledByDefault,
-  normalizeEnabledSiteList,
-  normalizeSiteList
-} from "../config/site-list"
-import { DEFAULT_VALUES, STORAGE_KEYS, URLS } from "../config/storage"
+import { URLS } from "../config/storage"
 import type {
   FontaraExtensionData,
   FontaraImportedSettingsResult,
-  FontaraSettings,
-  FontaraShortcuts,
-  FontaraTabInfo,
-  WebsiteItem
+  FontaraSettings
 } from "../definitions"
 import {
   createSettingsResetValues,
-  getSettingsBackupDefaults,
   normalizeSettingsBackup
 } from "../utils/settings-backup"
-import { getLocalValues, setLocalValues } from "../utils/storage"
-import { normalizeStorageValues } from "../utils/storage-normalization"
-import {
-  createRegexFromUrl,
-  getMatchingWebsite,
-  isUrlActive
-} from "../utils/url"
 import {
   type CommandDetails,
   FONTARA_COMMANDS,
   registerCommandListeners,
   setFontaraCommandRunner
 } from "./command-manager"
+import {
+  createToggleCurrentSiteSettings,
+  createToggleExtensionSettings
+} from "./command-settings"
 import { registerContextMenuListeners } from "./context-menu-manager"
+import {
+  collectActiveTabInfo,
+  collectShortcuts,
+  getCommandURL
+} from "./extension-data"
 import { registerIconListeners, updateIconStatus } from "./icon-manager"
 import { initMessenger, reportChanges } from "./messenger"
+import {
+  getBackgroundSettings,
+  invalidateBackgroundSettingsCache,
+  syncBackgroundSettingsCacheFromLocalChanges,
+  writeBackgroundSettings
+} from "./settings-manager"
 import {
   ensureStorageValues,
   registerSettingsSyncListeners
@@ -55,107 +51,6 @@ let reportChangesTimeout: ReturnType<typeof setTimeout> | null = null
 function logDebug(message: string, error?: unknown): void {
   if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
     console.warn(message, error)
-  }
-}
-
-function valuesAreEqual(first: unknown, second: unknown): boolean {
-  return JSON.stringify(first) === JSON.stringify(second)
-}
-
-function pickChangedValues(
-  currentValues: Record<string, unknown>,
-  nextValues: Record<string, unknown>
-): Record<string, unknown> {
-  const changedValues: Record<string, unknown> = {}
-
-  for (const [key, value] of Object.entries(nextValues)) {
-    if (!valuesAreEqual(currentValues[key], value)) {
-      changedValues[key] = value
-    }
-  }
-
-  return changedValues
-}
-
-function isSupportedPageURL(url: string | null | undefined): url is string {
-  return typeof url === "string" && /^https?:\/\//i.test(url)
-}
-
-function getActiveTab(): Promise<chrome.tabs.Tab | null> {
-  if (typeof chrome === "undefined" || !chrome.tabs?.query) {
-    return Promise.resolve(null)
-  }
-
-  return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      resolve(tabs[0] ?? null)
-    })
-  })
-}
-
-function getCommands(): Promise<chrome.commands.Command[]> {
-  if (!chrome.commands?.getAll) {
-    return Promise.resolve([])
-  }
-
-  return new Promise((resolve) => {
-    chrome.commands.getAll((commands) => {
-      resolve(commands ?? [])
-    })
-  })
-}
-
-async function getCommandURL(details: CommandDetails): Promise<string | null> {
-  if (isSupportedPageURL(details.url)) return details.url
-  if (isSupportedPageURL(details.tab?.url)) return details.tab.url
-
-  const activeTab = await getActiveTab()
-  return isSupportedPageURL(activeTab?.url) ? activeTab.url : null
-}
-
-async function readSettings(): Promise<Record<string, unknown>> {
-  const values = await getLocalValues(getSettingsBackupDefaults())
-  return normalizeStorageValues(values)
-}
-
-async function writeNormalizedSettings(
-  nextValues: Record<string, unknown>
-): Promise<void> {
-  const currentValues = await getLocalValues(getSettingsBackupDefaults())
-  const normalizedValues = await normalizeStorageValues({
-    ...currentValues,
-    ...nextValues
-  })
-  const changedValues = pickChangedValues(currentValues, normalizedValues)
-
-  if (Object.keys(changedValues).length > 0) {
-    await setLocalValues(changedValues)
-  }
-}
-
-async function collectShortcuts(): Promise<FontaraShortcuts> {
-  const commands = await getCommands()
-
-  return commands.reduce<FontaraShortcuts>((shortcuts, command) => {
-    if (command.name === "toggle" || command.name === "addSite") {
-      shortcuts[command.name] = command.shortcut || ""
-    }
-
-    return shortcuts
-  }, {})
-}
-
-async function collectActiveTabInfo(): Promise<FontaraTabInfo> {
-  const tab = await getActiveTab()
-  const url = tab?.url ?? null
-  const isSupported = isSupportedPageURL(url)
-  const active = isSupported ? await isUrlActive(url) : false
-
-  return {
-    id: typeof tab?.id === "number" ? tab.id : null,
-    isActive: active,
-    isSupported,
-    url
   }
 }
 
@@ -182,19 +77,21 @@ export class ExtensionRuntime {
     })
     setFontaraCommandRunner(ExtensionRuntime.runCommand)
     registerSettingsSyncListeners()
-    initTabManager()
+    initTabManager({
+      createDocumentMessage: ExtensionRuntime.createDocumentMessage
+    })
     registerIconListeners()
     registerCommandListeners()
     registerContextMenuListeners()
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === "local" && Object.keys(changes).length > 0) {
-        notifyContentScriptsAboutSettingsChange()
-        ExtensionRuntime.scheduleReportChanges()
+        void ExtensionRuntime.handleLocalSettingsChange(changes)
       }
     })
     chrome.runtime.onInstalled.addListener((details) => {
       void (async () => {
         await ensureStorageValues()
+        invalidateBackgroundSettingsCache()
         await openInstalledPage(details.reason)
       })().catch((error) => {
         logDebug("Failed to handle FontAra install/update event.", error)
@@ -210,6 +107,7 @@ export class ExtensionRuntime {
 
     startPromise = ensureStorageValues()
       .then(() => {
+        invalidateBackgroundSettingsCache()
         started = true
         ExtensionRuntime.scheduleReportChanges()
       })
@@ -244,10 +142,54 @@ export class ExtensionRuntime {
     await updateIconStatus()
   }
 
+  private static async createDocumentMessage(document: { url: string }) {
+    await ExtensionRuntime.ensureStarted()
+    return ExtensionRuntime.createContentCommandMessage(
+      document.url,
+      await getBackgroundSettings()
+    )
+  }
+
+  private static async notifyContentScriptsAboutSettingsChange(
+    settings?: Record<string, unknown>
+  ): Promise<void> {
+    await ExtensionRuntime.ensureStarted()
+    const resolvedSettings = settings ?? (await getBackgroundSettings())
+    notifyContentScriptsAboutSettingsChange((document) =>
+      ExtensionRuntime.createContentCommandMessage(
+        document.url,
+        resolvedSettings
+      )
+    )
+  }
+
+  private static async handleLocalSettingsChange(
+    changes: Record<string, chrome.storage.StorageChange>
+  ): Promise<void> {
+    await ExtensionRuntime.ensureStarted()
+    const settings =
+      (await syncBackgroundSettingsCacheFromLocalChanges(changes)) ??
+      (await getBackgroundSettings())
+
+    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(settings)
+    ExtensionRuntime.scheduleReportChanges()
+  }
+
+  private static async createContentCommandMessage(
+    url: string,
+    settings: Record<string, unknown>
+  ) {
+    const { createFontaraContentCommandMessage } = await import(
+      "./theme-message"
+    )
+
+    return createFontaraContentCommandMessage(url, settings)
+  }
+
   static async collectData(): Promise<FontaraExtensionData> {
     await ExtensionRuntime.ensureStarted()
     const [settings, shortcuts, activeTab] = await Promise.all([
-      readSettings(),
+      getBackgroundSettings(),
       collectShortcuts(),
       collectActiveTabInfo()
     ])
@@ -262,7 +204,7 @@ export class ExtensionRuntime {
 
   static async changeSettings(settings: FontaraSettings): Promise<void> {
     await ExtensionRuntime.ensureStarted()
-    await writeNormalizedSettings(settings)
+    await writeBackgroundSettings(settings)
     ExtensionRuntime.scheduleReportChanges()
   }
 
@@ -271,7 +213,7 @@ export class ExtensionRuntime {
   ): Promise<FontaraImportedSettingsResult> {
     await ExtensionRuntime.ensureStarted()
     const normalizedBackup = await normalizeSettingsBackup(settings)
-    await writeNormalizedSettings(normalizedBackup.settings)
+    await writeBackgroundSettings(normalizedBackup.settings)
     ExtensionRuntime.scheduleReportChanges()
 
     return {
@@ -282,16 +224,14 @@ export class ExtensionRuntime {
 
   static async resetSettings(): Promise<void> {
     await ExtensionRuntime.ensureStarted()
-    await writeNormalizedSettings(await createSettingsResetValues())
+    await writeBackgroundSettings(await createSettingsResetValues())
     ExtensionRuntime.scheduleReportChanges()
   }
 
   private static async toggleExtension(): Promise<void> {
-    const settings = await readSettings()
-    await ExtensionRuntime.changeSettings({
-      [STORAGE_KEYS.EXTENSION_ENABLED]:
-        settings[STORAGE_KEYS.EXTENSION_ENABLED] === false
-    })
+    await ExtensionRuntime.changeSettings(
+      createToggleExtensionSettings(await getBackgroundSettings())
+    )
   }
 
   private static async toggleCurrentSite(
@@ -300,56 +240,9 @@ export class ExtensionRuntime {
     const url = await getCommandURL(details)
     if (!url) return
 
-    const settings = await readSettings()
-    const websiteList = Array.isArray(settings[STORAGE_KEYS.WEBSITE_LIST])
-      ? (settings[STORAGE_KEYS.WEBSITE_LIST] as WebsiteItem[])
-      : DEFAULT_VALUES.WEBSITE_LIST
-    const enabledByDefault = normalizeEnabledByDefault(
-      settings[STORAGE_KEYS.ENABLED_BY_DEFAULT]
+    await ExtensionRuntime.changeSettings(
+      createToggleCurrentSiteSettings(url, await getBackgroundSettings())
     )
-    const enabledFor =
-      settings[STORAGE_KEYS.ENABLED_FOR] === undefined
-        ? getActiveWebsiteSitePatterns(websiteList)
-        : normalizeEnabledSiteList(settings[STORAGE_KEYS.ENABLED_FOR])
-    const disabledFor =
-      settings[STORAGE_KEYS.DISABLED_FOR] === undefined
-        ? DEFAULT_VALUES.DISABLED_FOR
-        : normalizeSiteList(settings[STORAGE_KEYS.DISABLED_FOR])
-    const siteListSettings = {
-      disabledFor,
-      enabledByDefault,
-      enabledFor
-    }
-    const checked = !isSiteListUrlEnabled(url, siteListSettings)
-    const existingWebsiteIndex = websiteList.findIndex(
-      (item) => getMatchingWebsite(url, [item]) !== null
-    )
-    const siteListUpdate = createSiteListToggleUpdate(
-      url,
-      siteListSettings,
-      checked
-    )
-    const updatedWebsiteList =
-      existingWebsiteIndex === -1 && checked
-        ? [
-            ...websiteList,
-            {
-              url,
-              regex: createRegexFromUrl(url),
-              isActive: true
-            }
-          ]
-        : websiteList.map((item, index) =>
-            index === existingWebsiteIndex
-              ? { ...item, isActive: checked }
-              : item
-          )
-
-    await ExtensionRuntime.changeSettings({
-      [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
-      [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
-      [STORAGE_KEYS.WEBSITE_LIST]: updatedWebsiteList
-    })
   }
 
   static async runCommand(

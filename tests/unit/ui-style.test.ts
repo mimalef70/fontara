@@ -217,6 +217,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /STORAGE_KEYS\.SITE_PROFILES/)
   assert.match(optionsSource, /options\.systemFonts\.title/)
   assert.match(optionsSource, /options\.googleFonts\.title/)
+  assert.match(optionsSource, /options\.googleFonts\.privacyNotice/)
   assert.match(optionsSource, /options\.textStroke\.title/)
   assert.match(optionsSource, /options\.siteList\.title/)
   assert.match(optionsSource, /options\.siteProfiles\.title/)

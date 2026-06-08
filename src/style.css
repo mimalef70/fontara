@@ -39,6 +39,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+  /* Reserved for the planned dark mode toggle; keep these tokens until the UI is wired. */
   .dark {
     --background: 224 71% 4%;
     --foreground: 213 31% 91%;

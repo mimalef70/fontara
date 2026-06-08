@@ -281,6 +281,23 @@ test("site list URL matching mirrors Dark Reader wildcard and path behavior", ()
   )
 })
 
+test("site list URL cache is capped with LRU eviction", () => {
+  const siteListSource = fs.readFileSync(
+    path.resolve("src/config/site-list.ts"),
+    "utf8"
+  )
+
+  assert.match(siteListSource, /const PREPARED_URL_CACHE_LIMIT = 500/)
+  assert.match(siteListSource, /function getPreparedURLCacheEntry/)
+  assert.match(siteListSource, /function setPreparedURLCacheEntry/)
+  assert.match(siteListSource, /preparedURLCache\.delete\(url\)/)
+  assert.match(
+    siteListSource,
+    /preparedURLCache\.size > PREPARED_URL_CACHE_LIMIT/
+  )
+  assert.match(siteListSource, /preparedURLCache\.delete\(oldestKey\)/)
+})
+
 test("site list helpers keep append order and reject invalid regex patterns", () => {
   assert.deepEqual(addSitePatternToList(["b.com"], "a.com"), ["b.com", "a.com"])
   assert.deepEqual(addSitePatternToList(["dropbox.com"], "www.dropbox.com"), [

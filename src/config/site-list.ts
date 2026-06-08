@@ -21,7 +21,34 @@ type PreparedPattern = PreparedURL & {
 const regexpCache = new Map<string, RegExp | null>()
 const preparedPatternCache = new Map<string, PreparedPattern | null>()
 const preparedURLCache = new Map<string, PreparedURL | null>()
+const PREPARED_URL_CACHE_LIMIT = 500
 const PROTOCOL_PATTERN = /^[a-z*][a-z0-9+.-]*:\/\//i
+
+function getPreparedURLCacheEntry(url: string): PreparedURL | null | undefined {
+  const cached = preparedURLCache.get(url)
+  if (cached === undefined) return undefined
+
+  preparedURLCache.delete(url)
+  preparedURLCache.set(url, cached)
+  return cached
+}
+
+function setPreparedURLCacheEntry(
+  url: string,
+  preparedURL: PreparedURL | null
+): void {
+  if (preparedURLCache.has(url)) {
+    preparedURLCache.delete(url)
+  }
+
+  preparedURLCache.set(url, preparedURL)
+
+  while (preparedURLCache.size > PREPARED_URL_CACHE_LIMIT) {
+    const oldestKey = preparedURLCache.keys().next().value
+    if (oldestKey === undefined) return
+    preparedURLCache.delete(oldestKey)
+  }
+}
 
 function isRegExpPattern(pattern: string): boolean {
   return pattern.startsWith("/") && pattern.endsWith("/") && pattern.length > 2
@@ -50,7 +77,7 @@ function createRegExp(pattern: string): RegExp | null {
 }
 
 function prepareURL(url: string): PreparedURL | null {
-  const cached = preparedURLCache.get(url)
+  const cached = getPreparedURLCacheEntry(url)
   if (cached !== undefined) return cached
 
   try {
@@ -66,10 +93,10 @@ function prepareURL(url: string): PreparedURL | null {
       port: parsed.port,
       protocol: parsed.protocol
     }
-    preparedURLCache.set(url, prepared)
+    setPreparedURLCacheEntry(url, prepared)
     return prepared
   } catch {
-    preparedURLCache.set(url, null)
+    setPreparedURLCacheEntry(url, null)
     return null
   }
 }

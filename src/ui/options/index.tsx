@@ -1103,6 +1103,9 @@ function OptionsPage() {
                                 ? t("options.googleFonts.enabled")
                                 : t("options.googleFonts.disabled")}
                             </p>
+                            <p className="mt-2 text-xs leading-5 text-[#946200]">
+                              {t("options.googleFonts.privacyNotice")}
+                            </p>
                           </div>
                         </div>
                         <Switch

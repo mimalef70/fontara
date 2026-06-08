@@ -19,6 +19,11 @@ type Manifest = {
   optional_permissions?: string[]
   permissions: string[]
   short_name?: string
+  web_accessible_resources?: Array<{
+    matches?: string[]
+    resources: string[]
+    use_dynamic_url?: boolean
+  }>
 }
 
 function readJSON<T>(filePath: string): T {
@@ -44,6 +49,29 @@ test("manifest grants storage capacity for custom fonts without redundant active
   assert.ok(manifest.permissions.includes("unlimitedStorage"))
   assert.ok(manifest.permissions.includes("tabs"))
   assert.equal(manifest.permissions.includes("activeTab"), false)
+})
+
+test("manifest exposes only font assets to web pages", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+  const webAccessibleResources = manifest.web_accessible_resources ?? []
+
+  assert.equal(webAccessibleResources.length, 1)
+  assert.deepEqual(webAccessibleResources[0].matches, ["*://*/*"])
+  assert.deepEqual(webAccessibleResources[0].resources, [
+    "assets/fonts/*",
+    "assets/fonts/*/*",
+    "assets/fonts/*/*/*"
+  ])
+  assert.equal(webAccessibleResources[0].use_dynamic_url, undefined)
+  assert.equal(webAccessibleResources[0].resources.includes("assets/*"), false)
+  assert.equal(
+    webAccessibleResources[0].resources.includes("assets/logos/*"),
+    false
+  )
+  assert.equal(
+    webAccessibleResources[0].resources.includes("assets/styles/*"),
+    false
+  )
 })
 
 test("chromium manifest grants system font access like Dark Reader while firefox omits it", () => {

@@ -220,6 +220,10 @@ test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
     fontFaceBlocks.length
   )
   assert.equal(
+    fontFaceBlocks.filter((block) => block.includes('format("woff2')).length,
+    fontFaceBlocks.length
+  )
+  assert.equal(
     fontFaceBlocks.filter((block) =>
       block.includes(`unicode-range: ${FONTARA_TEXT_UNICODE_RANGE};`)
     ).length,

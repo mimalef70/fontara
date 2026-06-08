@@ -65,6 +65,30 @@ test("debug manifests use literal strings without WebExtension locale catalogs",
   )
 })
 
+test("build manifests use dynamic web accessible font URLs for fixed-id Chromium targets", () => {
+  const bundleManifestSource = fs.readFileSync(
+    path.resolve("tasks/bundle-manifest.js"),
+    "utf8"
+  )
+  const dynamicPlatformSetSource =
+    bundleManifestSource.match(
+      /const DYNAMIC_WEB_ACCESSIBLE_RESOURCE_PLATFORMS = new Set\(\[[\s\S]*?\]\)/
+    )?.[0] ?? ""
+
+  assert.match(
+    bundleManifestSource,
+    /DYNAMIC_WEB_ACCESSIBLE_RESOURCE_PLATFORMS/
+  )
+  assert.match(dynamicPlatformSetSource, /PLATFORM\.CHROME_MV3/)
+  assert.match(dynamicPlatformSetSource, /PLATFORM\.EDGE_MV3/)
+  assert.match(dynamicPlatformSetSource, /PLATFORM\.BRAVE_MV3/)
+  assert.match(dynamicPlatformSetSource, /PLATFORM\.OPERA_MV3/)
+  assert.match(bundleManifestSource, /withDynamicWebAccessibleResourceURLs/)
+  assert.match(bundleManifestSource, /use_dynamic_url: true/)
+  assert.doesNotMatch(dynamicPlatformSetSource, /PLATFORM\.FIREFOX_MV3/)
+  assert.doesNotMatch(dynamicPlatformSetSource, /PLATFORM\.SAFARI_MV3/)
+})
+
 test("Google Fonts catalog is generated at build time without shipping API secrets", () => {
   const generatorSource = fs.readFileSync(
     path.resolve("tasks/generate-google-fonts.js"),

@@ -38,14 +38,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "assets/*",
-        "assets/fonts/*",
-        "assets/fonts/*/*",
-        "assets/fonts/*/*/*",
-        "assets/logos/*",
-        "assets/styles/*"
-      ],
+      "resources": ["assets/fonts/*", "assets/fonts/*/*", "assets/fonts/*/*/*"],
       "matches": ["*://*/*"]
     }
   ],

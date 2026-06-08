@@ -53,6 +53,8 @@ test("debug manifests use literal strings without WebExtension locale catalogs",
   assert.match(bundleManifestSource, /patchedManifest\.name = "FontAra Debug"/)
   assert.match(bundleManifestSource, /patchedManifest\.short_name =/)
   assert.match(bundleManifestSource, /patchedManifest\.description =/)
+  assert.match(bundleManifestSource, /withDebugCommandDescriptions/)
+  assert.match(bundleManifestSource, /command\.description\.match/)
   assert.match(bundleManifestSource, /delete patchedManifest\.default_locale/)
   assert.match(bundleLocalesSource, /if \(debug\) return/)
   assert.match(
@@ -63,6 +65,8 @@ test("debug manifests use literal strings without WebExtension locale catalogs",
     validateBuildSource,
     /default_locale is set but _locales is missing/
   )
+  assert.match(validateBuildSource, /hasWebExtensionMessagePlaceholder/)
+  assert.match(validateBuildSource, /__MSG_\*/)
 })
 
 test("build manifests use dynamic web accessible font URLs for fixed-id Chromium targets", () => {

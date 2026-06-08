@@ -1,4 +1,5 @@
 import { URLS } from "../config/storage"
+import { registerCommandListeners } from "./command-manager"
 import { registerContextMenuListeners } from "./context-menu-manager"
 import { registerIconListeners } from "./icon-manager"
 import {
@@ -15,6 +16,7 @@ function logStorageError(error: unknown): void {
 void ensureStorageValues().catch(logStorageError)
 registerSettingsSyncListeners()
 registerIconListeners()
+registerCommandListeners()
 registerContextMenuListeners()
 
 chrome.runtime.onInstalled.addListener((details) => {

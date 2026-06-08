@@ -4,6 +4,15 @@ import path from "node:path"
 import test from "node:test"
 
 type Manifest = {
+  commands?: Record<
+    string,
+    {
+      description?: string
+      suggested_key?: {
+        default?: string
+      }
+    }
+  >
   content_security_policy: {
     extension_pages: string
   }
@@ -62,6 +71,23 @@ test("manifest enables context menus like Dark Reader", () => {
     firefoxManifest.optional_permissions?.includes("contextMenus"),
     false
   )
+})
+
+test("manifest defines browser hotkeys with FontAra-specific defaults", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+
+  assert.deepEqual(manifest.commands?.toggle, {
+    suggested_key: {
+      default: "Alt+Shift+F"
+    },
+    description: "__MSG_commandToggleExtension__"
+  })
+  assert.deepEqual(manifest.commands?.addSite, {
+    suggested_key: {
+      default: "Alt+Shift+S"
+    },
+    description: "__MSG_commandToggleCurrentSite__"
+  })
 })
 
 test("manifest exposes only font assets to web pages", () => {

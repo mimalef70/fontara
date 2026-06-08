@@ -84,7 +84,7 @@ function IndexPopup() {
                       target="_blank"
                       className="flex cursor-pointer justify-center items-center h-10 gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#4caf4f1c] rounded-[3px] text-[13px] text-[#4caf50] text-center py-[9px] relative"
                       rel="noopener">
-                      حمایت از فونت آرا
+                      حمایت از FontAra
                     </a> */}
                   </div>
                 </div>

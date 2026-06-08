@@ -206,6 +206,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /direction === "rtl" \? "right" : "left"/)
   assert.match(optionsSource, /options\.nav\.language/)
   assert.match(optionsSource, /options\.nav\.rtl/)
+  assert.match(optionsSource, /options\.nav\.hotkeys/)
   assert.match(optionsSource, /options\.nav\.backup/)
   assert.match(optionsSource, /RTL_SUPPORTED_SITES\.map/)
   assert.match(optionsSource, /STORAGE_KEYS\.RTL_ENABLED/)
@@ -243,6 +244,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.contextMenus\.title/)
   assert.match(optionsSource, /requestContextMenusPermission/)
   assert.match(optionsSource, /handleContextMenusToggle/)
+  assert.match(optionsSource, /<HotkeysSettings \/>/)
   assert.match(optionsSource, /from "..\/components\/ui\/alert-dialog"/)
   assert.match(optionsSource, /<AlertDialog/)
   assert.match(optionsSource, /<AlertDialogContent dir=\{direction\}/)
@@ -297,6 +299,39 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.doesNotMatch(sidebarSource, /after:left-1\/2/)
   assert.doesNotMatch(sidebarSource, /text-left/)
   assert.doesNotMatch(sidebarSource, /menu-item:pr-8/)
+})
+
+test("options page exposes Dark Reader style hotkey controls", () => {
+  const hotkeysSource = fs.readFileSync(
+    path.resolve("src/ui/components/HotkeysSettings.tsx"),
+    "utf8"
+  )
+  const shortcutSource = fs.readFileSync(
+    path.resolve("src/ui/components/ShortcutControl.tsx"),
+    "utf8"
+  )
+  const backgroundSource = fs.readFileSync(
+    path.resolve("src/background/command-manager.ts"),
+    "utf8"
+  )
+
+  assert.match(hotkeysSource, /chrome\.commands\.getAll/)
+  assert.match(hotkeysSource, /commandName: "toggle"/)
+  assert.match(hotkeysSource, /commandName: "addSite"/)
+  assert.match(hotkeysSource, /defaultShortcut: "Alt\+Shift\+F"/)
+  assert.match(hotkeysSource, /defaultShortcut: "Alt\+Shift\+S"/)
+  assert.match(hotkeysSource, /options\.hotkeys\.defaultLabel/)
+  assert.match(hotkeysSource, /options\.hotkeys\.missingDefaultHint/)
+  assert.match(shortcutSource, /browser\.commands\.update/)
+  assert.match(shortcutSource, /browser\.commands\.getAll/)
+  assert.match(shortcutSource, /formatShortcutForDisplay/)
+  assert.match(shortcutSource, /⌥/)
+  assert.match(shortcutSource, /⇧/)
+  assert.match(shortcutSource, /chrome:\/\/extensions\/configureCommands/)
+  assert.match(shortcutSource, /edge:\/\/extensions\/shortcuts/)
+  assert.match(backgroundSource, /chrome\.commands/)
+  assert.match(backgroundSource, /onCommand\.addListener/)
+  assert.match(backgroundSource, /COMMAND_DEBOUNCE_DELAY_MS = 75/)
 })
 
 test("popup add custom font action is an icon button beside the selector", () => {

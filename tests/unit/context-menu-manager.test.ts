@@ -102,9 +102,9 @@ test("context menu manager registers menus and toggles the current site", async 
 
   assert.deepEqual(
     createdMenus.map((menu) => menu.id),
-    ["FontARA-top", "toggle", "addSite", "openOptions"]
+    ["fontara-top", "toggle", "addSite", "openOptions"]
   )
-  assert.equal(createdMenus[1].parentId, "FontARA-top")
+  assert.equal(createdMenus[1].parentId, "fontara-top")
   assert.equal(clickListeners.length, 1)
 
   clickListeners[0](

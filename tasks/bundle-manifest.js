@@ -44,6 +44,38 @@ function withDynamicWebAccessibleResourceURLs(manifest, platform) {
   }
 }
 
+function withDebugCommandDescriptions(manifest, messages) {
+  if (!manifest.commands) return manifest
+
+  return {
+    ...manifest,
+    commands: Object.fromEntries(
+      Object.entries(manifest.commands).map(([name, command]) => {
+        if (typeof command.description !== "string") {
+          return [name, command]
+        }
+
+        const messageKey = command.description.match(/^__MSG_(.+)__$/)?.[1]
+        if (!messageKey) {
+          return [name, command]
+        }
+
+        return [
+          name,
+          {
+            ...command,
+            description: getMessageText(
+              messages,
+              messageKey,
+              command.description
+            )
+          }
+        ]
+      })
+    )
+  }
+}
+
 async function bundleManifest({ platform, debug }) {
   const manifest = await readJSON(absolutePath("src/manifest.json"))
   const patch = await readPatch(platform)
@@ -72,6 +104,10 @@ async function bundleManifest({ platform, debug }) {
       defaultMessages,
       "extensionDescription",
       "FontAra debug build."
+    )
+    patchedManifest = withDebugCommandDescriptions(
+      patchedManifest,
+      defaultMessages
     )
     patchedManifest.version_name = `${packageJSON.version} Debug`
     delete patchedManifest.default_locale

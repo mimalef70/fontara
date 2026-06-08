@@ -1,27 +1,14 @@
-import {
-  createSiteListToggleUpdate,
-  getActiveWebsiteSitePatterns,
-  isSiteListUrlEnabled,
-  normalizeEnabledByDefault,
-  normalizeEnabledSiteList,
-  normalizeSiteList
-} from "../config/site-list"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { WebsiteItem } from "../definitions"
 import { openOptionsPageSafely } from "../utils/options-page"
-import {
-  getLocalValues,
-  setLocalValues,
-  watchLocalStorage
-} from "../utils/storage"
-import { createRegexFromUrl, getMatchingWebsite } from "../utils/url"
+import { getLocalValues, watchLocalStorage } from "../utils/storage"
+import { FONTARA_COMMANDS, runFontaraCommand } from "./command-manager"
 
-const CONTEXT_MENU_ROOT_ID = "FontARA-top"
+const CONTEXT_MENU_ROOT_ID = "fontara-top"
 const CONTEXT_MENU_PERMISSION = "contextMenus"
 const CONTEXT_MENU_COMMANDS = {
   OPEN_OPTIONS: "openOptions",
-  TOGGLE_EXTENSION: "toggle",
-  TOGGLE_SITE: "addSite"
+  TOGGLE_EXTENSION: FONTARA_COMMANDS.TOGGLE_EXTENSION,
+  TOGGLE_SITE: FONTARA_COMMANDS.TOGGLE_SITE
 } as const
 
 type ContextMenuCommand =
@@ -64,10 +51,6 @@ function getMessage(key: string, fallback: string): string {
 
 function getContextMenuTitle(key: string, fallback: string): string {
   return getMessage(key, fallback)
-}
-
-function isSupportedContextMenuURL(url: string | undefined): url is string {
-  return typeof url === "string" && /^https?:\/\//i.test(url)
 }
 
 function hasContextMenusPermission(): Promise<boolean> {
@@ -138,7 +121,7 @@ async function registerContextMenus(): Promise<void> {
   await removeContextMenus()
   await createContextMenu({
     id: CONTEXT_MENU_ROOT_ID,
-    title: getContextMenuTitle("contextMenuTitle", "Font Ara")
+    title: getContextMenuTitle("contextMenuTitle", "FontAra")
   })
   await createContextMenu({
     id: CONTEXT_MENU_COMMANDS.TOGGLE_EXTENSION,
@@ -160,75 +143,6 @@ async function registerContextMenus(): Promise<void> {
   })
 }
 
-async function toggleExtension(): Promise<void> {
-  const values = await getLocalValues({
-    [STORAGE_KEYS.EXTENSION_ENABLED]: DEFAULT_VALUES.EXTENSION_ENABLED
-  })
-
-  await setLocalValues({
-    [STORAGE_KEYS.EXTENSION_ENABLED]:
-      values[STORAGE_KEYS.EXTENSION_ENABLED] === false
-  })
-}
-
-async function toggleCurrentSite(url: string | undefined): Promise<void> {
-  if (!isSupportedContextMenuURL(url)) return
-
-  const storedValues = await getLocalValues({
-    [STORAGE_KEYS.DISABLED_FOR]: undefined,
-    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: DEFAULT_VALUES.ENABLED_BY_DEFAULT,
-    [STORAGE_KEYS.ENABLED_FOR]: undefined,
-    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
-  })
-  const websiteList = Array.isArray(storedValues[STORAGE_KEYS.WEBSITE_LIST])
-    ? (storedValues[STORAGE_KEYS.WEBSITE_LIST] as WebsiteItem[])
-    : DEFAULT_VALUES.WEBSITE_LIST
-  const enabledByDefault = normalizeEnabledByDefault(
-    storedValues[STORAGE_KEYS.ENABLED_BY_DEFAULT]
-  )
-  const enabledFor =
-    storedValues[STORAGE_KEYS.ENABLED_FOR] === undefined
-      ? getActiveWebsiteSitePatterns(websiteList)
-      : normalizeEnabledSiteList(storedValues[STORAGE_KEYS.ENABLED_FOR])
-  const disabledFor =
-    storedValues[STORAGE_KEYS.DISABLED_FOR] === undefined
-      ? DEFAULT_VALUES.DISABLED_FOR
-      : normalizeSiteList(storedValues[STORAGE_KEYS.DISABLED_FOR])
-  const siteListSettings = {
-    disabledFor,
-    enabledByDefault,
-    enabledFor
-  }
-  const checked = !isSiteListUrlEnabled(url, siteListSettings)
-  const existingWebsiteIndex = websiteList.findIndex(
-    (item) => getMatchingWebsite(url, [item]) !== null
-  )
-  const siteListUpdate = createSiteListToggleUpdate(
-    url,
-    siteListSettings,
-    checked
-  )
-  const updatedWebsiteList =
-    existingWebsiteIndex === -1 && checked
-      ? [
-          ...websiteList,
-          {
-            url,
-            regex: createRegexFromUrl(url),
-            isActive: true
-          }
-        ]
-      : websiteList.map((item, index) =>
-          index === existingWebsiteIndex ? { ...item, isActive: checked } : item
-        )
-
-  await setLocalValues({
-    [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
-    [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
-    [STORAGE_KEYS.WEBSITE_LIST]: updatedWebsiteList
-  })
-}
-
 async function runContextMenuCommand(
   command: ContextMenuCommand,
   url: string | undefined
@@ -236,17 +150,15 @@ async function runContextMenuCommand(
   try {
     switch (command) {
       case CONTEXT_MENU_COMMANDS.TOGGLE_EXTENSION:
-        await toggleExtension()
-        break
       case CONTEXT_MENU_COMMANDS.TOGGLE_SITE:
-        await toggleCurrentSite(url)
+        await runFontaraCommand(command, { url })
         break
       case CONTEXT_MENU_COMMANDS.OPEN_OPTIONS:
         await openOptionsPageSafely()
         break
     }
   } catch (error) {
-    debugWarn("Failed to run Font Ara context menu command.", error)
+    debugWarn("Failed to run FontAra context menu command.", error)
   }
 }
 
@@ -265,7 +177,7 @@ export async function ensureContextMenus(): Promise<void> {
 
 export function registerContextMenuListeners(): void {
   void ensureContextMenus().catch((error) => {
-    debugWarn("Failed to initialize Font Ara context menus.", error)
+    debugWarn("Failed to initialize FontAra context menus.", error)
   })
 
   watchLocalStorage({

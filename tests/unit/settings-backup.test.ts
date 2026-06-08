@@ -27,7 +27,7 @@ test("settings backup exports a versioned allowlisted JSON envelope", () => {
     }
   )
 
-  assert.equal(backup.app, "FontARA")
+  assert.equal(backup.app, "FontAra")
   assert.equal(backup.format, FONTARA_SETTINGS_EXPORT_FORMAT)
   assert.equal(backup.version, 1)
   assert.equal(backup.exportedAt, "2026-06-08T10:00:00.000Z")
@@ -44,14 +44,25 @@ test("settings backup exports a versioned allowlisted JSON envelope", () => {
   )
 })
 
-test("settings backup parser accepts FontARA envelopes and rejects invalid files", () => {
+test("settings backup parser accepts FontAra envelopes and rejects invalid files", () => {
   const backup = createSettingsBackup({
     [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara"
   })
   const parsed = parseSettingsBackupText(JSON.stringify(backup))
+  const legacyParsed = parseSettingsBackupText(
+    JSON.stringify({
+      ...backup,
+      app: "FontARA"
+    })
+  )
 
   assert.equal(parsed.version, 1)
   assert.equal(parsed.settings[STORAGE_KEYS.SELECTED_FONT], "Vazirmatn-Fontara")
+  assert.equal(legacyParsed.version, 1)
+  assert.equal(
+    legacyParsed.settings[STORAGE_KEYS.SELECTED_FONT],
+    "Vazirmatn-Fontara"
+  )
   assert.throws(() => parseSettingsBackupText("{"), /invalid-json/)
   assert.throws(
     () => parseSettingsBackupText(JSON.stringify({ settings: {} })),
@@ -75,7 +86,7 @@ test("settings backup parser accepts FontARA envelopes and rejects invalid files
     () =>
       parseSettingsBackupText(
         JSON.stringify({
-          app: "FontARA",
+          app: "FontAra",
           format: FONTARA_SETTINGS_EXPORT_FORMAT,
           version: 999,
           settings: {

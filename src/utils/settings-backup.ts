@@ -24,7 +24,8 @@ export const FONTARA_SETTINGS_STORAGE_KEYS = [
 ] as const
 
 const LEGACY_IMPORT_STORAGE_KEYS = [STORAGE_KEYS.TEXT_STROKE_ENABLED] as const
-const APP_NAME = "FontARA"
+const APP_NAME = "FontAra"
+const LEGACY_APP_NAMES = ["FontARA"] as const
 
 export type FontaraSettingsBackup = {
   app: typeof APP_NAME
@@ -67,6 +68,16 @@ function isAcceptedImportStorageKey(key: string): boolean {
   return (
     isExportedStorageKey(key) ||
     (LEGACY_IMPORT_STORAGE_KEYS as readonly string[]).includes(key)
+  )
+}
+
+function isAcceptedAppName(
+  value: unknown
+): value is typeof APP_NAME | (typeof LEGACY_APP_NAMES)[number] {
+  return (
+    value === APP_NAME ||
+    (typeof value === "string" &&
+      (LEGACY_APP_NAMES as readonly string[]).includes(value))
   )
 }
 
@@ -141,7 +152,7 @@ export function parseSettingsBackupText(text: string): ParsedSettingsBackup {
 
   if (parsed.format === FONTARA_SETTINGS_EXPORT_FORMAT) {
     if (
-      parsed.app !== APP_NAME ||
+      !isAcceptedAppName(parsed.app) ||
       typeof parsed.version !== "number" ||
       parsed.version > FONTARA_SETTINGS_EXPORT_VERSION ||
       !isPlainRecord(parsed.settings)

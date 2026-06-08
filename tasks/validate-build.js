@@ -3,6 +3,22 @@ const path = require("node:path")
 const { absolutePath, getDestDir } = require("./paths")
 const { pathExists, readJSON } = require("./utils")
 
+function hasWebExtensionMessagePlaceholder(value) {
+  if (typeof value === "string") {
+    return /__MSG_[A-Za-z0-9_@]+__/.test(value)
+  }
+
+  if (Array.isArray(value)) {
+    return value.some(hasWebExtensionMessagePlaceholder)
+  }
+
+  if (value && typeof value === "object") {
+    return Object.values(value).some(hasWebExtensionMessagePlaceholder)
+  }
+
+  return false
+}
+
 async function validateBuild({ platform, debug }) {
   const outDir = getDestDir({ platform, debug })
   const manifest = await readJSON(path.join(outDir, "manifest.json"))
@@ -17,7 +33,15 @@ async function validateBuild({ platform, debug }) {
     )
   }
 
-  if (!manifest.default_locale) return
+  if (!manifest.default_locale) {
+    if (hasWebExtensionMessagePlaceholder(manifest)) {
+      throw new Error(
+        `Manifest contains __MSG_* placeholders without default_locale: ${path.join(outDir, "manifest.json")}`
+      )
+    }
+
+    return
+  }
 
   if (!hasLocalesDir) {
     throw new Error(

@@ -9,6 +9,7 @@ import {
   Globe2,
   HardDrive,
   Info,
+  Keyboard,
   Languages,
   ListChecks,
   Menu,
@@ -100,6 +101,7 @@ import {
   type SystemFontData
 } from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
+import { HotkeysSettings } from "../components/HotkeysSettings"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -157,6 +159,7 @@ type SettingsSection =
   | "sites"
   | "rtl"
   | "language"
+  | "hotkeys"
   | "backup"
   | "status"
 
@@ -169,6 +172,7 @@ const settingsNavigation: Array<{
   { id: "sites", labelKey: "options.nav.sites", icon: Globe2 },
   { id: "rtl", labelKey: "options.nav.rtl", icon: AlignRight },
   { id: "language", labelKey: "options.nav.language", icon: Languages },
+  { id: "hotkeys", labelKey: "options.nav.hotkeys", icon: Keyboard },
   { id: "backup", labelKey: "options.nav.backup", icon: Cloud },
   { id: "status", labelKey: "options.nav.status", icon: ListChecks }
 ]
@@ -178,6 +182,7 @@ const sectionDescriptionKeys: Record<SettingsSection, MessageKey> = {
   sites: "options.section.sites.description",
   rtl: "options.section.rtl.description",
   language: "options.section.language.description",
+  hotkeys: "options.section.hotkeys.description",
   backup: "options.section.backup.description",
   status: "options.section.status.description"
 }
@@ -630,7 +635,7 @@ function OptionsPage() {
       })
     } catch (error) {
       if (__DEBUG__) {
-        console.warn("Failed to export Font Ara settings.", error)
+        console.warn("Failed to export FontAra settings.", error)
       }
       toast({ title: t("options.toast.settingsExportError") })
     } finally {
@@ -665,7 +670,7 @@ function OptionsPage() {
       })
     } catch (error) {
       if (__DEBUG__) {
-        console.warn("Failed to import Font Ara settings.", error)
+        console.warn("Failed to import FontAra settings.", error)
       }
       toast({
         title: t("options.toast.settingsImportError"),
@@ -687,7 +692,7 @@ function OptionsPage() {
       toast({ title: t("options.toast.settingsReset") })
     } catch (error) {
       if (__DEBUG__) {
-        console.warn("Failed to reset Font Ara settings.", error)
+        console.warn("Failed to reset FontAra settings.", error)
       }
       toast({ title: t("options.toast.settingsResetError") })
     } finally {
@@ -705,7 +710,7 @@ function OptionsPage() {
       })
     } catch (error) {
       if (__DEBUG__) {
-        console.warn("Failed to update Font Ara sync settings.", error)
+        console.warn("Failed to update FontAra sync settings.", error)
       }
       toast({ title: t("options.toast.syncError") })
     }
@@ -726,7 +731,7 @@ function OptionsPage() {
       })
     } catch (error) {
       if (__DEBUG__) {
-        console.warn("Failed to update Font Ara context menu setting.", error)
+        console.warn("Failed to update FontAra context menu setting.", error)
       }
       toast({ title: t("options.toast.contextMenusError") })
     }
@@ -2221,6 +2226,8 @@ function OptionsPage() {
                   </div>
                 </section>
               )}
+
+              {activeSection === "hotkeys" && <HotkeysSettings />}
 
               {activeSection === "backup" && (
                 <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-4">

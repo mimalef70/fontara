@@ -1,6 +1,6 @@
 ![](https://mimalef70.github.io/fontara/images/demo/logo.svg)
 
-# FontARA Version 4.3
+# FontAra Version 4.3
 
 ![](https://mimalef70.github.io/fontara/images/demo/screens/Version4.jpg)
 
@@ -10,7 +10,7 @@
 ![](https://mimalef70.github.io/fontara/images/demo/screens/Banner4.jpg)
 ![](https://mimalef70.github.io/fontara/images/demo/screens/Banner5.jpg)
 
-Are you bored of seeing the same fonts all the time? Well, we have a way of changing the font on **almost any website** to a custom one of your own choosing. With installing **FontARA**, you can change the font on most popular sites such as ChatGPT, Google, Gmail, YouTube, X, LinkedIn, Instagram, Facebook, GitHub, or **almost any other site**.
+Are you bored of seeing the same fonts all the time? Well, we have a way of changing the font on **almost any website** to a custom one of your own choosing. With installing **FontAra**, you can change the font on most popular sites such as ChatGPT, Google, Gmail, YouTube, X, LinkedIn, Instagram, Facebook, GitHub, or **almost any other site**.
 
 Have fun experimenting with different fonts and settings with your browser. Find something that suits your personality and make your browser your own.
 
@@ -40,7 +40,7 @@ Have fun experimenting with different fonts and settings with your browser. Find
 
 ### Contacts
 
-- [**FontARA on GitHub**](https://github.com/mimalef70/fontara)
+- [**FontAra on GitHub**](https://github.com/mimalef70/fontara)
 - [**Mostafa Alahyari on X**](https://x.com/mimalef70)
 - [**For More Details**](https://mimalef70.github.io/fontara/)
 
@@ -60,7 +60,7 @@ We welcome contributions! Check our [Contributing Guidelines](CONTRIBUTING.md) t
 
 ### Development
 
-FontARA is now built as a pure WebExtension. The source manifest files live in `src/manifest*.json`, runtime code is split across `src/background`, `src/inject`, `src/ui`, `src/config`, and `src/utils`, and the build pipeline lives in `tasks`.
+FontAra is now built as a pure WebExtension. The source manifest files live in `src/manifest*.json`, runtime code is split across `src/background`, `src/inject`, `src/ui`, `src/config`, and `src/utils`, and the build pipeline lives in `tasks`.
 
 - Use Node.js 24 LTS and pnpm 11.
 - `pnpm dev` builds and watches the Chrome MV3 debug extension in `build/chrome-mv3-dev`.

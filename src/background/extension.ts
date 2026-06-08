@@ -172,8 +172,25 @@ export class ExtensionRuntime {
     const settings = await syncBackgroundSettingsCacheFromLocalChanges(changes)
     if (!settings) return
 
+    await ExtensionRuntime.publishSettingsChange(settings)
+  }
+
+  private static async publishSettingsChange(
+    settings: Record<string, unknown>
+  ): Promise<void> {
     await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(settings)
     ExtensionRuntime.scheduleReportChanges()
+  }
+
+  private static async writeSettingsChange(
+    settings: FontaraSettings
+  ): Promise<Record<string, unknown>> {
+    await ExtensionRuntime.ensureStarted()
+    const updatedSettings = await writeBackgroundSettings(settings)
+
+    await ExtensionRuntime.publishSettingsChange(updatedSettings)
+
+    return updatedSettings
   }
 
   private static async createContentCommandMessage(
@@ -204,28 +221,15 @@ export class ExtensionRuntime {
   }
 
   static async changeSettings(settings: FontaraSettings): Promise<void> {
-    await ExtensionRuntime.ensureStarted()
-    const updatedSettings = await writeBackgroundSettings(settings)
-
-    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(
-      updatedSettings
-    )
-    ExtensionRuntime.scheduleReportChanges()
+    await ExtensionRuntime.writeSettingsChange(settings)
   }
 
   static async importSettings(
     settings: FontaraSettings
   ): Promise<FontaraImportedSettingsResult> {
-    await ExtensionRuntime.ensureStarted()
     const normalizedBackup = await normalizeSettingsBackup(settings)
-    const updatedSettings = await writeBackgroundSettings(
-      normalizedBackup.settings
-    )
 
-    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(
-      updatedSettings
-    )
-    ExtensionRuntime.scheduleReportChanges()
+    await ExtensionRuntime.writeSettingsChange(normalizedBackup.settings)
 
     return {
       ignoredKeyCount: normalizedBackup.ignoredKeyCount,
@@ -234,15 +238,9 @@ export class ExtensionRuntime {
   }
 
   static async resetSettings(): Promise<void> {
-    await ExtensionRuntime.ensureStarted()
-    const updatedSettings = await writeBackgroundSettings(
+    await ExtensionRuntime.writeSettingsChange(
       await createSettingsResetValues()
     )
-
-    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(
-      updatedSettings
-    )
-    ExtensionRuntime.scheduleReportChanges()
   }
 
   private static async toggleExtension(): Promise<void> {

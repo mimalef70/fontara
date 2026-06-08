@@ -380,15 +380,27 @@ test("options page exposes extension hotkey controls", () => {
   assert.match(extensionSource, /updateIconStatus\(data\.settings\)/)
   assert.match(
     extensionSource,
-    /const updatedSettings = await writeBackgroundSettings\(settings\)[\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*updatedSettings\s*\)/
+    /private static async publishSettingsChange\([\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*settings\s*\)[\s\S]*?scheduleReportChanges\(\)/
   )
   assert.match(
     extensionSource,
-    /const updatedSettings = await writeBackgroundSettings\(\s*normalizedBackup\.settings\s*\)[\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*updatedSettings\s*\)/
+    /private static async writeSettingsChange\([\s\S]*?const updatedSettings = await writeBackgroundSettings\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings\)/
   )
   assert.match(
     extensionSource,
-    /const updatedSettings = await writeBackgroundSettings\(\s*await createSettingsResetValues\(\)\s*\)[\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*updatedSettings\s*\)/
+    /const settings = await syncBackgroundSettingsCacheFromLocalChanges\(changes\)[\s\S]*?publishSettingsChange\(settings\)/
+  )
+  assert.match(
+    extensionSource,
+    /changeSettings[\s\S]*writeSettingsChange\(settings\)/
+  )
+  assert.match(
+    extensionSource,
+    /importSettings[\s\S]*writeSettingsChange\(normalizedBackup\.settings\)/
+  )
+  assert.match(
+    extensionSource,
+    /resetSettings[\s\S]*writeSettingsChange\(\s*await createSettingsResetValues\(\)\s*\)/
   )
   assert.match(extensionDataHookSource, /ExtensionDataContext/)
   assert.match(extensionDataHookSource, /ExtensionDataProvider/)

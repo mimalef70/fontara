@@ -46,22 +46,42 @@ test("tab manager tracks content documents and notifies them about settings chan
           removedTabListeners.push(listener)
         }
       },
+      query(
+        _queryInfo: chrome.tabs.QueryInfo,
+        callback?: (tabs: chrome.tabs.Tab[]) => void
+      ) {
+        const tabs = [
+          { id: 9, url: "https://lost.example/" } as chrome.tabs.Tab,
+          { id: 10, url: "http://other.example/" } as chrome.tabs.Tab,
+          { id: 11, url: "chrome://extensions/" } as chrome.tabs.Tab,
+          { url: "https://missing-id.example/" } as chrome.tabs.Tab
+        ]
+        callback?.(tabs)
+        return Promise.resolve(tabs)
+      },
       sendMessage(
         tabId: number,
         message: unknown,
-        options?: chrome.tabs.MessageSendOptions,
+        optionsOrCallback?: chrome.tabs.MessageSendOptions | (() => void),
         callback?: () => void
       ) {
+        const options =
+          typeof optionsOrCallback === "function"
+            ? undefined
+            : optionsOrCallback
+        const sendResponse =
+          typeof optionsOrCallback === "function" ? optionsOrCallback : callback
+
         sentMessages.push({ message, options, tabId })
         if (options?.documentId === "doc-fallback" && !options.frameId) {
           runtimeLastError = { message: "No receiving end" }
-          callback?.()
+          sendResponse?.()
           runtimeLastError = undefined
           return
         }
 
         runtimeLastError = undefined
-        callback?.()
+        sendResponse?.()
       }
     }
   })
@@ -69,6 +89,27 @@ test("tab manager tracks content documents and notifies them about settings chan
   initTabManager()
 
   assert.equal(runtimeMessageListeners.length, 1)
+
+  notifyContentScriptsAboutSettingsChange()
+
+  assert.deepEqual(sentMessages, [
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 9
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 10
+    }
+  ])
+
+  sentMessages.length = 0
 
   runtimeMessageListeners[0](
     {
@@ -98,6 +139,20 @@ test("tab manager tracks content documents and notifies them about settings chan
       },
       options: { documentId: "doc-1" },
       tabId: 7
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 9
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 10
     }
   ])
 
@@ -154,6 +209,20 @@ test("tab manager tracks content documents and notifies them about settings chan
       },
       options: { documentId: "doc-fallback", frameId: 3 },
       tabId: 7
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 9
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 10
     }
   ])
 
@@ -317,6 +386,20 @@ test("tab manager tracks content documents and notifies them about settings chan
       },
       options: { frameId: 0 },
       tabId: 8
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 9
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
+      tabId: 10
     }
   ])
 

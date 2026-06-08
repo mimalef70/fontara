@@ -167,6 +167,35 @@ function createSettingsChangedMessage(): FontaraContentCommandMessage {
   }
 }
 
+function isSupportedTabURL(url: unknown): url is string {
+  return typeof url === "string" && /^https?:\/\//i.test(url)
+}
+
+function sendSettingsChangedMessageToTab(tabId: number): void {
+  try {
+    chrome.tabs.sendMessage(tabId, createSettingsChangedMessage(), () => {
+      // Missing content scripts are expected on tabs where FontAra is not injected.
+      void chrome.runtime?.lastError
+    })
+  } catch {}
+}
+
+function notifyUntrackedTabsAboutSettingsChange(
+  trackedTabIds: Set<number>
+): void {
+  try {
+    chrome.tabs.query({}, (tabs) => {
+      for (const tab of tabs) {
+        if (typeof tab.id !== "number") continue
+        if (trackedTabIds.has(tab.id)) continue
+        if (!isSupportedTabURL(tab.url)) continue
+
+        sendSettingsChangedMessageToTab(tab.id)
+      }
+    })
+  } catch {}
+}
+
 function isPromiseLikeMessage(
   message: FontaraContentCommandMessage | Promise<FontaraContentCommandMessage>
 ): message is Promise<FontaraContentCommandMessage> {
@@ -230,11 +259,16 @@ export function notifyContentScriptsAboutSettingsChange(
   factory: DocumentMessageFactory = createDocumentMessage ??
     createSettingsChangedMessage
 ): void {
+  const trackedTabIds = new Set<number>()
+
   for (const [tabId, documents] of documentsByTab) {
+    trackedTabIds.add(tabId)
     for (const document of documents.values()) {
       sendDocumentMessageFromFactory(tabId, document, factory)
     }
   }
+
+  notifyUntrackedTabsAboutSettingsChange(trackedTabIds)
 }
 
 export function getTrackedDocumentCountForTesting(): number {

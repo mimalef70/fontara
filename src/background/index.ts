@@ -1,6 +1,9 @@
 import { URLS } from "../config/storage"
 import { registerIconListeners } from "./icon-manager"
-import { ensureStorageValues } from "./storage-manager"
+import {
+  ensureStorageValues,
+  registerSettingsSyncListeners
+} from "./storage-manager"
 
 function logStorageError(error: unknown): void {
   if (__DEBUG__) {
@@ -9,6 +12,7 @@ function logStorageError(error: unknown): void {
 }
 
 void ensureStorageValues().catch(logStorageError)
+registerSettingsSyncListeners()
 registerIconListeners()
 
 chrome.runtime.onInstalled.addListener((details) => {

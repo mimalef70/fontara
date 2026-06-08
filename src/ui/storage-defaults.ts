@@ -35,6 +35,12 @@ export function getRtlEnabledInitialValue(value: boolean | undefined): boolean {
   return value !== false
 }
 
+export function getSyncSettingsInitialValue(
+  value: boolean | undefined
+): boolean {
+  return value !== false
+}
+
 export function getSystemFontsEnabledInitialValue(
   value: boolean | undefined
 ): boolean {

@@ -8,6 +8,9 @@ export type StorageWatchers = Record<
   (change: StorageChange) => void | Promise<void>
 >
 
+const DEFAULT_SYNC_QUOTA_BYTES_PER_ITEM = 8192
+const SYNC_STORAGE_CHUNK_META_KEY = "__meta_split_count"
+
 type StorageChangedEvent = typeof chrome.storage.onChanged
 
 function getRuntimeError(): Error | null {
@@ -121,6 +124,139 @@ export function getLocalBytesInUse(
       }
 
       resolve(bytesInUse)
+    })
+  })
+}
+
+function getSyncStorageArea(): chrome.storage.SyncStorageArea | null {
+  if (typeof chrome === "undefined") return null
+
+  return chrome.storage?.sync ?? null
+}
+
+function getSyncQuotaBytesPerItem(): number {
+  return (
+    getSyncStorageArea()?.QUOTA_BYTES_PER_ITEM ??
+    DEFAULT_SYNC_QUOTA_BYTES_PER_ITEM
+  )
+}
+
+function reassembleSyncStorageChunks(
+  values: Record<string, unknown>
+): Record<string, unknown> | null {
+  const reassembledValues = { ...values }
+
+  for (const [key, value] of Object.entries(values)) {
+    if (typeof value !== "object" || value === null) {
+      continue
+    }
+
+    const splitCount = (value as Record<string, unknown>)[
+      SYNC_STORAGE_CHUNK_META_KEY
+    ]
+    if (typeof splitCount !== "number" || splitCount <= 0) {
+      continue
+    }
+
+    let serializedValue = ""
+    for (let index = 0; index < splitCount; index += 1) {
+      const chunkKey = `${key}_${index.toString(36)}`
+      const chunk = reassembledValues[chunkKey]
+      if (typeof chunk !== "string") {
+        return null
+      }
+
+      serializedValue += chunk
+      delete reassembledValues[chunkKey]
+    }
+
+    try {
+      reassembledValues[key] = JSON.parse(serializedValue)
+    } catch {
+      return null
+    }
+  }
+
+  return reassembledValues
+}
+
+function prepareSyncStorageValues<T extends Record<string, unknown>>(
+  values: T
+): Record<string, unknown> {
+  const preparedValues: Record<string, unknown> = { ...values }
+  const quotaBytesPerItem = getSyncQuotaBytesPerItem()
+
+  for (const key of Object.keys(values)) {
+    const serializedValue = JSON.stringify(values[key])
+    const totalLength = serializedValue.length + key.length
+    if (totalLength <= quotaBytesPerItem) {
+      continue
+    }
+
+    const maxChunkLength = Math.max(1, quotaBytesPerItem - key.length - 1 - 2)
+    const chunkCount = Math.ceil(serializedValue.length / maxChunkLength)
+    for (let index = 0; index < chunkCount; index += 1) {
+      preparedValues[`${key}_${index.toString(36)}`] = serializedValue.slice(
+        index * maxChunkLength,
+        (index + 1) * maxChunkLength
+      )
+    }
+    preparedValues[key] = {
+      [SYNC_STORAGE_CHUNK_META_KEY]: chunkCount
+    }
+  }
+
+  return preparedValues
+}
+
+export function getSyncValues<T extends Record<string, unknown>>(
+  defaults: T
+): Promise<T | null> {
+  return new Promise((resolve, reject) => {
+    const syncStorage = getSyncStorageArea()
+    if (!syncStorage) {
+      resolve(null)
+      return
+    }
+
+    syncStorage.get(null, (items) => {
+      const error = getRuntimeError()
+      if (error) {
+        reject(error)
+        return
+      }
+
+      const reassembledItems = reassembleSyncStorageChunks(
+        items as Record<string, unknown>
+      )
+      if (!reassembledItems) {
+        resolve(null)
+        return
+      }
+
+      resolve({ ...defaults, ...reassembledItems } as T)
+    })
+  })
+}
+
+export function setSyncValues<T extends Record<string, unknown>>(
+  values: T
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const syncStorage = getSyncStorageArea()
+    if (!syncStorage) {
+      reject(new Error("sync-storage-unavailable"))
+      return
+    }
+
+    syncStorage.set(prepareSyncStorageValues(values), () => {
+      const error = getRuntimeError()
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
     })
   })
 }

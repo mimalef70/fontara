@@ -5,8 +5,10 @@ import {
   getLocalBytesInUse,
   getLocalValue,
   getLocalValues,
+  getSyncValues,
   setLocalValue,
   setLocalValues,
+  setSyncValues,
   watchLocalStorage
 } from "../../src/utils/storage"
 
@@ -111,6 +113,82 @@ test("storage helpers reject chrome runtime errors", async () => {
 
   mockChromeStorage({ bytesError: "bytes failed" })
   await assert.rejects(() => getLocalBytesInUse(), /bytes failed/)
+})
+
+test("sync storage helpers split and reassemble large items", async () => {
+  const values: Record<string, unknown> = {}
+  let runtimeError: { message: string } | undefined
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      get lastError() {
+        return runtimeError
+      }
+    },
+    storage: {
+      sync: {
+        QUOTA_BYTES_PER_ITEM: 48,
+        get(_keys: null, callback: (items: Record<string, unknown>) => void) {
+          runtimeError = undefined
+          callback({ ...values })
+        },
+        set(items: Record<string, unknown>, callback: () => void) {
+          runtimeError = undefined
+          Object.assign(values, items)
+          callback()
+        }
+      }
+    }
+  })
+
+  const settings = {
+    enabledFor: ["https://example.com/path", "https://fontara.dev/path"]
+  }
+
+  await setSyncValues(settings)
+
+  assert.deepEqual(values.enabledFor, { __meta_split_count: 2 })
+  assert.equal(typeof values.enabledFor_0, "string")
+  assert.equal(typeof values.enabledFor_1, "string")
+  assert.deepEqual(await getSyncValues({ enabledFor: [] }), settings)
+})
+
+test("sync storage helpers reject write errors and return null when unavailable", async () => {
+  let runtimeError: { message: string } | undefined
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      get lastError() {
+        return runtimeError
+      }
+    },
+    storage: {
+      sync: {
+        QUOTA_BYTES_PER_ITEM: 8192,
+        get(_keys: null, callback: (items: Record<string, unknown>) => void) {
+          runtimeError = undefined
+          callback({})
+        },
+        set(_items: Record<string, unknown>, callback: () => void) {
+          runtimeError = { message: "sync quota exceeded" }
+          callback()
+          runtimeError = undefined
+        }
+      }
+    }
+  })
+
+  await assert.rejects(
+    () => setSyncValues({ enabledFor: ["example.com"] }),
+    /sync quota exceeded/
+  )
+
+  Reflect.set(globalThis, "chrome", { storage: {} })
+  assert.equal(await getSyncValues({ enabledFor: [] }), null)
+  await assert.rejects(
+    () => setSyncValues({ enabledFor: ["example.com"] }),
+    /sync-storage-unavailable/
+  )
 })
 
 test("watchLocalStorage dispatches local changes and removes its listener", () => {

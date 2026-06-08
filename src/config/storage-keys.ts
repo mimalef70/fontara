@@ -13,5 +13,6 @@ export const STORAGE_KEYS = {
   TEXT_STROKE_ENABLED: "textStrokeEnabled",
   UI_LANGUAGE: "uiLanguage",
   RTL_ENABLED: "rtlEnabled",
-  RTL_SITE_SETTINGS: "rtlSiteSettings"
+  RTL_SITE_SETTINGS: "rtlSiteSettings",
+  SYNC_SETTINGS: "syncSettings"
 } as const

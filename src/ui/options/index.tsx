@@ -145,6 +145,7 @@ import {
   getRtlEnabledInitialValue,
   getRtlSiteSettingsInitialValue,
   getSiteProfilesInitialValue,
+  getSyncSettingsInitialValue,
   getSystemFontsEnabledInitialValue,
   getTextStrokeInitialValue
 } from "../storage-defaults"
@@ -166,7 +167,7 @@ const settingsNavigation: Array<{
   { id: "sites", labelKey: "options.nav.sites", icon: Globe2 },
   { id: "rtl", labelKey: "options.nav.rtl", icon: AlignRight },
   { id: "language", labelKey: "options.nav.language", icon: Languages },
-  { id: "backup", labelKey: "options.nav.backup", icon: FileDown },
+  { id: "backup", labelKey: "options.nav.backup", icon: Cloud },
   { id: "status", labelKey: "options.nav.status", icon: ListChecks }
 ]
 
@@ -329,6 +330,10 @@ function OptionsPage() {
       STORAGE_KEYS.RTL_SITE_SETTINGS,
       getRtlSiteSettingsInitialValue
     )
+  const [syncSettings, setSyncSettings] = useStorageValue<boolean>(
+    STORAGE_KEYS.SYNC_SETTINGS,
+    getSyncSettingsInitialValue
+  )
   const [activeSection, setActiveSection] = useState<SettingsSection>("fonts")
   const activeNavigation = settingsNavigation.find(
     (item) => item.id === activeSection
@@ -653,6 +658,22 @@ function OptionsPage() {
       toast({ title: t("options.toast.settingsResetError") })
     } finally {
       setIsBackupBusy(false)
+    }
+  }
+
+  const handleSyncSettingsToggle = async (checked: boolean) => {
+    try {
+      await setSyncSettings(checked)
+      toast({
+        title: checked
+          ? t("options.toast.syncEnabled")
+          : t("options.toast.syncDisabled")
+      })
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to update Font Ara sync settings.", error)
+      }
+      toast({ title: t("options.toast.syncError") })
     }
   }
 
@@ -2147,7 +2168,59 @@ function OptionsPage() {
               )}
 
               {activeSection === "backup" && (
-                <div className="grid gap-6 xl:grid-cols-3">
+                <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-4">
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("options.sync.title")}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                          {syncSettings
+                            ? t("options.sync.enabledDescription")
+                            : t("options.sync.disabledDescription")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <Cloud className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div
+                        className={cn(
+                          "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
+                          syncSettings
+                            ? "border-[#dbeafe] bg-[#f8fbff]"
+                            : "border-[#e5e7eb] bg-white"
+                        )}>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-[#111827]">
+                            {t("options.sync.toggleLabel")}
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {t("options.sync.toggleDescription")}
+                          </p>
+                        </div>
+                        <Switch
+                          dir="ltr"
+                          checked={syncSettings}
+                          onCheckedChange={(checked) =>
+                            void handleSyncSettingsToggle(checked)
+                          }
+                          aria-label={t("options.sync.toggleAria")}
+                        />
+                      </div>
+
+                      <div className="flex items-start gap-3 rounded-md border border-[#dbeafe] bg-[#f8fbff] px-4 py-3">
+                        <Info className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
+                        <p className="text-xs leading-5 text-[#334155]">
+                          {t("options.sync.customFontsExcluded")}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <input
                       ref={settingsImportInputRef}

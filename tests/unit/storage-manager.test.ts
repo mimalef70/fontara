@@ -8,7 +8,7 @@ import {
 } from "../../src/background/storage-manager"
 import { getActiveWebsiteSitePatterns } from "../../src/config/site-list"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
-import type { WebsiteItem } from "../../src/definitions"
+import type { FontData, WebsiteItem } from "../../src/definitions"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
@@ -45,6 +45,59 @@ function mockLocalStorage(values: Record<string, unknown>): void {
       }
     }
   })
+}
+
+function mockExtensionStorage(
+  localValues: Record<string, unknown>,
+  syncValues: Record<string, unknown> = {}
+): {
+  localValues: Record<string, unknown>
+  syncValues: Record<string, unknown>
+} {
+  let runtimeError: { message: string } | undefined
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      get lastError() {
+        return runtimeError
+      }
+    },
+    storage: {
+      local: {
+        get(
+          key: string | Record<string, unknown>,
+          callback: (items: Record<string, unknown>) => void
+        ) {
+          runtimeError = undefined
+          if (typeof key === "string") {
+            callback({ [key]: localValues[key] })
+            return
+          }
+
+          callback({ ...key, ...localValues })
+        },
+        set(items: Record<string, unknown>, callback: () => void) {
+          runtimeError = undefined
+          Object.assign(localValues, items)
+          callback()
+        }
+      },
+      sync: {
+        QUOTA_BYTES_PER_ITEM: 8192,
+        get(_key: null, callback: (items: Record<string, unknown>) => void) {
+          runtimeError = undefined
+          callback({ ...syncValues })
+        },
+        set(items: Record<string, unknown>, callback: () => void) {
+          runtimeError = undefined
+          Object.assign(syncValues, items)
+          callback()
+        }
+      }
+    }
+  })
+
+  return { localValues, syncValues }
 }
 
 test("mergeWebsiteLists appends new default sites", () => {
@@ -872,6 +925,95 @@ test("ensureStorageValues resets selection when normalization removes the select
 
   assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
   assert.deepEqual(values[STORAGE_KEYS.CUSTOM_FONT_LIST], [])
+})
+
+test("ensureStorageValues seeds empty sync storage without custom font files", async () => {
+  const localCustomFont: FontData = {
+    value: "LocalCustom-Fontara",
+    name: "Local Custom",
+    data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+    type: "woff2",
+    fileHash: "b".repeat(64),
+    originalFileName: "LocalCustom.woff2"
+  }
+  const localValues: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: localCustomFont.value,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [localCustomFont],
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        pattern: "example.com",
+        font: localCustomFont.value,
+        textStroke: 0.4
+      }
+    ],
+    [STORAGE_KEYS.SYNC_SETTINGS]: true,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  const { syncValues } = mockExtensionStorage(localValues)
+
+  await ensureStorageValues()
+
+  assert.equal(localValues[STORAGE_KEYS.SELECTED_FONT], localCustomFont.value)
+  assert.equal(STORAGE_KEYS.CUSTOM_FONT_LIST in syncValues, false)
+  assert.equal(STORAGE_KEYS.SELECTED_FONT in syncValues, false)
+  assert.deepEqual(syncValues[STORAGE_KEYS.SITE_PROFILES], [
+    {
+      pattern: "example.com",
+      textStroke: 0.4
+    }
+  ])
+  assert.equal(syncValues[STORAGE_KEYS.SYNC_SETTINGS], true)
+})
+
+test("ensureStorageValues mirrors synced settings and preserves local custom fonts", async () => {
+  const localCustomFont: FontData = {
+    value: "LocalCustom-Fontara",
+    name: "Local Custom",
+    data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+    type: "woff2",
+    fileHash: "c".repeat(64),
+    originalFileName: "LocalCustom.woff2"
+  }
+  const localValues: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: localCustomFont.value,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [localCustomFont],
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        pattern: "example.com",
+        font: localCustomFont.value,
+        textStroke: 0.2
+      }
+    ],
+    [STORAGE_KEYS.SYNC_SETTINGS]: true,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  const syncValues: Record<string, unknown> = {
+    [STORAGE_KEYS.SELECTED_FONT]: "Sahel-Fontara",
+    [STORAGE_KEYS.RTL_ENABLED]: false,
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        pattern: "example.com",
+        textStroke: 0.6
+      }
+    ],
+    [STORAGE_KEYS.SYNC_SETTINGS]: true
+  }
+  mockExtensionStorage(localValues, syncValues)
+
+  await ensureStorageValues()
+
+  assert.equal(localValues[STORAGE_KEYS.RTL_ENABLED], false)
+  assert.equal(localValues[STORAGE_KEYS.SELECTED_FONT], localCustomFont.value)
+  assert.deepEqual(localValues[STORAGE_KEYS.SITE_PROFILES], [
+    {
+      pattern: "example.com",
+      textStroke: 0.6,
+      font: localCustomFont.value
+    }
+  ])
+  assert.equal(syncValues[STORAGE_KEYS.SELECTED_FONT], "Sahel-Fontara")
 })
 
 test("ensureStorageValues initializes and normalizes the UI language preference", async () => {

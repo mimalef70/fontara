@@ -135,10 +135,11 @@ test("settings backup import normalizes settings before storage writes", async (
       chatgpt: false,
       unknown: false
     },
+    [STORAGE_KEYS.SYNC_SETTINGS]: false,
     unknownSetting: "ignored"
   })
 
-  assert.equal(normalized.importedKeyCount, 14)
+  assert.equal(normalized.importedKeyCount, 15)
   assert.equal(normalized.ignoredKeyCount, 1)
   assert.equal(normalized.settings[STORAGE_KEYS.EXTENSION_ENABLED], false)
   assert.equal(
@@ -150,6 +151,7 @@ test("settings backup import normalizes settings before storage writes", async (
   assert.equal(normalized.settings[STORAGE_KEYS.TEXT_STROKE], 1)
   assert.equal(normalized.settings[STORAGE_KEYS.UI_LANGUAGE], "auto")
   assert.equal(normalized.settings[STORAGE_KEYS.RTL_ENABLED], false)
+  assert.equal(normalized.settings[STORAGE_KEYS.SYNC_SETTINGS], false)
   assert.deepEqual(normalized.settings[STORAGE_KEYS.RTL_SITE_SETTINGS], {
     ...DEFAULT_RTL_SITE_SETTINGS,
     chatgpt: false
@@ -206,6 +208,7 @@ test("settings reset values restore the exported settings defaults", async () =>
     [STORAGE_KEYS.TEXT_STROKE]: DEFAULT_VALUES.TEXT_STROKE,
     [STORAGE_KEYS.UI_LANGUAGE]: DEFAULT_VALUES.UI_LANGUAGE,
     [STORAGE_KEYS.RTL_ENABLED]: DEFAULT_VALUES.RTL_ENABLED,
-    [STORAGE_KEYS.RTL_SITE_SETTINGS]: DEFAULT_VALUES.RTL_SITE_SETTINGS
+    [STORAGE_KEYS.RTL_SITE_SETTINGS]: DEFAULT_VALUES.RTL_SITE_SETTINGS,
+    [STORAGE_KEYS.SYNC_SETTINGS]: DEFAULT_VALUES.SYNC_SETTINGS
   })
 })

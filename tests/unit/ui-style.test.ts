@@ -125,6 +125,8 @@ test("extension pages render inside error boundaries", () => {
   assert.match(errorBoundarySource, /direction: TextDirection/)
   assert.match(popupSource, /<I18nProvider>/)
   assert.match(optionsSource, /<I18nProvider>/)
+  assert.match(popupSource, /<ExtensionDataProvider>[\s\S]*<I18nProvider>/)
+  assert.match(optionsSource, /<ExtensionDataProvider>[\s\S]*<I18nProvider>/)
   assert.match(popupSource, /waitForI18nBootstrap/)
   assert.match(optionsSource, /waitForI18nBootstrap/)
   assert.match(popupSource, /title=\{t\("popup\.errorTitle"\)\}/)
@@ -360,6 +362,8 @@ test("options page exposes extension hotkey controls", () => {
   assert.doesNotMatch(extensionSource, /getMatchingWebsite/)
   assert.match(commandSettingsSource, /createSiteListToggleUpdate/)
   assert.match(extensionDataSource, /collectActiveTabInfo/)
+  assert.match(extensionDataHookSource, /ExtensionDataContext/)
+  assert.match(extensionDataHookSource, /ExtensionDataProvider/)
   assert.match(extensionDataHookSource, /fontaraConnector\.subscribeToChanges/)
   assert.match(
     extensionDataHookSource,

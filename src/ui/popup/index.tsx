@@ -19,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "../components/ui/tooltip"
+import { ExtensionDataProvider } from "../hooks/use-extension-data"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { I18nProvider, useI18n, waitForI18nBootstrap } from "../i18n"
@@ -134,9 +135,11 @@ const popupRootElement = rootElement
 async function mountPopup(): Promise<void> {
   await waitForI18nBootstrap()
   createRoot(popupRootElement).render(
-    <I18nProvider>
-      <LocalizedPopupRoot />
-    </I18nProvider>
+    <ExtensionDataProvider>
+      <I18nProvider>
+        <LocalizedPopupRoot />
+      </I18nProvider>
+    </ExtensionDataProvider>
   )
 }
 

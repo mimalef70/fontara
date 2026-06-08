@@ -127,6 +127,7 @@ import {
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
 import { fontaraConnector } from "../connect/connector"
+import { ExtensionDataProvider } from "../hooks/use-extension-data"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
@@ -2481,9 +2482,11 @@ const optionsRootElement = rootElement
 async function mountOptions(): Promise<void> {
   await waitForI18nBootstrap()
   createRoot(optionsRootElement).render(
-    <I18nProvider>
-      <LocalizedOptionsRoot />
-    </I18nProvider>
+    <ExtensionDataProvider>
+      <I18nProvider>
+        <LocalizedOptionsRoot />
+      </I18nProvider>
+    </ExtensionDataProvider>
   )
 }
 

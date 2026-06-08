@@ -119,3 +119,24 @@ test("background settings manager patches cache from local storage changes", asy
   assert.equal(storage.getReadCount(), 1)
   assert.equal(cachedSettings[STORAGE_KEYS.SELECTED_FONT], "Vazirmatn-Fontara")
 })
+
+test("background settings manager writes normalized local storage changes", async () => {
+  const storage = installChromeStorageMock({
+    [STORAGE_KEYS.ENABLED_FOR]: []
+  })
+
+  await getBackgroundSettings()
+  const cachedSettings = await syncBackgroundSettingsCacheFromLocalChanges({
+    [STORAGE_KEYS.ENABLED_FOR]: {
+      newValue: [" Example.com "],
+      oldValue: []
+    }
+  })
+
+  assert.deepEqual(cachedSettings?.[STORAGE_KEYS.ENABLED_FOR], ["example.com"])
+  assert.deepEqual(storage.getSetCalls(), [
+    {
+      [STORAGE_KEYS.ENABLED_FOR]: ["example.com"]
+    }
+  ])
+})

@@ -102,8 +102,15 @@ export async function syncBackgroundSettingsCacheFromLocalChanges(
 
   if (!hasSettingsChange) return cachedSettings
 
-  cachedSettings = await normalizeStorageValues(nextValues)
+  const normalizedValues = await normalizeStorageValues(nextValues)
+  const changedValues = pickChangedValues(nextValues, normalizedValues)
+  cachedSettings = normalizedValues
   settingsReadPromise = null
+
+  if (Object.keys(changedValues).length > 0) {
+    await setLocalValues(changedValues)
+  }
+
   return cachedSettings
 }
 

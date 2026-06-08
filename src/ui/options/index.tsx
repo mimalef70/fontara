@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   Type,
   Upload
@@ -155,36 +156,33 @@ import {
 } from "../storage-defaults"
 
 type SettingsSection =
+  | "general"
   | "fonts"
   | "sites"
   | "rtl"
-  | "language"
   | "hotkeys"
-  | "backup"
-  | "status"
+  | "advanced"
 
 const settingsNavigation: Array<{
   id: SettingsSection
   labelKey: MessageKey
   icon: React.ComponentType<{ className?: string }>
 }> = [
+  { id: "general", labelKey: "options.nav.general", icon: Settings },
   { id: "fonts", labelKey: "options.nav.fonts", icon: Type },
-  { id: "sites", labelKey: "options.nav.sites", icon: Globe2 },
+  { id: "sites", labelKey: "options.nav.sites", icon: ListChecks },
   { id: "rtl", labelKey: "options.nav.rtl", icon: AlignRight },
-  { id: "language", labelKey: "options.nav.language", icon: Languages },
   { id: "hotkeys", labelKey: "options.nav.hotkeys", icon: Keyboard },
-  { id: "backup", labelKey: "options.nav.backup", icon: Cloud },
-  { id: "status", labelKey: "options.nav.status", icon: ListChecks }
+  { id: "advanced", labelKey: "options.nav.advanced", icon: SlidersHorizontal }
 ]
 
 const sectionDescriptionKeys: Record<SettingsSection, MessageKey> = {
+  general: "options.section.general.description",
   fonts: "options.section.fonts.description",
   sites: "options.section.sites.description",
   rtl: "options.section.rtl.description",
-  language: "options.section.language.description",
   hotkeys: "options.section.hotkeys.description",
-  backup: "options.section.backup.description",
-  status: "options.section.status.description"
+  advanced: "options.section.advanced.description"
 }
 
 const languageOptions: Array<{
@@ -373,7 +371,7 @@ function OptionsPage() {
       STORAGE_KEYS.CONTEXT_MENUS_ENABLED,
       getContextMenusEnabledInitialValue
     )
-  const [activeSection, setActiveSection] = useState<SettingsSection>("fonts")
+  const [activeSection, setActiveSection] = useState<SettingsSection>("general")
   const activeNavigation = settingsNavigation.find(
     (item) => item.id === activeSection
   )
@@ -1263,6 +1261,116 @@ function OptionsPage() {
             </header>
 
             <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+              {activeSection === "general" && (
+                <div className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                      <Type className="mb-4 size-5 text-[#2374ff]" />
+                      <div className="text-2xl font-bold text-[#111827]">
+                        {formatNumber(customFontList.length)}
+                      </div>
+                      <div className="mt-1 text-sm text-[#64748b]">
+                        {t("options.status.customFonts")}
+                      </div>
+                    </section>
+
+                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                      <Globe2 className="mb-4 size-5 text-[#2374ff]" />
+                      <div className="text-2xl font-bold text-[#111827]">
+                        {formatNumber(activeWebsiteCount)}
+                      </div>
+                      <div className="mt-1 text-sm text-[#64748b]">
+                        {t("options.status.activeSites")}
+                      </div>
+                    </section>
+
+                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                      <ListChecks className="mb-4 size-5 text-[#2374ff]" />
+                      <div className="text-2xl font-bold text-[#111827]">
+                        {formatNumber(cssOnlyWebsiteCount)}
+                      </div>
+                      <div className="mt-1 text-sm text-[#64748b]">
+                        {t("options.status.cssOnly")}
+                      </div>
+                    </section>
+
+                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                      <AlignRight className="mb-4 size-5 text-[#2374ff]" />
+                      <div className="text-2xl font-bold text-[#111827]">
+                        {formatNumber(activeRtlSiteCount)}
+                      </div>
+                      <div className="mt-1 text-sm text-[#64748b]">
+                        {t("options.status.rtlSites")}
+                      </div>
+                    </section>
+                  </div>
+
+                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">
+                          {t("language.title")}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#64748b]">
+                          {t("language.subtitle")}
+                        </p>
+                      </div>
+                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <Languages className="size-5" />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {languageOptions.map((option) => {
+                        const active = preference === option.value
+                        const description =
+                          option.value === UI_LANGUAGE_AUTO
+                            ? `${t(option.descriptionKey)} ${t(
+                                "language.resolved",
+                                {
+                                  language: t(getLanguageLabelKey(language))
+                                }
+                              )}`
+                            : t(option.descriptionKey)
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            dir={direction}
+                            aria-pressed={active}
+                            onClick={() => void setPreference(option.value)}
+                            className={cn(
+                              "flex min-h-24 items-start justify-between gap-3 rounded-md border p-4 text-start transition",
+                              active
+                                ? "border-[#2374ff] bg-[#f8fbff]"
+                                : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe] hover:bg-[#f8fafc]"
+                            )}>
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-[#111827]">
+                                {t(option.labelKey)}
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-[#64748b]">
+                                {description}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                                active
+                                  ? "border-[#2374ff] bg-[#2374ff] text-white"
+                                  : "border-[#dbe3ef] text-transparent"
+                              )}>
+                              <Check className="size-4" />
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
+                </div>
+              )}
+
               {activeSection === "fonts" && (
                 <div className="space-y-6">
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
@@ -2161,75 +2269,9 @@ function OptionsPage() {
                 </div>
               )}
 
-              {activeSection === "language" && (
-                <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                  <div className="mb-5 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-bold text-[#111827]">
-                        {t("language.title")}
-                      </h3>
-                      <p className="mt-1 text-xs text-[#64748b]">
-                        {t("language.subtitle")}
-                      </p>
-                    </div>
-                    <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
-                      <Languages className="size-5" />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {languageOptions.map((option) => {
-                      const active = preference === option.value
-                      const description =
-                        option.value === UI_LANGUAGE_AUTO
-                          ? `${t(option.descriptionKey)} ${t(
-                              "language.resolved",
-                              {
-                                language: t(getLanguageLabelKey(language))
-                              }
-                            )}`
-                          : t(option.descriptionKey)
-
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          dir={direction}
-                          aria-pressed={active}
-                          onClick={() => void setPreference(option.value)}
-                          className={cn(
-                            "flex min-h-24 items-start justify-between gap-3 rounded-md border p-4 text-start transition",
-                            active
-                              ? "border-[#2374ff] bg-[#f8fbff]"
-                              : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe] hover:bg-[#f8fafc]"
-                          )}>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-[#111827]">
-                              {t(option.labelKey)}
-                            </div>
-                            <p className="mt-2 text-xs leading-5 text-[#64748b]">
-                              {description}
-                            </p>
-                          </div>
-                          <span
-                            className={cn(
-                              "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                              active
-                                ? "border-[#2374ff] bg-[#2374ff] text-white"
-                                : "border-[#dbe3ef] text-transparent"
-                            )}>
-                            <Check className="size-4" />
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </section>
-              )}
-
               {activeSection === "hotkeys" && <HotkeysSettings />}
 
-              {activeSection === "backup" && (
+              {activeSection === "advanced" && (
                 <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-4">
                   <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div className="mb-5 flex items-center justify-between gap-3">
@@ -2474,50 +2516,6 @@ function OptionsPage() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  </section>
-                </div>
-              )}
-
-              {activeSection === "status" && (
-                <div className="grid gap-4 md:grid-cols-4">
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <Settings className="mb-4 size-5 text-[#2374ff]" />
-                    <div className="text-2xl font-bold text-[#111827]">
-                      {formatNumber(customFontList.length)}
-                    </div>
-                    <div className="mt-1 text-sm text-[#64748b]">
-                      {t("options.status.customFonts")}
-                    </div>
-                  </section>
-
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <Globe2 className="mb-4 size-5 text-[#2374ff]" />
-                    <div className="text-2xl font-bold text-[#111827]">
-                      {formatNumber(activeWebsiteCount)}
-                    </div>
-                    <div className="mt-1 text-sm text-[#64748b]">
-                      {t("options.status.activeSites")}
-                    </div>
-                  </section>
-
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <ListChecks className="mb-4 size-5 text-[#2374ff]" />
-                    <div className="text-2xl font-bold text-[#111827]">
-                      {formatNumber(cssOnlyWebsiteCount)}
-                    </div>
-                    <div className="mt-1 text-sm text-[#64748b]">
-                      {t("options.status.cssOnly")}
-                    </div>
-                  </section>
-
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <AlignRight className="mb-4 size-5 text-[#2374ff]" />
-                    <div className="text-2xl font-bold text-[#111827]">
-                      {formatNumber(activeRtlSiteCount)}
-                    </div>
-                    <div className="mt-1 text-sm text-[#64748b]">
-                      {t("options.status.rtlSites")}
-                    </div>
                   </section>
                 </div>
               )}

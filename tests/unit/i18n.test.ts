@@ -21,9 +21,12 @@ test("UI message catalogs cover the same keys for every supported language", () 
 
   assert.deepEqual(Object.keys(UI_MESSAGES.fa).sort(), englishKeys)
   assert.deepEqual(Object.keys(UI_MESSAGES.ar).sort(), englishKeys)
-  assert.equal(UI_MESSAGES.en["options.nav.language"], "Language")
-  assert.equal(UI_MESSAGES.fa["options.nav.language"], "زبان")
-  assert.equal(UI_MESSAGES.ar["options.nav.language"], "اللغة")
+  assert.equal(UI_MESSAGES.en["options.nav.general"], "General")
+  assert.equal(UI_MESSAGES.fa["options.nav.general"], "عمومی")
+  assert.equal(UI_MESSAGES.ar["options.nav.general"], "عام")
+  assert.equal(UI_MESSAGES.en["options.nav.advanced"], "Advanced")
+  assert.equal(UI_MESSAGES.fa["options.nav.advanced"], "پیشرفته")
+  assert.equal(UI_MESSAGES.ar["options.nav.advanced"], "متقدم")
   assert.match(
     UI_MESSAGES.en["options.googleFonts.privacyNotice"],
     /Google Fonts/

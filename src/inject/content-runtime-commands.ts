@@ -39,11 +39,11 @@ export function handleContentRuntimeCommandMessage(
     message?.type === MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED &&
     isMessageForScript(message, options.scriptId)
   ) {
-    options.scheduler.scheduleLegacyApply("full")
+    options.scheduler.scheduleLocalThemeApply("full")
     return
   }
 
   if (message?.action === "toggle" || message?.action === "toggleExtension") {
-    options.scheduler.scheduleLegacyApply("full")
+    options.scheduler.scheduleLocalThemeApply("full")
   }
 }

@@ -1,15 +1,5 @@
-import { CUSTOM_CSS_BY_SITE } from "../config/site-fixes"
-import { STORAGE_KEYS } from "../config/storage"
-import type {
-  FontaraFontThemeCommandData,
-  FontData,
-  SiteProfile,
-  WebsiteItem
-} from "../definitions"
-import { getFontFaceCSS } from "../generators/font-face"
-import { resolveFontSelection } from "../generators/font-selection"
+import type { FontaraFontThemeCommandData } from "../definitions"
 import { formatFontFamilyForCSS } from "../utils/font-data"
-import { getLocalValue } from "../utils/storage"
 import {
   refreshEditableFontStyles,
   removeEditableFontStyles
@@ -31,53 +21,6 @@ export function removeInlineFontStyles(): void {
       }
     }
   })
-}
-
-export async function injectFontStyles(
-  matchingWebsite: WebsiteItem | null,
-  siteProfile: SiteProfile | null
-): Promise<boolean> {
-  upsertStyle(FONT_STYLES_ID, getFontFaceCSS())
-  const selectedFont =
-    siteProfile?.font ??
-    (await getLocalValue<string>(STORAGE_KEYS.SELECTED_FONT))
-  const selectedFontState = await resolveFontSelection(selectedFont, {
-    readCustomFontList: () =>
-      getLocalValue<FontData[]>(STORAGE_KEYS.CUSTOM_FONT_LIST),
-    readGoogleFontsEnabled: () =>
-      getLocalValue<boolean>(STORAGE_KEYS.GOOGLE_FONTS_ENABLED),
-    readSystemFontsEnabled: () =>
-      getLocalValue<boolean>(STORAGE_KEYS.SYSTEM_FONTS_ENABLED)
-  })
-  updateFontVariable(selectedFontState.fontName)
-
-  if (selectedFontState.googleFontCSS) {
-    upsertStyle(GOOGLE_FONT_STYLES_ID, selectedFontState.googleFontCSS)
-  } else {
-    removeStyle(GOOGLE_FONT_STYLES_ID)
-  }
-
-  if (selectedFontState.customFontCSS) {
-    upsertStyle(CUSTOM_FONT_STYLES_ID, selectedFontState.customFontCSS)
-  } else {
-    removeStyle(CUSTOM_FONT_STYLES_ID)
-  }
-
-  const customCSS =
-    matchingWebsite?.customCss && matchingWebsite.url
-      ? CUSTOM_CSS_BY_SITE[matchingWebsite.url]
-      : null
-
-  if (customCSS) {
-    removeEditableFontStyles()
-    removeInlineFontStyles()
-    upsertStyle(CUSTOM_CSS_ID, customCSS)
-    return true
-  }
-
-  removeStyle(CUSTOM_CSS_ID)
-  refreshEditableFontStyles()
-  return false
 }
 
 export function injectResolvedFontStyles(

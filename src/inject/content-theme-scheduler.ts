@@ -32,7 +32,7 @@ export type ContentThemeScheduler = {
     type: ResolvedPageThemeRequestType,
     mode?: ContentApplyMode
   ) => void
-  scheduleLegacyApply: (mode: ContentApplyMode) => void
+  scheduleLocalThemeApply: (mode: ContentApplyMode) => void
   scheduleStorageFallbackApply: (mode?: ContentApplyMode) => void
 }
 
@@ -52,9 +52,9 @@ async function readLocalThemeSettings(): Promise<Record<string, unknown>> {
 export function createContentThemeScheduler(
   options: ThemeSchedulerOptions
 ): ContentThemeScheduler {
-  let applyFontsQueuedMode: ContentApplyMode | null = null
-  let applyFontsRunning = false
-  let applyFontsScheduledMode: ContentApplyMode | null = null
+  let localApplyQueuedMode: ContentApplyMode | null = null
+  let localApplyRunning = false
+  let localApplyScheduledMode: ContentApplyMode | null = null
   let backgroundCommandsEnabled = false
   let resolvedThemeRevision = 0
 
@@ -65,7 +65,9 @@ export function createContentThemeScheduler(
     warn: options.warn ?? debugWarn
   }
 
-  async function applyFontsIfActive(mode: ContentApplyMode): Promise<void> {
+  async function applyLocalResolvedPageTheme(
+    mode: ContentApplyMode
+  ): Promise<void> {
     if (options.isDisposed()) return
     try {
       await applyResolvedPageTheme(
@@ -86,53 +88,49 @@ export function createContentThemeScheduler(
     }
   }
 
-  async function runScheduledApplyFontsIfActive(
+  async function runScheduledLocalThemeApply(
     mode: ContentApplyMode
   ): Promise<void> {
-    if (applyFontsRunning) {
-      applyFontsQueuedMode = mergeApplyMode(applyFontsQueuedMode, mode)
+    if (localApplyRunning) {
+      localApplyQueuedMode = mergeApplyMode(localApplyQueuedMode, mode)
       return
     }
 
-    applyFontsRunning = true
+    localApplyRunning = true
     let currentMode: ContentApplyMode | null = mode
     try {
       while (currentMode && !options.isDisposed()) {
         const modeToRun = currentMode
         currentMode = null
-        applyFontsQueuedMode = null
-        await applyFontsIfActive(modeToRun)
-        currentMode = applyFontsQueuedMode
+        localApplyQueuedMode = null
+        await applyLocalResolvedPageTheme(modeToRun)
+        currentMode = localApplyQueuedMode
       }
     } finally {
-      applyFontsRunning = false
+      localApplyRunning = false
     }
   }
 
-  function scheduleApplyFontsIfActive(mode: ContentApplyMode = "full"): void {
+  function scheduleLocalThemeApply(mode: ContentApplyMode = "full"): void {
     if (options.isDisposed()) return
 
-    if (applyFontsRunning) {
-      applyFontsQueuedMode = mergeApplyMode(applyFontsQueuedMode, mode)
+    if (localApplyRunning) {
+      localApplyQueuedMode = mergeApplyMode(localApplyQueuedMode, mode)
       return
     }
 
-    const alreadyScheduled = applyFontsScheduledMode !== null
-    applyFontsScheduledMode = mergeApplyMode(applyFontsScheduledMode, mode)
+    const alreadyScheduled = localApplyScheduledMode !== null
+    localApplyScheduledMode = mergeApplyMode(localApplyScheduledMode, mode)
     if (alreadyScheduled) return
 
     queueMicrotask(() => {
-      const scheduledMode = applyFontsScheduledMode
-      applyFontsScheduledMode = null
+      const scheduledMode = localApplyScheduledMode
+      localApplyScheduledMode = null
 
       if (!options.isDisposed() && scheduledMode) {
-        void runScheduledApplyFontsIfActive(scheduledMode)
+        void runScheduledLocalThemeApply(scheduledMode)
       }
     })
-  }
-
-  function scheduleLegacyApply(mode: ContentApplyMode): void {
-    scheduleApplyFontsIfActive(mode)
   }
 
   function scheduleStorageFallbackApply(mode: ContentApplyMode = "full"): void {
@@ -144,7 +142,7 @@ export function createContentThemeScheduler(
       return
     }
 
-    scheduleLegacyApply(mode)
+    scheduleLocalThemeApply(mode)
   }
 
   function requestResolvedPageThemeOrFallback(
@@ -155,13 +153,13 @@ export function createContentThemeScheduler(
     const sent = options.sendDocumentLifecycleMessage(type)
 
     if (!sent) {
-      scheduleLegacyApply(mode)
+      scheduleLocalThemeApply(mode)
       return
     }
 
     window.setTimeout(() => {
       if (!options.isDisposed() && resolvedThemeRevision === expectedRevision) {
-        scheduleLegacyApply(mode)
+        scheduleLocalThemeApply(mode)
       }
     }, 100)
   }
@@ -179,8 +177,8 @@ export function createContentThemeScheduler(
   }
 
   function dispose(): void {
-    applyFontsQueuedMode = null
-    applyFontsScheduledMode = null
+    localApplyQueuedMode = null
+    localApplyScheduledMode = null
   }
 
   return {
@@ -188,7 +186,7 @@ export function createContentThemeScheduler(
     cleanUpThemeCommand,
     dispose,
     requestResolvedPageThemeOrFallback,
-    scheduleLegacyApply,
+    scheduleLocalThemeApply,
     scheduleStorageFallbackApply
   }
 }

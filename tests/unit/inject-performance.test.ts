@@ -119,9 +119,10 @@ test("storage changes schedule the active injection pipeline", () => {
   const storageSource = readSource("src/inject/content-storage.ts")
   const runtimeSource = readSource("src/inject/content-runtime.ts")
 
-  assert.match(schedulerSource, /function scheduleApplyFontsIfActive/)
+  assert.match(schedulerSource, /function scheduleLocalThemeApply/)
   assert.match(schedulerSource, /function scheduleStorageFallbackApply/)
   assert.match(schedulerSource, /createFontaraPageThemeData/)
+  assert.match(schedulerSource, /function readLocalThemeSettings/)
   assert.doesNotMatch(schedulerSource, /injectFontStyles/)
   assert.doesNotMatch(schedulerSource, /injectTextStrokeStyle/)
   assert.doesNotMatch(schedulerSource, /scheduleApplyRtlIfActive/)
@@ -135,8 +136,8 @@ test("storage changes schedule the active injection pipeline", () => {
     /type ContentApplyMode = "font-styles" \| "full"/
   )
   assert.match(schedulerSource, /queueMicrotask/)
-  assert.match(schedulerSource, /applyFontsRunning/)
-  assert.match(schedulerSource, /applyFontsQueuedMode/)
+  assert.match(schedulerSource, /localApplyRunning/)
+  assert.match(schedulerSource, /localApplyQueuedMode/)
   assert.match(runtimeSource, /from "\.\/content-theme-scheduler"/)
   assert.match(runtimeSource, /from "\.\/content-storage"/)
   assert.match(
@@ -253,7 +254,7 @@ test("content runtime command routing is separated from runtime wiring", () => {
   assert.match(commandSource, /isMessageForScript/)
   assert.match(commandSource, /scheduler\.applyThemeCommand/)
   assert.match(commandSource, /scheduler\.cleanUpThemeCommand/)
-  assert.match(commandSource, /scheduler\.scheduleLegacyApply\("full"\)/)
+  assert.match(commandSource, /scheduler\.scheduleLocalThemeApply\("full"\)/)
   assert.match(runtimeSource, /handleContentRuntimeCommandMessage/)
   assert.doesNotMatch(runtimeSource, /MESSAGE_TYPES_BG_TO_CS/)
   assert.doesNotMatch(runtimeSource, /applyThemeCommand\(message\.data\)/)
@@ -274,6 +275,8 @@ test("content script entrypoint delegates to runtime bootstrap", () => {
 test("content theme executor is separated from lifecycle wiring", () => {
   const runtimeSource = readSource("src/inject/content-runtime.ts")
   const themeApplierSource = readSource("src/inject/theme-applier.ts")
+  const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
+  const textStrokeStyleSource = readSource("src/inject/text-stroke-style.ts")
 
   assert.match(
     themeApplierSource,
@@ -286,6 +289,11 @@ test("content theme executor is separated from lifecycle wiring", () => {
   assert.match(themeApplierSource, /injectResolvedTextStrokeStyle/)
   assert.match(themeApplierSource, /applyResolvedRtlSupport/)
   assert.match(themeApplierSource, /startObserving/)
+  assert.doesNotMatch(fontStyleManagerSource, /getLocalValue/)
+  assert.doesNotMatch(fontStyleManagerSource, /resolveFontSelection/)
+  assert.doesNotMatch(fontStyleManagerSource, /export async function/)
+  assert.doesNotMatch(textStrokeStyleSource, /getLocalValue/)
+  assert.doesNotMatch(textStrokeStyleSource, /injectTextStrokeStyle/)
   assert.match(runtimeSource, /from "\.\/theme-applier"/)
   assert.doesNotMatch(runtimeSource, /from "\.\/font-style-manager"/)
   assert.doesNotMatch(runtimeSource, /from "\.\/text-stroke-style"/)
@@ -313,14 +321,13 @@ test("hot selector lookups use Sets", () => {
 })
 
 test("custom font injection only emits the selected custom font", () => {
-  const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
   const fontSelectionSource = readSource("src/generators/font-selection.ts")
 
   assert.match(fontSelectionSource, /function getSelectedCustomFonts/)
   assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES/)
   assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES\.has\(value\)/)
   assert.match(fontSelectionSource, /font\.value === selectedFont/)
-  assert.match(fontStyleManagerSource, /resolveFontSelection\(selectedFont/)
+  assert.match(fontSelectionSource, /resolveFontSelection/)
   assert.match(
     fontSelectionSource,
     /createCustomFontFaces\(selectedCustomFonts\)/

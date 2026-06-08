@@ -373,6 +373,18 @@ test("options page exposes extension hotkey controls", () => {
   assert.doesNotMatch(iconManagerSource, /isUrlActive/)
   assert.doesNotMatch(iconManagerSource, /watchLocalStorage/)
   assert.match(extensionSource, /updateIconStatus\(data\.settings\)/)
+  assert.match(
+    extensionSource,
+    /const updatedSettings = await writeBackgroundSettings\(settings\)[\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*updatedSettings\s*\)/
+  )
+  assert.match(
+    extensionSource,
+    /const updatedSettings = await writeBackgroundSettings\(\s*normalizedBackup\.settings\s*\)[\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*updatedSettings\s*\)/
+  )
+  assert.match(
+    extensionSource,
+    /const updatedSettings = await writeBackgroundSettings\(\s*await createSettingsResetValues\(\)\s*\)[\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*updatedSettings\s*\)/
+  )
   assert.match(extensionDataHookSource, /ExtensionDataContext/)
   assert.match(extensionDataHookSource, /ExtensionDataProvider/)
   assert.match(extensionDataHookSource, /fontaraConnector\.subscribeToChanges/)

@@ -206,7 +206,11 @@ export class ExtensionRuntime {
 
   static async changeSettings(settings: FontaraSettings): Promise<void> {
     await ExtensionRuntime.ensureStarted()
-    await writeBackgroundSettings(settings)
+    const updatedSettings = await writeBackgroundSettings(settings)
+
+    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(
+      updatedSettings
+    )
     ExtensionRuntime.scheduleReportChanges()
   }
 
@@ -215,7 +219,13 @@ export class ExtensionRuntime {
   ): Promise<FontaraImportedSettingsResult> {
     await ExtensionRuntime.ensureStarted()
     const normalizedBackup = await normalizeSettingsBackup(settings)
-    await writeBackgroundSettings(normalizedBackup.settings)
+    const updatedSettings = await writeBackgroundSettings(
+      normalizedBackup.settings
+    )
+
+    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(
+      updatedSettings
+    )
     ExtensionRuntime.scheduleReportChanges()
 
     return {
@@ -226,7 +236,13 @@ export class ExtensionRuntime {
 
   static async resetSettings(): Promise<void> {
     await ExtensionRuntime.ensureStarted()
-    await writeBackgroundSettings(await createSettingsResetValues())
+    const updatedSettings = await writeBackgroundSettings(
+      await createSettingsResetValues()
+    )
+
+    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(
+      updatedSettings
+    )
     ExtensionRuntime.scheduleReportChanges()
   }
 

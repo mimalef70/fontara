@@ -1,5 +1,5 @@
 import {
-  EXCLUDED_INLINE_STYLE_PARTS,
+  EXCLUDED_INLINE_FONT_STYLE_PATTERN,
   EXCLUDED_TAGS,
   ICON_CLASS_PREFIXES,
   ICON_CLASS_SUBSTRINGS,
@@ -80,9 +80,7 @@ function hasAriaHidden(node: HTMLElement): boolean {
 
 function hasExcludedInlineFontStyle(node: HTMLElement): boolean {
   const styleAttribute = node.getAttribute("style") ?? ""
-  return EXCLUDED_INLINE_STYLE_PARTS.some((part) =>
-    styleAttribute.includes(part)
-  )
+  return EXCLUDED_INLINE_FONT_STYLE_PATTERN.test(styleAttribute)
 }
 
 function isExcludedSubtree(node: HTMLElement): boolean {

@@ -23,6 +23,7 @@ let applyFontsRunning = false
 let applyFontsScheduledMode: ApplyMode | null = null
 let runtimeMessageEvent: RuntimeMessageEvent | null = null
 let stopWatchingStorage: (() => void) | null = null
+let stopWatchingUrlChanges: (() => void) | null = null
 let stopWaitingForBody: (() => void) | null = null
 
 function mergeApplyMode(
@@ -92,6 +93,69 @@ function runWhenBodyIsReady(callback: () => void | Promise<void>): () => void {
   })
 
   return () => observer.disconnect()
+}
+
+function watchUrlChanges(callback: () => void): () => void {
+  let currentUrl = window.location.href
+
+  const handlePossibleUrlChange = (): void => {
+    const nextUrl = window.location.href
+    if (nextUrl === currentUrl) return
+
+    currentUrl = nextUrl
+    callback()
+  }
+
+  const scheduleUrlCheck = (): void => {
+    queueMicrotask(handlePossibleUrlChange)
+  }
+
+  const cleanupCallbacks: Array<() => void> = []
+  const historyObject = window.history
+
+  const wrapHistoryMethod = (methodName: "pushState" | "replaceState") => {
+    const originalMethod = historyObject[methodName]
+    const wrappedMethod: typeof history.pushState = function (
+      this: History,
+      ...args: Parameters<typeof history.pushState>
+    ) {
+      const result = originalMethod.apply(this, args)
+      scheduleUrlCheck()
+      return result
+    }
+
+    try {
+      historyObject[methodName] = wrappedMethod
+      cleanupCallbacks.push(() => {
+        if (historyObject[methodName] === wrappedMethod) {
+          historyObject[methodName] = originalMethod
+        }
+      })
+    } catch (error) {
+      debugWarn(`Failed to watch history.${methodName}.`, error)
+    }
+  }
+
+  wrapHistoryMethod("pushState")
+  wrapHistoryMethod("replaceState")
+
+  addEventListener("popstate", scheduleUrlCheck)
+  addEventListener("hashchange", scheduleUrlCheck)
+  cleanupCallbacks.push(() => {
+    removeEventListener("popstate", scheduleUrlCheck)
+    removeEventListener("hashchange", scheduleUrlCheck)
+  })
+
+  if (typeof window.setInterval === "function") {
+    const intervalId = window.setInterval(handlePossibleUrlChange, 1000)
+    cleanupCallbacks.push(() => window.clearInterval(intervalId))
+  }
+
+  return () => {
+    for (const cleanup of cleanupCallbacks.reverse()) {
+      cleanup()
+    }
+  }
 }
 
 async function applyFontsIfActive(mode: ApplyMode): Promise<void> {
@@ -210,6 +274,11 @@ stopWatchingStorage = watchLocalStorage({
   [STORAGE_KEYS.RTL_SITE_SETTINGS]: () => scheduleApplyRtlIfActive()
 })
 
+stopWatchingUrlChanges = watchUrlChanges(() => {
+  scheduleApplyFontsIfActive()
+  scheduleApplyRtlIfActive()
+})
+
 function handleRuntimeMessage(message: { action?: string }): void {
   if (message?.action === "toggle" || message?.action === "toggleExtension") {
     scheduleApplyFontsIfActive()
@@ -236,6 +305,8 @@ function cleanupRuntimeListeners(
   cleanupRtlSupport()
   stopWatchingStorage?.()
   stopWatchingStorage = null
+  stopWatchingUrlChanges?.()
+  stopWatchingUrlChanges = null
   const messageEvent = runtimeMessageEvent ?? getRuntimeMessageEvent()
   runtimeMessageEvent = null
   try {

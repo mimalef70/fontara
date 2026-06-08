@@ -33,10 +33,11 @@ import {
 } from "../../config/rtl-sites"
 import {
   addSitePatternToList,
-  createSiteListToggleUpdate,
+  createWebsiteSiteListToggleUpdate,
   getDisplaySitePattern,
   isSiteListUrlEnabled,
   normalizeEnabledByDefault,
+  normalizeEnabledSiteList,
   normalizeSiteList,
   normalizeSitePattern,
   removeSitePatternFromList
@@ -71,7 +72,11 @@ import {
   getGoogleFontList,
   isGoogleFontValue
 } from "../../utils/google-fonts"
-import { getLocalValue, setLocalValues } from "../../utils/storage"
+import {
+  getLocalValue,
+  getLocalValues,
+  setLocalValues
+} from "../../utils/storage"
 import {
   decodeSystemFontValue,
   getSystemFontList,
@@ -513,7 +518,7 @@ function OptionsPage() {
   const effectiveWebsiteList =
     websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
   const normalizedEnabledByDefault = normalizeEnabledByDefault(enabledByDefault)
-  const normalizedEnabledFor = normalizeSiteList(enabledFor)
+  const normalizedEnabledFor = normalizeEnabledSiteList(enabledFor)
   const normalizedDisabledFor = normalizeSiteList(disabledFor)
   const siteListSettings = {
     disabledFor: normalizedDisabledFor,
@@ -537,6 +542,66 @@ function OptionsPage() {
       : RTL_SUPPORTED_SITES.filter((site) =>
           isRtlSiteEnabled(normalizedRtlSiteSettings, site.id)
         ).length
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    const reconcileStoredSiteLists = async () => {
+      try {
+        const storedValues = await getLocalValues<Record<string, unknown>>({
+          [STORAGE_KEYS.DISABLED_FOR]: undefined,
+          [STORAGE_KEYS.ENABLED_FOR]: undefined
+        })
+        const updates: Record<string, unknown> = {}
+        const rawEnabledFor = storedValues[STORAGE_KEYS.ENABLED_FOR]
+        const rawDisabledFor = storedValues[STORAGE_KEYS.DISABLED_FOR]
+
+        if (rawEnabledFor !== undefined) {
+          const normalized = normalizeEnabledSiteList(rawEnabledFor)
+          if (JSON.stringify(rawEnabledFor) !== JSON.stringify(normalized)) {
+            updates[STORAGE_KEYS.ENABLED_FOR] = normalized
+          }
+        }
+
+        if (rawDisabledFor !== undefined) {
+          const normalized = normalizeSiteList(rawDisabledFor)
+          if (JSON.stringify(rawDisabledFor) !== JSON.stringify(normalized)) {
+            updates[STORAGE_KEYS.DISABLED_FOR] = normalized
+          }
+        }
+
+        if (!cancelled && Object.keys(updates).length > 0) {
+          await setLocalValues(updates)
+        }
+      } catch (error) {
+        if (__DEBUG__) {
+          console.warn("Failed to reconcile stored site lists.", error)
+        }
+      }
+    }
+
+    const handleSiteListStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string
+    ) => {
+      if (areaName !== "local") return
+      if (
+        changes[STORAGE_KEYS.DISABLED_FOR] ||
+        changes[STORAGE_KEYS.ENABLED_FOR]
+      ) {
+        void reconcileStoredSiteLists()
+      }
+    }
+
+    void reconcileStoredSiteLists()
+    chrome.storage.onChanged.addListener(handleSiteListStorageChange)
+
+    return () => {
+      cancelled = true
+      chrome.storage.onChanged.removeListener(handleSiteListStorageChange)
+    }
+  }, [])
+
   const fontStorageBytes = customFontList.reduce((total, font) => {
     return total + new Blob([font.data]).size
   }, 0)
@@ -607,8 +672,8 @@ function OptionsPage() {
     const updatedWebsiteList = currentWebsiteList.map((item) =>
       item.url === website.url ? { ...item, isActive: !active } : item
     )
-    const siteListUpdate = createSiteListToggleUpdate(
-      website.url,
+    const siteListUpdate = createWebsiteSiteListToggleUpdate(
+      website,
       siteListSettings,
       !active
     )

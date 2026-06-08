@@ -162,6 +162,21 @@ function createRuntimeMocks(): {
   getTreeWalkerCount: () => number
   setRuntimeRemoveError: (error: unknown) => void
   values: StoredValues
+  window: {
+    history: {
+      pushState: (
+        data: unknown,
+        unused: string,
+        url?: string | URL | null
+      ) => void
+      replaceState: (
+        data: unknown,
+        unused: string,
+        url?: string | URL | null
+      ) => void
+    }
+    location: { href: string }
+  }
 } {
   const elementsById = new Map<string, FakeElement>()
   const listeners: StorageListener[] = []
@@ -292,7 +307,20 @@ function createRuntimeMocks(): {
     }
   )
   Reflect.set(globalThis, "document", documentMock)
-  Reflect.set(globalThis, "window", {
+  const locationMock = { href: "https://example.com/" }
+  const historyMock = {
+    pushState(_data: unknown, _unused: string, url?: string | URL | null) {
+      if (url !== undefined && url !== null) {
+        locationMock.href = new URL(String(url), locationMock.href).href
+      }
+    },
+    replaceState(_data: unknown, _unused: string, url?: string | URL | null) {
+      if (url !== undefined && url !== null) {
+        locationMock.href = new URL(String(url), locationMock.href).href
+      }
+    }
+  }
+  const windowMock = {
     getComputedStyle(element: FakeElement) {
       return {
         fontFamily:
@@ -305,13 +333,19 @@ function createRuntimeMocks(): {
                 : "system-ui, sans-serif"
       }
     },
-    location: { href: "https://example.com/" },
+    clearInterval() {},
+    history: historyMock,
+    location: locationMock,
     requestIdleCallback(callback: (deadline: IdleDeadline) => void) {
       callback({ timeRemaining: () => 50 } as IdleDeadline)
       return 1
     },
+    setInterval(_callback: () => void) {
+      return 1
+    },
     setTimeout
-  })
+  }
+  Reflect.set(globalThis, "window", windowMock)
   Reflect.set(
     globalThis,
     "requestAnimationFrame",
@@ -408,6 +442,7 @@ function createRuntimeMocks(): {
         listener(event)
       }
     },
+    window: windowMock,
     dispatchStorageChange(changes, areaName) {
       for (const listener of listeners) {
         listener(changes, areaName)
@@ -490,6 +525,20 @@ test("selected custom font changes inject its font-face without a reload", async
     assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
     assert.equal(runtime.getStyleText("fontara-text-stroke-style"), "")
     assert.equal(runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST), 0)
+
+    runtime.window.history.pushState({}, "", "https://other.example.com/")
+
+    await waitFor(
+      () => runtime.getStyleText("fontara-font-styles") === "",
+      "expected SPA navigation to an inactive URL to remove injected styles"
+    )
+
+    runtime.window.history.pushState({}, "", "https://example.com/")
+
+    await waitFor(
+      () => runtime.getStyleText("fontara-font-styles").includes("@font-face"),
+      "expected SPA navigation back to an active URL to restore injected styles"
+    )
     const initialTreeWalkerCount = runtime.getTreeWalkerCount()
 
     runtime.values[STORAGE_KEYS.TEXT_STROKE] = 0.2

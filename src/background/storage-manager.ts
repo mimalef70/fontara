@@ -4,6 +4,7 @@ import { normalizeRtlSiteSettings } from "../config/rtl-sites"
 import {
   getActiveWebsiteSitePatterns,
   normalizeEnabledByDefault,
+  normalizeEnabledSiteList,
   normalizeSiteList
 } from "../config/site-list"
 import {
@@ -297,7 +298,7 @@ export async function ensureStorageValues(): Promise<void> {
   const normalizedEnabledFor =
     enabledFor === undefined
       ? getActiveWebsiteSitePatterns(normalizedWebsiteList)
-      : normalizeSiteList(enabledFor)
+      : normalizeEnabledSiteList(enabledFor)
   if (JSON.stringify(enabledFor) !== JSON.stringify(normalizedEnabledFor)) {
     storageUpdates[STORAGE_KEYS.ENABLED_FOR] = normalizedEnabledFor
   }

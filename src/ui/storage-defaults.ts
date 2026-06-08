@@ -6,6 +6,7 @@ import {
 } from "../config/rtl-sites"
 import {
   normalizeEnabledByDefault,
+  normalizeEnabledSiteList,
   normalizeSiteList
 } from "../config/site-list"
 import {
@@ -57,7 +58,7 @@ export function getEnabledByDefaultInitialValue(value: unknown): boolean {
 export function getEnabledForInitialValue(value: unknown): string[] {
   return value === undefined
     ? DEFAULT_VALUES.ENABLED_FOR
-    : normalizeSiteList(value)
+    : normalizeEnabledSiteList(value)
 }
 
 export function getDisabledForInitialValue(value: unknown): string[] {

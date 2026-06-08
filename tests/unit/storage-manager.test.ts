@@ -940,9 +940,18 @@ test("ensureStorageValues migrates active website settings into the include site
 test("ensureStorageValues normalizes stored site list settings", async () => {
   const values: Record<string, unknown> = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
-    [STORAGE_KEYS.DISABLED_FOR]: [" Example.com ", "", "example.com"],
+    [STORAGE_KEYS.DISABLED_FOR]: [
+      " Example.com ",
+      "",
+      "example.com",
+      "%2a.dropbox.com"
+    ],
     [STORAGE_KEYS.ENABLED_BY_DEFAULT]: "yes",
-    [STORAGE_KEYS.ENABLED_FOR]: ["https://www.google.com/", "google.com"],
+    [STORAGE_KEYS.ENABLED_FOR]: [
+      "https://www.google.com/",
+      "google.com",
+      "%2A.wikipedia.org"
+    ],
     [STORAGE_KEYS.EXTENSION_ENABLED]: true,
     [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
     [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
@@ -952,10 +961,13 @@ test("ensureStorageValues normalizes stored site list settings", async () => {
   await ensureStorageValues()
 
   assert.equal(values[STORAGE_KEYS.ENABLED_BY_DEFAULT], false)
-  assert.deepEqual(values[STORAGE_KEYS.DISABLED_FOR], ["example.com"])
+  assert.deepEqual(values[STORAGE_KEYS.DISABLED_FOR], [
+    "example.com",
+    "*.dropbox.com"
+  ])
   assert.deepEqual(values[STORAGE_KEYS.ENABLED_FOR], [
-    "www.google.com",
-    "google.com"
+    "google.com",
+    "*.wikipedia.org"
   ])
 })
 

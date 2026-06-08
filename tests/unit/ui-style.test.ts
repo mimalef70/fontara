@@ -220,7 +220,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.textStroke\.title/)
   assert.match(optionsSource, /options\.siteList\.title/)
   assert.match(optionsSource, /options\.siteProfiles\.title/)
-  assert.match(optionsSource, /createSiteListToggleUpdate/)
+  assert.match(optionsSource, /createWebsiteSiteListToggleUpdate/)
   assert.match(optionsSource, /upsertSiteProfile/)
   assert.match(optionsSource, /removeSiteProfileFontOverrides/)
   assert.match(optionsSource, /normalizeSitePattern/)
@@ -333,6 +333,10 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
     path.resolve("src/ui/components/CustomUrlToggle.tsx"),
     "utf8"
   )
+  const popularSectionSource = fs.readFileSync(
+    path.resolve("src/ui/components/PopularSection.tsx"),
+    "utf8"
+  )
   const rtlSiteToggleSource = fs.readFileSync(
     path.resolve("src/ui/components/RtlSiteToggle.tsx"),
     "utf8"
@@ -370,6 +374,7 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /dir="ltr"[\s\S]*<img[\s\S]*<bdi/)
   assert.match(customUrlToggleSource, /<bdi className="truncate" dir="ltr">/)
   assert.match(customUrlToggleSource, /createSiteListToggleUpdate/)
+  assert.match(popularSectionSource, /createWebsiteSiteListToggleUpdate/)
   assert.match(customUrlToggleSource, /isSiteListUrlEnabled/)
   assert.match(customUrlToggleSource, /STORAGE_KEYS\.ENABLED_FOR/)
   assert.match(customUrlToggleSource, /STORAGE_KEYS\.DISABLED_FOR/)
@@ -438,6 +443,12 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(uiSources, /getEnabledByDefaultInitialValue/)
   assert.match(uiSources, /getEnabledForInitialValue/)
   assert.match(uiSources, /getDisabledForInitialValue/)
+  assert.match(uiSources, /getLocalValues/)
+  assert.match(uiSources, /reconcileStoredSiteLists/)
+  assert.match(uiSources, /normalizeEnabledSiteList\(rawEnabledFor\)/)
+  assert.match(uiSources, /handleSiteListStorageChange/)
+  assert.match(uiSources, /chrome\.storage\.onChanged\.addListener/)
+  assert.match(uiSources, /chrome\.storage\.onChanged\.removeListener/)
   assert.match(
     uiSources,
     /STORAGE_KEYS\.ENABLED_FOR,[\s\S]{0,120}getEnabledForInitialValue/

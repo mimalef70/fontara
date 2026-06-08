@@ -6,6 +6,7 @@ import {
   getURLHostOrProtocol,
   isSiteListUrlEnabled,
   normalizeEnabledByDefault,
+  normalizeEnabledSiteList,
   normalizeSiteList
 } from "../../config/site-list"
 import { STORAGE_KEYS } from "../../config/storage"
@@ -93,7 +94,7 @@ const CustomUrlToggle = () => {
     return isSiteListUrlEnabled(currentTab.url, {
       disabledFor: normalizeSiteList(disabledFor),
       enabledByDefault: normalizeEnabledByDefault(enabledByDefault),
-      enabledFor: normalizeSiteList(enabledFor)
+      enabledFor: normalizeEnabledSiteList(enabledFor)
     })
   }
 

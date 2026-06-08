@@ -50,7 +50,8 @@ export const ICON_CLASS_SUBSTRINGS = [
   "material-icon"
 ]
 
-export const EXCLUDED_INLINE_STYLE_PARTS = ["font-"]
+export const EXCLUDED_INLINE_FONT_STYLE_PATTERN =
+  /(?:^|;)\s*font(?:-family)?\s*:/i
 
 export const GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS = [
   "pre",

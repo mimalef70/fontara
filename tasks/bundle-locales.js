@@ -4,6 +4,8 @@ const { absolutePath, getDestDir } = require("./paths")
 const { readJSON, writeJSON } = require("./utils")
 
 async function bundleLocales({ platform, debug }) {
+  if (debug) return
+
   const outDir = getDestDir({ platform, debug })
   const catalog = await readJSON(absolutePath("src/i18n/messages.json"))
 

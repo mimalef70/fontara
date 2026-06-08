@@ -1,7 +1,8 @@
 import {
-  createSiteListToggleUpdate,
+  createWebsiteSiteListToggleUpdate,
   isSiteListUrlEnabled,
   normalizeEnabledByDefault,
+  normalizeEnabledSiteList,
   normalizeSiteList
 } from "../../config/site-list"
 import { POPULAR_WEBSITES } from "../../config/sites"
@@ -52,10 +53,10 @@ function PopularUrl() {
     const active = isSiteListUrlEnabled(website.url, {
       disabledFor: normalizeSiteList(disabledFor),
       enabledByDefault: normalizeEnabledByDefault(enabledByDefault),
-      enabledFor: normalizeSiteList(enabledFor)
+      enabledFor: normalizeEnabledSiteList(enabledFor)
     })
-    const siteListUpdate = createSiteListToggleUpdate(
-      website.url,
+    const siteListUpdate = createWebsiteSiteListToggleUpdate(
+      website,
       siteListSettings,
       !active
     )
@@ -93,7 +94,7 @@ function PopularUrl() {
         const active = isSiteListUrlEnabled(website.url, {
           disabledFor: normalizeSiteList(disabledFor),
           enabledByDefault: normalizeEnabledByDefault(enabledByDefault),
-          enabledFor: normalizeSiteList(enabledFor)
+          enabledFor: normalizeEnabledSiteList(enabledFor)
         })
 
         return (

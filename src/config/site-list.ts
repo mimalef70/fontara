@@ -21,6 +21,7 @@ type PreparedPattern = PreparedURL & {
 const regexpCache = new Map<string, RegExp | null>()
 const preparedPatternCache = new Map<string, PreparedPattern | null>()
 const preparedURLCache = new Map<string, PreparedURL | null>()
+const PROTOCOL_PATTERN = /^[a-z*][a-z0-9+.-]*:\/\//i
 
 function isRegExpPattern(pattern: string): boolean {
   return pattern.startsWith("/") && pattern.endsWith("/") && pattern.length > 2
@@ -207,7 +208,11 @@ export function getURLHostOrProtocol(url: string): string {
 }
 
 export function getDisplaySitePattern(pattern: string): string {
-  return pattern.startsWith("www.") ? pattern.slice(4) : pattern
+  const normalizedPattern =
+    normalizeSitePattern(pattern) ?? pattern.trim().replace(/%2a/gi, "*")
+  return normalizedPattern.startsWith("www.")
+    ? normalizedPattern.slice(4)
+    : normalizedPattern
 }
 
 export function createSitePatternFromUrl(url: string): string | null {
@@ -223,7 +228,7 @@ function createSitePatternsFromExtensionPattern(pattern: string): string[] {
   const trimmed = pattern.trim()
   if (!trimmed) return []
 
-  const withoutProtocol = trimmed.replace(/^[a-z*]+:\/\//i, "")
+  const withoutProtocol = trimmed.replace(PROTOCOL_PATTERN, "")
   const slashIndex = withoutProtocol.indexOf("/")
   const host =
     slashIndex < 0 ? withoutProtocol : withoutProtocol.slice(0, slashIndex)
@@ -268,9 +273,19 @@ export function normalizeSitePattern(value: unknown): string | null {
   }
   if (/\s/.test(trimmed)) return null
 
+  const decodedWildcardPattern = trimmed.replace(/%2a/gi, "*")
+  if (decodedWildcardPattern.includes("*")) {
+    const normalizedWildcardPattern = normalizeWildcardSitePattern(
+      decodedWildcardPattern
+    )
+    if (normalizedWildcardPattern) return normalizedWildcardPattern
+  }
+
   try {
     const parsed = new URL(
-      trimmed.includes("://") ? trimmed : `https://${trimmed}`
+      decodedWildcardPattern.includes("://")
+        ? decodedWildcardPattern
+        : `https://${decodedWildcardPattern}`
     )
     const host =
       parsed.host ||
@@ -282,8 +297,23 @@ export function normalizeSitePattern(value: unknown): string | null {
     const normalized = `${host}${pathname}`.toLowerCase()
     return normalized || null
   } catch {
-    return trimmed.toLowerCase()
+    return decodedWildcardPattern.toLowerCase()
   }
+}
+
+function normalizeWildcardSitePattern(pattern: string): string | null {
+  const withoutProtocol = pattern.replace(PROTOCOL_PATTERN, "")
+  const slashIndex = withoutProtocol.indexOf("/")
+  const host =
+    slashIndex < 0 ? withoutProtocol : withoutProtocol.slice(0, slashIndex)
+
+  if (!host || host === "*") return null
+
+  const path = slashIndex < 0 ? "" : withoutProtocol.slice(slashIndex)
+  const normalizedPath = path && path !== "/" ? path.replace(/\/+$/, "") : ""
+  const normalized = `${host}${normalizedPath}`.toLowerCase()
+
+  return normalized || null
 }
 
 export function normalizeSiteList(value: unknown): string[] {
@@ -300,7 +330,28 @@ export function normalizeSiteList(value: unknown): string[] {
     normalizedList.push(normalized)
   }
 
-  return normalizedList
+  return removeRedundantWWWPatterns(normalizedList)
+}
+
+function isHostOnlyPattern(pattern: string): boolean {
+  return !isRegExpPattern(pattern) && pattern !== "*" && !pattern.includes("/")
+}
+
+function removeRedundantWWWPatterns(list: string[]): string[] {
+  const hostPatterns = new Set(list.filter(isHostOnlyPattern))
+
+  return list.filter((pattern) => {
+    if (!isHostOnlyPattern(pattern) || !pattern.startsWith("www.")) {
+      return true
+    }
+
+    const suffix = pattern.slice(4)
+    return !hostPatterns.has(suffix) && !hostPatterns.has(`*.${suffix}`)
+  })
+}
+
+export function normalizeEnabledSiteList(value: unknown): string[] {
+  return normalizeSiteList(value)
 }
 
 export function normalizeEnabledByDefault(value: unknown): boolean {
@@ -323,7 +374,7 @@ export function isSiteListUrlEnabled(
   url: string,
   settings: SiteListSettings
 ): boolean {
-  const enabledFor = normalizeSiteList(settings.enabledFor)
+  const enabledFor = normalizeEnabledSiteList(settings.enabledFor)
   const disabledFor = normalizeSiteList(settings.disabledFor)
   const isURLInEnabledList = isURLInSiteList(url, enabledFor)
 
@@ -355,7 +406,11 @@ export function addSitePatternToList(
   if (!normalizedPattern) return normalizedList
   if (normalizedList.includes(normalizedPattern)) return normalizedList
 
-  return [...normalizedList, normalizedPattern]
+  return normalizeSiteList([...normalizedList, normalizedPattern])
+}
+
+function addSitePatternsToList(list: string[], patterns: string[]): string[] {
+  return patterns.reduce(addSitePatternToList, normalizeSiteList(list))
 }
 
 export function removeSitePatternFromList(
@@ -369,36 +424,68 @@ export function removeSitePatternFromList(
   return normalizeSiteList(list).filter((item) => !aliases.has(item))
 }
 
-export function createSiteListToggleUpdate(
-  url: string,
+function removeSitePatternsFromList(
+  list: string[],
+  patterns: string[]
+): string[] {
+  return patterns.reduce(removeSitePatternFromList, normalizeSiteList(list))
+}
+
+function createSiteListToggleUpdateForPatterns(
+  patterns: string[],
   settings: SiteListSettings,
   checked: boolean
 ): Pick<SiteListSettings, "disabledFor" | "enabledFor"> {
-  const pattern = createSitePatternFromUrl(url)
-  const enabledFor = normalizeSiteList(settings.enabledFor)
+  const normalizedPatterns = normalizeSiteList(patterns)
+  const enabledFor = normalizeEnabledSiteList(settings.enabledFor)
   const disabledFor = normalizeSiteList(settings.disabledFor)
 
-  if (!pattern) {
+  if (normalizedPatterns.length === 0) {
     return { disabledFor, enabledFor }
   }
 
   if (settings.enabledByDefault) {
     return {
       disabledFor: checked
-        ? removeSitePatternFromList(disabledFor, pattern)
-        : addSitePatternToList(disabledFor, pattern),
+        ? removeSitePatternsFromList(disabledFor, normalizedPatterns)
+        : addSitePatternsToList(disabledFor, normalizedPatterns),
       enabledFor: checked
         ? enabledFor
-        : removeSitePatternFromList(enabledFor, pattern)
+        : removeSitePatternsFromList(enabledFor, normalizedPatterns)
     }
   }
 
   return {
     disabledFor,
     enabledFor: checked
-      ? addSitePatternToList(enabledFor, pattern)
-      : removeSitePatternFromList(enabledFor, pattern)
+      ? addSitePatternsToList(enabledFor, normalizedPatterns)
+      : removeSitePatternsFromList(enabledFor, normalizedPatterns)
   }
+}
+
+export function createSiteListToggleUpdate(
+  url: string,
+  settings: SiteListSettings,
+  checked: boolean
+): Pick<SiteListSettings, "disabledFor" | "enabledFor"> {
+  const pattern = createSitePatternFromUrl(url)
+  return createSiteListToggleUpdateForPatterns(
+    pattern ? [pattern] : [],
+    settings,
+    checked
+  )
+}
+
+export function createWebsiteSiteListToggleUpdate(
+  website: WebsiteItem,
+  settings: SiteListSettings,
+  checked: boolean
+): Pick<SiteListSettings, "disabledFor" | "enabledFor"> {
+  return createSiteListToggleUpdateForPatterns(
+    getWebsiteSitePatterns(website),
+    settings,
+    checked
+  )
 }
 
 export function getActiveWebsiteSitePatterns(

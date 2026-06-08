@@ -128,6 +128,15 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
   const iconFontElement = root.appendChild(
     createTextElement("span", "icon font")
   )
+  const fontFamilyElement = root.appendChild(
+    createTextElement("span", "inline font family")
+  )
+  const fontShorthandElement = root.appendChild(
+    createTextElement("span", "inline font shorthand")
+  )
+  const fontWeightElement = root.appendChild(
+    createTextElement("span", "inline font weight")
+  )
 
   styledWrapper.setAttribute("style", "font-size: 16px")
   styledWrapper.appendChild(childInsideStyledWrapper)
@@ -136,14 +145,21 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
   iconPrefixElement.classList.add("fa-user")
   iconSubstringElement.classList.add("buttonIcon")
   iconFontElement.setAttribute("data-font-kind", "icon")
+  fontFamilyElement.setAttribute("style", "font-family: Arial, sans-serif")
+  fontShorthandElement.setAttribute("style", "font: 16px Arial")
+  fontWeightElement.setAttribute("style", "font-weight: 700")
 
   const work = collectFontWork(root as unknown as HTMLElement)
   const expectedNodes = [
     visibleText,
-    childInsideStyledWrapper
+    styledWrapper,
+    childInsideStyledWrapper,
+    fontWeightElement
   ] as unknown as HTMLElement[]
   const styledWrapperNode = styledWrapper as unknown as HTMLElement
   const codeElementNode = codeElement as unknown as HTMLElement
+  const fontFamilyNode = fontFamilyElement as unknown as HTMLElement
+  const fontShorthandNode = fontShorthandElement as unknown as HTMLElement
 
   assert.deepEqual(
     work.map((item) => item.node),
@@ -152,10 +168,18 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
   assert.equal(work[0]?.fallbackFontFamily, "system-ui, sans-serif")
   assert.equal(
     work.some((item) => item.node === styledWrapperNode),
-    false
+    true
   )
   assert.equal(
     work.some((item) => item.node === codeElementNode),
+    false
+  )
+  assert.equal(
+    work.some((item) => item.node === fontFamilyNode),
+    false
+  )
+  assert.equal(
+    work.some((item) => item.node === fontShorthandNode),
     false
   )
 })

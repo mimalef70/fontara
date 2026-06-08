@@ -46,6 +46,7 @@ async function bundleManifest({ platform, debug }) {
       "FontAra debug build."
     )
     patchedManifest.version_name = `${packageJSON.version} Debug`
+    delete patchedManifest.default_locale
   }
 
   const outDir = getDestDir({ platform, debug })

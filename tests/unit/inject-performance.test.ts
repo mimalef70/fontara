@@ -118,10 +118,16 @@ test("storage changes schedule the active injection pipeline", () => {
   const injectSource = readSource("src/inject/index.ts")
 
   assert.match(injectSource, /function scheduleApplyFontsIfActive/)
+  assert.match(injectSource, /function watchUrlChanges/)
   assert.match(injectSource, /type ApplyMode = "font-styles" \| "full"/)
   assert.match(injectSource, /queueMicrotask/)
   assert.match(injectSource, /applyFontsRunning/)
   assert.match(injectSource, /applyFontsQueuedMode/)
+  assert.match(injectSource, /historyObject\[methodName\] = wrappedMethod/)
+  assert.match(injectSource, /addEventListener\("popstate"/)
+  assert.match(injectSource, /addEventListener\("hashchange"/)
+  assert.match(injectSource, /window\.setInterval\(handlePossibleUrlChange/)
+  assert.match(injectSource, /stopWatchingUrlChanges/)
   assert.match(
     injectSource,
     /\[STORAGE_KEYS\.SELECTED_FONT\]: \(\) =>\s*scheduleApplyFontsIfActive\("font-styles"\)/
@@ -160,9 +166,11 @@ test("hot selector lookups use Sets", () => {
   assert.match(selectorsSource, /ICON_CLASSES = new Set\(/)
   assert.match(selectorsSource, /ICON_CLASS_PREFIXES/)
   assert.match(selectorsSource, /ICON_CLASS_SUBSTRINGS/)
-  assert.match(selectorsSource, /EXCLUDED_INLINE_STYLE_PARTS/)
+  assert.match(selectorsSource, /EXCLUDED_INLINE_FONT_STYLE_PATTERN/)
+  assert.match(selectorsSource, /font\(\?:-family\)\?/)
   assert.match(domProcessorSource, /function hasAriaHidden/)
   assert.match(domProcessorSource, /function hasExcludedInlineFontStyle/)
+  assert.match(domProcessorSource, /EXCLUDED_INLINE_FONT_STYLE_PATTERN\.test/)
   assert.match(domProcessorSource, /className\.startsWith\(prefix\)/)
   assert.match(domProcessorSource, /className\.includes\(substring\)/)
 })

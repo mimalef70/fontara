@@ -2,6 +2,7 @@ import {
   getActiveWebsiteSitePatterns,
   isSiteListUrlEnabled,
   normalizeEnabledByDefault,
+  normalizeEnabledSiteList,
   normalizeSiteList
 } from "../config/site-list"
 import { getSiteProfileForUrl } from "../config/site-profiles"
@@ -113,7 +114,7 @@ export async function getUrlActivationState(
   const enabledFor =
     storedValues[STORAGE_KEYS.ENABLED_FOR] === undefined
       ? getActiveWebsiteSitePatterns(websiteList)
-      : normalizeSiteList(storedValues[STORAGE_KEYS.ENABLED_FOR])
+      : normalizeEnabledSiteList(storedValues[STORAGE_KEYS.ENABLED_FOR])
   const disabledFor =
     storedValues[STORAGE_KEYS.DISABLED_FOR] === undefined
       ? DEFAULT_VALUES.DISABLED_FOR

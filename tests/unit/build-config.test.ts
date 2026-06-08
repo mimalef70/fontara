@@ -34,9 +34,13 @@ test("build pipeline generates WebExtension locales from the i18n catalog", () =
   assert.match(validateBuildSource, /messages\.json/)
 })
 
-test("debug manifests keep default_locale when WebExtension locales are bundled", () => {
+test("debug manifests use literal strings without WebExtension locale catalogs", () => {
   const bundleManifestSource = fs.readFileSync(
     path.resolve("tasks/bundle-manifest.js"),
+    "utf8"
+  )
+  const bundleLocalesSource = fs.readFileSync(
+    path.resolve("tasks/bundle-locales.js"),
     "utf8"
   )
   const validateBuildSource = fs.readFileSync(
@@ -49,10 +53,8 @@ test("debug manifests keep default_locale when WebExtension locales are bundled"
   assert.match(bundleManifestSource, /patchedManifest\.name = "FontAra Debug"/)
   assert.match(bundleManifestSource, /patchedManifest\.short_name =/)
   assert.match(bundleManifestSource, /patchedManifest\.description =/)
-  assert.doesNotMatch(
-    bundleManifestSource,
-    /delete patchedManifest\.default_locale/
-  )
+  assert.match(bundleManifestSource, /delete patchedManifest\.default_locale/)
+  assert.match(bundleLocalesSource, /if \(debug\) return/)
   assert.match(
     validateBuildSource,
     /default_locale is missing while _locales exists/
@@ -89,4 +91,19 @@ test("Google Fonts catalog is generated at build time without shipping API secre
   assert.doesNotMatch(generatedSource, /GOOGLE_FONTS_API_KEY/)
   assert.doesNotMatch(generatedSource, /fonts\.gstatic\.com/)
   assert.doesNotMatch(generatedSource, /"files"/)
+})
+
+test("release archives use reproducible file metadata", () => {
+  const zipSource = fs.readFileSync(path.resolve("tasks/zip.js"), "utf8")
+  const sourcePackageSource = fs.readFileSync(
+    path.resolve("tasks/source-package.js"),
+    "utf8"
+  )
+
+  for (const source of [zipSource, sourcePackageSource]) {
+    assert.match(source, /git log -1 --format=%ct/)
+    assert.match(source, /\.sort\(\(a, b\) =>/)
+    assert.match(source, /mode: 0o644/)
+    assert.match(source, /mtime/)
+  }
 })

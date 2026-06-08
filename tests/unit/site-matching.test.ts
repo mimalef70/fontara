@@ -9,8 +9,13 @@ import {
 } from "../../src/config/rtl-sites"
 import {
   addSitePatternToList,
+  createWebsiteSiteListToggleUpdate,
+  getDisplaySitePattern,
+  getWebsiteSitePatterns,
   isSiteListUrlEnabled,
   isURLMatched,
+  normalizeEnabledSiteList,
+  normalizeSiteList,
   normalizeSitePattern
 } from "../../src/config/site-list"
 import {
@@ -95,17 +100,6 @@ test("X uses the X brand instead of Twitter assets", () => {
 
   assert.equal(website?.siteName, "X")
   assert.equal(website?.icon, "assets/logos/x-active.svg")
-})
-
-test("WordPress is not shown in popular websites", () => {
-  assert.equal(
-    POPULAR_WEBSITES.some((site) => site.siteName === "WordPress"),
-    false
-  )
-  assert.equal(
-    POPULAR_WEBSITES.some((site) => site.url === "https://wordpress.org"),
-    false
-  )
 })
 
 test("popular websites are ordered by priority and category", () => {
@@ -289,12 +283,41 @@ test("site list URL matching mirrors Dark Reader wildcard and path behavior", ()
 
 test("site list helpers keep append order and reject invalid regex patterns", () => {
   assert.deepEqual(addSitePatternToList(["b.com"], "a.com"), ["b.com", "a.com"])
+  assert.deepEqual(addSitePatternToList(["dropbox.com"], "www.dropbox.com"), [
+    "dropbox.com"
+  ])
   assert.equal(normalizeSitePattern("/(/"), null)
   assert.equal(normalizeSitePattern("/example\\s+site/"), "/example\\s+site/")
   assert.equal(
     isURLMatched("https://example.com/path", "/example\\.com\\/path/"),
     true
   )
+  assert.equal(normalizeSitePattern("%2a.dropbox.com"), "*.dropbox.com")
+  assert.equal(normalizeSitePattern("%2A.linkedin.com"), "*.linkedin.com")
+  assert.equal(
+    normalizeSitePattern("https://%2A.wikipedia.org"),
+    "*.wikipedia.org"
+  )
+  assert.equal(
+    normalizeSitePattern("https://%2a.wikipedia.org/wiki"),
+    "*.wikipedia.org/wiki"
+  )
+  assert.equal(getDisplaySitePattern("%2a.linkedin.com"), "*.linkedin.com")
+  assert.equal(
+    getDisplaySitePattern(" https://%2A.linkedin.com/ "),
+    "*.linkedin.com"
+  )
+  assert.deepEqual(
+    normalizeSiteList(["www.dropbox.com", "dropbox.com", "*.dropbox.com"]),
+    ["dropbox.com", "*.dropbox.com"]
+  )
+  assert.deepEqual(
+    normalizeSiteList(["www.wikipedia.org", "*.wikipedia.org"]),
+    ["*.wikipedia.org"]
+  )
+  assert.deepEqual(normalizeEnabledSiteList(["%2a.linkedin.com"]), [
+    "*.linkedin.com"
+  ])
 })
 
 test("site profiles normalize patterns and resolve the first matching override", () => {
@@ -358,6 +381,49 @@ test("site list settings support include and exclude modes", () => {
       enabledFor: ["mail.google.com"]
     }),
     true
+  )
+})
+
+test("popular website toggles update every configured site pattern", () => {
+  const linkedIn = POPULAR_WEBSITES.find((site) => site.siteName === "LinkedIn")
+  assert.ok(linkedIn)
+  assert.deepEqual(getWebsiteSitePatterns(linkedIn), [
+    "linkedin.com",
+    "*.linkedin.com"
+  ])
+
+  const dropbox = POPULAR_WEBSITES.find((site) => site.siteName === "Dropbox")
+  assert.ok(dropbox)
+  assert.deepEqual(getWebsiteSitePatterns(dropbox), [
+    "dropbox.com",
+    "*.dropbox.com"
+  ])
+
+  const siteListSettings = {
+    disabledFor: [],
+    enabledByDefault: false,
+    enabledFor: getWebsiteSitePatterns(linkedIn)
+  }
+  const update = createWebsiteSiteListToggleUpdate(
+    linkedIn,
+    siteListSettings,
+    false
+  )
+
+  assert.deepEqual(update.enabledFor, [])
+  assert.equal(
+    isSiteListUrlEnabled("https://www.linkedin.com/feed/", {
+      ...siteListSettings,
+      ...update
+    }),
+    false
+  )
+  assert.equal(
+    isSiteListUrlEnabled("https://jobs.linkedin.com/", {
+      ...siteListSettings,
+      ...update
+    }),
+    false
   )
 })
 

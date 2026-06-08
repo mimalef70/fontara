@@ -20,6 +20,7 @@ export type ResolvedPageThemeRequestType =
 type ThemeSchedulerOptions = {
   isDisposed: () => boolean
   onExtensionContextInvalidated: () => void
+  onLocalFallbackActivated?: () => void
   sendDocumentLifecycleMessage: (type: ResolvedPageThemeRequestType) => boolean
   warn?: (message: string, error: unknown) => void
 }
@@ -57,12 +58,24 @@ export function createContentThemeScheduler(
   let localApplyScheduledMode: ContentApplyMode | null = null
   let backgroundCommandsEnabled = false
   let resolvedThemeRevision = 0
+  let localFallbackActive = false
 
   const themeApplierCallbacks = {
     isDisposed: options.isDisposed,
     isExtensionContextInvalidated,
     onExtensionContextInvalidated: options.onExtensionContextInvalidated,
     warn: options.warn ?? debugWarn
+  }
+
+  function activateLocalFallback(): void {
+    if (localFallbackActive) return
+
+    localFallbackActive = true
+    options.onLocalFallbackActivated?.()
+  }
+
+  function markBackgroundCommandsEnabled(): void {
+    backgroundCommandsEnabled = true
   }
 
   async function applyLocalResolvedPageTheme(
@@ -113,6 +126,8 @@ export function createContentThemeScheduler(
 
   function scheduleLocalThemeApply(mode: ContentApplyMode = "full"): void {
     if (options.isDisposed()) return
+
+    activateLocalFallback()
 
     if (localApplyRunning) {
       localApplyQueuedMode = mergeApplyMode(localApplyQueuedMode, mode)
@@ -165,13 +180,13 @@ export function createContentThemeScheduler(
   }
 
   function applyThemeCommand(data: FontaraPageThemeCommandData): void {
-    backgroundCommandsEnabled = true
+    markBackgroundCommandsEnabled()
     resolvedThemeRevision += 1
     void applyResolvedPageTheme(data, themeApplierCallbacks)
   }
 
   function cleanUpThemeCommand(): void {
-    backgroundCommandsEnabled = true
+    markBackgroundCommandsEnabled()
     resolvedThemeRevision += 1
     cleanupResolvedPageTheme()
   }

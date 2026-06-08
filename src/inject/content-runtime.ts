@@ -36,10 +36,19 @@ export function startContentRuntime(): void {
     warn: debugWarn
   }
 
-  const themeScheduler = createContentThemeScheduler({
+  let themeScheduler: ReturnType<typeof createContentThemeScheduler>
+
+  function ensureStorageFallbackWatcher(): void {
+    if (stopWatchingStorage || disposed) return
+
+    stopWatchingStorage = watchContentThemeStorageChanges(themeScheduler)
+  }
+
+  themeScheduler = createContentThemeScheduler({
     isDisposed: () => disposed,
     onExtensionContextInvalidated: () =>
       cleanupRuntimeListeners({ removeStyles: true }),
+    onLocalFallbackActivated: ensureStorageFallbackWatcher,
     sendDocumentLifecycleMessage: (type) =>
       sendDocumentLifecycleMessage(type, documentLifecycleMessageOptions),
     warn: debugWarn
@@ -50,8 +59,6 @@ export function startContentRuntime(): void {
       MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE
     )
   })
-
-  stopWatchingStorage = watchContentThemeStorageChanges(themeScheduler)
 
   stopWatchingUrlChanges = watchUrlChanges(
     () => {

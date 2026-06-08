@@ -121,6 +121,8 @@ test("storage changes schedule the active injection pipeline", () => {
 
   assert.match(schedulerSource, /function scheduleLocalThemeApply/)
   assert.match(schedulerSource, /function scheduleStorageFallbackApply/)
+  assert.match(schedulerSource, /function activateLocalFallback/)
+  assert.match(schedulerSource, /function markBackgroundCommandsEnabled/)
   assert.match(schedulerSource, /createFontaraPageThemeData/)
   assert.match(schedulerSource, /function readLocalThemeSettings/)
   assert.doesNotMatch(schedulerSource, /injectFontStyles/)
@@ -138,11 +140,22 @@ test("storage changes schedule the active injection pipeline", () => {
   assert.match(schedulerSource, /queueMicrotask/)
   assert.match(schedulerSource, /localApplyRunning/)
   assert.match(schedulerSource, /localApplyQueuedMode/)
+  assert.match(schedulerSource, /let localFallbackActive = false/)
+  assert.match(schedulerSource, /options\.onLocalFallbackActivated/)
   assert.match(runtimeSource, /from "\.\/content-theme-scheduler"/)
   assert.match(runtimeSource, /from "\.\/content-storage"/)
+  assert.match(runtimeSource, /function ensureStorageFallbackWatcher/)
+  assert.match(
+    runtimeSource,
+    /onLocalFallbackActivated: ensureStorageFallbackWatcher/
+  )
   assert.match(
     runtimeSource,
     /watchContentThemeStorageChanges\(themeScheduler\)/
+  )
+  assert.doesNotMatch(
+    runtimeSource,
+    /stopWaitingForBody = runWhenBodyIsReady[\s\S]*?stopWatchingStorage\s*=\s*watchContentThemeStorageChanges\(themeScheduler\)[\s\S]*?stopWatchingUrlChanges = watchUrlChanges/
   )
   assert.match(runtimeSource, /stopWatchingUrlChanges/)
   assert.match(storageSource, /watchLocalStorage/)

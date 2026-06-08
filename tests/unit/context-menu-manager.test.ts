@@ -1,12 +1,15 @@
 import assert from "node:assert/strict"
 import test, { afterEach } from "node:test"
 
+import { setFontaraCommandRunner } from "../../src/background/command-manager"
+import { createToggleCurrentSiteSettings } from "../../src/background/command-settings"
 import { ensureContextMenus } from "../../src/background/context-menu-manager"
 import { STORAGE_KEYS } from "../../src/config/storage"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
 afterEach(() => {
+  setFontaraCommandRunner(null)
   Reflect.set(globalThis, "chrome", originalChrome)
 })
 
@@ -26,6 +29,21 @@ test("context menu manager registers menus and toggles the current site", async 
   const clickListeners: Array<
     (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => void
   > = []
+  const commandCalls: Array<{ command: string; url?: string | null }> = []
+
+  setFontaraCommandRunner(async (command, details) => {
+    commandCalls.push({
+      command,
+      url: details?.url
+    })
+
+    if (command === "addSite" && details?.url) {
+      Object.assign(
+        localValues,
+        createToggleCurrentSiteSettings(details.url, localValues)
+      )
+    }
+  })
 
   Reflect.set(globalThis, "chrome", {
     contextMenus: {
@@ -118,6 +136,12 @@ test("context menu manager registers menus and toggles the current site", async 
   )
   await waitForAsyncCommand()
 
+  assert.deepEqual(commandCalls, [
+    {
+      command: "addSite",
+      url: "https://example.com/path"
+    }
+  ])
   assert.deepEqual(localValues[STORAGE_KEYS.ENABLED_FOR], ["example.com"])
   assert.deepEqual(localValues[STORAGE_KEYS.DISABLED_FOR], [])
   assert.deepEqual(localValues[STORAGE_KEYS.WEBSITE_LIST], [

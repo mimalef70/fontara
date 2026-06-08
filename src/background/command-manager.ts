@@ -1,11 +1,3 @@
-import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import { getLocalValues, setLocalValues } from "../utils/storage"
-import {
-  createToggleCurrentSiteSettings,
-  createToggleExtensionSettings
-} from "./command-settings"
-import { getCommandURL } from "./extension-data"
-
 export const FONTARA_COMMANDS = {
   TOGGLE_EXTENSION: "toggle",
   TOGGLE_SITE: "addSite"
@@ -68,45 +60,17 @@ function debounce<T extends unknown[]>(
   }
 }
 
-async function toggleExtension(): Promise<void> {
-  const values = await getLocalValues({
-    [STORAGE_KEYS.EXTENSION_ENABLED]: DEFAULT_VALUES.EXTENSION_ENABLED
-  })
-
-  await setLocalValues(createToggleExtensionSettings(values))
-}
-
-async function toggleCurrentSite(details: CommandDetails): Promise<void> {
-  const url = await getCommandURL(details)
-  if (!url) return
-
-  const storedValues = await getLocalValues({
-    [STORAGE_KEYS.DISABLED_FOR]: undefined,
-    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: DEFAULT_VALUES.ENABLED_BY_DEFAULT,
-    [STORAGE_KEYS.ENABLED_FOR]: undefined,
-    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
-  })
-  await setLocalValues(createToggleCurrentSiteSettings(url, storedValues))
-}
-
 export async function runFontaraCommand(
   command: string,
   details: CommandDetails = {}
 ): Promise<void> {
-  if (commandRunner) {
-    await commandRunner(command, details)
+  if (!commandRunner) {
+    debugWarn("FontAra command runtime is not ready.")
     return
   }
 
   try {
-    switch (command) {
-      case FONTARA_COMMANDS.TOGGLE_EXTENSION:
-        await toggleExtension()
-        break
-      case FONTARA_COMMANDS.TOGGLE_SITE:
-        await toggleCurrentSite(details)
-        break
-    }
+    await commandRunner(command, details)
   } catch (error) {
     debugWarn("Failed to run FontAra command.", error)
   }

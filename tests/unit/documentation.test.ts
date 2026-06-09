@@ -28,6 +28,12 @@ test("project documentation exposes contributor and maintainer guides", () => {
     "docs/site-fixes.md",
     "docs/testing.md",
     "docs/release.md",
+    "docs/images/demo/logo.svg",
+    "docs/images/demo/browsers/chrome.svg",
+    "docs/images/demo/browsers/firefox.svg",
+    "docs/images/demo/browsers/microsoft-edge.svg",
+    "docs/images/demo/browsers/opera.svg",
+    "docs/images/demo/browsers/safari.svg",
     "docs/images/sponsors/muchat-logo-type.svg",
     ".github/PULL_REQUEST_TEMPLATE.md"
   ]
@@ -68,6 +74,9 @@ test("project documentation exposes contributor and maintainer guides", () => {
   assert.match(readme, /cross-browser WebExtension/)
   assert.match(readme, /all languages/)
   assert.match(readme, /Smart RTL support/)
+  assert.match(readme, /docs\/images\/demo\/logo\.svg/)
+  assert.match(readme, /docs\/images\/demo\/browsers\/chrome\.svg/)
+  assert.match(readme, /Version 4 README artwork/)
   assert.match(readme, /30 curated site entries/)
   assert.match(readme, /26 bundled site CSS files/)
   assert.match(readme, /10\s+smart RTL site adapters/)

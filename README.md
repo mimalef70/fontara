@@ -1,5 +1,9 @@
 # FontARA
 
+<p align="center">
+  <img src="docs/images/demo/logo.svg" alt="FontARA" width="220" />
+</p>
+
 [![CI](https://github.com/mimalef70/fontara/actions/workflows/ci.yml/badge.svg)](https://github.com/mimalef70/fontara/actions/workflows/ci.yml)
 [![Browser Tests](https://github.com/mimalef70/fontara/actions/workflows/browser-tests.yml/badge.svg)](https://github.com/mimalef70/fontara/actions/workflows/browser-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -47,6 +51,20 @@ detection, editable-field auto-direction, and curated per-site RTL handling.
 | Brave | Build locally | `pnpm build:brave` | Chromium-compatible package |
 | Safari-style MV3 package | Build locally | `pnpm build:safari` | Package output only |
 
+<p align="center">
+  <a href="https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/" rel="noreferrer noopener">
+    <img src="docs/images/demo/browsers/chrome.svg" alt="Chrome" width="45" />
+  </a>
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/" rel="noreferrer noopener">
+    <img src="docs/images/demo/browsers/firefox.svg" alt="Firefox" width="45" />
+  </a>
+  <a href="https://addons.opera.com/en/extensions/details/fontara-font-changer/" rel="noreferrer noopener">
+    <img src="docs/images/demo/browsers/opera.svg" alt="Opera" width="45" />
+  </a>
+  <img src="docs/images/demo/browsers/microsoft-edge.svg" alt="Microsoft Edge" width="45" />
+  <img src="docs/images/demo/browsers/safari.svg" alt="Safari" width="45" />
+</p>
+
 ## What Changes After Install
 
 | Before FontARA | After FontARA |
@@ -81,6 +99,9 @@ detection, editable-field auto-direction, and curated per-site RTL handling.
 - Firefox review packaging and extension lint support.
 
 ## Preview
+
+The gallery below reuses the Version 4 README artwork from local repository
+assets.
 
 ![FontARA popup and page preview](docs/images/demo/screens/Banner1.jpg)
 

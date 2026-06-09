@@ -117,6 +117,7 @@ const CustomUrlToggle = () => {
         className="peer sr-only"
         checked={active}
         onChange={(e) => void handleUrlToggle(e.target.checked)}
+        data-testid="fontara-current-site-toggle-input"
       />
       <span
         aria-hidden="true"
@@ -153,7 +154,8 @@ const CustomUrlToggle = () => {
       dir={direction}>
       <label
         className="block cursor-pointer overflow-y-hidden text-xs"
-        htmlFor="customUrl">
+        htmlFor="customUrl"
+        data-testid="fontara-current-site-toggle">
         <div
           className={`flex w-full items-center gap-2 ${
             isRtl ? "justify-end" : "justify-start"

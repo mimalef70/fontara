@@ -216,6 +216,7 @@ function FontListRow({
         onClick={() => onFontSelect(font.value)}
         onMouseEnter={() => onHoveredFontChange(font.value)}
         onMouseLeave={() => onHoveredFontChange(null)}
+        data-testid={`fontara-font-option-${font.value}`}
         style={getFontPreviewStyle(getFontFamily(font))}
         className={cn(
           "relative flex h-14 w-full cursor-pointer items-center rounded-md border-0 bg-transparent p-3 text-start",
@@ -464,6 +465,7 @@ const FontSelector = () => {
       <Button
         onClick={() => setIsOpen(!isOpen)}
         variant="outline"
+        data-testid="fontara-font-selector-trigger"
         className="w-full !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300  flex justify-between items-center hover:!bg-white">
         <span className="font-estedad text-sm">{currentFontName}</span>
         <span className="opacity-70">
@@ -488,6 +490,7 @@ const FontSelector = () => {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder={t("fontSelector.searchPlaceholder")}
+                data-testid="fontara-font-selector-search"
                 className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
               />
             </div>

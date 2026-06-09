@@ -37,6 +37,7 @@ const Header = () => {
           checked={extensionActive}
           onCheckedChange={handleExtensionToggle}
           aria-label={t("header.toggleAriaLabel")}
+          data-testid="fontara-extension-enabled-toggle"
         />
       </div>
 

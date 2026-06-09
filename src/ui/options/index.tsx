@@ -642,7 +642,8 @@ function OptionsPage() {
   const handleSettingsImportFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.currentTarget.files?.[0]
+    const input = event.currentTarget
+    const file = input.files?.[0]
     if (!file) return
 
     setIsBackupBusy(true)
@@ -669,7 +670,7 @@ function OptionsPage() {
       })
     } finally {
       setIsBackupBusy(false)
-      event.currentTarget.value = ""
+      input.value = ""
     }
   }
 
@@ -1154,6 +1155,7 @@ function OptionsPage() {
                         <SidebarMenuItem key={item.id}>
                           <SidebarMenuButton
                             isActive={activeSection === item.id}
+                            data-testid={`fontara-options-nav-${item.id}`}
                             onClick={() => setActiveSection(item.id)}>
                             <Icon className="size-4 shrink-0" />
                             <span className="truncate group-data-[collapsible=icon]:hidden">
@@ -1616,6 +1618,7 @@ function OptionsPage() {
                         <button
                           type="button"
                           aria-pressed={!normalizedEnabledByDefault}
+                          data-testid="fontara-site-list-include-mode"
                           onClick={() => void handleSiteListModeChange(false)}
                           className={cn(
                             "flex w-full items-start justify-between gap-3 rounded-md border p-4 text-start transition",
@@ -1645,6 +1648,7 @@ function OptionsPage() {
                         <button
                           type="button"
                           aria-pressed={normalizedEnabledByDefault}
+                          data-testid="fontara-site-list-exclude-mode"
                           onClick={() => void handleSiteListModeChange(true)}
                           className={cn(
                             "flex w-full items-start justify-between gap-3 rounded-md border p-4 text-start transition",
@@ -1690,6 +1694,7 @@ function OptionsPage() {
                           <input
                             type="text"
                             value={sitePatternInput}
+                            data-testid="fontara-site-list-pattern-input"
                             onChange={(event) =>
                               setSitePatternInput(event.target.value)
                             }
@@ -1701,6 +1706,7 @@ function OptionsPage() {
                             type="submit"
                             size="icon"
                             className="h-10 w-10 shrink-0 bg-[#2374ff] text-white hover:bg-[#1f66df]"
+                            data-testid="fontara-site-list-add"
                             aria-label={t("options.siteList.add")}>
                             <Plus className="size-4" />
                           </Button>
@@ -1740,6 +1746,7 @@ function OptionsPage() {
                             {managedSiteList.map((pattern) => (
                               <div
                                 key={pattern}
+                                data-testid={`fontara-site-list-row-${pattern}`}
                                 className="flex items-center justify-between gap-2 rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-2">
                                 <bdi className="min-w-0 truncate text-sm font-semibold text-[#111827]">
                                   {getDisplaySitePattern(pattern)}
@@ -1749,6 +1756,7 @@ function OptionsPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 shrink-0 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                  data-testid={`fontara-site-list-remove-${pattern}`}
                                   aria-label={t("options.siteList.remove", {
                                     site: pattern
                                   })}
@@ -1801,6 +1809,7 @@ function OptionsPage() {
                             list="fontara-site-profile-patterns"
                             type="text"
                             value={siteProfilePatternInput}
+                            data-testid="fontara-site-profile-pattern-input"
                             onChange={(event) =>
                               setSiteProfilePatternInput(event.target.value)
                             }
@@ -1841,6 +1850,7 @@ function OptionsPage() {
                           <select
                             id="site-profile-font"
                             value={siteProfileFontInput}
+                            data-testid="fontara-site-profile-font-select"
                             onChange={(event) =>
                               setSiteProfileFontInput(event.target.value)
                             }
@@ -1882,6 +1892,7 @@ function OptionsPage() {
                               id="site-profile-stroke-toggle"
                               dir="ltr"
                               checked={!siteProfileUsesGlobalStroke}
+                              data-testid="fontara-site-profile-stroke-toggle"
                               onCheckedChange={(checked) =>
                                 setSiteProfileUsesGlobalStroke(!checked)
                               }
@@ -1901,6 +1912,7 @@ function OptionsPage() {
                               max={TEXT_STROKE_MAX}
                               step={TEXT_STROKE_STEP}
                               value={siteProfileTextStroke}
+                              data-testid="fontara-site-profile-stroke-range"
                               disabled={siteProfileUsesGlobalStroke}
                               onChange={(event) =>
                                 setSiteProfileTextStroke(
@@ -1934,6 +1946,7 @@ function OptionsPage() {
                         <div className="flex flex-wrap gap-2">
                           <Button
                             type="submit"
+                            data-testid="fontara-site-profile-save"
                             className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
                             <Check className="size-4" />
                             {t("options.siteProfiles.save")}
@@ -1965,6 +1978,7 @@ function OptionsPage() {
                             {normalizedSiteProfiles.map((profile) => (
                               <div
                                 key={profile.pattern}
+                                data-testid={`fontara-site-profile-row-${profile.pattern}`}
                                 className="rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-3">
                                 <div className="mb-3 flex items-start justify-between gap-3">
                                   <bdi className="min-w-0 truncate text-sm font-bold text-[#111827]">
@@ -1992,6 +2006,7 @@ function OptionsPage() {
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                      data-testid={`fontara-site-profile-remove-${profile.pattern}`}
                                       aria-label={t(
                                         "options.siteProfiles.remove",
                                         {
@@ -2276,6 +2291,7 @@ function OptionsPage() {
                             void handleSyncSettingsToggle(checked)
                           }
                           aria-label={t("options.sync.toggleAria")}
+                          data-testid="fontara-sync-settings-toggle"
                         />
                       </div>
 
@@ -2327,6 +2343,7 @@ function OptionsPage() {
                           void handleContextMenusToggle(checked)
                         }
                         aria-label={t("options.contextMenus.toggleAria")}
+                        data-testid="fontara-context-menus-toggle"
                       />
                     </div>
                   </section>
@@ -2337,6 +2354,7 @@ function OptionsPage() {
                       type="file"
                       accept="application/json,.json"
                       className="hidden"
+                      data-testid="fontara-settings-import-input"
                       onChange={handleSettingsImportFileChange}
                     />
                     <div className="mb-5 flex items-center justify-between gap-3">
@@ -2359,6 +2377,7 @@ function OptionsPage() {
                         variant="outline"
                         onClick={() => setIsImportWarningVisible(true)}
                         disabled={isBackupBusy}
+                        data-testid="fontara-settings-import-open"
                         className="h-11">
                         <FileUp className="size-4" />
                         {t("options.backup.importButton")}
@@ -2377,6 +2396,7 @@ function OptionsPage() {
                               type="button"
                               onClick={handleChooseSettingsImportFile}
                               disabled={isBackupBusy}
+                              data-testid="fontara-settings-import-choose"
                               className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
                               <Upload className="size-4" />
                               {t("options.backup.chooseFileButton")}
@@ -2421,6 +2441,7 @@ function OptionsPage() {
                         type="button"
                         onClick={() => void handleExportSettings()}
                         disabled={isBackupBusy}
+                        data-testid="fontara-settings-export"
                         className="h-11 bg-[#2374ff] text-white hover:bg-[#1f66df]">
                         <Download className="size-4" />
                         {t("options.backup.exportButton")}
@@ -2451,6 +2472,7 @@ function OptionsPage() {
                           type="button"
                           variant="outline"
                           disabled={isBackupBusy}
+                          data-testid="fontara-settings-reset-open"
                           className="h-11 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">
                           <RotateCcw className="size-4" />
                           {t("options.backup.resetButton")}
@@ -2472,6 +2494,7 @@ function OptionsPage() {
                           <AlertDialogAction
                             onClick={() => void handleResetSettings()}
                             disabled={isBackupBusy}
+                            data-testid="fontara-settings-reset-confirm"
                             className="bg-red-600 text-white hover:bg-red-700">
                             <RotateCcw className="size-4" />
                             {t("options.backup.resetConfirmButton")}

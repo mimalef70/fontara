@@ -18,6 +18,7 @@
       "src/**/*.tsx",
       "tailwind.config.js",
       "tasks/**/*.js",
+      "tests/**/*.mjs",
       "tests/**/*.ts",
       "!build",
       "!node_modules"

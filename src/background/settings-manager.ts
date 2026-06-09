@@ -1,4 +1,5 @@
 import { getSettingsBackupDefaults } from "../utils/settings-backup"
+import { createSettingsUpdatedAtPatch } from "../utils/settings-sync"
 import { getLocalValues, setLocalValues } from "../utils/storage"
 import { normalizeStorageValues } from "../utils/storage-normalization"
 
@@ -6,6 +7,11 @@ type LocalStorageChanges = Record<string, chrome.storage.StorageChange>
 
 let cachedSettings: Record<string, unknown> | null = null
 let settingsReadPromise: Promise<Record<string, unknown>> | null = null
+
+export type BackgroundSettingsWriteResult = {
+  settings: Record<string, unknown>
+  syncSnapshot: Record<string, unknown>
+}
 
 function valuesAreEqual(first: unknown, second: unknown): boolean {
   return JSON.stringify(first) === JSON.stringify(second)
@@ -65,29 +71,46 @@ export async function getBackgroundSettings(): Promise<
   return settingsReadPromise
 }
 
-export async function writeBackgroundSettings(
+export async function writeBackgroundSettingsWithSyncSnapshot(
   nextValues: Record<string, unknown>
-): Promise<Record<string, unknown>> {
-  const currentValues = await getBackgroundSettings()
+): Promise<BackgroundSettingsWriteResult> {
+  const currentValues = await readSettingsFromStorage()
   const normalizedValues = await normalizeStorageValues({
     ...currentValues,
     ...nextValues
   })
   const changedValues = pickChangedValues(currentValues, normalizedValues)
+  const settingsUpdatedAtPatch =
+    Object.keys(changedValues).length > 0 ? createSettingsUpdatedAtPatch() : {}
 
   cachedSettings = normalizedValues
   settingsReadPromise = null
 
   if (Object.keys(changedValues).length > 0) {
     try {
-      await setLocalValues(changedValues)
+      await setLocalValues({
+        ...changedValues,
+        ...settingsUpdatedAtPatch
+      })
     } catch (error) {
       cachedSettings = currentValues
       throw error
     }
   }
 
-  return normalizedValues
+  return {
+    settings: normalizedValues,
+    syncSnapshot: {
+      ...normalizedValues,
+      ...settingsUpdatedAtPatch
+    }
+  }
+}
+
+export async function writeBackgroundSettings(
+  nextValues: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  return (await writeBackgroundSettingsWithSyncSnapshot(nextValues)).settings
 }
 
 export async function syncBackgroundSettingsCacheFromLocalChanges(

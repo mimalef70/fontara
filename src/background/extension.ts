@@ -30,10 +30,11 @@ import {
   getBackgroundSettings,
   invalidateBackgroundSettingsCache,
   syncBackgroundSettingsCacheFromLocalChanges,
-  writeBackgroundSettings
+  writeBackgroundSettingsWithSyncSnapshot
 } from "./settings-manager"
 import {
   ensureStorageValues,
+  flushPendingSettingsSync,
   registerSettingsSyncListeners
 } from "./storage-manager"
 import {
@@ -186,9 +187,11 @@ export class ExtensionRuntime {
     settings: FontaraSettings
   ): Promise<Record<string, unknown>> {
     await ExtensionRuntime.ensureStarted()
-    const updatedSettings = await writeBackgroundSettings(settings)
+    const { settings: updatedSettings, syncSnapshot } =
+      await writeBackgroundSettingsWithSyncSnapshot(settings)
 
     await ExtensionRuntime.publishSettingsChange(updatedSettings)
+    await flushPendingSettingsSync(syncSnapshot)
 
     return updatedSettings
   }

@@ -3,6 +3,7 @@ import test, { afterEach } from "node:test"
 
 import {
   ensureStorageValues,
+  flushPendingSettingsSync,
   mergeWebsiteLists,
   normalizeCustomFontList
 } from "../../src/background/storage-manager"
@@ -10,6 +11,7 @@ import { getActiveWebsiteSitePatterns } from "../../src/config/site-list"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontData, WebsiteItem } from "../../src/definitions"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
+import { FONTARA_SETTINGS_UPDATED_AT_KEY } from "../../src/utils/settings-sync"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
@@ -1014,6 +1016,55 @@ test("ensureStorageValues mirrors synced settings and preserves local custom fon
     }
   ])
   assert.equal(syncValues[STORAGE_KEYS.SELECTED_FONT], "Sahel-Fontara")
+})
+
+test("ensureStorageValues preserves newer local settings over stale synced settings", async () => {
+  const localValues: Record<string, unknown> = {
+    ...DEFAULT_VALUES,
+    [FONTARA_SETTINGS_UPDATED_AT_KEY]: 2,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.ENABLED_FOR]: ["127.0.0.1:3000"],
+    [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
+    [STORAGE_KEYS.SYNC_SETTINGS]: true
+  }
+  const syncValues: Record<string, unknown> = {
+    ...DEFAULT_VALUES,
+    [FONTARA_SETTINGS_UPDATED_AT_KEY]: 1,
+    [STORAGE_KEYS.ENABLED_FOR]: DEFAULT_VALUES.ENABLED_FOR,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.SYNC_SETTINGS]: true
+  }
+  mockExtensionStorage(localValues, syncValues)
+
+  await ensureStorageValues()
+
+  assert.deepEqual(localValues[STORAGE_KEYS.ENABLED_FOR], ["127.0.0.1:3000"])
+  assert.equal(localValues[STORAGE_KEYS.SELECTED_FONT], "Samim-Fontara")
+  assert.deepEqual(syncValues[STORAGE_KEYS.ENABLED_FOR], ["127.0.0.1:3000"])
+  assert.equal(syncValues[STORAGE_KEYS.SELECTED_FONT], "Samim-Fontara")
+  assert.equal(syncValues[FONTARA_SETTINGS_UPDATED_AT_KEY], 2)
+})
+
+test("flushPendingSettingsSync mirrors fresh local settings before a service worker restart can restore stale sync values", async () => {
+  const localValues: Record<string, unknown> = {
+    ...DEFAULT_VALUES,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.ENABLED_FOR]: ["127.0.0.1:3000"],
+    [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
+    [STORAGE_KEYS.SYNC_SETTINGS]: true
+  }
+  const syncValues: Record<string, unknown> = {
+    ...DEFAULT_VALUES,
+    [STORAGE_KEYS.ENABLED_FOR]: DEFAULT_VALUES.ENABLED_FOR,
+    [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
+    [STORAGE_KEYS.SYNC_SETTINGS]: true
+  }
+  mockExtensionStorage(localValues, syncValues)
+
+  await flushPendingSettingsSync()
+
+  assert.deepEqual(syncValues[STORAGE_KEYS.ENABLED_FOR], ["127.0.0.1:3000"])
+  assert.equal(syncValues[STORAGE_KEYS.SELECTED_FONT], "Samim-Fontara")
 })
 
 test("ensureStorageValues initializes and normalizes the UI language preference", async () => {

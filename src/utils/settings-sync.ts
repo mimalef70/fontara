@@ -32,6 +32,7 @@ export const FONTARA_SYNC_LOCAL_ONLY_STORAGE_KEYS = [
 ] as const
 
 export const FONTARA_SYNC_STORAGE_CHUNK_META_KEY = "__meta_split_count"
+export const FONTARA_SETTINGS_UPDATED_AT_KEY = "__fontara_settings_updated_at__"
 
 function hasOwn(value: Record<string, unknown>, key: string): boolean {
   return Object.getOwnPropertyDescriptor(value, key) !== undefined
@@ -39,6 +40,22 @@ function hasOwn(value: Record<string, unknown>, key: string): boolean {
 
 function isSyncedStorageKey(key: string): boolean {
   return (FONTARA_SYNCED_STORAGE_KEYS as readonly string[]).includes(key)
+}
+
+export function getSettingsUpdatedAt(values: Record<string, unknown>): number {
+  const value = values[FONTARA_SETTINGS_UPDATED_AT_KEY]
+
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : 0
+}
+
+export function createSettingsUpdatedAtPatch(
+  updatedAt = Date.now()
+): Record<string, number> {
+  return {
+    [FONTARA_SETTINGS_UPDATED_AT_KEY]: updatedAt
+  }
 }
 
 function getCustomFontValueSet(customFontList: FontData[]): Set<string> {
@@ -106,9 +123,12 @@ export function getSettingsSyncDefaults(): Record<string, unknown> {
 }
 
 export function getSettingsSyncReadDefaults(): Record<string, unknown> {
-  return Object.fromEntries(
-    FONTARA_SYNCED_STORAGE_KEYS.map((key) => [key, undefined])
-  )
+  return {
+    ...Object.fromEntries(
+      FONTARA_SYNCED_STORAGE_KEYS.map((key) => [key, undefined])
+    ),
+    [FONTARA_SETTINGS_UPDATED_AT_KEY]: undefined
+  }
 }
 
 export function getLocalStorageReadDefaults(): Record<string, unknown> {
@@ -168,8 +188,12 @@ export async function createSyncedSettings(
   const syncedSettings = pickSyncedSettings(
     await normalizeStorageValues(syncInput)
   )
+  const updatedAt = getSettingsUpdatedAt(values)
   if (selectedFontIsLocalOnly) {
     delete syncedSettings[STORAGE_KEYS.SELECTED_FONT]
+  }
+  if (updatedAt > 0) {
+    syncedSettings[FONTARA_SETTINGS_UPDATED_AT_KEY] = updatedAt
   }
 
   return syncedSettings
@@ -213,6 +237,13 @@ export async function mergeSyncedSettingsWithLocalOnlyValues(
       normalizedLocalValues[STORAGE_KEYS.SITE_PROFILES] as SiteProfile[],
       customFontValues
     )
+  const updatedAt = Math.max(
+    getSettingsUpdatedAt(localValues),
+    getSettingsUpdatedAt(syncedValues)
+  )
+  if (updatedAt > 0) {
+    mergedValues[FONTARA_SETTINGS_UPDATED_AT_KEY] = updatedAt
+  }
 
   return mergedValues
 }

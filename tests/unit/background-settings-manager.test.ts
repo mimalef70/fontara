@@ -8,6 +8,7 @@ import {
   writeBackgroundSettings
 } from "../../src/background/settings-manager"
 import { STORAGE_KEYS } from "../../src/config/storage"
+import { FONTARA_SETTINGS_UPDATED_AT_KEY } from "../../src/utils/settings-sync"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
@@ -89,12 +90,16 @@ test("background settings manager writes only changed normalized values", async 
   })
   const cachedSettings = await getBackgroundSettings()
 
-  assert.equal(storage.getReadCount(), 1)
-  assert.deepEqual(storage.getSetCalls(), [
-    {
-      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara"
-    }
-  ])
+  assert.equal(storage.getReadCount(), 2)
+  assert.equal(storage.getSetCalls().length, 1)
+  assert.equal(
+    storage.getSetCalls()[0]?.[STORAGE_KEYS.SELECTED_FONT],
+    "Vazirmatn-Fontara"
+  )
+  assert.equal(
+    typeof storage.getSetCalls()[0]?.[FONTARA_SETTINGS_UPDATED_AT_KEY],
+    "number"
+  )
   assert.equal(
     storage.localValues[STORAGE_KEYS.SELECTED_FONT],
     "Vazirmatn-Fontara"
@@ -120,7 +125,7 @@ test("background settings manager ignores echoed local writes", async () => {
   const cachedSettings = await getBackgroundSettings()
 
   assert.equal(echoedSettings, null)
-  assert.equal(storage.getReadCount(), 1)
+  assert.equal(storage.getReadCount(), 2)
   assert.equal(cachedSettings[STORAGE_KEYS.SELECTED_FONT], "Vazirmatn-Fontara")
 })
 

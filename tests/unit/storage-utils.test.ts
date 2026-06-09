@@ -147,9 +147,15 @@ test("sync storage helpers split and reassemble large items", async () => {
 
   await setSyncValues(settings)
 
-  assert.deepEqual(values.enabledFor, { __meta_split_count: 2 })
-  assert.equal(typeof values.enabledFor_0, "string")
-  assert.equal(typeof values.enabledFor_1, "string")
+  const enabledForMeta = values.enabledFor as
+    | { __meta_split_count?: unknown }
+    | undefined
+  assert.ok(typeof enabledForMeta?.__meta_split_count === "number")
+  const splitCount = enabledForMeta.__meta_split_count
+  assert.ok(splitCount > 1)
+  for (let index = 0; index < splitCount; index += 1) {
+    assert.equal(typeof values[`enabledFor_${index.toString(36)}`], "string")
+  }
   assert.deepEqual(await getSyncValues({ enabledFor: [] }), settings)
 })
 

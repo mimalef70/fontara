@@ -1,9 +1,11 @@
 import { STORAGE_KEYS } from "../config/storage"
 import {
   createSyncedSettings,
+  FONTARA_SETTINGS_UPDATED_AT_KEY,
   FONTARA_SYNCED_STORAGE_KEYS,
   getLocalStorageReadDefaults,
   getSettingsSyncReadDefaults,
+  getSettingsUpdatedAt,
   hasSyncedSettingsValues,
   mergeSyncedSettingsWithLocalOnlyValues
 } from "../utils/settings-sync"
@@ -85,18 +87,24 @@ async function saveSyncSetting(syncSettings: boolean): Promise<void> {
   }
 }
 
-async function saveSyncedSettingsFromLocal(): Promise<void> {
-  const localValues = await getLocalValues(getLocalStorageReadDefaults())
-  if (!isSyncSettingsEnabled(localValues[STORAGE_KEYS.SYNC_SETTINGS])) {
+async function saveSyncedSettings(
+  values: Record<string, unknown>
+): Promise<void> {
+  if (!isSyncSettingsEnabled(values[STORAGE_KEYS.SYNC_SETTINGS])) {
+    await saveSyncSetting(false)
     return
   }
 
   try {
-    await setSyncValues(await createSyncedSettings(localValues))
+    await setSyncValues(await createSyncedSettings(values))
   } catch (error) {
     logSyncError("Settings synchronization was disabled due to error.", error)
     await saveSyncSetting(false)
   }
+}
+
+async function saveSyncedSettingsFromLocal(): Promise<void> {
+  await saveSyncedSettings(await getLocalValues(getLocalStorageReadDefaults()))
 }
 
 function scheduleSyncedSettingsSave(): void {
@@ -108,6 +116,17 @@ function scheduleSyncedSettingsSave(): void {
     syncSaveTimeout = null
     void saveSyncedSettingsFromLocal()
   }, SYNC_SAVE_DELAY_MS)
+}
+
+export async function flushPendingSettingsSync(
+  values?: Record<string, unknown>
+): Promise<void> {
+  if (syncSaveTimeout !== null) {
+    clearTimeout(syncSaveTimeout)
+    syncSaveTimeout = null
+  }
+
+  await (values ? saveSyncedSettings(values) : saveSyncedSettingsFromLocal())
 }
 
 async function applySyncStorageToLocal(): Promise<void> {
@@ -152,14 +171,30 @@ async function applySyncStorageToLocal(): Promise<void> {
     return
   }
 
+  if (getSettingsUpdatedAt(localValues) > getSettingsUpdatedAt(syncedValues)) {
+    await saveSyncedSettingsFromLocal()
+    return
+  }
+
+  const latestLocalValues = await getLocalValues(getLocalStorageReadDefaults())
+  if (!isSyncSettingsEnabled(latestLocalValues[STORAGE_KEYS.SYNC_SETTINGS])) {
+    return
+  }
+  if (
+    getSettingsUpdatedAt(latestLocalValues) > getSettingsUpdatedAt(syncedValues)
+  ) {
+    await saveSyncedSettingsFromLocal()
+    return
+  }
+
   const mergedValues = await mergeSyncedSettingsWithLocalOnlyValues(
-    localValues,
+    latestLocalValues,
     syncedValues
   )
 
   applyingSyncToLocal = true
   try {
-    await setLocalValuesIfChanged(localValues, mergedValues)
+    await setLocalValuesIfChanged(latestLocalValues, mergedValues)
   } finally {
     applyingSyncToLocal = false
   }
@@ -211,16 +246,49 @@ export async function ensureStorageValues(): Promise<void> {
   }
 
   if (!hasSyncedSettingsValues(syncedValues)) {
-    await setLocalValuesIfChanged(localValues, normalizedLocalValues)
+    const latestLocalValues = await getLocalValues(
+      getLocalStorageReadDefaults()
+    )
+    const latestNormalizedLocalValues =
+      await normalizeStorageValues(latestLocalValues)
+    const latestUpdatedAt = getSettingsUpdatedAt(latestLocalValues)
+
+    await setLocalValuesIfChanged(latestLocalValues, {
+      ...latestNormalizedLocalValues,
+      ...(latestUpdatedAt > 0
+        ? { [FONTARA_SETTINGS_UPDATED_AT_KEY]: latestUpdatedAt }
+        : {})
+    })
+    await saveSyncedSettingsFromLocal()
+    return
+  }
+
+  if (getSettingsUpdatedAt(localValues) > getSettingsUpdatedAt(syncedValues)) {
+    await setLocalValuesIfChanged(localValues, {
+      ...normalizedLocalValues,
+      [FONTARA_SETTINGS_UPDATED_AT_KEY]: getSettingsUpdatedAt(localValues)
+    })
+    await saveSyncedSettingsFromLocal()
+    return
+  }
+
+  const latestLocalValues = await getLocalValues(getLocalStorageReadDefaults())
+  if (
+    getSettingsUpdatedAt(latestLocalValues) > getSettingsUpdatedAt(syncedValues)
+  ) {
+    await setLocalValuesIfChanged(latestLocalValues, {
+      ...(await normalizeStorageValues(latestLocalValues)),
+      [FONTARA_SETTINGS_UPDATED_AT_KEY]: getSettingsUpdatedAt(latestLocalValues)
+    })
     await saveSyncedSettingsFromLocal()
     return
   }
 
   const mergedValues = await mergeSyncedSettingsWithLocalOnlyValues(
-    localValues,
+    latestLocalValues,
     syncedValues
   )
-  await setLocalValuesIfChanged(localValues, mergedValues)
+  await setLocalValuesIfChanged(latestLocalValues, mergedValues)
 }
 
 export function registerSettingsSyncListeners(): void {

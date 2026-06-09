@@ -141,6 +141,47 @@ function getSyncQuotaBytesPerItem(): number {
   )
 }
 
+function getSyncStorageItemBytes(key: string, value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify({ [key]: value })).byteLength
+}
+
+function splitSyncStorageValue(
+  key: string,
+  serializedValue: string,
+  quotaBytesPerItem: number
+): string[] {
+  const chunks: string[] = []
+  let offset = 0
+
+  while (offset < serializedValue.length) {
+    const chunkKey = `${key}_${chunks.length.toString(36)}`
+    let bestEnd = offset
+    let low = offset + 1
+    let high = serializedValue.length
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2)
+      const candidate = serializedValue.slice(offset, mid)
+
+      if (getSyncStorageItemBytes(chunkKey, candidate) <= quotaBytesPerItem) {
+        bestEnd = mid
+        low = mid + 1
+      } else {
+        high = mid - 1
+      }
+    }
+
+    if (bestEnd === offset) {
+      throw new Error("sync-storage-item-too-large")
+    }
+
+    chunks.push(serializedValue.slice(offset, bestEnd))
+    offset = bestEnd
+  }
+
+  return chunks
+}
+
 function reassembleSyncStorageChunks(
   values: Record<string, unknown>
 ): Record<string, unknown> | null {
@@ -188,21 +229,20 @@ function prepareSyncStorageValues<T extends Record<string, unknown>>(
 
   for (const key of Object.keys(values)) {
     const serializedValue = JSON.stringify(values[key])
-    const totalLength = serializedValue.length + key.length
-    if (totalLength <= quotaBytesPerItem) {
+    if (getSyncStorageItemBytes(key, values[key]) <= quotaBytesPerItem) {
       continue
     }
 
-    const maxChunkLength = Math.max(1, quotaBytesPerItem - key.length - 1 - 2)
-    const chunkCount = Math.ceil(serializedValue.length / maxChunkLength)
-    for (let index = 0; index < chunkCount; index += 1) {
-      preparedValues[`${key}_${index.toString(36)}`] = serializedValue.slice(
-        index * maxChunkLength,
-        (index + 1) * maxChunkLength
-      )
+    const chunks = splitSyncStorageValue(
+      key,
+      serializedValue,
+      quotaBytesPerItem
+    )
+    for (let index = 0; index < chunks.length; index += 1) {
+      preparedValues[`${key}_${index.toString(36)}`] = chunks[index]
     }
     preparedValues[key] = {
-      [SYNC_STORAGE_CHUNK_META_KEY]: chunkCount
+      [SYNC_STORAGE_CHUNK_META_KEY]: chunks.length
     }
   }
 

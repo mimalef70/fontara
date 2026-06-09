@@ -5,6 +5,7 @@ import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontData } from "../../src/definitions"
 import {
   createSyncedSettings,
+  FONTARA_SETTINGS_UPDATED_AT_KEY,
   mergeSyncedSettingsWithLocalOnlyValues
 } from "../../src/utils/settings-sync"
 
@@ -104,4 +105,30 @@ test("settings sync merges synced values with local-only custom fonts", async ()
       font: localCustomFont.value
     }
   ])
+})
+
+test("settings sync carries the newest internal update timestamp", async () => {
+  const updatedAt = 123_456
+  const syncedSettings = await createSyncedSettings({
+    ...DEFAULT_VALUES,
+    [FONTARA_SETTINGS_UPDATED_AT_KEY]: updatedAt,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: []
+  })
+
+  assert.equal(syncedSettings[FONTARA_SETTINGS_UPDATED_AT_KEY], updatedAt)
+
+  const mergedSettings = await mergeSyncedSettingsWithLocalOnlyValues(
+    {
+      ...DEFAULT_VALUES,
+      [FONTARA_SETTINGS_UPDATED_AT_KEY]: updatedAt + 1,
+      [STORAGE_KEYS.CUSTOM_FONT_LIST]: []
+    },
+    {
+      ...DEFAULT_VALUES,
+      [FONTARA_SETTINGS_UPDATED_AT_KEY]: updatedAt,
+      [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara"
+    }
+  )
+
+  assert.equal(mergedSettings[FONTARA_SETTINGS_UPDATED_AT_KEY], updatedAt + 1)
 })

@@ -401,7 +401,7 @@ test("options page exposes extension hotkey controls", () => {
   )
   assert.match(
     extensionSource,
-    /private static async writeSettingsChange\([\s\S]*?const updatedSettings = await writeBackgroundSettings\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings\)/
+    /private static async writeSettingsChange\([\s\S]*?const \{ settings: updatedSettings, syncSnapshot \} =[\s\S]*?writeBackgroundSettingsWithSyncSnapshot\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings\)[\s\S]*?flushPendingSettingsSync\(syncSnapshot\)/
   )
   assert.match(
     extensionSource,

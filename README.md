@@ -25,7 +25,7 @@ detection, editable-field auto-direction, and curated per-site RTL handling.
 - [What Changes After Install](#what-changes-after-install)
 - [User Features](#user-features)
 - [Preview](#preview)
-- [Site Coverage](#site-coverage)
+- [Built-in Site Optimizations](#built-in-site-optimizations)
 - [Browser Support](#browser-support)
 - [Development Quick Start](#development-quick-start)
 - [Architecture at a Glance](#architecture-at-a-glance)
@@ -76,12 +76,13 @@ detection, editable-field auto-direction, and curated per-site RTL handling.
 
 ## User Features
 
-- Font replacement for all languages through built-in, system, Google, and
-  custom font sources.
-- Built-in support for AI tools, search, social, productivity, and publishing
-  sites such as ChatGPT, Claude, Gemini, Copilot, Perplexity, Google, YouTube,
-  Gmail, X, LinkedIn, Instagram, Facebook, GitHub, Telegram, Slack, Trello,
-  Wikipedia, DuckDuckGo, Medium, Goodreads, Dropbox, and more.
+- Font replacement across the web through built-in, system, Google, and custom
+  font sources.
+- Works on any website the user enables, with built-in optimized support for AI
+  tools, search, social, productivity, and publishing sites such as ChatGPT,
+  Claude, Gemini, Copilot, Perplexity, Google, YouTube, Gmail, X, LinkedIn,
+  Instagram, Facebook, GitHub, Telegram, Slack, Trello, Wikipedia, DuckDuckGo,
+  Medium, Goodreads, Dropbox, and more.
 - Per-site font and text-stroke profiles.
 - Smart RTL support for right-to-left scripts, editable text surfaces, and
   curated site adapters.
@@ -105,7 +106,7 @@ assets.
 
 ![FontARA popup and page preview](docs/images/demo/screens/Banner1.jpg)
 
-![FontARA supported sites preview](docs/images/demo/screens/Banner2.jpg)
+![FontARA built-in site optimizations preview](docs/images/demo/screens/Banner2.jpg)
 
 ![FontARA settings preview](docs/images/demo/screens/Banner3.jpg)
 
@@ -113,11 +114,18 @@ assets.
 
 ![FontARA browser preview](docs/images/demo/screens/Banner5.jpg)
 
-## Site Coverage
+## Built-in Site Optimizations
 
-FontARA ships with 30 curated site entries, 26 bundled site CSS files, and 10
-smart RTL site adapters. The default set covers AI tools, search, social,
-messaging, productivity, publishing, and reading surfaces.
+FontARA is not limited to the sites below. The extension can apply your selected
+font on any website you enable through global mode, include/exclude rules, the
+popup current-site toggle, or per-site profiles.
+
+The curated list below is FontARA's built-in optimized support: 30 site entries,
+26 bundled site CSS files, and 10 smart RTL site adapters. These sites get
+faster and higher-quality font application through targeted CSS injection,
+careful text selectors, icon/code protection, and curated RTL behavior where
+needed. With help from users and contributors, this optimized list can keep
+growing.
 
 | Area | Examples |
 | --- | --- |
@@ -127,8 +135,9 @@ messaging, productivity, publishing, and reading surfaces.
 | Messaging and productivity | WhatsApp, Telegram, Slack, Messages, Trello, Dropbox |
 | Reading and publishing | Wikipedia, Medium, Goodreads |
 
-Site matching, CSS fixes, profiles, and RTL adapters are maintained in
-`src/config` and documented in [docs/site-fixes.md](docs/site-fixes.md).
+General font injection works across the web. Site matching, optimized CSS fixes,
+profiles, and RTL adapters for the built-in list are maintained in `src/config`
+and documented in [docs/site-fixes.md](docs/site-fixes.md).
 
 ## Browser Support
 

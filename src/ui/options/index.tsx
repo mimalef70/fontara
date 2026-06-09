@@ -742,6 +742,9 @@ function OptionsPage() {
   const managedSiteList = normalizedEnabledByDefault
     ? normalizedDisabledFor
     : normalizedEnabledFor
+  const trimmedSitePatternInput = sitePatternInput.trim()
+  const normalizedSitePatternInput = normalizeSitePattern(sitePatternInput)
+  const hasSitePatternInput = trimmedSitePatternInput.length > 0
   const activeWebsiteCount = effectiveWebsiteList.filter((website) =>
     isSiteListUrlEnabled(website.url, siteListSettings)
   ).length
@@ -1702,6 +1705,35 @@ function OptionsPage() {
                             <Plus className="size-4" />
                           </Button>
                         </form>
+                        {hasSitePatternInput && (
+                          <div
+                            className={cn(
+                              "mb-4 rounded-md border px-3 py-2 text-xs",
+                              normalizedSitePatternInput
+                                ? "border-[#bfdbfe] bg-[#f8fbff] text-[#1e3a8a]"
+                                : "border-red-200 bg-red-50 text-red-700"
+                            )}
+                            aria-live="polite">
+                            {normalizedSitePatternInput ? (
+                              <div className="flex min-w-0 items-center gap-1">
+                                <span className="shrink-0">
+                                  {normalizedEnabledByDefault
+                                    ? t("options.siteList.previewExclude")
+                                    : t("options.siteList.previewInclude")}
+                                </span>
+                                <bdi
+                                  className="min-w-0 truncate font-semibold"
+                                  dir="ltr">
+                                  {getDisplaySitePattern(
+                                    normalizedSitePatternInput
+                                  )}
+                                </bdi>
+                              </div>
+                            ) : (
+                              t("options.siteList.previewInvalid")
+                            )}
+                          </div>
+                        )}
 
                         {managedSiteList.length > 0 ? (
                           <div className="max-h-64 space-y-2 overflow-y-auto pe-1">

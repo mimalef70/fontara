@@ -30,12 +30,16 @@ type PersistedDocumentsByTab = Record<string, FontaraTrackedDocument[]>
 type TabManagerRuntimeState = {
   documentsByTab: PersistedDocumentsByTab
   savedAt: number
+  version: number
 }
 
 export const TAB_MANAGER_RUNTIME_STATE_KEY = "__fontara_tab_manager_state__"
+export const TAB_MANAGER_RUNTIME_STATE_VERSION = 1
+export const TAB_MANAGER_RUNTIME_STATE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 const DEFAULT_TAB_MANAGER_RUNTIME_STATE: TabManagerRuntimeState = {
   documentsByTab: {},
-  savedAt: 0
+  savedAt: 0,
+  version: TAB_MANAGER_RUNTIME_STATE_VERSION
 }
 
 const documentsByTab = new Map<number, Map<number, FontaraTrackedDocument>>()
@@ -45,6 +49,9 @@ let createDocumentMessage: DocumentMessageFactory | null = null
 let runtimeStateManager = createRuntimeStateManager()
 let restoreDocumentsPromise: Promise<void> | null = null
 let documentsRestored = false
+let pendingRuntimeState: TabManagerRuntimeState | null = null
+let persistScheduled = false
+let persistGeneration = 0
 
 function debugWarn(message: string, error: unknown): void {
   if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
@@ -71,6 +78,20 @@ function normalizeTabManagerRuntimeState(
   value: unknown
 ): TabManagerRuntimeState {
   if (!isRecord(value)) return DEFAULT_TAB_MANAGER_RUNTIME_STATE
+  if (
+    value.version !== undefined &&
+    value.version !== TAB_MANAGER_RUNTIME_STATE_VERSION
+  ) {
+    return DEFAULT_TAB_MANAGER_RUNTIME_STATE
+  }
+
+  const savedAt = typeof value.savedAt === "number" ? value.savedAt : 0
+  if (
+    savedAt <= 0 ||
+    Date.now() - savedAt > TAB_MANAGER_RUNTIME_STATE_MAX_AGE_MS
+  ) {
+    return DEFAULT_TAB_MANAGER_RUNTIME_STATE
+  }
 
   const documentsByTabValue = isRecord(value.documentsByTab)
     ? value.documentsByTab
@@ -88,7 +109,8 @@ function normalizeTabManagerRuntimeState(
 
   return {
     documentsByTab,
-    savedAt: typeof value.savedAt === "number" ? value.savedAt : 0
+    savedAt,
+    version: TAB_MANAGER_RUNTIME_STATE_VERSION
   }
 }
 
@@ -112,12 +134,37 @@ function serializeTrackedDocuments(): TabManagerRuntimeState {
 
   return {
     documentsByTab: persistedDocuments,
-    savedAt: Date.now()
+    savedAt: Date.now(),
+    version: TAB_MANAGER_RUNTIME_STATE_VERSION
   }
 }
 
-function persistTrackedDocuments(): void {
-  void runtimeStateManager.save(serializeTrackedDocuments())
+function flushPendingRuntimeState(): Promise<void> {
+  if (!pendingRuntimeState) return Promise.resolve()
+
+  const state = pendingRuntimeState
+  pendingRuntimeState = null
+  persistScheduled = false
+
+  return runtimeStateManager.save(state)
+}
+
+function persistTrackedDocuments(options: { immediate?: boolean } = {}): void {
+  pendingRuntimeState = serializeTrackedDocuments()
+
+  if (options.immediate) {
+    void flushPendingRuntimeState()
+    return
+  }
+
+  if (persistScheduled) return
+
+  persistScheduled = true
+  const generation = persistGeneration
+  void Promise.resolve().then(() => {
+    if (generation !== persistGeneration) return
+    void flushPendingRuntimeState()
+  })
 }
 
 function getOpenTabIds(): Promise<Set<number> | null> {
@@ -232,7 +279,7 @@ function removeDocument(tabId: number, frameId: number): void {
   if (documents.size === 0) {
     documentsByTab.delete(tabId)
   }
-  persistTrackedDocuments()
+  persistTrackedDocuments({ immediate: true })
 }
 
 function messageListener(
@@ -274,7 +321,8 @@ function messageListener(
 function sendDocumentMessage(
   tabId: number,
   document: FontaraTrackedDocument,
-  message: FontaraContentCommandMessage
+  message: FontaraContentCommandMessage,
+  onDeliveryFailure?: () => void
 ): void {
   const sendOptions: chrome.tabs.MessageSendOptions[] = document.documentId
     ? [
@@ -290,6 +338,7 @@ function sendDocumentMessage(
 
     if (!options) {
       removeDocument(tabId, document.frameId)
+      onDeliveryFailure?.()
       return
     }
 
@@ -359,34 +408,51 @@ function isPromiseLikeMessage(
 function sendResolvedDocumentMessage(
   tabId: number,
   document: FontaraTrackedDocument,
-  message: FontaraContentCommandMessage
+  message: FontaraContentCommandMessage,
+  onDeliveryFailure?: () => void
 ): void {
-  sendDocumentMessage(tabId, document, {
-    ...message,
-    scriptId: document.scriptId
-  })
+  sendDocumentMessage(
+    tabId,
+    document,
+    {
+      ...message,
+      scriptId: document.scriptId
+    },
+    onDeliveryFailure
+  )
 }
 
 function sendDocumentMessageFromFactory(
   tabId: number,
   document: FontaraTrackedDocument,
-  factory: DocumentMessageFactory
+  factory: DocumentMessageFactory,
+  onDeliveryFailure?: () => void
 ): void {
   try {
     const message = factory(document)
 
     if (!isPromiseLikeMessage(message)) {
-      sendResolvedDocumentMessage(tabId, document, message)
+      sendResolvedDocumentMessage(tabId, document, message, onDeliveryFailure)
       return
     }
 
     void message
       .catch(() => createSettingsChangedMessage())
       .then((resolvedMessage) => {
-        sendResolvedDocumentMessage(tabId, document, resolvedMessage)
+        sendResolvedDocumentMessage(
+          tabId,
+          document,
+          resolvedMessage,
+          onDeliveryFailure
+        )
       })
   } catch {
-    sendResolvedDocumentMessage(tabId, document, createSettingsChangedMessage())
+    sendResolvedDocumentMessage(
+      tabId,
+      document,
+      createSettingsChangedMessage(),
+      onDeliveryFailure
+    )
   }
 }
 
@@ -402,7 +468,7 @@ export function initTabManager(options: TabManagerOptions = {}): void {
   chrome.runtime.onMessage.addListener(messageListener)
   chrome.tabs.onRemoved.addListener((tabId) => {
     documentsByTab.delete(tabId)
-    persistTrackedDocuments()
+    persistTrackedDocuments({ immediate: true })
   })
   initialized = true
 }
@@ -418,7 +484,9 @@ export async function notifyContentScriptsAboutSettingsChange(
   for (const [tabId, documents] of documentsByTab) {
     trackedTabIds.add(tabId)
     for (const document of documents.values()) {
-      sendDocumentMessageFromFactory(tabId, document, factory)
+      sendDocumentMessageFromFactory(tabId, document, factory, () => {
+        sendSettingsChangedMessageToTab(tabId)
+      })
     }
   }
 
@@ -440,4 +508,7 @@ export function resetTabManagerStateForTesting(): void {
   runtimeStateManager = createRuntimeStateManager()
   restoreDocumentsPromise = null
   documentsRestored = false
+  pendingRuntimeState = null
+  persistScheduled = false
+  persistGeneration += 1
 }

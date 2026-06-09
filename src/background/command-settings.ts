@@ -1,14 +1,14 @@
 import {
   createSiteListToggleUpdate,
-  getActiveWebsiteSitePatterns,
-  isSiteListUrlEnabled,
-  normalizeEnabledByDefault,
-  normalizeEnabledSiteList,
-  normalizeSiteList
+  isSiteListUrlEnabled
 } from "../config/site-list"
-import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { FontaraSettings, WebsiteItem } from "../definitions"
-import { createRegexFromUrl, getMatchingWebsite } from "../utils/url"
+import {
+  getMatchingWebsite,
+  normalizeFontaraSiteManagerSettings
+} from "../config/site-manager"
+import { STORAGE_KEYS } from "../config/storage"
+import type { FontaraSettings } from "../definitions"
+import { createRegexFromUrl } from "../utils/url"
 
 export function createToggleExtensionSettings(
   settings: Record<string, unknown>
@@ -23,27 +23,14 @@ export function createToggleCurrentSiteSettings(
   url: string,
   settings: Record<string, unknown>
 ): FontaraSettings {
-  const websiteList = Array.isArray(settings[STORAGE_KEYS.WEBSITE_LIST])
-    ? (settings[STORAGE_KEYS.WEBSITE_LIST] as WebsiteItem[])
-    : DEFAULT_VALUES.WEBSITE_LIST
-  const enabledByDefault = normalizeEnabledByDefault(
-    settings[STORAGE_KEYS.ENABLED_BY_DEFAULT]
-  )
-  const enabledFor =
-    settings[STORAGE_KEYS.ENABLED_FOR] === undefined
-      ? getActiveWebsiteSitePatterns(websiteList)
-      : normalizeEnabledSiteList(settings[STORAGE_KEYS.ENABLED_FOR])
-  const disabledFor =
-    settings[STORAGE_KEYS.DISABLED_FOR] === undefined
-      ? DEFAULT_VALUES.DISABLED_FOR
-      : normalizeSiteList(settings[STORAGE_KEYS.DISABLED_FOR])
+  const snapshot = normalizeFontaraSiteManagerSettings(settings)
   const siteListSettings = {
-    disabledFor,
-    enabledByDefault,
-    enabledFor
+    disabledFor: snapshot.disabledFor,
+    enabledByDefault: snapshot.enabledByDefault,
+    enabledFor: snapshot.enabledFor
   }
   const checked = !isSiteListUrlEnabled(url, siteListSettings)
-  const existingWebsiteIndex = websiteList.findIndex(
+  const existingWebsiteIndex = snapshot.websiteList.findIndex(
     (item) => getMatchingWebsite(url, [item]) !== null
   )
   const siteListUpdate = createSiteListToggleUpdate(
@@ -54,14 +41,14 @@ export function createToggleCurrentSiteSettings(
   const updatedWebsiteList =
     existingWebsiteIndex === -1 && checked
       ? [
-          ...websiteList,
+          ...snapshot.websiteList,
           {
             url,
             regex: createRegexFromUrl(url),
             isActive: true
           }
         ]
-      : websiteList.map((item, index) =>
+      : snapshot.websiteList.map((item, index) =>
           index === existingWebsiteIndex ? { ...item, isActive: checked } : item
         )
 

@@ -7,9 +7,10 @@ import {
   normalizeEnabledSiteList,
   normalizeSiteList
 } from "../../config/site-list"
+import { getMatchingWebsite } from "../../config/site-manager"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
-import { createRegexFromUrl, getMatchingWebsite } from "../../utils/url"
+import { createRegexFromUrl } from "../../utils/url"
 import { fontaraConnector } from "../connect/connector"
 import { useExtensionData } from "../hooks/use-extension-data"
 import { useStorageValue } from "../hooks/use-storage"

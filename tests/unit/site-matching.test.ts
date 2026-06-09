@@ -5,6 +5,7 @@ import test, { afterEach } from "node:test"
 
 import {
   getRtlSiteByUrl,
+  RTL_SUPPORTED_SITE_IDS,
   RTL_SUPPORTED_SITES
 } from "../../src/config/rtl-sites"
 import {
@@ -19,7 +20,10 @@ import {
   normalizeSiteList,
   normalizeSitePattern
 } from "../../src/config/site-list"
-import { resolveFontaraSiteConfig } from "../../src/config/site-manager"
+import {
+  normalizeFontaraSiteManagerSettings,
+  resolveFontaraSiteConfig
+} from "../../src/config/site-manager"
 import {
   getSiteProfileForUrl,
   normalizeSiteProfiles
@@ -64,6 +68,88 @@ function mockLocalStorage(values: Record<string, unknown>): void {
 test("popular website regexes match their declared base URLs", () => {
   for (const website of POPULAR_WEBSITES) {
     assert.equal(getMatchingWebsite(`${website.url}/`, [website]), website)
+  }
+})
+
+test("site configuration stays internally consistent", () => {
+  const websiteUrls = new Set<string>()
+  const websiteNames = new Set<string>()
+  const siteFixesSource = fs.readFileSync(
+    path.resolve("src/config/site-fixes.ts"),
+    "utf8"
+  )
+  const customCssUrls = new Set(
+    [...siteFixesSource.matchAll(/"https:\/\/[^"]+":/g)].map((match) =>
+      match[0].slice(1, -2)
+    )
+  )
+
+  for (const website of POPULAR_WEBSITES) {
+    assert.equal(
+      websiteUrls.has(website.url),
+      false,
+      `${website.url} should be unique`
+    )
+    websiteUrls.add(website.url)
+
+    if (website.siteName) {
+      assert.equal(
+        websiteNames.has(website.siteName),
+        false,
+        `${website.siteName} should be unique`
+      )
+      websiteNames.add(website.siteName)
+    }
+
+    assert.ok(normalizeSitePattern(website.url), `${website.url} is invalid`)
+    assert.doesNotThrow(
+      () => new RegExp(website.regex, "i"),
+      `${website.url} has an invalid regex`
+    )
+
+    if (website.pattern) {
+      assert.ok(
+        normalizeSitePattern(website.pattern),
+        `${website.url} has an invalid extension pattern`
+      )
+    }
+
+    if (website.customCss) {
+      assert.ok(
+        customCssUrls.has(website.url),
+        `${website.url} enables custom CSS without a CSS fix`
+      )
+    }
+  }
+
+  for (const customCssUrl of customCssUrls) {
+    const website = POPULAR_WEBSITES.find((site) => site.url === customCssUrl)
+    assert.ok(website, `${customCssUrl} CSS has no website entry`)
+    assert.equal(
+      website?.customCss,
+      true,
+      `${customCssUrl} CSS is mapped to a non-CSS website`
+    )
+  }
+
+  assert.deepEqual(
+    [...new Set(RTL_SUPPORTED_SITE_IDS)],
+    [...RTL_SUPPORTED_SITE_IDS],
+    "RTL site ids should be unique"
+  )
+  assert.deepEqual(
+    RTL_SUPPORTED_SITES.map((site) => site.id),
+    [...RTL_SUPPORTED_SITE_IDS],
+    "RTL site config order should match the supported id tuple"
+  )
+  for (const rtlSite of RTL_SUPPORTED_SITES) {
+    assert.ok(normalizeSitePattern(rtlSite.url), `${rtlSite.id} URL is invalid`)
+    assert.ok(websiteUrls.has(rtlSite.url), `${rtlSite.id} has no website`)
+    assert.equal(
+      fs.existsSync(path.resolve(rtlSite.icon)),
+      true,
+      `${rtlSite.id} icon is missing`
+    )
   }
 })
 
@@ -560,6 +646,47 @@ test("FontARA site manager resolves font, profile, and RTL config together", () 
   })
   assert.equal(config.rtl.active, true)
   assert.equal(config.rtl.matchingSite?.id, "chatgpt")
+})
+
+test("FontARA site manager normalizes a typed settings snapshot", () => {
+  const snapshot = normalizeFontaraSiteManagerSettings({
+    [STORAGE_KEYS.DISABLED_FOR]: [" https://ChatGPT.com/ "],
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: "not-a-boolean",
+    [STORAGE_KEYS.ENABLED_FOR]: ["%2A.wikipedia.org", "/(/"],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.RTL_ENABLED]: false,
+    [STORAGE_KEYS.RTL_SITE_SETTINGS]: {
+      chatgpt: false,
+      claude: "bad"
+    },
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        font: "Samim-Fontara",
+        pattern: "https://chatgpt.com/",
+        textStroke: 0.26
+      },
+      {
+        font: "",
+        pattern: "invalid profile without overrides"
+      }
+    ],
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  })
+
+  assert.deepEqual(snapshot.disabledFor, ["chatgpt.com"])
+  assert.equal(snapshot.enabledByDefault, false)
+  assert.deepEqual(snapshot.enabledFor, ["*.wikipedia.org"])
+  assert.equal(snapshot.extensionEnabled, true)
+  assert.equal(snapshot.rtlEnabled, false)
+  assert.equal(snapshot.rtlSiteSettings.chatgpt, false)
+  assert.equal(snapshot.rtlSiteSettings.claude, true)
+  assert.deepEqual(snapshot.siteProfiles, [
+    {
+      font: "Samim-Fontara",
+      pattern: "chatgpt.com",
+      textStroke: 0.3
+    }
+  ])
 })
 
 test("default site list values keep existing popular sites active", async () => {

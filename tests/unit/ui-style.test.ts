@@ -265,6 +265,11 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /normalizeSitePattern/)
   assert.match(optionsSource, /normalizeSiteProfiles/)
   assert.match(optionsSource, /isSiteListUrlEnabled/)
+  assert.match(optionsSource, /normalizedSitePatternInput/)
+  assert.match(optionsSource, /aria-live="polite"/)
+  assert.match(optionsSource, /options\.siteList\.previewExclude/)
+  assert.match(optionsSource, /options\.siteList\.previewInclude/)
+  assert.match(optionsSource, /options\.siteList\.previewInvalid/)
   assert.match(optionsSource, /getGoogleFontList/)
   assert.match(optionsSource, /getSystemFontList/)
   assert.match(optionsSource, /TEXT_STROKE_MIN/)
@@ -328,6 +333,10 @@ test("options page exposes extension hotkey controls", () => {
     path.resolve("src/background/command-settings.ts"),
     "utf8"
   )
+  const customUrlToggleSource = fs.readFileSync(
+    path.resolve("src/ui/components/CustomUrlToggle.tsx"),
+    "utf8"
+  )
   const extensionSource = fs.readFileSync(
     path.resolve("src/background/extension.ts"),
     "utf8"
@@ -370,6 +379,12 @@ test("options page exposes extension hotkey controls", () => {
   assert.doesNotMatch(extensionSource, /createSiteListToggleUpdate/)
   assert.doesNotMatch(extensionSource, /getMatchingWebsite/)
   assert.match(commandSettingsSource, /createSiteListToggleUpdate/)
+  assert.match(commandSettingsSource, /normalizeFontaraSiteManagerSettings/)
+  assert.match(customUrlToggleSource, /from "\.\.\/\.\.\/config\/site-manager"/)
+  assert.doesNotMatch(
+    customUrlToggleSource,
+    /getMatchingWebsite } from "\.\.\/\.\.\/utils\/url"/
+  )
   assert.match(extensionDataSource, /collectActiveTabInfo/)
   assert.match(extensionDataSource, /getFontaraSiteActivationState/)
   assert.doesNotMatch(extensionDataSource, /getUrlActivationStateFromSettings/)

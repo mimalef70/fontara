@@ -12,9 +12,9 @@
 [![Chrome users](https://img.shields.io/chrome-web-store/users/dcjdhicepiklefpimapdkbaeoocniemc?style=flat&logo=googlechrome&logoColor=white&label=chrome%20users&color=141e24)](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/)
 [![Firefox users](https://img.shields.io/amo/users/fontara-font-changer?style=flat&logo=firefoxbrowser&logoColor=white&label=firefox%20users&color=141e24)](https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/)
 
-FontARA is a cross-browser WebExtension for changing fonts across the web. It
-works with all languages and writing systems through built-in, system, Google,
-and custom fonts, with special support for RTL-first workflows: smart RTL text
+FontARA is a cross-browser WebExtension for applying your preferred fonts across
+the web. It supports multilingual pages through built-in, system, Google, and
+custom fonts, with special support for RTL-first workflows: smart RTL text
 detection, editable-field auto-direction, and curated per-site RTL handling.
 
 ![FontARA screenshot](docs/images/demo/screens/Version4.jpg)
@@ -41,6 +41,9 @@ detection, editable-field auto-direction, and curated per-site RTL handling.
 - [Sponsors](#sponsors)
 
 ## Install
+
+Most users should install FontARA from the browser store. Local release builds
+are mainly for testers, reviewers, and contributors.
 
 | Browser | Store | Local release build | Browser automation |
 | --- | --- | --- | --- |
@@ -78,8 +81,8 @@ detection, editable-field auto-direction, and curated per-site RTL handling.
 
 - Font replacement across the web through built-in, system, Google, and custom
   font sources.
-- Works on any website the user enables, with built-in optimized support for AI
-  tools, search, social, productivity, and publishing sites such as ChatGPT,
+- Works on normal websites the user enables, with built-in optimized support for
+  AI tools, search, social, productivity, and publishing sites such as ChatGPT,
   Claude, Gemini, Copilot, Perplexity, Google, YouTube, Gmail, X, LinkedIn,
   Instagram, Facebook, GitHub, Telegram, Slack, Trello, Wikipedia, DuckDuckGo,
   Medium, Goodreads, Dropbox, and more.
@@ -101,8 +104,8 @@ detection, editable-field auto-direction, and curated per-site RTL handling.
 
 ## Preview
 
-The gallery below reuses the Version 4 README artwork from local repository
-assets.
+The screenshots below show the popup, options page, site controls, and browser
+integration.
 
 ![FontARA popup and page preview](docs/images/demo/screens/Banner1.jpg)
 
@@ -117,15 +120,16 @@ assets.
 ## Built-in Site Optimizations
 
 FontARA is not limited to the sites below. The extension can apply your selected
-font on any website you enable through global mode, include/exclude rules, the
-popup current-site toggle, or per-site profiles.
+font on normal web pages you enable through global mode, include/exclude rules,
+the popup current-site toggle, or per-site profiles. Browser-internal pages and
+other restricted pages are covered under [Known Limitations](#known-limitations).
 
-The curated list below is FontARA's built-in optimized support: 30 site entries,
-26 bundled site CSS files, and 10 smart RTL site adapters. These sites get
-faster and higher-quality font application through targeted CSS injection,
-careful text selectors, icon/code protection, and curated RTL behavior where
-needed. With help from users and contributors, this optimized list can keep
-growing.
+The curated list below is FontARA's built-in optimized support. It currently
+ships with 30 site entries, 26 bundled site CSS files, and 10 smart RTL site
+adapters. These sites get faster and higher-quality font application through
+targeted CSS injection, careful text selectors, icon/code protection, and curated
+RTL behavior where needed. With help from users and contributors, this optimized
+list can keep growing.
 
 | Area | Examples |
 | --- | --- |
@@ -199,7 +203,9 @@ For the detailed runtime map, see [docs/architecture.md](docs/architecture.md).
 ## Privacy and Permissions
 
 FontARA needs broad page access because fonts are applied by a content script on
-the websites that the user enables. The extension uses storage for settings,
+the websites that the user enables. That permission allows the extension to work
+across the web; global, include, exclude, and per-site settings still decide
+where FontARA actually changes the page. The extension uses storage for settings,
 custom font records, site lists, backup/import data, and syncable preferences.
 
 | Permission or capability | Why FontARA needs it | Privacy note |
@@ -259,7 +265,7 @@ custom font records, site lists, backup/import data, and syncable preferences.
 
 ## Roadmap
 
-- Generate supported-site documentation directly from `src/config`.
+- Generate built-in site optimization documentation directly from `src/config`.
 - Expand real-browser coverage for more Chromium channels and Firefox ESR
   release gates.
 - Add more curated RTL adapters and per-site profile presets.

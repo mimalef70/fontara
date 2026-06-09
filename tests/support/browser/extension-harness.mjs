@@ -579,13 +579,11 @@ async function launchChromeWithExtension(extensionDir) {
       "--disable-component-update",
       "--disable-default-apps",
       "--disable-sync",
-      "--disable-translate",
-      `--disable-extensions-except=${extensionDir}`,
-      `--load-extension=${extensionDir}`
+      "--disable-translate"
     ],
     browser: "chrome",
     defaultViewport: BROWSER_VIEWPORTS.desktop,
-    enableExtensions: true,
+    enableExtensions: [extensionDir],
     executablePath: chromePath,
     headless: getHeadlessMode(),
     pipe: true,

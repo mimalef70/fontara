@@ -43,6 +43,9 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Inject tests
+        run: pnpm test:inject
+
       - name: Build all browser targets
         run: pnpm build:all
 

@@ -62,6 +62,11 @@ Firefox automation is available as an opt-in lane while it is stabilized:
 FONTARA_FIREFOX_BROWSER_TESTS=1 pnpm test:browser:firefox
 ```
 
+GitHub Actions runs browser automation in a separate manual and nightly
+workflow, covering Chrome stable/beta and Firefox stable/beta/ESR. Keep broad
+browser coverage there so pull requests stay fast while release signals still
+exercise real extension installs across browser channels.
+
 The Chrome browser suite also includes viewport coverage for extension pages:
 mobile, tablet, desktop, and wide desktop.
 

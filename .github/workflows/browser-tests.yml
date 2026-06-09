@@ -1,0 +1,86 @@
+name: Browser Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-tests-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  browser-matrix:
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Chrome stable MV3
+            browser: chrome
+            version: stable
+          - label: Chrome beta MV3
+            browser: chrome
+            version: beta
+          - label: Firefox stable MV3
+            browser: firefox
+            version: latest
+          - label: Firefox beta MV3
+            browser: firefox
+            version: latest-beta
+          - label: Firefox ESR MV3
+            browser: firefox
+            version: latest-esr
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Chrome
+        if: matrix.browser == 'chrome'
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: ${{ matrix.version }}
+          install-dependencies: true
+
+      - name: Set up Firefox
+        if: matrix.browser == 'firefox'
+        id: setup-firefox
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: ${{ matrix.version }}
+
+      - name: Run Chrome browser tests
+        if: matrix.browser == 'chrome'
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: pnpm test:browser:chrome
+
+      - name: Run Firefox browser tests
+        if: matrix.browser == 'firefox'
+        env:
+          FIREFOX_PATH: ${{ steps.setup-firefox.outputs.firefox-path }}
+          FONTARA_FIREFOX_BROWSER_TESTS: "1"
+          FONTARA_FIREFOX_HEADLESS: "1"
+        run: pnpm test:browser:firefox

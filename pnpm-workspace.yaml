@@ -1,3 +1,6 @@
+overrides:
+  shell-quote: 1.8.4
+
 allowBuilds:
   esbuild: true
   spawn-sync: true

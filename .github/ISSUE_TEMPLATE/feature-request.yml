@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an improvement to FontARA.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+  - type: dropdown
+    attributes:
+      label: Is this related to a problem?
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposal
+      description: What should FontARA do?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Use case
+      description: Why is this useful?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Screenshots or mockups
+    validations:
+      required: false

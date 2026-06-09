@@ -5,6 +5,15 @@
   "version": "4.3.0",
   "description": "__MSG_extensionDescription__",
   "author": "Mostafa Alahyari",
+  "license": "MIT",
+  "homepage": "https://mimalef70.github.io/fontara/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mimalef70/fontara.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mimalef70/fontara/issues"
+  },
   "packageManager": "pnpm@11.5.0",
   "engines": {
     "node": ">=24 <25",

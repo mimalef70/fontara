@@ -4,6 +4,9 @@ FontARA keeps its test layout organized by concern,
 while keeping the toolchain lighter. Browser tests use Puppeteer; unit and
 inject tests still use Node's native test runner.
 
+See also [docs/testing.md](../docs/testing.md) for CI, browser matrix, and
+release verification guidance.
+
 ## Unit
 
 Fast Node tests for pure logic, configuration, background modules, storage,

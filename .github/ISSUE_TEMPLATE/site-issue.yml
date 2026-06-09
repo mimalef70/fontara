@@ -1,0 +1,91 @@
+name: Site issue
+description: Report a font, RTL, activation, or profile problem on a website.
+title: "[Site] "
+labels: ["site issue"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I tested with other extensions disabled when possible.
+          required: true
+        - label: I reloaded the page once and checked whether the problem still happens.
+          required: true
+  - type: input
+    attributes:
+      label: Website URL
+      description: Include the exact page URL or a public example URL.
+      placeholder: "https://example.com/path"
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Problem type
+      options:
+        - Font does not apply
+        - Font applies only after reload
+        - Font applies where it should not
+        - Icons or code changed
+        - RTL behavior is wrong
+        - Per-site profile is wrong
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select font ...
+        3. Toggle ...
+        4. See ...
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Does it work after reloading the page?
+      options:
+        - "No"
+        - "Yes"
+        - Not tested
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Selected font
+      placeholder: "Vazirmatn-Fontara"
+    validations:
+      required: false
+  - type: input
+    attributes:
+      label: FontARA version
+      placeholder: "4.3.0"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Browser and version
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Screenshots or recordings
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Additional context
+    validations:
+      required: false

@@ -1,0 +1,67 @@
+name: Performance issue
+description: Report slow pages, high CPU, high memory, or browser hangs.
+title: "[Performance] "
+labels: ["performance"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I restarted the browser and checked whether the issue still happens.
+          required: true
+        - label: I tested with other extensions disabled when possible.
+          required: true
+  - type: input
+    attributes:
+      label: Website URL
+      placeholder: "https://example.com/path"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Performance problem
+      description: Describe what is slow or heavy.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Profile or measurement
+      description: Add a Chrome DevTools or Firefox Profiler link if available.
+    validations:
+      required: false
+  - type: dropdown
+    attributes:
+      label: Does it happen when FontARA is disabled?
+      options:
+        - "No"
+        - "Yes"
+        - Not tested
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: FontARA version
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Browser and version
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+    validations:
+      required: false

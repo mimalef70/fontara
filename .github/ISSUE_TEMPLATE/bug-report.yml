@@ -1,0 +1,68 @@
+name: Bug report
+description: Report an extension bug that is not limited to one website.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I reproduced this with other extensions disabled when possible.
+          required: true
+        - label: This is not only a styling problem on one website.
+          required: true
+  - type: textarea
+    attributes:
+      label: Description
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: FontARA version
+      placeholder: "4.3.0"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Browser and version
+      placeholder: "Chrome 149, Firefox 146, Edge 149"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Operating system
+      placeholder: "macOS, Windows, Linux"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Screenshots or recordings
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Additional context
+    validations:
+      required: false

@@ -10,7 +10,7 @@
         "description": "Short name of the extension."
       },
       "extensionDescription": {
-        "message": "Improve Persian, Arabic, Kurdish, and Dari text rendering across the web with your favorite fonts.",
+        "message": "Change fonts across the web for every language, with smart right-to-left support for RTL writing systems.",
         "description": "Description of the extension."
       },
       "contextMenuTitle": {
@@ -48,7 +48,7 @@
         "description": "Short name of the extension."
       },
       "extensionDescription": {
-        "message": "نمایش متن‌های فارسی، عربی، کردی و دری را در وب با فونت دلخواهتان بهتر کنید.",
+        "message": "فونت همه زبان‌ها را در وب تغییر دهید، با پشتیبانی هوشمند از نوشتارهای راست‌به‌چپ.",
         "description": "Description of the extension."
       },
       "contextMenuTitle": {
@@ -86,7 +86,7 @@
         "description": "Short name of the extension."
       },
       "extensionDescription": {
-        "message": "حسّن عرض النصوص الفارسية والعربية والكردية والدرية على الويب باستخدام خطوطك المفضلة.",
+        "message": "غيّر الخطوط على الويب لكل اللغات، مع دعم ذكي للكتابة من اليمين إلى اليسار.",
         "description": "Description of the extension."
       },
       "contextMenuTitle": {

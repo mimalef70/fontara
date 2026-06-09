@@ -10,11 +10,15 @@ import {
   BROWSER_VIEWPORTS,
   chooseFileByTestId,
   clickByTestId,
+  createBasicPageStyleExpectation,
+  createHardFixtureStyleExpectation,
   delay,
   evaluate,
+  expectPageStyles,
   getExtensionPageLayoutState,
   getExtensionSyncRawValues,
   installDownloadCapture,
+  mountHardFixtureAdvancedText,
   STORAGE_KEYS,
   sendSettingsFromContentBridge,
   sendSettingsFromOptions,
@@ -25,13 +29,8 @@ import {
   waitForContentBridge,
   waitForExtensionLocalValue,
   waitForExtensionSyncValue,
-  waitForFont,
-  waitForFontRemoved,
-  waitForHardFixtureFonts,
-  waitForHardFixtureFontsRemoved,
   waitForInputChecked,
   waitForSwitchChecked,
-  waitForTextStroke,
   withChromeMv3ExtensionHarness
 } from "../support/browser/extension-harness.mjs"
 
@@ -55,10 +54,12 @@ test("Chrome MV3 applies font, updates font, and excludes site without page relo
       [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    const firstState = await waitForFont(
+    const firstState = await expectPageStyles(
       testPage,
-      "Samim-Fontara",
-      initialLoadId
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
     )
 
     await assertStoredActivationSettings(
@@ -85,10 +86,12 @@ test("Chrome MV3 applies font, updates font, and excludes site without page relo
       [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    const secondState = await waitForFont(
+    const secondState = await expectPageStyles(
       testPage,
-      "Vazirmatn-Fontara",
-      initialLoadId
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: initialLoadId
+      })
     )
     assert.equal(secondState.loadId, initialLoadId)
 
@@ -100,7 +103,13 @@ test("Chrome MV3 applies font, updates font, and excludes site without page relo
       [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    const removedState = await waitForFontRemoved(testPage, initialLoadId)
+    const removedState = await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        applied: false,
+        loadId: initialLoadId
+      })
+    )
     assert.equal(removedState.loadId, initialLoadId)
   })
 })
@@ -109,6 +118,7 @@ test("Chrome MV3 handles contenteditable, shadow DOM, iframes, and dynamic nodes
   await withChromeMv3ExtensionHarness(t, async (harness) => {
     const testPage = await harness.createFixturePage({ path: "/hard.html" })
     const sitePattern = `127.0.0.1:${harness.server.port}`
+    const crossOriginSitePattern = `127.0.0.1:${harness.crossOriginServer.port}`
 
     await waitForContentBridge(testPage)
     const initialLoadId = await evaluate(testPage, () => window.__fontaraLoadId)
@@ -116,46 +126,75 @@ test("Chrome MV3 handles contenteditable, shadow DOM, iframes, and dynamic nodes
     await sendSettingsFromContentBridge(testPage, {
       [STORAGE_KEYS.DISABLED_FOR]: [],
       [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
-      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern, crossOriginSitePattern],
       [STORAGE_KEYS.EXTENSION_ENABLED]: true,
       [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    await waitForHardFixtureFonts(testPage, "Samim-Fontara", initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createHardFixtureStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
+    )
 
     await addHardFixtureDynamicText(testPage)
-    await waitForHardFixtureFonts(testPage, "Samim-Fontara", initialLoadId, {
-      includeDynamic: true
-    })
+    await expectPageStyles(
+      testPage,
+      createHardFixtureStyleExpectation({
+        fontName: "Samim-Fontara",
+        includeDynamic: true,
+        loadId: initialLoadId
+      })
+    )
+
+    await mountHardFixtureAdvancedText(testPage)
+    await expectPageStyles(
+      testPage,
+      createHardFixtureStyleExpectation({
+        fontName: "Samim-Fontara",
+        includeAdvanced: true,
+        includeDynamic: true,
+        loadId: initialLoadId
+      })
+    )
 
     await sendSettingsFromContentBridge(testPage, {
       [STORAGE_KEYS.DISABLED_FOR]: [],
       [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
-      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern, crossOriginSitePattern],
       [STORAGE_KEYS.EXTENSION_ENABLED]: true,
       [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    await waitForHardFixtureFonts(
+    await expectPageStyles(
       testPage,
-      "Vazirmatn-Fontara",
-      initialLoadId,
-      {
-        includeDynamic: true
-      }
+      createHardFixtureStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        includeAdvanced: true,
+        includeDynamic: true,
+        loadId: initialLoadId
+      })
     )
 
     await sendSettingsFromContentBridge(testPage, {
-      [STORAGE_KEYS.DISABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.DISABLED_FOR]: [sitePattern, crossOriginSitePattern],
       [STORAGE_KEYS.ENABLED_BY_DEFAULT]: true,
       [STORAGE_KEYS.ENABLED_FOR]: [],
       [STORAGE_KEYS.EXTENSION_ENABLED]: true,
       [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    await waitForHardFixtureFontsRemoved(testPage, initialLoadId, {
-      includeDynamic: true
-    })
+    await expectPageStyles(
+      testPage,
+      createHardFixtureStyleExpectation({
+        applied: false,
+        includeAdvanced: true,
+        includeDynamic: true,
+        loadId: initialLoadId
+      })
+    )
   })
 })
 
@@ -175,7 +214,13 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
       [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    await waitForFont(testPage, "Samim-Fontara", initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
+    )
 
     const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
       viewport: { height: 650, width: 360 }
@@ -192,7 +237,13 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
       STORAGE_KEYS.EXTENSION_ENABLED,
       false
     )
-    const disabledState = await waitForFontRemoved(testPage, initialLoadId)
+    const disabledState = await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        applied: false,
+        loadId: initialLoadId
+      })
+    )
     assert.equal(disabledState.loadId, initialLoadId)
 
     await clickByTestId(popupPage, "fontara-extension-enabled-toggle")
@@ -201,10 +252,12 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
       STORAGE_KEYS.EXTENSION_ENABLED,
       true
     )
-    const reenabledState = await waitForFont(
+    const reenabledState = await expectPageStyles(
       testPage,
-      "Samim-Fontara",
-      initialLoadId
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
     )
     assert.equal(reenabledState.loadId, initialLoadId)
 
@@ -215,10 +268,12 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
       STORAGE_KEYS.SELECTED_FONT,
       "Vazirmatn-Fontara"
     )
-    const selectedFontState = await waitForFont(
+    const selectedFontState = await expectPageStyles(
       testPage,
-      "Vazirmatn-Fontara",
-      initialLoadId
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: initialLoadId
+      })
     )
     assert.equal(selectedFontState.loadId, initialLoadId)
   })
@@ -240,7 +295,13 @@ test("Chrome MV3 popup and options UI update current-site include/exclude lists"
       [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: true
     })
-    await waitForFont(testPage, "Samim-Fontara", initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
+    )
 
     const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
       viewport: { height: 650, width: 360 }
@@ -265,11 +326,23 @@ test("Chrome MV3 popup and options UI update current-site include/exclude lists"
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.DISABLED_FOR, [
       sitePattern
     ])
-    await waitForFontRemoved(testPage, initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        applied: false,
+        loadId: initialLoadId
+      })
+    )
 
     await clickByTestId(popupPage, "fontara-current-site-toggle")
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.DISABLED_FOR, [])
-    await waitForFont(testPage, "Samim-Fontara", initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
+    )
 
     const optionsPage = await harness.createExtensionPage(
       "ui/options/index.html"
@@ -319,7 +392,13 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
       [STORAGE_KEYS.SYNC_SETTINGS]: true,
       [STORAGE_KEYS.TEXT_STROKE]: 0
     })
-    await waitForFont(testPage, "Vazirmatn-Fontara", initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: initialLoadId
+      })
+    )
 
     const optionsPage = await harness.createExtensionPage(
       "ui/options/index.html"
@@ -353,8 +432,14 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
     await optionsPage.waitForSelector(
       `[data-testid="fontara-site-profile-row-${sitePattern}"]`
     )
-    await waitForFont(testPage, "Samim-Fontara", initialLoadId)
-    await waitForTextStroke(testPage, 0.5, initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId,
+        textStroke: 0.5
+      })
+    )
   })
 })
 

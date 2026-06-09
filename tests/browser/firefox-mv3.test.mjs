@@ -3,14 +3,14 @@ import test from "node:test"
 
 import {
   addHardFixtureDynamicText,
+  createBasicPageStyleExpectation,
+  createHardFixtureStyleExpectation,
+  expectPageStyles,
   findFirefoxBinary,
+  mountHardFixtureAdvancedText,
   STORAGE_KEYS,
   sendSettingsFromContentBridge,
   waitForContentBridge,
-  waitForFont,
-  waitForFontRemoved,
-  waitForHardFixtureFonts,
-  waitForHardFixtureFontsRemoved,
   withFirefoxMv3ExtensionHarness
 } from "../support/browser/extension-harness.mjs"
 
@@ -54,10 +54,12 @@ test("Firefox MV3 applies and excludes FontARA through the content bridge", asyn
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
 
-    const firstState = await waitForFont(
+    const firstState = await expectPageStyles(
       fixturePage,
-      "Samim-Fontara",
-      initialLoadId
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
     )
     assert.equal(firstState.loadId, initialLoadId)
 
@@ -70,7 +72,13 @@ test("Firefox MV3 applies and excludes FontARA through the content bridge", asyn
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
 
-    const removedState = await waitForFontRemoved(fixturePage, initialLoadId)
+    const removedState = await expectPageStyles(
+      fixturePage,
+      createBasicPageStyleExpectation({
+        applied: false,
+        loadId: initialLoadId
+      })
+    )
     assert.equal(removedState.loadId, initialLoadId)
   })
 })
@@ -97,12 +105,35 @@ test("Firefox MV3 handles contenteditable, shadow DOM, iframes, and dynamic node
       [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
-    await waitForHardFixtureFonts(fixturePage, "Samim-Fontara", initialLoadId)
+    await expectPageStyles(
+      fixturePage,
+      createHardFixtureStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
+    )
 
     await addHardFixtureDynamicText(fixturePage)
-    await waitForHardFixtureFonts(fixturePage, "Samim-Fontara", initialLoadId, {
-      includeDynamic: true
-    })
+    await expectPageStyles(
+      fixturePage,
+      createHardFixtureStyleExpectation({
+        fontName: "Samim-Fontara",
+        includeDynamic: true,
+        loadId: initialLoadId
+      })
+    )
+
+    await mountHardFixtureAdvancedText(fixturePage)
+    await expectPageStyles(
+      fixturePage,
+      createHardFixtureStyleExpectation({
+        fontName: "Samim-Fontara",
+        includeAdvanced: true,
+        includeCrossOriginFrame: false,
+        includeDynamic: true,
+        loadId: initialLoadId
+      })
+    )
 
     await sendSettingsFromContentBridge(fixturePage, {
       [STORAGE_KEYS.DISABLED_FOR]: [sitePattern],
@@ -112,8 +143,15 @@ test("Firefox MV3 handles contenteditable, shadow DOM, iframes, and dynamic node
       [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
-    await waitForHardFixtureFontsRemoved(fixturePage, initialLoadId, {
-      includeDynamic: true
-    })
+    await expectPageStyles(
+      fixturePage,
+      createHardFixtureStyleExpectation({
+        applied: false,
+        includeAdvanced: true,
+        includeCrossOriginFrame: false,
+        includeDynamic: true,
+        loadId: initialLoadId
+      })
+    )
   })
 })

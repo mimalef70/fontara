@@ -32,6 +32,19 @@ extension installed, drives extension and fixture pages, and verifies
 user-visible runtime behavior such as applying a selected font without
 reloading the page.
 
+Style assertions should go through the shared expectation DSL in
+`tests/support/browser/extension-harness.mjs`. Prefer `expectPageStyles()` with
+`createBasicPageStyleExpectation()` or `createHardFixtureStyleExpectation()` so
+font application, text stroke, inline cleanup, Shadow DOM, iframe, and no-reload
+checks stay expressed as one style contract instead of scattered selector
+polling.
+
+The hard browser fixture covers SPA route updates, Shadow DOM, same-origin and
+cross-origin iframes, adoptedStyleSheets fallbacks, lazy DOM, virtualized rows,
+nested contenteditable text, and heavier CSS variable font stacks. Keep new
+runtime edge cases in that fixture when they exercise the injected page engine
+rather than extension UI.
+
 ```sh
 pnpm test:browser
 ```

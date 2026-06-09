@@ -150,6 +150,13 @@ test("tab manager tracks content documents and notifies them about settings chan
         type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
       },
       options: undefined,
+      tabId: 7
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
       tabId: 9
     },
     {
@@ -213,6 +220,13 @@ test("tab manager tracks content documents and notifies them about settings chan
         type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
       },
       options: { documentId: "doc-fallback", frameId: 3 },
+      tabId: 7
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
       tabId: 7
     },
     {
@@ -397,6 +411,13 @@ test("tab manager tracks content documents and notifies them about settings chan
         type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
       },
       options: undefined,
+      tabId: 8
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
       tabId: 9
     },
     {
@@ -517,6 +538,13 @@ test("tab manager restores tracked documents before notifying settings changes",
         type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
       },
       options: { documentId: "doc-restored" },
+      tabId: 21
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
       tabId: 21
     },
     {
@@ -968,6 +996,13 @@ test("tab manager survives a simulated MV3 service worker restart", async () => 
         type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
       },
       options: { documentId: "doc-before-restart" },
+      tabId: 51
+    },
+    {
+      message: {
+        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+      },
+      options: undefined,
       tabId: 51
     }
   ])

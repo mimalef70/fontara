@@ -47,6 +47,10 @@ const FONTARA_BROWSER_TEST_PAGE_PING = "fontara-browser-test-page-ping"
 const EXTENSION_RUNTIME_SETTLE_MS = 250
 const HARD_FIXTURE_PATH = "/hard.html"
 const FRAME_FIXTURE_PATH = "/frame.html"
+const CROSS_ORIGIN_FRAME_PATH = "/cross-origin-frame.html"
+const CROSS_ORIGIN_FRAME_NAME = "fontara-cross-origin-frame"
+const FONTARA_INLINE_FONT_MARKER = "var(--fontara-font)"
+const FONTARA_FONT_FAMILY_PATTERN = /fontara/i
 
 export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -205,7 +209,64 @@ export async function findFirefoxBinary() {
   return null
 }
 
-export function createTestServer() {
+function listenTestServer(server) {
+  return new Promise((resolve, reject) => {
+    server.once("error", reject)
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address()
+      assert.equal(typeof address, "object")
+      resolve({
+        close: () => new Promise((done) => server.close(done)),
+        port: address.port,
+        url: `http://127.0.0.1:${address.port}/`
+      })
+    })
+  })
+}
+
+export function createCrossOriginTestServer() {
+  const server = http.createServer((request, response) => {
+    if (request.url === "/favicon.ico") {
+      response.writeHead(404)
+      response.end()
+      return
+    }
+
+    const url = new URL(request.url ?? "/", "http://127.0.0.1")
+    response.writeHead(200, {
+      "cache-control": "no-store",
+      "content-type": "text/html; charset=utf-8"
+    })
+
+    if (url.pathname === CROSS_ORIGIN_FRAME_PATH) {
+      response.end(`<!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>FontARA Cross-Origin Frame Fixture</title>
+            <style>
+              :root { --cross-frame-font: "Courier New", monospace; }
+              body { font-family: var(--cross-frame-font); }
+            </style>
+            <script>
+              window.__fontaraLoadId = String(Date.now()) + "-" + Math.random();
+            </script>
+          </head>
+          <body>
+            <p id="cross-frame-text">متن داخل iframe با origin جدا</p>
+          </body>
+        </html>`)
+      return
+    }
+
+    response.end(`<!doctype html><html><body></body></html>`)
+  })
+
+  return listenTestServer(server)
+}
+
+export function createTestServer(options = {}) {
+  const { crossOriginFrameUrl = "" } = options
   const server = http.createServer((request, response) => {
     if (request.url === "/favicon.ico") {
       response.writeHead(404)
@@ -220,15 +281,32 @@ export function createTestServer() {
     })
 
     if (url.pathname === HARD_FIXTURE_PATH) {
+      const crossOriginFrameMarkup = crossOriginFrameUrl
+        ? `<iframe id="${CROSS_ORIGIN_FRAME_NAME}" name="${CROSS_ORIGIN_FRAME_NAME}" src="${crossOriginFrameUrl}"></iframe>`
+        : ""
+
       response.end(`<!doctype html>
         <html>
           <head>
             <meta charset="utf-8">
             <title>FontARA MV3 Hard Browser Fixture</title>
             <style>
+              :root {
+                --fixture-serif: Georgia, "Times New Roman", serif;
+                --fixture-ui: Arial, sans-serif;
+                --fixture-nested-font: var(--fixture-serif);
+                --fixture-virtual-font: var(--fixture-nested-font);
+              }
               body { font-family: Times, serif; }
               #editable { font-family: Arial, sans-serif; }
+              #nested-editable { font-family: var(--fixture-ui); }
               #spa-root p { font-family: Georgia, serif; }
+              #route-root p { font-family: var(--fixture-nested-font); }
+              #variable-text {
+                --fixture-local-font: var(--fixture-nested-font);
+                font-family: var(--fixture-local-font);
+              }
+              .virtual-row { font-family: var(--fixture-virtual-font); }
             </style>
             <script>
               window.__fontaraLoadId = String(Date.now()) + "-" + Math.random();
@@ -244,6 +322,26 @@ export function createTestServer() {
                   root.append(style, text);
                 }
               });
+              customElements.define("fontara-adopted-card", class extends HTMLElement {
+                connectedCallback() {
+                  if (this.shadowRoot) return;
+                  const root = this.attachShadow({ mode: "open" });
+                  const text = document.createElement("p");
+                  text.id = "adopted-text";
+                  text.textContent = "متن داخل Shadow DOM با adoptedStyleSheets";
+
+                  try {
+                    const sheet = new CSSStyleSheet();
+                    sheet.replaceSync(":host { --adopted-font: Georgia, serif; } p { font-family: var(--adopted-font); }");
+                    root.adoptedStyleSheets = [sheet];
+                    root.append(text);
+                  } catch {
+                    const style = document.createElement("style");
+                    style.textContent = ":host { --adopted-font: Georgia, serif; } p { font-family: var(--adopted-font); }";
+                    root.append(style, text);
+                  }
+                }
+              });
               window.__fontaraAddDynamicFixtureText = () => {
                 const text = document.createElement("p");
                 text.id = "spa-text";
@@ -255,6 +353,68 @@ export function createTestServer() {
                 shadowText.textContent = "متن جدید داخل Shadow DOM";
                 document.getElementById("shadow-host").shadowRoot.append(shadowText);
               };
+              window.__fontaraNavigateHardFixtureRoute = () => {
+                history.pushState({ fontaraRoute: "thread" }, "", "#thread");
+                const routeRoot = document.getElementById("route-root");
+                routeRoot.textContent = "";
+                const routeText = document.createElement("p");
+                routeText.id = "spa-route-text";
+                routeText.textContent = "متن route جدید در SPA بدون reload";
+                routeRoot.append(routeText);
+              };
+              window.__fontaraMountAdvancedFixtureText = () => new Promise((resolve) => {
+                window.__fontaraNavigateHardFixtureRoute();
+
+                if (!document.getElementById("variable-text")) {
+                  const variableText = document.createElement("p");
+                  variableText.id = "variable-text";
+                  variableText.textContent = "متن با CSS variables چندلایه";
+                  document.getElementById("advanced-root").append(variableText);
+                }
+
+                if (!document.getElementById("adopted-host")) {
+                  const adoptedHost = document.createElement("fontara-adopted-card");
+                  adoptedHost.id = "adopted-host";
+                  document.getElementById("advanced-root").append(adoptedHost);
+                }
+
+                if (!document.getElementById("nested-editable")) {
+                  const editor = document.createElement("div");
+                  editor.id = "nested-editable";
+                  editor.setAttribute("contenteditable", "plaintext-only");
+                  editor.setAttribute("role", "textbox");
+                  editor.setAttribute("aria-label", "FontARA advanced editor");
+                  editor.innerHTML = '<blockquote><p id="nested-editable-text" data-text="true"><span>متن nested contenteditable</span></p></blockquote>';
+                  document.getElementById("advanced-root").append(editor);
+                }
+
+                if (!document.getElementById("virtual-list")) {
+                  const list = document.createElement("section");
+                  list.id = "virtual-list";
+                  document.getElementById("advanced-root").append(list);
+                  requestAnimationFrame(() => {
+                    const fragment = document.createDocumentFragment();
+                    for (let index = 0; index < 36; index += 1) {
+                      const row = document.createElement("p");
+                      row.className = "virtual-row";
+                      row.id = "virtual-row-" + index;
+                      row.textContent = "ردیف مجازی " + index;
+                      fragment.append(row);
+                    }
+                    list.append(fragment);
+                  });
+                }
+
+                window.setTimeout(() => {
+                  if (!document.getElementById("lazy-text")) {
+                    const lazyText = document.createElement("p");
+                    lazyText.id = "lazy-text";
+                    lazyText.textContent = "متن lazy بعد از تاخیر";
+                    document.getElementById("lazy-root").append(lazyText);
+                  }
+                  resolve();
+                }, 80);
+              });
             </script>
           </head>
           <body>
@@ -265,7 +425,11 @@ export function createTestServer() {
               </div>
               <fontara-shadow-card id="shadow-host"></fontara-shadow-card>
               <section id="spa-root"></section>
+              <section id="route-root"></section>
+              <section id="advanced-root"></section>
+              <section id="lazy-root"></section>
               <iframe id="fontara-frame" src="${FRAME_FIXTURE_PATH}"></iframe>
+              ${crossOriginFrameMarkup}
             </main>
           </body>
         </html>`)
@@ -309,18 +473,7 @@ export function createTestServer() {
       </html>`)
   })
 
-  return new Promise((resolve, reject) => {
-    server.once("error", reject)
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address()
-      assert.equal(typeof address, "object")
-      resolve({
-        close: () => new Promise((done) => server.close(done)),
-        port: address.port,
-        url: `http://127.0.0.1:${address.port}/`
-      })
-    })
-  })
+  return listenTestServer(server)
 }
 
 async function getFreePort() {
@@ -510,11 +663,21 @@ async function withExtensionHarness(testContext, launchBrowser, callback) {
   }
 
   const { browser, extensionBaseUrl, extensionId, userDataDir } = launchResult
-  const server = await createTestServer()
+  let crossOriginServer = null
+  let server = null
 
   try {
+    crossOriginServer = await createCrossOriginTestServer()
+    server = await createTestServer({
+      crossOriginFrameUrl: new URL(
+        CROSS_ORIGIN_FRAME_PATH,
+        crossOriginServer.url
+      ).href
+    })
+
     await callback({
       browser,
+      crossOriginServer,
       createExtensionPage: (relativePath, options = {}) =>
         createPage(browser, `${extensionBaseUrl}/${relativePath}`, options),
       createFixturePage: (options = {}) => {
@@ -531,7 +694,8 @@ async function withExtensionHarness(testContext, launchBrowser, callback) {
     })
   } finally {
     await browser.close().catch(() => {})
-    await server.close()
+    await server?.close()
+    await crossOriginServer?.close()
     await fs.rm(userDataDir, { force: true, recursive: true })
   }
 }
@@ -743,6 +907,462 @@ export async function getPageFontState(page) {
         document.getElementById("fontara-text-stroke-style")?.textContent ?? ""
     }
   })
+}
+
+function normalizeInlineExpectation(value) {
+  if (value === true) return "fontara"
+  if (value === false) return "clean"
+  return value
+}
+
+function normalizeTextStrokeWidth(value) {
+  return typeof value === "number" ? `${value}px` : String(value)
+}
+
+function createStyleExpectationTargetState(target, index, actualTarget) {
+  return {
+    actual: actualTarget,
+    expected: target,
+    index,
+    name: target.name ?? target.selector ?? `target ${index + 1}`
+  }
+}
+
+function styleSheetsMatch(snapshot, styleSheets) {
+  if (!styleSheets) return true
+
+  if ("font" in styleSheets) {
+    if (
+      styleSheets.font === false &&
+      snapshot.dynamicFontStyleText.trim() !== ""
+    ) {
+      return false
+    }
+    if (
+      styleSheets.font === true &&
+      !snapshot.dynamicFontStyleText.includes(FONTARA_INLINE_FONT_MARKER)
+    ) {
+      return false
+    }
+    if (
+      typeof styleSheets.font === "string" &&
+      !snapshot.dynamicFontStyleText.includes(styleSheets.font)
+    ) {
+      return false
+    }
+  }
+
+  if ("editableFont" in styleSheets) {
+    if (
+      styleSheets.editableFont === false &&
+      snapshot.editableFontStyleText.trim() !== ""
+    ) {
+      return false
+    }
+    if (
+      styleSheets.editableFont === true &&
+      !snapshot.editableFontStyleText.includes(FONTARA_INLINE_FONT_MARKER)
+    ) {
+      return false
+    }
+    if (
+      typeof styleSheets.editableFont === "string" &&
+      !snapshot.editableFontStyleText.includes(styleSheets.editableFont)
+    ) {
+      return false
+    }
+  }
+
+  if ("textStroke" in styleSheets) {
+    if (
+      styleSheets.textStroke === false &&
+      snapshot.textStrokeStyleText.trim() !== ""
+    ) {
+      return false
+    }
+    if (typeof styleSheets.textStroke === "number") {
+      const expectedDeclaration = `-webkit-text-stroke: ${styleSheets.textStroke}px !important;`
+      if (!snapshot.textStrokeStyleText.includes(expectedDeclaration)) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
+function styleTargetMatches(targetState) {
+  const { actual, expected } = targetState
+  if (!actual.rootExists || !actual.exists) return false
+
+  if ("font" in expected) {
+    if (
+      typeof expected.font === "string" &&
+      !actual.fontFamily.includes(expected.font)
+    ) {
+      return false
+    }
+    if (
+      expected.font === false &&
+      FONTARA_FONT_FAMILY_PATTERN.test(actual.fontFamily)
+    ) {
+      return false
+    }
+  }
+
+  const inlineExpectation = normalizeInlineExpectation(expected.inline)
+  if (
+    inlineExpectation === "fontara" &&
+    !actual.inlineStyle.includes(FONTARA_INLINE_FONT_MARKER)
+  ) {
+    return false
+  }
+  if (
+    inlineExpectation === "clean" &&
+    actual.inlineStyle.includes(FONTARA_INLINE_FONT_MARKER)
+  ) {
+    return false
+  }
+
+  if ("textStroke" in expected) {
+    if (
+      expected.textStroke === false &&
+      actual.webkitTextStrokeWidth !== "0px"
+    ) {
+      return false
+    }
+    if (
+      (typeof expected.textStroke === "number" ||
+        typeof expected.textStroke === "string") &&
+      actual.webkitTextStrokeWidth !==
+        normalizeTextStrokeWidth(expected.textStroke)
+    ) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function styleExpectationMatches(snapshot, expectation) {
+  const expectedTargets = expectation.targets ?? []
+
+  if (
+    expectation.loadId !== undefined &&
+    snapshot.loadId !== expectation.loadId
+  ) {
+    return false
+  }
+
+  if (!styleSheetsMatch(snapshot, expectation.styleSheets)) {
+    return false
+  }
+
+  if (snapshot.targets.length !== expectedTargets.length) {
+    return false
+  }
+
+  return snapshot.targets
+    .map((actualTarget, index) =>
+      createStyleExpectationTargetState(
+        expectedTargets[index],
+        index,
+        actualTarget
+      )
+    )
+    .every(styleTargetMatches)
+}
+
+export function createBasicPageStyleExpectation({
+  applied = true,
+  fontName,
+  loadId,
+  message,
+  textStroke
+} = {}) {
+  return {
+    loadId,
+    message,
+    styleSheets: {
+      font: applied ? (fontName ?? true) : false,
+      ...(textStroke !== undefined ? { textStroke } : {})
+    },
+    targets: [
+      {
+        font: applied ? fontName : false,
+        inline: applied ? "fontara" : "clean",
+        name: "main text",
+        selector: "#fontara-text",
+        ...(textStroke !== undefined ? { textStroke } : {})
+      }
+    ]
+  }
+}
+
+export function createHardFixtureStyleExpectation({
+  applied = true,
+  includeAdvanced = false,
+  includeCrossOriginFrame = true,
+  fontName,
+  includeDynamic = false,
+  loadId,
+  message
+} = {}) {
+  const inlineExpectation = applied ? "fontara" : "clean"
+  const computedFontExpectation = applied ? fontName : false
+  const targets = [
+    {
+      font: computedFontExpectation,
+      inline: inlineExpectation,
+      name: "main text",
+      selector: "#fontara-text"
+    },
+    {
+      font: computedFontExpectation,
+      frame: "#fontara-frame",
+      inline: inlineExpectation,
+      name: "iframe text",
+      selector: "#frame-text"
+    },
+    {
+      font: computedFontExpectation,
+      inline: inlineExpectation,
+      name: "shadow text",
+      selector: "#shadow-text",
+      shadow: "#shadow-host"
+    },
+    {
+      font: computedFontExpectation,
+      inline: "clean",
+      name: "contenteditable text",
+      selector: "#editable-text"
+    }
+  ]
+
+  if (includeDynamic) {
+    targets.push(
+      {
+        font: computedFontExpectation,
+        inline: inlineExpectation,
+        name: "dynamic SPA text",
+        selector: "#spa-text"
+      },
+      {
+        font: computedFontExpectation,
+        inline: inlineExpectation,
+        name: "late shadow text",
+        selector: "#shadow-late-text",
+        shadow: "#shadow-host"
+      }
+    )
+  }
+
+  if (includeAdvanced) {
+    targets.push(
+      {
+        font: computedFontExpectation,
+        inline: inlineExpectation,
+        name: "SPA route text",
+        selector: "#spa-route-text"
+      },
+      {
+        font: computedFontExpectation,
+        inline: inlineExpectation,
+        name: "CSS variable text",
+        selector: "#variable-text"
+      },
+      {
+        font: computedFontExpectation,
+        inline: inlineExpectation,
+        name: "adoptedStyleSheets shadow text",
+        selector: "#adopted-text",
+        shadow: "#adopted-host"
+      },
+      {
+        font: computedFontExpectation,
+        inline: "clean",
+        name: "nested contenteditable text",
+        selector: "#nested-editable-text"
+      },
+      {
+        font: computedFontExpectation,
+        inline: inlineExpectation,
+        name: "virtualized list row",
+        selector: "#virtual-row-35"
+      },
+      {
+        font: computedFontExpectation,
+        inline: inlineExpectation,
+        name: "lazy DOM text",
+        selector: "#lazy-text"
+      }
+    )
+
+    if (includeCrossOriginFrame) {
+      targets.push({
+        font: computedFontExpectation,
+        frameName: CROSS_ORIGIN_FRAME_NAME,
+        frameUrlIncludes: CROSS_ORIGIN_FRAME_PATH,
+        inline: inlineExpectation,
+        name: "cross-origin iframe text",
+        selector: "#cross-frame-text"
+      })
+    }
+  }
+
+  return {
+    loadId,
+    message,
+    styleSheets: {
+      editableFont: applied,
+      font: applied ? (fontName ?? true) : false
+    },
+    targets
+  }
+}
+
+function getStyleExpectationTargetStateInBrowser(target) {
+  function resolveTargetRoot(targetConfig) {
+    let root = document
+    const path = []
+
+    if (targetConfig.frame || targetConfig.frameSelector) {
+      const frameSelector = targetConfig.frame ?? targetConfig.frameSelector
+      const frame = document.querySelector(frameSelector)
+      path.push(`frame:${frameSelector}`)
+      if (!frame?.contentDocument) {
+        return { path, root: null }
+      }
+      root = frame.contentDocument
+    }
+
+    if (targetConfig.shadow || targetConfig.shadowHost) {
+      const shadowSelector = targetConfig.shadow ?? targetConfig.shadowHost
+      const host = root.querySelector(shadowSelector)
+      path.push(`shadow:${shadowSelector}`)
+      if (!host?.shadowRoot) {
+        return { path, root: null }
+      }
+      root = host.shadowRoot
+    }
+
+    return { path, root }
+  }
+
+  const { path, root } = resolveTargetRoot(target)
+  const element = root?.querySelector(target.selector) ?? null
+  const computedStyle = element ? getComputedStyle(element) : null
+
+  return {
+    exists: Boolean(element),
+    fontFamily: computedStyle?.fontFamily ?? "",
+    inlineStyle: element?.getAttribute("style") ?? "",
+    path,
+    rootExists: Boolean(root),
+    selector: target.selector,
+    tagName: element?.tagName ?? "",
+    textContent: element?.textContent ?? "",
+    webkitTextStrokeWidth:
+      computedStyle?.getPropertyValue("-webkit-text-stroke-width") ?? ""
+  }
+}
+
+function targetUsesBrowserFrame(target) {
+  return Boolean(target.frameName || target.frameUrlIncludes)
+}
+
+function findStyleExpectationBrowserFrame(page, target) {
+  return page.frames().find((frame) => {
+    if (target.frameName && frame.name() === target.frameName) return true
+    return Boolean(
+      target.frameUrlIncludes && frame.url().includes(target.frameUrlIncludes)
+    )
+  })
+}
+
+function createMissingBrowserFrameTargetState(target) {
+  const path = []
+  if (target.frameName) path.push(`browser-frame-name:${target.frameName}`)
+  if (target.frameUrlIncludes) {
+    path.push(`browser-frame-url:${target.frameUrlIncludes}`)
+  }
+
+  return {
+    exists: false,
+    fontFamily: "",
+    inlineStyle: "",
+    path,
+    rootExists: false,
+    selector: target.selector,
+    tagName: "",
+    textContent: "",
+    webkitTextStrokeWidth: ""
+  }
+}
+
+async function getStyleExpectationTargetState(page, target) {
+  if (!targetUsesBrowserFrame(target)) {
+    return page.evaluate(getStyleExpectationTargetStateInBrowser, target)
+  }
+
+  const frame = findStyleExpectationBrowserFrame(page, target)
+  if (!frame) return createMissingBrowserFrameTargetState(target)
+
+  return frame.evaluate(getStyleExpectationTargetStateInBrowser, target)
+}
+
+export async function getPageStyleExpectationState(page, expectation) {
+  const [pageSnapshot, targets] = await Promise.all([
+    page.evaluate(() => ({
+      dynamicFontStyleText:
+        document.getElementById("fontara-dynamic-font")?.textContent ?? "",
+      editableFontStyleText:
+        document.getElementById("fontara-editable-font-style")?.textContent ??
+        "",
+      loadId: window.__fontaraLoadId,
+      textStrokeStyleText:
+        document.getElementById("fontara-text-stroke-style")?.textContent ?? ""
+    })),
+    Promise.all(
+      (expectation.targets ?? []).map((target) =>
+        getStyleExpectationTargetState(page, target)
+      )
+    )
+  ])
+
+  return {
+    ...pageSnapshot,
+    targets
+  }
+}
+
+export async function expectPageStyles(page, expectation) {
+  let lastSnapshot = null
+
+  try {
+    return await waitFor(
+      async () => {
+        const snapshot = await getPageStyleExpectationState(page, expectation)
+        lastSnapshot = snapshot
+
+        return styleExpectationMatches(snapshot, expectation) ? snapshot : false
+      },
+      {
+        message: expectation.message ?? "FontARA page style expectation failed."
+      }
+    )
+  } catch (error) {
+    if (error instanceof Error) {
+      error.message = `${error.message}
+
+Expected style state:
+${JSON.stringify(expectation, null, 2)}
+
+Last style state:
+${JSON.stringify(lastSnapshot, null, 2)}`
+    }
+    throw error
+  }
 }
 
 export async function getExtensionLocalValues(extensionPage, keys) {
@@ -1042,96 +1662,50 @@ export async function assertStoredActivationSettings(
 }
 
 export async function waitForFont(page, fontName, expectedLoadId) {
-  let lastState = null
-
-  try {
-    return await waitFor(
-      async () => {
-        const state = await getPageFontState(page)
-        lastState = state
-        return (
-          state.loadId === expectedLoadId &&
-          state.dynamicStyleText.includes(fontName) &&
-          state.inlineStyle.includes("var(--fontara-font)") &&
-          state
-        )
-      },
-      {
-        message: `FontARA did not apply ${fontName} without reloading the page.`
-      }
-    )
-  } catch (error) {
-    if (error instanceof Error) {
-      error.message = `${error.message}
-
-Last page font state:
-${JSON.stringify(lastState, null, 2)}`
-    }
-    throw error
-  }
+  return expectPageStyles(
+    page,
+    createBasicPageStyleExpectation({
+      fontName,
+      loadId: expectedLoadId,
+      message: `FontARA did not apply ${fontName} without reloading the page.`
+    })
+  )
 }
 
 export async function waitForFontRemoved(page, expectedLoadId) {
-  let lastState = null
-
-  try {
-    return await waitFor(
-      async () => {
-        const state = await getPageFontState(page)
-        lastState = state
-        return (
-          state.loadId === expectedLoadId &&
-          !state.inlineStyle.includes("var(--fontara-font)") &&
-          state
-        )
-      },
-      {
-        message: "FontARA did not remove the selected font without reloading."
-      }
-    )
-  } catch (error) {
-    if (error instanceof Error) {
-      error.message = `${error.message}
-
-Last page font state:
-${JSON.stringify(lastState, null, 2)}`
-    }
-    throw error
-  }
+  return expectPageStyles(
+    page,
+    createBasicPageStyleExpectation({
+      applied: false,
+      loadId: expectedLoadId,
+      message: "FontARA did not remove the selected font without reloading."
+    })
+  )
 }
 
 export async function waitForTextStroke(page, expectedWidth, expectedLoadId) {
-  let lastState = null
-  const expectedDeclaration = `-webkit-text-stroke: ${expectedWidth}px !important;`
-
-  try {
-    return await waitFor(
-      async () => {
-        const state = await getPageFontState(page)
-        lastState = state
-        return (
-          state.loadId === expectedLoadId &&
-          state.textStrokeStyleText.includes(expectedDeclaration) &&
-          state
-        )
-      },
+  return expectPageStyles(page, {
+    loadId: expectedLoadId,
+    message: `FontARA did not apply text stroke ${expectedWidth}px without reloading.`,
+    styleSheets: {
+      textStroke: expectedWidth
+    },
+    targets: [
       {
-        message: `FontARA did not apply text stroke ${expectedWidth}px without reloading.`
+        name: "main text",
+        selector: "#fontara-text",
+        textStroke: expectedWidth
       }
-    )
-  } catch (error) {
-    if (error instanceof Error) {
-      error.message = `${error.message}
-
-Last page font state:
-${JSON.stringify(lastState, null, 2)}`
-    }
-    throw error
-  }
+    ]
+  })
 }
 
 export async function addHardFixtureDynamicText(page) {
   await page.evaluate(() => window.__fontaraAddDynamicFixtureText())
+}
+
+export async function mountHardFixtureAdvancedText(page) {
+  await page.evaluate(() => window.__fontaraMountAdvancedFixtureText())
 }
 
 export async function getHardFixtureFontState(page) {
@@ -1167,80 +1741,21 @@ export async function getHardFixtureFontState(page) {
   })
 }
 
-function hardFixtureHasAppliedFont(state, fontName, options = {}) {
-  const { includeDynamic = false } = options
-  const requiredInlineTargets = [state.main, state.frame, state.shadow]
-  const requiredComputedTargets = [state.main, state.frame, state.shadow]
-
-  if (includeDynamic) {
-    requiredInlineTargets.push(state.spa, state.shadowLate)
-    requiredComputedTargets.push(state.spa, state.shadowLate)
-  }
-
-  requiredComputedTargets.push(state.editable)
-
-  return (
-    state.dynamicStyleText.includes(fontName) &&
-    state.editableStyleText.includes("var(--fontara-font)") &&
-    requiredComputedTargets.every(
-      (target) => target.exists && target.fontFamily.includes(fontName)
-    ) &&
-    requiredInlineTargets.every((target) =>
-      target.inlineStyle.includes("var(--fontara-font)")
-    )
-  )
-}
-
-function hardFixtureHasRemovedFont(state, options = {}) {
-  const { includeDynamic = false } = options
-  const targets = [state.main, state.frame, state.shadow, state.editable]
-
-  if (includeDynamic) {
-    targets.push(state.spa, state.shadowLate)
-  }
-
-  return (
-    state.dynamicStyleText === "" &&
-    state.editableStyleText === "" &&
-    targets.every(
-      (target) =>
-        target.exists && !target.inlineStyle.includes("var(--fontara-font)")
-    )
-  )
-}
-
 export async function waitForHardFixtureFonts(
   page,
   fontName,
   expectedLoadId,
   options = {}
 ) {
-  let lastState = null
-
-  try {
-    return await waitFor(
-      async () => {
-        const state = await getHardFixtureFontState(page)
-        lastState = state
-        return (
-          state.loadId === expectedLoadId &&
-          hardFixtureHasAppliedFont(state, fontName, options) &&
-          state
-        )
-      },
-      {
-        message: `FontARA did not apply ${fontName} to the hard fixture without reloading.`
-      }
-    )
-  } catch (error) {
-    if (error instanceof Error) {
-      error.message = `${error.message}
-
-Last hard fixture font state:
-${JSON.stringify(lastState, null, 2)}`
-    }
-    throw error
-  }
+  return expectPageStyles(
+    page,
+    createHardFixtureStyleExpectation({
+      fontName,
+      includeDynamic: options.includeDynamic,
+      loadId: expectedLoadId,
+      message: `FontARA did not apply ${fontName} to the hard fixture without reloading.`
+    })
+  )
 }
 
 export async function waitForHardFixtureFontsRemoved(
@@ -1248,33 +1763,16 @@ export async function waitForHardFixtureFontsRemoved(
   expectedLoadId,
   options = {}
 ) {
-  let lastState = null
-
-  try {
-    return await waitFor(
-      async () => {
-        const state = await getHardFixtureFontState(page)
-        lastState = state
-        return (
-          state.loadId === expectedLoadId &&
-          hardFixtureHasRemovedFont(state, options) &&
-          state
-        )
-      },
-      {
-        message:
-          "FontARA did not remove fonts from the hard fixture without reloading."
-      }
-    )
-  } catch (error) {
-    if (error instanceof Error) {
-      error.message = `${error.message}
-
-Last hard fixture font state:
-${JSON.stringify(lastState, null, 2)}`
-    }
-    throw error
-  }
+  return expectPageStyles(
+    page,
+    createHardFixtureStyleExpectation({
+      applied: false,
+      includeDynamic: options.includeDynamic,
+      loadId: expectedLoadId,
+      message:
+        "FontARA did not remove fonts from the hard fixture without reloading."
+    })
+  )
 }
 
 export async function getExtensionPageLayoutState(page) {

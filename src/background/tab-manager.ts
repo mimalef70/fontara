@@ -480,14 +480,22 @@ export async function notifyContentScriptsAboutSettingsChange(
   await restoreTrackedDocuments()
 
   const trackedTabIds = new Set<number>()
+  const broadcastedTrackedTabIds = new Set<number>()
+  const broadcastSettingsChangedToTrackedTab = (tabId: number): void => {
+    if (broadcastedTrackedTabIds.has(tabId)) return
+
+    broadcastedTrackedTabIds.add(tabId)
+    sendSettingsChangedMessageToTab(tabId)
+  }
 
   for (const [tabId, documents] of documentsByTab) {
     trackedTabIds.add(tabId)
     for (const document of documents.values()) {
       sendDocumentMessageFromFactory(tabId, document, factory, () => {
-        sendSettingsChangedMessageToTab(tabId)
+        broadcastSettingsChangedToTrackedTab(tabId)
       })
     }
+    broadcastSettingsChangedToTrackedTab(tabId)
   }
 
   notifyUntrackedTabsAboutSettingsChange(trackedTabIds)

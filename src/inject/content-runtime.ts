@@ -11,12 +11,15 @@ import {
 import { watchContentPageLifecycle } from "./content-page-lifecycle"
 import { handleContentRuntimeCommandMessage } from "./content-runtime-commands"
 import { watchContentThemeStorageChanges } from "./content-storage"
+import { startContentTestBridge } from "./content-test-bridge"
 import { createContentThemeScheduler } from "./content-theme-scheduler"
 import { stopObserving } from "./observer"
 import { cleanupRtlSupport } from "./rtl"
 import { cleanupFontTheme } from "./theme-applier"
 
 export function startContentRuntime(): void {
+  startContentTestBridge()
+
   const scriptId = `${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2)}`
@@ -53,6 +56,8 @@ export function startContentRuntime(): void {
       sendDocumentLifecycleMessage(type, documentLifecycleMessageOptions),
     warn: debugWarn
   })
+
+  ensureStorageFallbackWatcher()
 
   stopWaitingForBody = runWhenBodyIsReady(() => {
     themeScheduler.requestResolvedPageThemeOrFallback(

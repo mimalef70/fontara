@@ -2,15 +2,18 @@ import assert from "node:assert/strict"
 import test, { afterEach } from "node:test"
 import { initMessenger, reportChanges } from "../../src/background/messenger"
 import type { FontaraExtensionData } from "../../src/definitions"
+import { createFontaraBrowserTestRelayMessage } from "../../src/utils/browser-test-bridge"
 import {
   MESSAGE_TYPES_BG_TO_UI,
   MESSAGE_TYPES_UI_TO_BG
 } from "../../src/utils/message"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
+const originalDebug = Reflect.get(globalThis, "__DEBUG__") as unknown
 
 afterEach(() => {
   Reflect.set(globalThis, "chrome", originalChrome)
+  Reflect.set(globalThis, "__DEBUG__", originalDebug)
 })
 
 function waitForMessageResponse(): Promise<void> {
@@ -145,4 +148,48 @@ test("background messenger routes UI requests and reports subscribed changes", a
 
   assert.equal(handled, false)
   assert.deepEqual(changedSettings, [{ selectedFont: "Estedad-Fontara" }])
+
+  response = undefined
+  Reflect.set(globalThis, "__DEBUG__", false)
+  const disabledBridgeHandled = listeners[0](
+    createFontaraBrowserTestRelayMessage({
+      data: { selectedFont: "Ignored-Bridge-Fontara" },
+      type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
+    }),
+    {
+      tab: { id: 2 } as chrome.tabs.Tab,
+      url: "https://example.com/page"
+    },
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.equal(disabledBridgeHandled, false)
+  assert.equal(response, undefined)
+  assert.deepEqual(changedSettings, [{ selectedFont: "Estedad-Fontara" }])
+
+  Reflect.set(globalThis, "__DEBUG__", true)
+  const enabledBridgeHandled = listeners[0](
+    createFontaraBrowserTestRelayMessage({
+      data: { selectedFont: "Bridge-Fontara" },
+      type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
+    }),
+    {
+      tab: { id: 2 } as chrome.tabs.Tab,
+      url: "https://example.com/page"
+    },
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.equal(enabledBridgeHandled, true)
+  assert.deepEqual(changedSettings, [
+    { selectedFont: "Estedad-Fontara" },
+    { selectedFont: "Bridge-Fontara" }
+  ])
+  assert.deepEqual(response, { data: true })
 })

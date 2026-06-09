@@ -6,11 +6,20 @@ import {
   isInsideContentEditableElement,
   refreshEditableFontStyles
 } from "./editable-font-style"
+import { collectOpenShadowRoots } from "./shadow-roots"
 
 let observer: MutationObserver | null = null
+let observedShadowRoots = new WeakSet<ShadowRoot>()
 let pendingNodes = new Set<HTMLElement>()
 let scheduledFrame: number | null = null
 let editableFontStylesDirty = false
+
+const OBSERVER_OPTIONS: MutationObserverInit = {
+  subtree: true,
+  childList: true,
+  attributes: true,
+  attributeFilter: EDITABLE_OBSERVER_ATTRIBUTES
+}
 
 function getMutationElement(node: Node): HTMLElement | null {
   if (node instanceof HTMLElement) {
@@ -55,6 +64,17 @@ function addPendingNodeIfOutsideContentEditable(element: HTMLElement): void {
   }
 }
 
+function observeOpenShadowRoots(root: ParentNode): void {
+  if (!observer) return
+
+  for (const shadowRoot of collectOpenShadowRoots(root)) {
+    if (observedShadowRoots.has(shadowRoot)) continue
+
+    observedShadowRoots.add(shadowRoot)
+    observer.observe(shadowRoot, OBSERVER_OPTIONS)
+  }
+}
+
 function flushPendingNodes(): void {
   scheduledFrame = null
 
@@ -88,6 +108,7 @@ export function startObserving(): void {
       if (mutation.type === "attributes") {
         const element = getMutationElement(mutation.target)
         if (element) {
+          observeOpenShadowRoots(element)
           addPendingNodeIfOutsideContentEditable(element)
           if (
             mutation.attributeName === "contenteditable" ||
@@ -105,6 +126,7 @@ export function startObserving(): void {
       for (const node of mutation.addedNodes) {
         const element = getMutationElement(node)
         if (element) {
+          observeOpenShadowRoots(element)
           addPendingNodeIfOutsideContentEditable(element)
           markEditableFontStylesDirtyForNode(element)
         }
@@ -120,12 +142,8 @@ export function startObserving(): void {
     }
   })
 
-  observer.observe(document.body, {
-    subtree: true,
-    childList: true,
-    attributes: true,
-    attributeFilter: EDITABLE_OBSERVER_ATTRIBUTES
-  })
+  observer.observe(document.body, OBSERVER_OPTIONS)
+  observeOpenShadowRoots(document.body)
 }
 
 export function stopObserving(): void {
@@ -136,6 +154,7 @@ export function stopObserving(): void {
 
   pendingNodes = new Set()
   editableFontStylesDirty = false
+  observedShadowRoots = new WeakSet<ShadowRoot>()
 
   if (!observer) return
 

@@ -5,6 +5,7 @@ import type {
   FontaraSettings,
   FontaraUIMessage
 } from "../definitions"
+import { isFontaraBrowserTestRelayMessage } from "../utils/browser-test-bridge"
 import {
   createFontaraBackgroundChangesMessage,
   createFontaraMessageErrorResponse,
@@ -69,6 +70,14 @@ function isAllowedUIMessageSender(
   })
 }
 
+function isDebugBuild(): boolean {
+  return typeof __DEBUG__ !== "undefined" && __DEBUG__
+}
+
+function isContentScriptSender(sender: chrome.runtime.MessageSender): boolean {
+  return typeof sender.tab?.id === "number" && typeof sender.url === "string"
+}
+
 async function handleMessage(message: FontaraUIMessage): Promise<unknown> {
   if (!adapter) {
     throw new Error("fontara-messenger-not-ready")
@@ -102,6 +111,20 @@ function messageListener(
   sender: chrome.runtime.MessageSender,
   sendResponse: SendResponse
 ): boolean {
+  if (
+    isDebugBuild() &&
+    isContentScriptSender(sender) &&
+    isFontaraBrowserTestRelayMessage(message)
+  ) {
+    void handleMessage(message.data.message)
+      .then((data) => sendResponse(createFontaraMessageResponse(data)))
+      .catch((error) =>
+        sendResponse(createFontaraMessageErrorResponse(getErrorMessage(error)))
+      )
+
+    return true
+  }
+
   if (!isFontaraUIMessage(message) || !isAllowedUIMessageSender(sender)) {
     return false
   }

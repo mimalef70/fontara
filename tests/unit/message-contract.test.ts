@@ -3,6 +3,16 @@ import test from "node:test"
 
 import type { FontaraExtensionData } from "../../src/definitions"
 import {
+  createFontaraBrowserTestPageErrorResponse,
+  createFontaraBrowserTestPageResponse,
+  createFontaraBrowserTestRelayMessage,
+  FONTARA_BROWSER_TEST_PAGE_PING,
+  FONTARA_BROWSER_TEST_PAGE_REQUEST,
+  isFontaraBrowserTestPagePing,
+  isFontaraBrowserTestPageRequest,
+  isFontaraBrowserTestRelayMessage
+} from "../../src/utils/browser-test-bridge"
+import {
   createFontaraBackgroundChangesMessage,
   createFontaraMessageErrorResponse,
   createFontaraMessageResponse,
@@ -139,4 +149,64 @@ test("runtime message contract creates background responses", () => {
   )
   assert.deepEqual(createFontaraMessageResponse(true), { data: true })
   assert.deepEqual(createFontaraMessageErrorResponse("boom"), { error: "boom" })
+})
+
+test("browser test bridge validates wrapped UI messages", () => {
+  const uiMessage = {
+    data: { selectedFont: "Samim-Fontara" },
+    type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
+  } as const
+  const relayMessage = createFontaraBrowserTestRelayMessage(uiMessage)
+
+  assert.equal(isFontaraBrowserTestRelayMessage(relayMessage), true)
+  assert.equal(
+    isFontaraBrowserTestRelayMessage({
+      ...relayMessage,
+      data: { message: { type: "unknown" } }
+    }),
+    false
+  )
+  assert.equal(
+    isFontaraBrowserTestPageRequest({
+      message: uiMessage,
+      requestId: "request-1",
+      type: FONTARA_BROWSER_TEST_PAGE_REQUEST
+    }),
+    true
+  )
+  assert.equal(
+    isFontaraBrowserTestPageRequest({
+      message: { type: "unknown" },
+      requestId: "request-1",
+      type: FONTARA_BROWSER_TEST_PAGE_REQUEST
+    }),
+    false
+  )
+  assert.equal(
+    isFontaraBrowserTestPagePing({
+      requestId: "request-1",
+      type: FONTARA_BROWSER_TEST_PAGE_PING
+    }),
+    true
+  )
+  assert.equal(
+    isFontaraBrowserTestPagePing({
+      requestId: 1,
+      type: FONTARA_BROWSER_TEST_PAGE_PING
+    }),
+    false
+  )
+  assert.deepEqual(createFontaraBrowserTestPageResponse("request-1", true), {
+    requestId: "request-1",
+    response: true,
+    type: "fontara-browser-test-page-response"
+  })
+  assert.deepEqual(
+    createFontaraBrowserTestPageErrorResponse("request-1", "boom"),
+    {
+      error: "boom",
+      requestId: "request-1",
+      type: "fontara-browser-test-page-response"
+    }
+  )
 })

@@ -93,6 +93,8 @@ test("contenteditable editors use stylesheet font application", () => {
 
 test("mutation observer coalesces added nodes before processing", () => {
   const observerSource = readSource("src/inject/observer.ts")
+  const domProcessorSource = readSource("src/inject/dom-processor.ts")
+  const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
 
   assert.match(observerSource, /pendingNodes = new Set<HTMLElement>\(\)/)
   assert.match(observerSource, /requestAnimationFrame\(flushPendingNodes\)/)
@@ -108,6 +110,11 @@ test("mutation observer coalesces added nodes before processing", () => {
   assert.match(observerSource, /removedNodes/)
   assert.match(observerSource, /EDITABLE_OBSERVER_ATTRIBUTES/)
   assert.match(observerSource, /attributeFilter: EDITABLE_OBSERVER_ATTRIBUTES/)
+  assert.match(observerSource, /collectOpenShadowRoots/)
+  assert.match(observerSource, /observedShadowRoots/)
+  assert.match(domProcessorSource, /collectOpenShadowRoots/)
+  assert.match(domProcessorSource, /type FontaraFontRoot/)
+  assert.match(fontStyleManagerSource, /getDocumentAndShadowStyleRoots/)
   assert.doesNotMatch(observerSource, /EDITABLE_SELECTOR_ATTRIBUTES/)
   assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*aria-label/)
   assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*role/)
@@ -153,9 +160,9 @@ test("storage changes schedule the active injection pipeline", () => {
     runtimeSource,
     /watchContentThemeStorageChanges\(themeScheduler\)/
   )
-  assert.doesNotMatch(
+  assert.match(
     runtimeSource,
-    /stopWaitingForBody = runWhenBodyIsReady[\s\S]*?stopWatchingStorage\s*=\s*watchContentThemeStorageChanges\(themeScheduler\)[\s\S]*?stopWatchingUrlChanges = watchUrlChanges/
+    /themeScheduler = createContentThemeScheduler[\s\S]*?ensureStorageFallbackWatcher\(\)[\s\S]*?stopWaitingForBody = runWhenBodyIsReady/
   )
   assert.match(runtimeSource, /stopWatchingUrlChanges/)
   assert.match(storageSource, /watchLocalStorage/)
@@ -272,6 +279,21 @@ test("content runtime command routing is separated from runtime wiring", () => {
   assert.doesNotMatch(runtimeSource, /MESSAGE_TYPES_BG_TO_CS/)
   assert.doesNotMatch(runtimeSource, /applyThemeCommand\(message\.data\)/)
   assert.doesNotMatch(runtimeSource, /cleanUpThemeCommand\(\)/)
+})
+
+test("debug browser test bridge is isolated from production runtime", () => {
+  const runtimeSource = readSource("src/inject/content-runtime.ts")
+  const bridgeSource = readSource("src/inject/content-test-bridge.ts")
+  const messengerSource = readSource("src/background/messenger.ts")
+
+  assert.match(runtimeSource, /startContentTestBridge\(\)/)
+  assert.match(bridgeSource, /__DEBUG__/)
+  assert.match(bridgeSource, /window\.addEventListener\("message"/)
+  assert.match(bridgeSource, /isFontaraBrowserTestPagePing/)
+  assert.match(bridgeSource, /createFontaraBrowserTestRelayMessage/)
+  assert.match(messengerSource, /isDebugBuild\(\)/)
+  assert.match(messengerSource, /isContentScriptSender/)
+  assert.match(messengerSource, /isFontaraBrowserTestRelayMessage/)
 })
 
 test("content script entrypoint delegates to runtime bootstrap", () => {

@@ -6,6 +6,7 @@ import {
   ICON_CLASSES
 } from "../config/selectors"
 import { normalizeFontFamilyName, splitFontFamilies } from "../utils/font-data"
+import { collectOpenShadowRoots, type FontaraFontRoot } from "./shadow-roots"
 
 export type FontWork = {
   fallbackFontFamily: string
@@ -14,7 +15,7 @@ export type FontWork = {
 
 type FontWorkCollection = {
   done: boolean
-  rootNode: HTMLElement
+  rootNode: FontaraFontRoot
   rootPending: boolean
   walker: TreeWalker
 }
@@ -42,6 +43,10 @@ function getContentEditableValue(node: HTMLElement): string | null {
 function isContentEditableRoot(node: HTMLElement): boolean {
   const value = getContentEditableValue(node)
   return value !== null && value.toLowerCase() !== "false"
+}
+
+function isHTMLElement(value: unknown): value is HTMLElement {
+  return typeof HTMLElement !== "undefined" && value instanceof HTMLElement
 }
 
 function hasContentEditableAncestorOrSelf(node: HTMLElement): boolean {
@@ -148,11 +153,11 @@ function addFontWork(node: HTMLElement, work: FontWork[]): void {
 }
 
 function createFontWorkCollection(
-  rootNode: HTMLElement
+  rootNode: FontaraFontRoot
 ): FontWorkCollection | null {
   if (
-    isExcludedSubtree(rootNode) ||
-    hasContentEditableAncestorOrSelf(rootNode)
+    isHTMLElement(rootNode) &&
+    (isExcludedSubtree(rootNode) || hasContentEditableAncestorOrSelf(rootNode))
   ) {
     return null
   }
@@ -163,7 +168,7 @@ function createFontWorkCollection(
     rootPending: true,
     walker: document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT, {
       acceptNode(node) {
-        if (!(node instanceof HTMLElement)) {
+        if (!isHTMLElement(node)) {
           return NodeFilter.FILTER_SKIP
         }
 
@@ -194,7 +199,7 @@ function collectNextFontWork(
       break
     }
 
-    if (node instanceof HTMLElement) {
+    if (isHTMLElement(node)) {
       addFontWork(node, work)
     }
 
@@ -204,7 +209,7 @@ function collectNextFontWork(
   return collection.done
 }
 
-export function collectFontWork(rootNode: HTMLElement): FontWork[] {
+export function collectFontWork(rootNode: FontaraFontRoot): FontWork[] {
   const collection = createFontWorkCollection(rootNode)
   const work: FontWork[] = []
 
@@ -302,14 +307,36 @@ export function resetProcessedElements(): void {
   processingGeneration += 1
 }
 
-export function applyFontToTreeChunked(rootNode: HTMLElement): void {
+function expandFontRootNodes(rootNodes: FontaraFontRoot[]): FontaraFontRoot[] {
+  const expandedRootNodes: FontaraFontRoot[] = []
+  const seenRootNodes = new WeakSet<object>()
+
+  function addRootNode(rootNode: FontaraFontRoot): void {
+    if (seenRootNodes.has(rootNode)) return
+
+    seenRootNodes.add(rootNode)
+    expandedRootNodes.push(rootNode)
+
+    for (const shadowRoot of collectOpenShadowRoots(rootNode)) {
+      addRootNode(shadowRoot)
+    }
+  }
+
+  for (const rootNode of rootNodes) {
+    addRootNode(rootNode)
+  }
+
+  return expandedRootNodes
+}
+
+export function applyFontToTreeChunked(rootNode: FontaraFontRoot): void {
   applyFontToTreesChunked([rootNode])
 }
 
-export function applyFontToTreesChunked(rootNodes: HTMLElement[]): void {
+export function applyFontToTreesChunked(rootNodes: FontaraFontRoot[]): void {
   if (rootNodes.length === 0) return
 
-  const collections = rootNodes.flatMap((rootNode) => {
+  const collections = expandFontRootNodes(rootNodes).flatMap((rootNode) => {
     const collection = createFontWorkCollection(rootNode)
     return collection ? [collection] : []
   })

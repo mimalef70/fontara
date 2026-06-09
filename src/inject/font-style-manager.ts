@@ -4,6 +4,7 @@ import {
   refreshEditableFontStyles,
   removeEditableFontStyles
 } from "./editable-font-style"
+import { getDocumentAndShadowStyleRoots } from "./shadow-roots"
 import { removeStyle, upsertStyle } from "./style-utils"
 
 const FONT_STYLES_ID = "fontara-font-styles"
@@ -13,14 +14,16 @@ const DYNAMIC_FONT_ID = "fontara-dynamic-font"
 const GOOGLE_FONT_STYLES_ID = "fontara-google-font-styles"
 
 export function removeInlineFontStyles(): void {
-  document.querySelectorAll("[style*='fontara-font']").forEach((element) => {
-    if (element instanceof HTMLElement) {
-      element.style.fontFamily = ""
-      if (element.style.length === 0) {
-        element.removeAttribute("style")
+  for (const root of getDocumentAndShadowStyleRoots()) {
+    root.querySelectorAll("[style*='fontara-font']").forEach((element) => {
+      if (element instanceof HTMLElement) {
+        element.style.fontFamily = ""
+        if (element.style.length === 0) {
+          element.removeAttribute("style")
+        }
       }
-    }
-  })
+    })
+  }
 }
 
 export function injectResolvedFontStyles(

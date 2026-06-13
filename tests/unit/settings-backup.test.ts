@@ -113,6 +113,12 @@ test("settings backup import normalizes settings before storage writes", async (
         regex: "("
       }
     ],
+    [STORAGE_KEYS.PINNED_WEBSITE_URLS]: [
+      "https://github.com",
+      "https://unknown.example",
+      " https://github.com ",
+      "https://chatgpt.com"
+    ],
     [STORAGE_KEYS.ENABLED_BY_DEFAULT]: true,
     [STORAGE_KEYS.ENABLED_FOR]: ["Example.com/path", "www.example.com/path"],
     [STORAGE_KEYS.DISABLED_FOR]: [" https://ignored.example/ "],
@@ -151,7 +157,7 @@ test("settings backup import normalizes settings before storage writes", async (
     unknownSetting: "ignored"
   })
 
-  assert.equal(normalized.importedKeyCount, 16)
+  assert.equal(normalized.importedKeyCount, 17)
   assert.equal(normalized.ignoredKeyCount, 1)
   assert.equal(normalized.settings[STORAGE_KEYS.EXTENSION_ENABLED], false)
   assert.equal(
@@ -165,6 +171,10 @@ test("settings backup import normalizes settings before storage writes", async (
   assert.equal(normalized.settings[STORAGE_KEYS.RTL_ENABLED], false)
   assert.equal(normalized.settings[STORAGE_KEYS.CONTEXT_MENUS_ENABLED], true)
   assert.equal(normalized.settings[STORAGE_KEYS.SYNC_SETTINGS], false)
+  assert.deepEqual(normalized.settings[STORAGE_KEYS.PINNED_WEBSITE_URLS], [
+    "https://github.com",
+    "https://chatgpt.com"
+  ])
   assert.deepEqual(normalized.settings[STORAGE_KEYS.RTL_SITE_SETTINGS], {
     ...DEFAULT_RTL_SITE_SETTINGS,
     chatgpt: false
@@ -211,6 +221,7 @@ test("settings reset values restore the exported settings defaults", async () =>
     [STORAGE_KEYS.EXTENSION_ENABLED]: DEFAULT_VALUES.EXTENSION_ENABLED,
     [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT,
     [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.PINNED_WEBSITE_URLS]: DEFAULT_VALUES.PINNED_WEBSITE_URLS,
     [STORAGE_KEYS.ENABLED_BY_DEFAULT]: DEFAULT_VALUES.ENABLED_BY_DEFAULT,
     [STORAGE_KEYS.ENABLED_FOR]: DEFAULT_VALUES.ENABLED_FOR,
     [STORAGE_KEYS.DISABLED_FOR]: DEFAULT_VALUES.DISABLED_FOR,

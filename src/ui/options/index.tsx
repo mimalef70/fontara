@@ -13,6 +13,7 @@ import {
   Languages,
   ListChecks,
   Menu,
+  Pin,
   Plus,
   RotateCcw,
   Settings,
@@ -50,14 +51,23 @@ import {
 } from "../../config/rtl-sites"
 import {
   createSiteListPatternAddUpdate,
+  createSitePathPatternFromUrl,
+  createSitePatternFromUrl,
   createWebsiteSiteListToggleUpdate,
   getDisplaySitePattern,
+  getMatchingSiteListPattern,
+  getSitePatternScope,
+  getWebsiteSitePattern,
+  inferSitePatternScopeFromInput,
   isSiteListUrlEnabled,
+  isURLMatched,
   normalizeEnabledByDefault,
   normalizeEnabledSiteList,
   normalizeSiteList,
   normalizeSitePattern,
-  removeSitePatternFromList
+  normalizeSitePatternForScope,
+  removeSitePatternFromList,
+  type SitePatternScope
 } from "../../config/site-list"
 import {
   normalizeSiteProfiles,
@@ -65,6 +75,7 @@ import {
   removeSiteProfileFontOverrides,
   upsertSiteProfile
 } from "../../config/site-profiles"
+import { normalizePinnedWebsiteUrls } from "../../config/sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import {
   normalizeTextStrokeValue,
@@ -104,6 +115,8 @@ import {
 } from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
 import { HotkeysSettings } from "../components/HotkeysSettings"
+import { SiteModeBadge } from "../components/SiteModeBadge"
+import { SiteScopeBadge } from "../components/SiteScopeBadge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -143,7 +156,10 @@ import {
 import { ToastProvider } from "../components/ui/Toast"
 import { Toaster } from "../components/ui/toaster"
 import { fontaraConnector } from "../connect/connector"
-import { ExtensionDataProvider } from "../hooks/use-extension-data"
+import {
+  ExtensionDataProvider,
+  useExtensionData
+} from "../hooks/use-extension-data"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
 import { useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
@@ -157,6 +173,7 @@ import {
   getEnabledByDefaultInitialValue,
   getEnabledForInitialValue,
   getGoogleFontsEnabledInitialValue,
+  getPinnedWebsiteUrlsInitialValue,
   getRtlEnabledInitialValue,
   getRtlSiteSettingsInitialValue,
   getSiteProfilesInitialValue,
@@ -195,6 +212,13 @@ const sectionDescriptionKeys: Record<SettingsSection, MessageKey> = {
   advanced: "options.section.advanced.description"
 }
 
+function getSettingsSectionFromHash(): SettingsSection {
+  const hashSection = window.location.hash.replace(/^#/, "")
+  return settingsNavigation.some((item) => item.id === hashSection)
+    ? (hashSection as SettingsSection)
+    : "general"
+}
+
 const languageOptions: Array<{
   descriptionKey: MessageKey
   labelKey: MessageKey
@@ -221,6 +245,23 @@ const languageOptions: Array<{
     descriptionKey: "language.arDescription"
   }
 ]
+
+const sitePatternScopeOptions: Array<{
+  labelKey: MessageKey
+  value: SitePatternScope
+}> = [
+  { value: "domain", labelKey: "options.siteList.scopeDomain" },
+  { value: "path", labelKey: "options.siteList.scopePath" },
+  { value: "custom", labelKey: "options.siteList.scopeCustom" },
+  { value: "regex", labelKey: "options.siteList.scopeRegex" }
+]
+
+const sitePatternPlaceholderKeys = {
+  custom: "options.siteList.wildcardPlaceholder",
+  domain: "options.siteList.placeholder",
+  path: "options.siteList.pathPlaceholder",
+  regex: "options.siteList.regexPlaceholder"
+} satisfies Record<SitePatternScope, MessageKey>
 
 type SiteFontOption = {
   label: string
@@ -333,6 +374,35 @@ function readTextFile(file: File): Promise<string> {
   return file.text()
 }
 
+function createCustomCssProbeUrl(
+  website: WebsiteItem,
+  normalizedPattern: string
+): string {
+  if (getSitePatternScope(normalizedPattern) === "regex") return website.url
+
+  const slashIndex = normalizedPattern.indexOf("/")
+  if (slashIndex < 0) return website.url
+
+  const path = normalizedPattern
+    .slice(slashIndex + 1)
+    .split("/")
+    .map((part) => (part === "*" ? "__fontara__" : part.replace(/\*/g, "")))
+    .filter(Boolean)
+    .join("/")
+
+  if (!path) return website.url
+
+  try {
+    const url = new URL(website.url)
+    url.pathname = `/${path}`
+    url.search = ""
+    url.hash = ""
+    return url.toString()
+  } catch {
+    return website.url
+  }
+}
+
 function OptionsPage() {
   useSelectedUIFont()
   const {
@@ -344,6 +414,7 @@ function OptionsPage() {
     setPreference,
     t
   } = useI18n()
+  const currentTab = useExtensionData()?.activeTab ?? null
 
   const [customFontList, setCustomFontList] = useStorageValue<FontData[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
@@ -368,6 +439,10 @@ function OptionsPage() {
   const [websiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
     EMPTY_WEBSITE_LIST
+  )
+  const [pinnedWebsiteUrls, setPinnedWebsiteUrls] = useStorageValue<string[]>(
+    STORAGE_KEYS.PINNED_WEBSITE_URLS,
+    getPinnedWebsiteUrlsInitialValue
   )
   const [siteProfiles, setSiteProfiles] = useStorageValue<SiteProfile[]>(
     STORAGE_KEYS.SITE_PROFILES,
@@ -403,11 +478,30 @@ function OptionsPage() {
       STORAGE_KEYS.CONTEXT_MENUS_ENABLED,
       getContextMenusEnabledInitialValue
     )
-  const [activeSection, setActiveSection] = useState<SettingsSection>("general")
+  const [activeSection, setActiveSection] = useState<SettingsSection>(
+    getSettingsSectionFromHash
+  )
   const activeNavigation = settingsNavigation.find(
     (item) => item.id === activeSection
   )
   const sidebarSide = direction === "rtl" ? "right" : "left"
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      setActiveSection(getSettingsSectionFromHash())
+    }
+
+    window.addEventListener("hashchange", handleHashChange)
+    return () => window.removeEventListener("hashchange", handleHashChange)
+  }, [])
+
+  const handleSectionChange = (section: SettingsSection) => {
+    setActiveSection(section)
+    const nextHash = `#${section}`
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, "", nextHash)
+    }
+  }
 
   const fontUtils = {
     generateFileHash: async (fileBytes: Uint8Array) => {
@@ -452,6 +546,8 @@ function OptionsPage() {
       DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET
     )
   const [customFontUnicodeRange, setCustomFontUnicodeRange] = useState("")
+  const [sitePatternScope, setSitePatternScope] =
+    useState<SitePatternScope>("domain")
   const [sitePatternInput, setSitePatternInput] = useState("")
   const [siteProfilePatternInput, setSiteProfilePatternInput] = useState("")
   const [siteProfileFontInput, setSiteProfileFontInput] = useState("")
@@ -793,8 +889,12 @@ function OptionsPage() {
     }
   }
 
-  const effectiveWebsiteList =
-    websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
+  const defaultWebsiteList = DEFAULT_VALUES.WEBSITE_LIST
+  const normalizedPinnedWebsiteUrls = normalizePinnedWebsiteUrls(
+    pinnedWebsiteUrls,
+    []
+  )
+  const pinnedWebsiteUrlSet = new Set(normalizedPinnedWebsiteUrls)
   const normalizedEnabledByDefault = normalizeEnabledByDefault(enabledByDefault)
   const normalizedEnabledFor = normalizeEnabledSiteList(enabledFor)
   const normalizedDisabledFor = normalizeSiteList(disabledFor)
@@ -808,12 +908,25 @@ function OptionsPage() {
     ? normalizedDisabledFor
     : normalizedEnabledFor
   const trimmedSitePatternInput = sitePatternInput.trim()
-  const normalizedSitePatternInput = normalizeSitePattern(sitePatternInput)
+  const normalizedSitePatternInput = normalizeSitePatternForScope(
+    sitePatternInput,
+    sitePatternScope
+  )
   const hasSitePatternInput = trimmedSitePatternInput.length > 0
-  const activeWebsiteCount = effectiveWebsiteList.filter((website) =>
+  const currentTabDomainPattern = currentTab?.url
+    ? createSitePatternFromUrl(currentTab.url)
+    : null
+  const currentTabPathPattern = currentTab?.url
+    ? createSitePathPatternFromUrl(currentTab.url)
+    : null
+  const currentTabHasPathPattern =
+    Boolean(currentTabPathPattern) &&
+    Boolean(currentTabDomainPattern) &&
+    currentTabPathPattern !== currentTabDomainPattern
+  const activeWebsiteCount = defaultWebsiteList.filter((website) =>
     isSiteListUrlEnabled(website.url, siteListSettings)
   ).length
-  const cssOnlyWebsiteCount = effectiveWebsiteList.filter(
+  const cssOnlyWebsiteCount = defaultWebsiteList.filter(
     (website) => website.customCss === true
   ).length
   const normalizedRtlSiteSettings = normalizeRtlSiteSettings(rtlSiteSettings)
@@ -906,9 +1019,17 @@ function OptionsPage() {
     const currentWebsiteList =
       websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
     const active = isWebsiteActive(website)
-    const updatedWebsiteList = currentWebsiteList.map((item) =>
-      item.url === website.url ? { ...item, isActive: !active } : item
+    const existingWebsiteIndex = currentWebsiteList.findIndex(
+      (item) => item.url === website.url
     )
+    const updatedWebsiteList =
+      existingWebsiteIndex === -1
+        ? [...currentWebsiteList, { ...website, isActive: !active }]
+        : currentWebsiteList.map((item, index) =>
+            index === existingWebsiteIndex
+              ? { ...item, isActive: !active }
+              : item
+          )
     const siteListUpdate = createWebsiteSiteListToggleUpdate(
       website,
       siteListSettings,
@@ -931,8 +1052,77 @@ function OptionsPage() {
     }
   }
 
+  const handleWebsitePinToggle = async (website: WebsiteItem) => {
+    try {
+      await setPinnedWebsiteUrls((currentPinnedUrls) => {
+        const nextPinnedUrlSet = new Set(
+          normalizePinnedWebsiteUrls(currentPinnedUrls, [])
+        )
+
+        if (nextPinnedUrlSet.has(website.url)) {
+          nextPinnedUrlSet.delete(website.url)
+        } else {
+          nextPinnedUrlSet.add(website.url)
+        }
+
+        return defaultWebsiteList
+          .map((defaultWebsite) => defaultWebsite.url)
+          .filter((url) => nextPinnedUrlSet.has(url))
+      })
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
   const isWebsiteActive = (website: WebsiteItem) => {
     return isSiteListUrlEnabled(website.url, siteListSettings)
+  }
+
+  const isWebsitePinned = (website: WebsiteItem) => {
+    return pinnedWebsiteUrlSet.has(website.url)
+  }
+
+  const getWebsiteCardPattern = (website: WebsiteItem) => {
+    const enabledPattern = getMatchingSiteListPattern(
+      website.url,
+      normalizedEnabledFor
+    )
+    if (enabledPattern) return enabledPattern
+
+    const disabledPattern = getMatchingSiteListPattern(
+      website.url,
+      normalizedDisabledFor
+    )
+    return disabledPattern ?? getWebsiteSitePattern(website)
+  }
+
+  const getWebsiteCardTitle = (
+    website: WebsiteItem,
+    pattern: string | null
+  ) => {
+    return website.siteName || getDisplaySitePattern(pattern ?? website.url)
+  }
+
+  const hasCustomCssForSitePattern = (pattern: string) => {
+    const normalizedPattern = normalizeSitePattern(pattern)
+    if (!normalizedPattern) return false
+
+    return defaultWebsiteList.some((website) => {
+      if (website.customCss !== true) return false
+
+      return (
+        isURLMatched(website.url, normalizedPattern) ||
+        isURLMatched(
+          createCustomCssProbeUrl(website, normalizedPattern),
+          normalizedPattern
+        )
+      )
+    })
   }
 
   const handleSiteListModeChange = async (nextEnabledByDefault: boolean) => {
@@ -949,7 +1139,7 @@ function OptionsPage() {
   }
 
   const handleAddSitePattern = async () => {
-    const pattern = normalizeSitePattern(sitePatternInput)
+    const pattern = normalizedSitePatternInput
 
     if (!pattern) {
       toast({ title: t("options.toast.invalidSitePattern") })
@@ -998,6 +1188,30 @@ function OptionsPage() {
   const handleSitePatternSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     void handleAddSitePattern()
+  }
+
+  const handleSitePatternInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const nextValue = event.target.value
+    setSitePatternInput(nextValue)
+    setSitePatternScope(
+      inferSitePatternScopeFromInput(nextValue, sitePatternScope)
+    )
+  }
+
+  const fillSitePatternFromCurrentTab = (scope: SitePatternScope) => {
+    if (!currentTab?.url) return
+
+    const pattern =
+      scope === "path"
+        ? createSitePathPatternFromUrl(currentTab.url)
+        : createSitePatternFromUrl(currentTab.url)
+
+    if (!pattern) return
+
+    setSitePatternScope(scope)
+    setSitePatternInput(pattern)
   }
 
   const resetSiteProfileForm = () => {
@@ -1235,7 +1449,7 @@ function OptionsPage() {
                           <SidebarMenuButton
                             isActive={activeSection === item.id}
                             data-testid={`fontara-options-nav-${item.id}`}
-                            onClick={() => setActiveSection(item.id)}>
+                            onClick={() => handleSectionChange(item.id)}>
                             <Icon className="size-4 shrink-0" />
                             <span className="truncate group-data-[collapsible=icon]:hidden">
                               {t(item.labelKey)}
@@ -1840,27 +2054,78 @@ function OptionsPage() {
                         </div>
 
                         <form
-                          className="mb-4 flex gap-2"
+                          className="mb-4"
                           onSubmit={handleSitePatternSubmit}>
-                          <input
-                            type="text"
-                            value={sitePatternInput}
-                            data-testid="fontara-site-list-pattern-input"
-                            onChange={(event) =>
-                              setSitePatternInput(event.target.value)
-                            }
-                            placeholder={t("options.siteList.placeholder")}
-                            dir="ltr"
-                            className="h-10 min-w-0 flex-1 rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-                          />
-                          <Button
-                            type="submit"
-                            size="icon"
-                            className="h-10 w-10 shrink-0 bg-[#2374ff] text-white hover:bg-[#1f66df]"
-                            data-testid="fontara-site-list-add"
-                            aria-label={t("options.siteList.add")}>
-                            <Plus className="size-4" />
-                          </Button>
+                          <div className="grid gap-2 sm:grid-cols-[10rem_minmax(0,1fr)_2.5rem]">
+                            <Select
+                              value={sitePatternScope}
+                              onValueChange={(value) =>
+                                setSitePatternScope(value as SitePatternScope)
+                              }>
+                              <SelectTrigger
+                                className="h-10 rounded-md border-[#dbe3ef] text-sm"
+                                aria-label={t("options.siteList.scopeLabel")}
+                                data-testid="fontara-site-list-scope">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {sitePatternScopeOptions.map((option) => (
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}>
+                                    {t(option.labelKey)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <input
+                              type="text"
+                              value={sitePatternInput}
+                              data-testid="fontara-site-list-pattern-input"
+                              onChange={handleSitePatternInputChange}
+                              placeholder={t(
+                                sitePatternPlaceholderKeys[sitePatternScope]
+                              )}
+                              dir="ltr"
+                              className="h-10 min-w-0 rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                            />
+                            <Button
+                              type="submit"
+                              size="icon"
+                              className="h-10 w-10 shrink-0 bg-[#2374ff] text-white hover:bg-[#1f66df]"
+                              data-testid="fontara-site-list-add"
+                              aria-label={t("options.siteList.add")}>
+                              <Plus className="size-4" />
+                            </Button>
+                          </div>
+                          {currentTab?.isSupported && currentTab.url && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {currentTabDomainPattern && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 border-[#dbe3ef] text-xs"
+                                  onClick={() =>
+                                    fillSitePatternFromCurrentTab("domain")
+                                  }>
+                                  {t("options.siteList.useCurrentDomain")}
+                                </Button>
+                              )}
+                              {currentTabHasPathPattern && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 border-[#dbe3ef] text-xs"
+                                  onClick={() =>
+                                    fillSitePatternFromCurrentTab("path")
+                                  }>
+                                  {t("options.siteList.useCurrentPath")}
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </form>
                         {hasSitePatternInput && (
                           <div
@@ -1872,7 +2137,7 @@ function OptionsPage() {
                             )}
                             aria-live="polite">
                             {normalizedSitePatternInput ? (
-                              <div className="flex min-w-0 items-center gap-1">
+                              <div className="flex min-w-0 items-center gap-2">
                                 <span className="shrink-0">
                                   {normalizedEnabledByDefault
                                     ? t("options.siteList.previewExclude")
@@ -1885,6 +2150,14 @@ function OptionsPage() {
                                     normalizedSitePatternInput
                                   )}
                                 </bdi>
+                                <SiteScopeBadge
+                                  scope={getSitePatternScope(
+                                    normalizedSitePatternInput
+                                  )}
+                                />
+                                {hasCustomCssForSitePattern(
+                                  normalizedSitePatternInput
+                                ) && <SiteModeBadge customCss />}
                               </div>
                             ) : (
                               t("options.siteList.previewInvalid")
@@ -1894,30 +2167,43 @@ function OptionsPage() {
 
                         {managedSiteList.length > 0 ? (
                           <div className="max-h-64 space-y-2 overflow-y-auto pe-1">
-                            {managedSiteList.map((pattern) => (
-                              <div
-                                key={pattern}
-                                data-testid={`fontara-site-list-row-${pattern}`}
-                                className="flex items-center justify-between gap-2 rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-2">
-                                <bdi className="min-w-0 truncate text-sm font-semibold text-[#111827]">
-                                  {getDisplaySitePattern(pattern)}
-                                </bdi>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 shrink-0 text-[#64748b] hover:bg-red-50 hover:text-red-600"
-                                  data-testid={`fontara-site-list-remove-${pattern}`}
-                                  aria-label={t("options.siteList.remove", {
-                                    site: pattern
-                                  })}
-                                  onClick={() =>
-                                    void handleRemoveSitePattern(pattern)
-                                  }>
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </div>
-                            ))}
+                            {managedSiteList.map((pattern) => {
+                              const hasCustomCss =
+                                hasCustomCssForSitePattern(pattern)
+
+                              return (
+                                <div
+                                  key={pattern}
+                                  data-testid={`fontara-site-list-row-${pattern}`}
+                                  className="flex items-center justify-between gap-2 rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-2">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <bdi className="min-w-0 truncate text-sm font-semibold text-[#111827]">
+                                      {getDisplaySitePattern(pattern)}
+                                    </bdi>
+                                    <SiteScopeBadge
+                                      scope={getSitePatternScope(pattern)}
+                                    />
+                                    {hasCustomCss && (
+                                      <SiteModeBadge customCss />
+                                    )}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                    data-testid={`fontara-site-list-remove-${pattern}`}
+                                    aria-label={t("options.siteList.remove", {
+                                      site: pattern
+                                    })}
+                                    onClick={() =>
+                                      void handleRemoveSitePattern(pattern)
+                                    }>
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </div>
+                              )
+                            })}
                           </div>
                         ) : (
                           <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
@@ -1971,7 +2257,7 @@ function OptionsPage() {
                             className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
                           />
                           <datalist id="fontara-site-profile-patterns">
-                            {effectiveWebsiteList.map((website) => {
+                            {defaultWebsiteList.map((website) => {
                               const pattern = normalizeSitePattern(website.url)
                               if (!pattern) return null
 
@@ -2126,77 +2412,90 @@ function OptionsPage() {
 
                         {normalizedSiteProfiles.length > 0 ? (
                           <div className="max-h-80 space-y-2 overflow-y-auto pe-1">
-                            {normalizedSiteProfiles.map((profile) => (
-                              <div
-                                key={profile.pattern}
-                                data-testid={`fontara-site-profile-row-${profile.pattern}`}
-                                className="rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-3">
-                                <div className="mb-3 flex items-start justify-between gap-3">
-                                  <bdi className="min-w-0 truncate text-sm font-bold text-[#111827]">
-                                    {getDisplaySitePattern(profile.pattern)}
-                                  </bdi>
-                                  <div className="flex shrink-0 items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-[#64748b] hover:bg-[#eaf2ff] hover:text-[#2374ff]"
-                                      aria-label={t(
-                                        "options.siteProfiles.edit",
-                                        {
-                                          site: profile.pattern
-                                        }
+                            {normalizedSiteProfiles.map((profile) => {
+                              const hasCustomCss = hasCustomCssForSitePattern(
+                                profile.pattern
+                              )
+
+                              return (
+                                <div
+                                  key={profile.pattern}
+                                  data-testid={`fontara-site-profile-row-${profile.pattern}`}
+                                  className="rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-3">
+                                  <div className="mb-3 flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <bdi className="min-w-0 truncate text-sm font-bold text-[#111827]">
+                                        {getDisplaySitePattern(profile.pattern)}
+                                      </bdi>
+                                      {hasCustomCss && (
+                                        <SiteModeBadge customCss />
                                       )}
-                                      onClick={() =>
-                                        handleEditSiteProfile(profile)
-                                      }>
-                                      <Settings className="size-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-[#64748b] hover:bg-red-50 hover:text-red-600"
-                                      data-testid={`fontara-site-profile-remove-${profile.pattern}`}
-                                      aria-label={t(
-                                        "options.siteProfiles.remove",
-                                        {
-                                          site: profile.pattern
-                                        }
-                                      )}
-                                      onClick={() =>
-                                        void handleRemoveSiteProfile(
-                                          profile.pattern
-                                        )
-                                      }>
-                                      <Trash2 className="size-4" />
-                                    </Button>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-[#64748b] hover:bg-[#eaf2ff] hover:text-[#2374ff]"
+                                        aria-label={t(
+                                          "options.siteProfiles.edit",
+                                          {
+                                            site: profile.pattern
+                                          }
+                                        )}
+                                        onClick={() =>
+                                          handleEditSiteProfile(profile)
+                                        }>
+                                        <Settings className="size-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                        data-testid={`fontara-site-profile-remove-${profile.pattern}`}
+                                        aria-label={t(
+                                          "options.siteProfiles.remove",
+                                          {
+                                            site: profile.pattern
+                                          }
+                                        )}
+                                        onClick={() =>
+                                          void handleRemoveSiteProfile(
+                                            profile.pattern
+                                          )
+                                        }>
+                                        <Trash2 className="size-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className="grid gap-2 text-xs text-[#64748b] sm:grid-cols-2">
+                                    <div className="rounded-md bg-white px-3 py-2">
+                                      <span className="font-semibold text-[#334155]">
+                                        {t("options.siteProfiles.fontValue")}
+                                      </span>{" "}
+                                      <span dir="auto">
+                                        {getSiteProfileFontLabel(profile.font)}
+                                      </span>
+                                    </div>
+                                    <div className="rounded-md bg-white px-3 py-2">
+                                      <span className="font-semibold text-[#334155]">
+                                        {t("options.siteProfiles.strokeValue")}
+                                      </span>{" "}
+                                      <bdi>
+                                        {profile.textStroke === undefined
+                                          ? t(
+                                              "options.siteProfiles.globalStroke"
+                                            )
+                                          : formatTextStrokeDisplay(
+                                              profile.textStroke
+                                            )}
+                                      </bdi>
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="grid gap-2 text-xs text-[#64748b] sm:grid-cols-2">
-                                  <div className="rounded-md bg-white px-3 py-2">
-                                    <span className="font-semibold text-[#334155]">
-                                      {t("options.siteProfiles.fontValue")}
-                                    </span>{" "}
-                                    <span dir="auto">
-                                      {getSiteProfileFontLabel(profile.font)}
-                                    </span>
-                                  </div>
-                                  <div className="rounded-md bg-white px-3 py-2">
-                                    <span className="font-semibold text-[#334155]">
-                                      {t("options.siteProfiles.strokeValue")}
-                                    </span>{" "}
-                                    <bdi>
-                                      {profile.textStroke === undefined
-                                        ? t("options.siteProfiles.globalStroke")
-                                        : formatTextStrokeDisplay(
-                                            profile.textStroke
-                                          )}
-                                    </bdi>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         ) : (
                           <div className="flex min-h-48 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
@@ -2216,7 +2515,7 @@ function OptionsPage() {
                         <p className="mt-1 text-xs text-[#64748b]">
                           {t("options.sites.count", {
                             active: formatNumber(activeWebsiteCount),
-                            total: formatNumber(effectiveWebsiteList.length)
+                            total: formatNumber(defaultWebsiteList.length)
                           })}
                         </p>
                       </div>
@@ -2226,8 +2525,17 @@ function OptionsPage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {effectiveWebsiteList.map((website) => {
+                      {defaultWebsiteList.map((website) => {
                         const active = isWebsiteActive(website)
+                        const pinned = isWebsitePinned(website)
+                        const websitePattern = getWebsiteCardPattern(website)
+                        const websitePatternLabel = websitePattern
+                          ? getDisplaySitePattern(websitePattern)
+                          : null
+                        const websiteTitle = getWebsiteCardTitle(
+                          website,
+                          websitePattern
+                        )
 
                         return (
                           <div
@@ -2250,25 +2558,74 @@ function OptionsPage() {
                                 />
                               )}
                               <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-[#111827]">
-                                  {website.siteName || website.url}
+                                <div
+                                  className="truncate text-sm font-semibold text-[#111827]"
+                                  title={websiteTitle}>
+                                  {websiteTitle}
                                 </div>
-                                <div className="truncate text-xs text-[#64748b]">
-                                  {website.customCss
-                                    ? t("options.siteMode.customCss")
-                                    : t("options.siteMode.general")}
+                                <div className="mt-1 flex min-w-0 items-center gap-2">
+                                  <SiteModeBadge
+                                    customCss={website.customCss === true}
+                                  />
+                                  {websitePattern && (
+                                    <SiteScopeBadge
+                                      scope={getSitePatternScope(
+                                        websitePattern
+                                      )}
+                                    />
+                                  )}
                                 </div>
+                                {website.siteName && websitePatternLabel && (
+                                  <div className="mt-1 flex min-w-0 items-center gap-2">
+                                    <bdi
+                                      className="min-w-0 truncate text-xs text-[#94a3b8]"
+                                      dir="ltr"
+                                      title={websitePatternLabel}>
+                                      {websitePatternLabel}
+                                    </bdi>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                            <Switch
-                              checked={active}
-                              onCheckedChange={() =>
-                                void handleWebsiteToggle(website)
-                              }
-                              aria-label={t("options.siteToggleAria", {
-                                site: website.siteName || website.url
-                              })}
-                            />
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  "h-8 w-8 text-[#94a3b8] hover:bg-[#eaf2ff] hover:text-[#2374ff]",
+                                  pinned &&
+                                    "bg-[#eaf2ff] text-[#2374ff] hover:bg-[#dbeafe]"
+                                )}
+                                aria-pressed={pinned}
+                                aria-label={t(
+                                  pinned
+                                    ? "options.sites.unpinFromPopup"
+                                    : "options.sites.pinToPopup",
+                                  {
+                                    site: websiteTitle
+                                  }
+                                )}
+                                onClick={() =>
+                                  void handleWebsitePinToggle(website)
+                                }>
+                                <Pin
+                                  className={cn(
+                                    "size-4",
+                                    pinned && "fill-current"
+                                  )}
+                                />
+                              </Button>
+                              <Switch
+                                checked={active}
+                                onCheckedChange={() =>
+                                  void handleWebsiteToggle(website)
+                                }
+                                aria-label={t("options.siteToggleAria", {
+                                  site: websiteTitle
+                                })}
+                              />
+                            </div>
                           </div>
                         )
                       })}

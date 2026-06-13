@@ -74,6 +74,35 @@ test("openOptionsPageSafely falls back to the options URL when native open fails
   }
 })
 
+test("openOptionsPageSafely opens targeted sections with a hash URL", async () => {
+  let nativeCalls = 0
+  let fallbackUrl = ""
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      getURL(path: string) {
+        return `chrome-extension://fontara/${path}`
+      },
+      async openOptionsPage() {
+        nativeCalls += 1
+      }
+    },
+    tabs: {
+      async create(options: chrome.tabs.CreateProperties) {
+        fallbackUrl = options.url || ""
+      }
+    }
+  })
+
+  await openOptionsPageSafely({ section: "sites" })
+
+  assert.equal(nativeCalls, 0)
+  assert.equal(
+    fallbackUrl,
+    "chrome-extension://fontara/ui/options/index.html#sites"
+  )
+})
+
 test("openOptionsPageSafely does not leak fallback failures", async () => {
   Reflect.set(globalThis, "chrome", {
     runtime: {

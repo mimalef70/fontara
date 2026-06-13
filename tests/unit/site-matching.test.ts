@@ -11,14 +11,20 @@ import {
 import {
   addSitePatternToList,
   createSiteListPatternAddUpdate,
+  createSitePathPatternFromUrl,
+  createSitePatternFromUrl,
   createWebsiteSiteListToggleUpdate,
   getDisplaySitePattern,
+  getMatchingSiteListPattern,
+  getSitePatternScope,
   getWebsiteSitePatterns,
+  inferSitePatternScopeFromInput,
   isSiteListUrlEnabled,
   isURLMatched,
   normalizeEnabledSiteList,
   normalizeSiteList,
-  normalizeSitePattern
+  normalizeSitePattern,
+  normalizeSitePatternForScope
 } from "../../src/config/site-list"
 import {
   normalizeFontaraSiteManagerSettings,
@@ -28,7 +34,11 @@ import {
   getSiteProfileForUrl,
   normalizeSiteProfiles
 } from "../../src/config/site-profiles"
-import { POPULAR_WEBSITES } from "../../src/config/sites"
+import {
+  DEFAULT_PINNED_WEBSITE_URLS,
+  normalizePinnedWebsiteUrls,
+  POPULAR_WEBSITES
+} from "../../src/config/sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { WebsiteItem } from "../../src/definitions"
 import {
@@ -151,6 +161,39 @@ test("site configuration stays internally consistent", () => {
       `${rtlSite.id} icon is missing`
     )
   }
+})
+
+test("default popup pins stay limited to known popular websites", () => {
+  const popularWebsiteUrls = new Set(POPULAR_WEBSITES.map((site) => site.url))
+
+  assert.ok(DEFAULT_PINNED_WEBSITE_URLS.length > 0)
+  assert.ok(DEFAULT_PINNED_WEBSITE_URLS.length < POPULAR_WEBSITES.length)
+  assert.deepEqual(
+    new Set(DEFAULT_PINNED_WEBSITE_URLS).size,
+    DEFAULT_PINNED_WEBSITE_URLS.length
+  )
+
+  for (const url of DEFAULT_PINNED_WEBSITE_URLS) {
+    assert.equal(popularWebsiteUrls.has(url), true, `${url} should be known`)
+  }
+
+  assert.deepEqual(
+    normalizePinnedWebsiteUrls(
+      [
+        "https://chatgpt.com",
+        "https://unknown.example",
+        " https://chatgpt.com ",
+        "https://github.com",
+        42
+      ],
+      []
+    ),
+    ["https://chatgpt.com", "https://github.com"]
+  )
+  assert.deepEqual(normalizePinnedWebsiteUrls(undefined), [
+    ...DEFAULT_PINNED_WEBSITE_URLS
+  ])
+  assert.deepEqual(normalizePinnedWebsiteUrls([], []), [])
 })
 
 test("popular website icons point to existing assets", () => {
@@ -315,6 +358,105 @@ test("custom URL regex escapes host metacharacters", () => {
   )
 })
 
+test("site pattern scopes separate domain, path, and regex matching", () => {
+  const url = "https://foo.mimalef70.github.io/fontara/"
+
+  assert.equal(createSitePatternFromUrl(url), "foo.mimalef70.github.io")
+  assert.equal(
+    createSitePathPatternFromUrl(url),
+    "foo.mimalef70.github.io/fontara"
+  )
+  assert.equal(
+    normalizeSitePatternForScope(url, "domain"),
+    "foo.mimalef70.github.io"
+  )
+  assert.equal(
+    normalizeSitePatternForScope(url, "path"),
+    "foo.mimalef70.github.io/fontara"
+  )
+  assert.equal(
+    normalizeSitePatternForScope("^https?://foo\\.example\\.com/path", "regex"),
+    "/^https?://foo\\.example\\.com/path/"
+  )
+  assert.equal(getSitePatternScope("foo.mimalef70.github.io"), "domain")
+  assert.equal(getSitePatternScope("foo.mimalef70.github.io/fontara"), "path")
+  assert.equal(getSitePatternScope("*.mimalef70.github.io"), "custom")
+  assert.equal(getSitePatternScope("*.mimalef70.github.io/fontara"), "custom")
+  assert.equal(getSitePatternScope("*.linkedin.com"), "custom")
+  assert.equal(
+    getSitePatternScope("/^https?://foo\\.example\\.com/path/"),
+    "regex"
+  )
+  assert.equal(inferSitePatternScopeFromInput("", "path"), "path")
+  assert.equal(inferSitePatternScopeFromInput("google.com"), "domain")
+  assert.equal(inferSitePatternScopeFromInput("https://google.com/"), "domain")
+  assert.equal(inferSitePatternScopeFromInput("google.com/"), "domain")
+  assert.equal(inferSitePatternScopeFromInput("google.com/?q=1"), "domain")
+  assert.equal(normalizeSitePatternForScope("اشسبشسیشسیشسیشسی", "domain"), null)
+  assert.equal(
+    normalizeSitePatternForScope("مثال.com", "domain"),
+    "xn--mgbh0fb.com"
+  )
+  assert.equal(
+    normalizeSitePatternForScope("https://مثال.com/maps", "path"),
+    "xn--mgbh0fb.com/maps"
+  )
+  assert.equal(inferSitePatternScopeFromInput("google.com/maps"), "path")
+  assert.equal(
+    inferSitePatternScopeFromInput("https://google.com/maps?q=1"),
+    "path"
+  )
+  assert.equal(inferSitePatternScopeFromInput("localhost:3000/app"), "path")
+  assert.equal(inferSitePatternScopeFromInput("127.0.0.1:3000"), "domain")
+  assert.equal(inferSitePatternScopeFromInput("*.google.com/maps"), "custom")
+  assert.equal(inferSitePatternScopeFromInput("google.com/*"), "custom")
+  assert.equal(
+    inferSitePatternScopeFromInput("^https?://google\\.com/maps"),
+    "regex"
+  )
+  assert.equal(
+    inferSitePatternScopeFromInput("/^https?://google\\.com/maps/"),
+    "regex"
+  )
+  assert.equal(
+    getMatchingSiteListPattern(url, [
+      "foo.mimalef70.github.io",
+      "foo.mimalef70.github.io/fontara"
+    ]),
+    "foo.mimalef70.github.io/fontara"
+  )
+  assert.equal(
+    isURLMatched(
+      "https://foo.mimalef70.github.io/other/",
+      "foo.mimalef70.github.io"
+    ),
+    true
+  )
+  assert.equal(
+    isURLMatched(
+      "https://foo.mimalef70.github.io/other/",
+      "foo.mimalef70.github.io/fontara"
+    ),
+    false
+  )
+  assert.equal(
+    isSiteListUrlEnabled("https://foo.mimalef70.github.io/fontara/", {
+      disabledFor: ["foo.mimalef70.github.io"],
+      enabledByDefault: true,
+      enabledFor: ["foo.mimalef70.github.io/fontara"]
+    }),
+    true
+  )
+  assert.equal(
+    isSiteListUrlEnabled("https://foo.mimalef70.github.io/other/", {
+      disabledFor: ["foo.mimalef70.github.io"],
+      enabledByDefault: true,
+      enabledFor: ["foo.mimalef70.github.io/fontara"]
+    }),
+    false
+  )
+})
+
 test("isUrlActive falls back to default websites when local storage is empty", async () => {
   mockLocalStorage({})
 
@@ -400,6 +542,14 @@ test("site list helpers keep append order and reject invalid regex patterns", ()
   )
   assert.equal(normalizeSitePattern("%2a.dropbox.com"), "*.dropbox.com")
   assert.equal(normalizeSitePattern("%2A.linkedin.com"), "*.linkedin.com")
+  assert.equal(normalizeSitePattern("%2a/github.com"), null)
+  assert.equal(normalizeSitePattern("*/github.com"), null)
+  assert.equal(normalizeSitePattern("اشسبشسیشسیشسیشسی"), null)
+  assert.equal(normalizeSitePattern("xn--mgbc6abaaaccbbb58qcacc"), null)
+  assert.equal(normalizeSitePattern("github"), null)
+  assert.equal(normalizeSitePattern("localhost:3000"), "localhost:3000")
+  assert.equal(normalizeSitePattern("127.0.0.1:3000"), "127.0.0.1:3000")
+  assert.equal(normalizeSitePattern("مثال.com"), "xn--mgbh0fb.com")
   assert.equal(
     normalizeSitePattern("https://%2A.wikipedia.org"),
     "*.wikipedia.org"
@@ -413,6 +563,9 @@ test("site list helpers keep append order and reject invalid regex patterns", ()
     getDisplaySitePattern(" https://%2A.linkedin.com/ "),
     "*.linkedin.com"
   )
+  assert.deepEqual(normalizeSiteList(["%2a/github.com", "github.com"]), [
+    "github.com"
+  ])
   assert.deepEqual(
     normalizeSiteList(["www.dropbox.com", "dropbox.com", "*.dropbox.com"]),
     ["dropbox.com", "*.dropbox.com"]

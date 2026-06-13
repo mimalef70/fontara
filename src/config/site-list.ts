@@ -6,6 +6,8 @@ export type SiteListSettings = {
   enabledFor: string[]
 }
 
+export type SitePatternScope = "custom" | "domain" | "path" | "regex"
+
 type PreparedURL = {
   hostParts: string[]
   pathParts: string[]
@@ -52,6 +54,66 @@ function setPreparedURLCacheEntry(
 
 function isRegExpPattern(pattern: string): boolean {
   return pattern.startsWith("/") && pattern.endsWith("/") && pattern.length > 2
+}
+
+function stripURLPort(host: string): string {
+  if (host.startsWith("[")) {
+    const ipv6EndIndex = host.indexOf("]")
+    return ipv6EndIndex > 0 ? host.slice(0, ipv6EndIndex + 1) : host
+  }
+
+  const portIndex = host.lastIndexOf(":")
+  return portIndex > 0 ? host.slice(0, portIndex) : host
+}
+
+function getRawURLLikeHost(value: string): string {
+  const withoutProtocol = value.replace(PROTOCOL_PATTERN, "")
+  const withoutUserInfo = withoutProtocol.includes("@")
+    ? withoutProtocol.slice(withoutProtocol.lastIndexOf("@") + 1)
+    : withoutProtocol
+  const slashIndex = withoutUserInfo.indexOf("/")
+  const host =
+    slashIndex < 0 ? withoutUserInfo : withoutUserInfo.slice(0, slashIndex)
+
+  return stripURLPort(host).toLowerCase()
+}
+
+function isIPAddressLikeHost(hostname: string): boolean {
+  return (
+    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) ||
+    /^\[[0-9a-f:]+\]$/i.test(hostname)
+  )
+}
+
+function isUsableSiteHostname(hostname: string, rawHostname: string): boolean {
+  if (!hostname || hostname === "*" || hostname.includes("*")) return false
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    isIPAddressLikeHost(hostname)
+  ) {
+    return true
+  }
+
+  if (!hostname.includes(".")) return false
+  if (rawHostname.includes("..") || rawHostname.startsWith(".")) return false
+
+  return true
+}
+
+function isUsableWildcardSiteHost(host: string): boolean {
+  const hostname = stripURLPort(host).toLowerCase()
+  if (!hostname || hostname === "*") return false
+  if (!hostname.includes("*")) return isUsableSiteHostname(hostname, hostname)
+
+  const hostParts = hostname.split(".")
+  if (hostParts.some((part) => part === "*")) {
+    const stableHost = hostParts.filter((part) => part !== "*").join(".")
+    return isUsableSiteHostname(stableHost, stableHost)
+  }
+
+  const suffix = hostname.slice(hostname.indexOf("*") + 1).replace(/^\./, "")
+  return isUsableSiteHostname(suffix, suffix)
 }
 
 function createRegExp(pattern: string): RegExp | null {
@@ -242,9 +304,32 @@ export function getDisplaySitePattern(pattern: string): string {
     : normalizedPattern
 }
 
-export function createSitePatternFromUrl(url: string): string | null {
+export function createSitePatternFromUrl(
+  url: string,
+  scope: Extract<SitePatternScope, "domain" | "path"> = "domain"
+): string | null {
+  if (scope === "path") {
+    return createSitePathPatternFromUrl(url)
+  }
+
   const pattern = getURLHostOrProtocol(url)
   return normalizeSitePattern(pattern)
+}
+
+export function createSitePathPatternFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    if (!parsed.host) return createSitePatternFromUrl(url)
+
+    const path =
+      parsed.pathname && parsed.pathname !== "/"
+        ? parsed.pathname.replace(/\/+$/, "")
+        : ""
+
+    return normalizeSitePattern(`${parsed.host}${path}`)
+  } catch {
+    return createSitePatternFromUrl(url)
+  }
 }
 
 export function getWebsiteSitePattern(website: WebsiteItem): string | null {
@@ -302,10 +387,7 @@ export function normalizeSitePattern(value: unknown): string | null {
 
   const decodedWildcardPattern = trimmed.replace(/%2a/gi, "*")
   if (decodedWildcardPattern.includes("*")) {
-    const normalizedWildcardPattern = normalizeWildcardSitePattern(
-      decodedWildcardPattern
-    )
-    if (normalizedWildcardPattern) return normalizedWildcardPattern
+    return normalizeWildcardSitePattern(decodedWildcardPattern)
   }
 
   try {
@@ -314,6 +396,11 @@ export function normalizeSitePattern(value: unknown): string | null {
         ? decodedWildcardPattern
         : `https://${decodedWildcardPattern}`
     )
+    const rawHostname = getRawURLLikeHost(decodedWildcardPattern)
+    if (parsed.host && !isUsableSiteHostname(parsed.hostname, rawHostname)) {
+      return null
+    }
+
     const host =
       parsed.host ||
       (parsed.protocol === "file:" ? parsed.pathname : parsed.protocol)
@@ -324,7 +411,113 @@ export function normalizeSitePattern(value: unknown): string | null {
     const normalized = `${host}${pathname}`.toLowerCase()
     return normalized || null
   } catch {
-    return decodedWildcardPattern.toLowerCase()
+    return null
+  }
+}
+
+function normalizeRegexSitePattern(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  return normalizeSitePattern(
+    isRegExpPattern(trimmed) ? trimmed : `/${trimmed}/`
+  )
+}
+
+function looksLikeRegexSitePattern(value: string): boolean {
+  return (
+    value.startsWith("/") ||
+    value.startsWith("^") ||
+    value.endsWith("$") ||
+    value.includes("\\") ||
+    /\(\?|\[[^\]]+\]|\{(?:\d+,?\d*|,\d+)\}|\|/.test(value)
+  )
+}
+
+function hasMeaningfulURLPath(value: string): boolean {
+  try {
+    const parsed = new URL(
+      PROTOCOL_PATTERN.test(value) ? value : `https://${value}`
+    )
+    return Boolean(parsed.host && parsed.pathname.replace(/\/+$/, ""))
+  } catch {
+    const withoutProtocol = value.replace(PROTOCOL_PATTERN, "")
+    const slashIndex = withoutProtocol.indexOf("/")
+    return (
+      slashIndex > 0 &&
+      withoutProtocol.slice(slashIndex).replace(/\/+$/, "") !== ""
+    )
+  }
+}
+
+export function inferSitePatternScopeFromInput(
+  value: unknown,
+  fallback: SitePatternScope = "domain"
+): SitePatternScope {
+  if (typeof value !== "string") return fallback
+
+  const trimmed = value.trim()
+  if (!trimmed) return fallback
+
+  const decodedWildcardPattern = trimmed.replace(/%2a/gi, "*")
+  if (isRegExpPattern(trimmed) || looksLikeRegexSitePattern(trimmed)) {
+    return "regex"
+  }
+  if (decodedWildcardPattern.includes("*")) {
+    return "custom"
+  }
+  if (/\s/.test(trimmed)) {
+    return fallback
+  }
+  if (hasMeaningfulURLPath(decodedWildcardPattern)) {
+    return "path"
+  }
+
+  return "domain"
+}
+
+function createSitePatternFromURLLikeInput(
+  value: string,
+  scope: Extract<SitePatternScope, "domain" | "path">
+): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (trimmed.includes("*") || isRegExpPattern(trimmed)) {
+    return normalizeSitePattern(trimmed)
+  }
+
+  try {
+    const parsed = new URL(
+      PROTOCOL_PATTERN.test(trimmed) ? trimmed : `https://${trimmed}`
+    )
+    if (!parsed.host) return normalizeSitePattern(trimmed)
+
+    const path =
+      scope === "path" && parsed.pathname && parsed.pathname !== "/"
+        ? parsed.pathname.replace(/\/+$/, "")
+        : ""
+
+    return normalizeSitePattern(`${parsed.host}${path}`)
+  } catch {
+    return normalizeSitePattern(trimmed)
+  }
+}
+
+export function normalizeSitePatternForScope(
+  value: unknown,
+  scope: SitePatternScope
+): string | null {
+  if (typeof value !== "string") return null
+
+  switch (scope) {
+    case "custom":
+      return normalizeSitePattern(value)
+    case "domain":
+      return createSitePatternFromURLLikeInput(value, "domain")
+    case "path":
+      return createSitePatternFromURLLikeInput(value, "path")
+    case "regex":
+      return normalizeRegexSitePattern(value)
   }
 }
 
@@ -335,6 +528,7 @@ function normalizeWildcardSitePattern(pattern: string): string | null {
     slashIndex < 0 ? withoutProtocol : withoutProtocol.slice(0, slashIndex)
 
   if (!host || host === "*") return null
+  if (!isUsableWildcardSiteHost(host)) return null
 
   const path = slashIndex < 0 ? "" : withoutProtocol.slice(slashIndex)
   const normalizedPath = path && path !== "/" ? path.replace(/\/+$/, "") : ""
@@ -395,6 +589,51 @@ export function isURLMatched(url: string, pattern: string): boolean {
 
 export function isURLInSiteList(url: string, list: string[]): boolean {
   return list.some((pattern) => isURLMatched(url, pattern))
+}
+
+export function getSitePatternScope(pattern: string): SitePatternScope {
+  const wildcardPattern = pattern.trim().replace(/%2a/gi, "*")
+  if (wildcardPattern.includes("*") && !isRegExpPattern(wildcardPattern)) {
+    return "custom"
+  }
+
+  const normalizedPattern = normalizeSitePattern(pattern)
+  if (!normalizedPattern || normalizedPattern === "*") return "custom"
+  if (isRegExpPattern(normalizedPattern)) return "regex"
+  if (normalizedPattern.includes("*")) return "custom"
+  if (normalizedPattern.includes("/")) return "path"
+  return "domain"
+}
+
+function getSitePatternMatchScore(pattern: string): number {
+  const normalizedPattern = normalizeSitePattern(pattern)
+  if (!normalizedPattern) return 0
+
+  const scopeScore = {
+    custom: 1,
+    domain: 2,
+    path: 3,
+    regex: 4
+  } satisfies Record<SitePatternScope, number>
+
+  return (
+    scopeScore[getSitePatternScope(normalizedPattern)] * 1000 + pattern.length
+  )
+}
+
+export function getMatchingSiteListPattern(
+  url: string,
+  list: string[]
+): string | null {
+  return (
+    normalizeSiteList(list)
+      .filter((pattern) => isURLMatched(url, pattern))
+      .sort(
+        (firstPattern, secondPattern) =>
+          getSitePatternMatchScore(secondPattern) -
+          getSitePatternMatchScore(firstPattern)
+      )[0] ?? null
+  )
 }
 
 export function isSiteListUrlEnabled(
@@ -498,6 +737,19 @@ export function createSiteListToggleUpdate(
   const pattern = createSitePatternFromUrl(url)
   return createSiteListToggleUpdateForPatterns(
     pattern ? [pattern] : [],
+    settings,
+    checked
+  )
+}
+
+export function createSiteListPatternToggleUpdate(
+  pattern: string,
+  settings: SiteListSettings,
+  checked: boolean
+): Pick<SiteListSettings, "disabledFor" | "enabledFor"> {
+  const normalizedPattern = normalizeSitePattern(pattern)
+  return createSiteListToggleUpdateForPatterns(
+    normalizedPattern ? [normalizedPattern] : [],
     settings,
     checked
   )

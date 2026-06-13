@@ -264,3 +264,44 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     siteName: "Dropbox"
   }
 ]
+
+export const DEFAULT_PINNED_WEBSITE_URLS = [
+  "https://chatgpt.com",
+  "https://claude.ai",
+  "https://gemini.google.com",
+  "https://copilot.microsoft.com",
+  "https://www.google.com",
+  "https://mail.google.com",
+  "https://www.youtube.com",
+  "https://github.com",
+  "https://x.com",
+  "https://www.linkedin.com"
+] as const
+
+const POPULAR_WEBSITE_URLS = new Set(
+  POPULAR_WEBSITES.map((website) => website.url)
+)
+
+export function normalizePinnedWebsiteUrls(
+  value: unknown,
+  fallback: readonly string[] = DEFAULT_PINNED_WEBSITE_URLS
+): string[] {
+  if (!Array.isArray(value)) {
+    return [...fallback]
+  }
+
+  const seenUrls = new Set<string>()
+  const pinnedUrls: string[] = []
+
+  for (const item of value) {
+    if (typeof item !== "string") continue
+
+    const url = item.trim()
+    if (!POPULAR_WEBSITE_URLS.has(url) || seenUrls.has(url)) continue
+
+    seenUrls.add(url)
+    pinnedUrls.push(url)
+  }
+
+  return pinnedUrls
+}

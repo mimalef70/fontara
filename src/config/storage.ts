@@ -3,7 +3,7 @@ import { UI_LANGUAGE_AUTO } from "./i18n"
 import { DEFAULT_RTL_SITE_SETTINGS } from "./rtl-sites"
 import { getActiveWebsiteSitePatterns } from "./site-list"
 import { EMPTY_SITE_PROFILES } from "./site-profiles"
-import { POPULAR_WEBSITES } from "./sites"
+import { DEFAULT_PINNED_WEBSITE_URLS, POPULAR_WEBSITES } from "./sites"
 import { DEFAULT_TEXT_STROKE } from "./text-stroke"
 
 export { STORAGE_KEYS } from "./storage-keys"
@@ -15,6 +15,7 @@ export const DEFAULT_VALUES = {
     ...website,
     isActive: true
   })),
+  PINNED_WEBSITE_URLS: [...DEFAULT_PINNED_WEBSITE_URLS],
   ENABLED_BY_DEFAULT: false,
   ENABLED_FOR: getActiveWebsiteSitePatterns(
     POPULAR_WEBSITES.map<WebsiteItem>((website) => ({

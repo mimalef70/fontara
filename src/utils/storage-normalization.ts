@@ -12,6 +12,7 @@ import {
   hasSiteProfileOverrides,
   normalizeSiteProfiles
 } from "../config/site-profiles"
+import { normalizePinnedWebsiteUrls } from "../config/sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import {
   DEFAULT_ACTIVE_TEXT_STROKE,
@@ -327,6 +328,10 @@ export async function normalizeStorageValues(
       ? selectedFont
       : DEFAULT_VALUES.SELECTED_FONT,
     [STORAGE_KEYS.WEBSITE_LIST]: websiteList,
+    [STORAGE_KEYS.PINNED_WEBSITE_URLS]:
+      values[STORAGE_KEYS.PINNED_WEBSITE_URLS] === undefined
+        ? DEFAULT_VALUES.PINNED_WEBSITE_URLS
+        : normalizePinnedWebsiteUrls(values[STORAGE_KEYS.PINNED_WEBSITE_URLS]),
     [STORAGE_KEYS.ENABLED_BY_DEFAULT]: normalizeEnabledByDefault(
       values[STORAGE_KEYS.ENABLED_BY_DEFAULT]
     ),

@@ -54,6 +54,10 @@ test("settings sync excludes custom font files and custom font references", asyn
   ])
   assert.equal(syncedSettings[STORAGE_KEYS.CONTEXT_MENUS_ENABLED], true)
   assert.equal(syncedSettings[STORAGE_KEYS.SYNC_SETTINGS], true)
+  assert.deepEqual(
+    syncedSettings[STORAGE_KEYS.PINNED_WEBSITE_URLS],
+    DEFAULT_VALUES.PINNED_WEBSITE_URLS
+  )
 })
 
 test("settings sync merges synced values with local-only custom fonts", async () => {
@@ -77,6 +81,11 @@ test("settings sync merges synced values with local-only custom fonts", async ()
     {
       ...DEFAULT_VALUES,
       [STORAGE_KEYS.SELECTED_FONT]: "Sahel-Fontara",
+      [STORAGE_KEYS.PINNED_WEBSITE_URLS]: [
+        "https://github.com",
+        "https://unknown.example",
+        "https://github.com"
+      ],
       [STORAGE_KEYS.RTL_ENABLED]: false,
       [STORAGE_KEYS.SITE_PROFILES]: [
         {
@@ -96,6 +105,9 @@ test("settings sync merges synced values with local-only custom fonts", async ()
     localCustomFont
   ])
   assert.equal(mergedSettings[STORAGE_KEYS.RTL_ENABLED], false)
+  assert.deepEqual(mergedSettings[STORAGE_KEYS.PINNED_WEBSITE_URLS], [
+    "https://github.com"
+  ])
   assert.deepEqual(mergedSettings[STORAGE_KEYS.SITE_PROFILES], [
     {
       pattern: "example.com",

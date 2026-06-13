@@ -5,8 +5,11 @@ import {
   normalizeEnabledSiteList,
   normalizeSiteList
 } from "../../config/site-list"
-import { POPULAR_WEBSITES } from "../../config/sites"
-import { STORAGE_KEYS } from "../../config/storage"
+import {
+  normalizePinnedWebsiteUrls,
+  POPULAR_WEBSITES
+} from "../../config/sites"
+import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
@@ -16,7 +19,8 @@ import {
   EMPTY_WEBSITE_LIST,
   getDisabledForInitialValue,
   getEnabledByDefaultInitialValue,
-  getEnabledForInitialValue
+  getEnabledForInitialValue,
+  getPinnedWebsiteUrlsInitialValue
 } from "../storage-defaults"
 import {
   Tooltip,
@@ -42,9 +46,23 @@ function PopularUrl() {
     STORAGE_KEYS.DISABLED_FOR,
     getDisabledForInitialValue
   )
+  const [pinnedWebsiteUrls] = useStorageValue<string[]>(
+    STORAGE_KEYS.PINNED_WEBSITE_URLS,
+    getPinnedWebsiteUrlsInitialValue
+  )
+  const pinnedWebsiteUrlSet = new Set(
+    normalizePinnedWebsiteUrls(pinnedWebsiteUrls, [])
+  )
+  const pinnedWebsites = POPULAR_WEBSITES.filter((website) =>
+    pinnedWebsiteUrlSet.has(website.url)
+  )
+
+  if (pinnedWebsites.length === 0) return null
 
   const toggleActive = async (website: WebsiteItem) => {
     let updatedUrls: WebsiteItem[]
+    const currentWebsiteList =
+      websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
     const siteListSettings = {
       disabledFor,
       enabledByDefault,
@@ -61,16 +79,14 @@ function PopularUrl() {
       !active
     )
 
-    const existingWebsiteIndex = websiteList.findIndex(
+    const existingWebsiteIndex = currentWebsiteList.findIndex(
       (item) => item.url === website.url
     )
 
     if (existingWebsiteIndex === -1) {
-      // Website doesn't exist, add it with isActive: true
-      updatedUrls = [...websiteList, { ...website, isActive: !active }]
+      updatedUrls = [...currentWebsiteList, { ...website, isActive: !active }]
     } else {
-      // Website exists, toggle isActive property
-      updatedUrls = websiteList.map((item, index) =>
+      updatedUrls = currentWebsiteList.map((item, index) =>
         index === existingWebsiteIndex ? { ...item, isActive: !active } : item
       )
     }
@@ -90,7 +106,7 @@ function PopularUrl() {
 
   return (
     <div className="grid grid-cols-5 gap-2 pb-3 justify-items-center items-center w-full">
-      {POPULAR_WEBSITES.map((website) => {
+      {pinnedWebsites.map((website) => {
         const active = isSiteListUrlEnabled(website.url, {
           disabledFor: normalizeSiteList(disabledFor),
           enabledByDefault: normalizeEnabledByDefault(enabledByDefault),

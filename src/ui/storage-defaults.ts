@@ -13,6 +13,7 @@ import {
   EMPTY_SITE_PROFILES,
   normalizeSiteProfiles
 } from "../config/site-profiles"
+import { normalizePinnedWebsiteUrls } from "../config/sites"
 import { DEFAULT_VALUES } from "../config/storage"
 import { normalizeTextStrokeValue } from "../config/text-stroke"
 import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
@@ -77,6 +78,12 @@ export function getDisabledForInitialValue(value: unknown): string[] {
   return value === undefined
     ? DEFAULT_VALUES.DISABLED_FOR
     : normalizeSiteList(value)
+}
+
+export function getPinnedWebsiteUrlsInitialValue(value: unknown): string[] {
+  return value === undefined
+    ? DEFAULT_VALUES.PINNED_WEBSITE_URLS
+    : normalizePinnedWebsiteUrls(value)
 }
 
 export function getSiteProfilesInitialValue(value: unknown): SiteProfile[] {

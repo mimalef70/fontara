@@ -1,12 +1,15 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import type React from "react"
 
 import { STORAGE_KEYS } from "../../config/storage"
 import {
+  DEFAULT_TEXT_STROKE,
   getNextTextStrokeValue,
   TEXT_STROKE_MAX,
   TEXT_STROKE_MIN,
   TEXT_STROKE_STEP
 } from "../../config/text-stroke"
+import { cn } from "../../utils/cn"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import { getTextStrokeInitialValue } from "../storage-defaults"
@@ -22,6 +25,13 @@ const TextStrokeToggle = () => {
     minimumFractionDigits: 1,
     useGrouping: false
   })
+  const normalizedTrackValue =
+    (textStroke - TEXT_STROKE_MIN) / (TEXT_STROKE_MAX - TEXT_STROKE_MIN)
+  const trackFillPercentage = `${normalizedTrackValue * 100}%`
+  const valueText =
+    textStroke === DEFAULT_TEXT_STROKE
+      ? t("popup.textStroke.off")
+      : `+${formattedValue}`
 
   const handleChange = async (nextValue: number) => {
     try {
@@ -39,34 +49,62 @@ const TextStrokeToggle = () => {
   const increaseTextStroke = () =>
     handleChange(getNextTextStrokeValue(textStroke, TEXT_STROKE_STEP))
 
+  const handleRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    void handleChange(Number(event.currentTarget.value))
+  }
+
   return (
-    <div className="mx-auto mt-2 w-full select-none" dir="ltr">
+    <div
+      className={cn(
+        "mx-auto mt-2 w-full select-none rounded-md border p-2 transition",
+        textStroke > 0
+          ? "border-[#bfdbfe] bg-[#f8fbff]"
+          : "border-gray-200 bg-white"
+      )}
+      dir="ltr">
       <div className="grid grid-cols-[2.35rem_minmax(0,1fr)_2.35rem] gap-2">
         <button
           type="button"
-          className="flex h-8 items-center justify-center rounded-[2px] border border-[#2b6b7a] bg-[#12252d] text-white transition hover:bg-[#18313a] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-8 items-center justify-center rounded-[3px] border border-[#dbeafe] bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(35,116,255,0.08)] transition hover:border-[#bfdbfe] hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none"
           disabled={textStroke <= TEXT_STROKE_MIN}
           aria-label={t("popup.textStroke.decrease")}
           onClick={() => void decreaseTextStroke()}>
-          <ChevronLeft className="size-7" strokeWidth={2.5} />
+          <ChevronLeft className="size-5" strokeWidth={2.5} />
         </button>
 
-        <div className="flex h-8 min-w-0 items-center justify-center rounded-[2px] border border-[#2b6b7a] bg-[#13242b] px-3 text-sm font-bold text-white">
-          <span className="truncate">{t("popup.textStroke.title")}</span>
+        <div className="relative flex h-8 min-w-0 items-center justify-center overflow-hidden rounded-[3px] border border-[#dbe3ef] bg-white text-sm font-bold text-[#111827] shadow-[0_3px_8px_rgba(15,23,42,0.04)] transition hover:border-[#bfdbfe] focus-within:border-[#2474FF] focus-within:ring-2 focus-within:ring-[#2474FF]/15">
+          <span
+            className="absolute inset-y-0 left-0 bg-[#dbeafe] transition-[width] duration-150"
+            style={{ width: trackFillPercentage }}
+          />
+          <span className="absolute inset-y-0 left-0 w-px bg-[#2374ff]/60" />
+          <span className="relative z-[1] truncate">
+            {t("popup.textStroke.title")}
+          </span>
+          <input
+            type="range"
+            min={TEXT_STROKE_MIN}
+            max={TEXT_STROKE_MAX}
+            step={TEXT_STROKE_STEP}
+            value={textStroke}
+            aria-label={t("popup.textStroke.title")}
+            className="absolute inset-0 z-[2] h-full w-full cursor-ew-resize opacity-0"
+            onChange={handleRangeChange}
+          />
         </div>
 
         <button
           type="button"
-          className="flex h-8 items-center justify-center rounded-[2px] border border-[#2b6b7a] bg-[#12252d] text-white transition hover:bg-[#18313a] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-8 items-center justify-center rounded-[3px] border border-[#dbeafe] bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(35,116,255,0.08)] transition hover:border-[#bfdbfe] hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none"
           disabled={textStroke >= TEXT_STROKE_MAX}
           aria-label={t("popup.textStroke.increase")}
           onClick={() => void increaseTextStroke()}>
-          <ChevronRight className="size-7" strokeWidth={2.5} />
+          <ChevronRight className="size-5" strokeWidth={2.5} />
         </button>
       </div>
 
-      <bdi className="mt-1 block text-center text-xs font-bold text-[#2b93ac]">
-        +{formattedValue}
+      <bdi className="mt-1 block text-center text-xs font-bold text-[#2374ff]">
+        {valueText}
       </bdi>
     </div>
   )

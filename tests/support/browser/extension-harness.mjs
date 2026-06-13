@@ -519,6 +519,29 @@ function getHeadlessMode() {
   )
 }
 
+function getChromeLaunchArgs() {
+  const args = [
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-networking",
+    "--disable-component-update",
+    "--disable-default-apps",
+    "--disable-sync",
+    "--disable-translate"
+  ]
+
+  if (process.env.CI === "true") {
+    args.push(
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-setuid-sandbox",
+      "--no-sandbox"
+    )
+  }
+
+  return args
+}
+
 async function createPage(browser, url, options = {}) {
   const page = await browser.newPage()
   if (options.viewport) {
@@ -572,15 +595,7 @@ async function launchChromeWithExtension(extensionDir) {
     path.join(os.tmpdir(), "fontara-browser-chrome-")
   )
   const browser = await puppeteer.launch({
-    args: [
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-background-networking",
-      "--disable-component-update",
-      "--disable-default-apps",
-      "--disable-sync",
-      "--disable-translate"
-    ],
+    args: getChromeLaunchArgs(),
     browser: "chrome",
     defaultViewport: BROWSER_VIEWPORTS.desktop,
     enableExtensions: [extensionDir],

@@ -64,6 +64,10 @@ jobs:
           chrome-version: ${{ matrix.version }}
           install-dependencies: true
 
+      - name: Install Xvfb
+        if: matrix.browser == 'chrome'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Set up Firefox
         if: matrix.browser == 'firefox'
         id: setup-firefox
@@ -75,7 +79,8 @@ jobs:
         if: matrix.browser == 'chrome'
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
-        run: pnpm test:browser:chrome
+          FONTARA_BROWSER_HEADFUL: "1"
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" pnpm test:browser:chrome
 
       - name: Run Firefox browser tests
         if: matrix.browser == 'firefox'

@@ -485,7 +485,7 @@ test("options page exposes extension hotkey controls", () => {
   )
 })
 
-test("popup add custom font action is an icon button beside the selector", () => {
+test("popup manage fonts action opens the fonts settings section", () => {
   const popupSource = fs.readFileSync(
     path.resolve("src/ui/popup/index.tsx"),
     "utf8"
@@ -498,13 +498,12 @@ test("popup add custom font action is an icon button beside the selector", () =>
   assert.match(popupSource, /<PerSiteSettings \/>/)
   assert.match(popupSource, /<TextStrokeToggle \/>/)
   assert.doesNotMatch(popupSource, /direction: "rtl"/)
-  assert.match(popupSource, /aria-label=\{t\("popup\.addCustomFont"\)\}/)
+  assert.match(popupSource, /aria-label=\{t\("popup\.manageFonts"\)\}/)
+  assert.match(popupSource, /openOptionsPageSafely\(\{\s*section: "fonts"/)
   assert.match(popupSource, /className="[^"]*size-\[3rem\]/)
-  assert.match(popupSource, /<PlusCircle className="size-6" \/>/)
-  assert.doesNotMatch(
-    popupSource,
-    /<button[\s\S]*<PlusCircle \/>[\s\S]*popup\.addCustomFont[\s\S]*<\/button>/
-  )
+  assert.match(popupSource, /<FolderFileFont className="size-6" \/>/)
+  assert.doesNotMatch(popupSource, /<PlusCircle/)
+  assert.doesNotMatch(popupSource, /popup\.addCustomFont/)
 })
 
 test("popup header uses a quieter version badge and green toggle", () => {
@@ -628,12 +627,18 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.doesNotMatch(popularSectionSource, /POPULAR_WEBSITES\.map/)
   assert.match(perSiteSettingsSource, /STORAGE_KEYS\.SITE_PROFILES/)
   assert.match(perSiteSettingsSource, /getMatchingSiteListPattern/)
+  assert.match(perSiteSettingsSource, /getSiteProfileForUrl/)
   assert.match(perSiteSettingsSource, /getSitePatternScope/)
   assert.match(perSiteSettingsSource, /upsertSiteProfile/)
   assert.match(perSiteSettingsSource, /removeSiteProfile/)
-  assert.match(perSiteSettingsSource, /createSiteListPatternToggleUpdate/)
-  assert.match(perSiteSettingsSource, /disabled=\{!canEditProfile\}/)
-  assert.match(perSiteSettingsSource, /popup\.perSite\.chooseScopeFirst/)
+  assert.match(perSiteSettingsSource, /fontara-per-site-settings-open/)
+  assert.match(perSiteSettingsSource, /fontara-per-site-font-select/)
+  assert.doesNotMatch(
+    perSiteSettingsSource,
+    /createSiteListPatternToggleUpdate/
+  )
+  assert.doesNotMatch(perSiteSettingsSource, /disabled=\{!canEditProfile\}/)
+  assert.doesNotMatch(perSiteSettingsSource, /popup\.perSite\.chooseScopeFirst/)
   assert.doesNotMatch(perSiteSettingsSource, /createSitePathPatternFromUrl/)
   assert.doesNotMatch(perSiteSettingsSource, /scopeChoice/)
   assert.doesNotMatch(perSiteSettingsSource, /handleScopeChange/)

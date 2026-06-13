@@ -4,7 +4,6 @@ import * as React from "react"
 import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
 import type { SupportedUILanguage } from "../../config/i18n"
 import {
-  createSiteListPatternToggleUpdate,
   createSitePatternFromUrl,
   getDisplaySitePattern,
   getMatchingSiteListPattern,
@@ -14,8 +13,8 @@ import {
   normalizeEnabledSiteList,
   normalizeSiteList
 } from "../../config/site-list"
-import { getMatchingWebsite } from "../../config/site-manager"
 import {
+  getSiteProfileForUrl,
   hasSiteProfileOverrides,
   normalizeSiteProfiles,
   removeSiteProfile,
@@ -30,7 +29,7 @@ import {
   TEXT_STROKE_MIN,
   TEXT_STROKE_STEP
 } from "../../config/text-stroke"
-import type { FontData, SiteProfile, WebsiteItem } from "../../definitions"
+import type { FontData, SiteProfile } from "../../definitions"
 import { cn } from "../../utils/cn"
 import {
   getGoogleFontByValue,
@@ -42,14 +41,12 @@ import {
   getSystemFontList,
   type SystemFontData
 } from "../../utils/system-fonts"
-import { createRegexFromUrl } from "../../utils/url"
 import { fontaraConnector } from "../connect/connector"
 import { useExtensionData } from "../hooks/use-extension-data"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
   EMPTY_CUSTOM_FONT_LIST,
-  EMPTY_WEBSITE_LIST,
   getDisabledForInitialValue,
   getEnabledByDefaultInitialValue,
   getEnabledForInitialValue,
@@ -133,10 +130,6 @@ export default function PerSiteSettings() {
     STORAGE_KEYS.SITE_PROFILES,
     getSiteProfilesInitialValue
   )
-  const [websiteList] = useStorageValue<WebsiteItem[]>(
-    STORAGE_KEYS.WEBSITE_LIST,
-    EMPTY_WEBSITE_LIST
-  )
   const [enabledByDefault] = useStorageValue<boolean>(
     STORAGE_KEYS.ENABLED_BY_DEFAULT,
     getEnabledByDefaultInitialValue
@@ -207,16 +200,14 @@ export default function PerSiteSettings() {
     active && currentUrl
       ? getMatchingSiteListPattern(currentUrl, normalizedEnabledFor)
       : null
-  const profilePattern = activeRulePattern
-  const currentProfile =
-    profilePattern !== null
-      ? (normalizedSiteProfiles.find(
-          (profile) => profile.pattern === profilePattern
-        ) ?? null)
-      : null
+  const currentProfile = getSiteProfileForUrl(
+    currentUrl,
+    normalizedSiteProfiles
+  )
+  const profilePattern =
+    currentProfile?.pattern ?? activeRulePattern ?? domainPattern
   const displayedScope = getProfileScope(profilePattern)
   const siteDisplayName = getDisplaySitePattern(profilePattern ?? domainPattern)
-  const canEditProfile = Boolean(profilePattern)
   const textStrokeLabel = getTextStrokeValueLabel(
     textStroke,
     formatNumber,
@@ -281,38 +272,11 @@ export default function PerSiteSettings() {
     return fontValue
   }
 
-  const createUpdatedWebsiteList = (checked: boolean): WebsiteItem[] => {
-    const currentWebsiteList =
-      websiteList.length > 0 ? websiteList : DEFAULT_VALUES.WEBSITE_LIST
-    const existingWebsiteIndex = currentWebsiteList.findIndex(
-      (item) => getMatchingWebsite(currentUrl, [item]) !== null
-    )
-
-    if (existingWebsiteIndex === -1 && checked) {
-      return [
-        ...currentWebsiteList,
-        {
-          url: currentUrl,
-          regex: createRegexFromUrl(currentUrl),
-          isActive: true
-        }
-      ]
-    }
-
-    return currentWebsiteList.map((item, index) =>
-      index === existingWebsiteIndex ? { ...item, isActive: checked } : item
-    )
-  }
-
   const saveProfilePatch = async (patch: SiteProfilePatch) => {
     if (!profilePattern) return
 
     const nextPattern = profilePattern
-    const sourcePattern = nextPattern
-    const sourceProfile =
-      normalizedSiteProfiles.find(
-        (profile) => profile.pattern === sourcePattern
-      ) ?? null
+    const sourceProfile = currentProfile
     const nextProfile: SiteProfile = {
       ...(sourceProfile ?? { pattern: nextPattern }),
       pattern: nextPattern
@@ -335,24 +299,15 @@ export default function PerSiteSettings() {
     }
 
     const baseProfiles = normalizedSiteProfiles.filter(
-      (profile) =>
-        profile.pattern !== nextPattern && profile.pattern !== sourcePattern
+      (profile) => profile.pattern !== nextPattern
     )
     const nextProfiles = hasSiteProfileOverrides(nextProfile)
       ? upsertSiteProfile(baseProfiles, nextProfile)
       : baseProfiles
-    const siteListUpdate = createSiteListPatternToggleUpdate(
-      nextPattern,
-      siteListSettings,
-      true
-    )
 
     try {
       await fontaraConnector.changeSettings({
-        [STORAGE_KEYS.DISABLED_FOR]: siteListUpdate.disabledFor,
-        [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
-        [STORAGE_KEYS.SITE_PROFILES]: nextProfiles,
-        [STORAGE_KEYS.WEBSITE_LIST]: createUpdatedWebsiteList(true)
+        [STORAGE_KEYS.SITE_PROFILES]: nextProfiles
       })
     } catch (error) {
       if (__DEBUG__) {
@@ -415,14 +370,12 @@ export default function PerSiteSettings() {
     <div className="mx-auto mt-2 w-full select-none" dir={direction}>
       <button
         type="button"
-        disabled={!canEditProfile}
+        data-testid="fontara-per-site-settings-open"
         className={cn(
           "flex w-full items-center gap-2 rounded-md border p-2 text-start transition",
-          !canEditProfile
-            ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-75"
-            : currentProfile
-              ? "border-[#bfdbfe] bg-[#f8fbff]"
-              : "border-gray-200 bg-white hover:border-[#dbeafe] hover:bg-[#f8fbff]"
+          currentProfile
+            ? "border-[#bfdbfe] bg-[#f8fbff]"
+            : "border-gray-200 bg-white hover:border-[#dbeafe] hover:bg-[#f8fbff]"
         )}
         onClick={() => setDrawerOpen(true)}>
         <span
@@ -450,11 +403,6 @@ export default function PerSiteSettings() {
         {!active && (
           <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
             {t("popup.perSite.siteOff")}
-          </span>
-        )}
-        {active && !canEditProfile && (
-          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-            {t("popup.perSite.chooseScopeFirst")}
           </span>
         )}
       </button>
@@ -523,6 +471,7 @@ export default function PerSiteSettings() {
               <Switch
                 dir="ltr"
                 checked={Boolean(currentProfile)}
+                data-testid="fontara-per-site-custom-toggle"
                 onCheckedChange={(checked) => void handleCustomToggle(checked)}
                 aria-label={t("popup.perSite.useCustom")}
               />
@@ -537,6 +486,7 @@ export default function PerSiteSettings() {
               <select
                 id="fontara-per-site-font"
                 value={currentProfile?.font ?? ""}
+                data-testid="fontara-per-site-font-select"
                 onChange={(event) => void handleFontChange(event)}
                 className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15">
                 <option value="">
@@ -631,6 +581,7 @@ export default function PerSiteSettings() {
               variant="outline"
               className="h-10 w-full border-red-100 text-red-600 hover:bg-red-50"
               disabled={!currentProfile}
+              data-testid="fontara-per-site-reset"
               onClick={() => void removeCurrentProfile()}>
               <RotateCcw className="size-4" />
               {t("popup.perSite.reset")}

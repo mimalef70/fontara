@@ -260,7 +260,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     url: "https://www.dropbox.com",
     regex: "^https://www\\.[^/]*dropbox\\.com/.*$",
     icon: "assets/logos/dropbox-active.png",
-    pattern: "https://www.*dropbox.com/*",
+    pattern: "https://*dropbox.com/*",
     siteName: "Dropbox"
   }
 ]

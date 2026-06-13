@@ -271,10 +271,17 @@ function matchPreparedURLPattern(
   }
 
   if (pattern.pathParts.length > url.pathParts.length) {
-    return false
+    const extraPatternParts = pattern.pathParts.slice(url.pathParts.length)
+    if (extraPatternParts.some((patternPart) => patternPart !== "*")) {
+      return false
+    }
   }
 
-  for (let index = 0; index < pattern.pathParts.length; index += 1) {
+  const pathCompareLength = Math.min(
+    pattern.pathParts.length,
+    url.pathParts.length
+  )
+  for (let index = 0; index < pathCompareLength; index += 1) {
     const patternPart = pattern.pathParts[index]
     const urlPart = url.pathParts[index]
     if (patternPart !== "*" && patternPart !== urlPart) {
@@ -283,6 +290,24 @@ function matchPreparedURLPattern(
   }
 
   return true
+}
+
+function normalizeWildcardSiteHost(host: string): string | null {
+  const normalizedHost = host.toLowerCase()
+  if (!normalizedHost.includes("*")) return normalizedHost
+
+  const hostWithoutPort = stripURLPort(normalizedHost)
+  const port = normalizedHost.slice(hostWithoutPort.length)
+  if (hostWithoutPort.split(".").some((part) => part === "*")) {
+    return normalizedHost
+  }
+
+  if (!hostWithoutPort.startsWith("*")) return null
+
+  const suffix = hostWithoutPort.slice(1).replace(/^\./, "")
+  if (!suffix) return null
+
+  return `*.${suffix}${port}`
 }
 
 export function getURLHostOrProtocol(url: string): string {
@@ -529,10 +554,12 @@ function normalizeWildcardSitePattern(pattern: string): string | null {
 
   if (!host || host === "*") return null
   if (!isUsableWildcardSiteHost(host)) return null
+  const normalizedHost = normalizeWildcardSiteHost(host)
+  if (!normalizedHost) return null
 
   const path = slashIndex < 0 ? "" : withoutProtocol.slice(slashIndex)
   const normalizedPath = path && path !== "/" ? path.replace(/\/+$/, "") : ""
-  const normalized = `${host}${normalizedPath}`.toLowerCase()
+  const normalized = `${normalizedHost}${normalizedPath}`.toLowerCase()
 
   return normalized || null
 }
@@ -580,11 +607,17 @@ export function normalizeEnabledByDefault(value: unknown): boolean {
 }
 
 export function isURLMatched(url: string, pattern: string): boolean {
-  if (isRegExpPattern(pattern)) {
-    return createRegExp(pattern)?.test(url) === true
+  const normalizedPattern = normalizeSitePattern(pattern)
+  if (!normalizedPattern) return false
+
+  if (isRegExpPattern(normalizedPattern)) {
+    return createRegExp(normalizedPattern)?.test(url) === true
   }
 
-  return matchPreparedURLPattern(prepareURL(url), preparePattern(pattern))
+  return matchPreparedURLPattern(
+    prepareURL(url),
+    preparePattern(normalizedPattern)
+  )
 }
 
 export function isURLInSiteList(url: string, list: string[]): boolean {

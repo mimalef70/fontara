@@ -461,6 +461,179 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
   })
 })
 
+test("Chrome MV3 popup per-site settings save profiles without enabling sites", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    const testPage = await harness.createFixturePage()
+
+    await waitForContentBridge(testPage)
+    const initialLoadId = await evaluate(testPage, () => window.__fontaraLoadId)
+
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SITE_PROFILES]: [],
+      [STORAGE_KEYS.SYNC_SETTINGS]: true,
+      [STORAGE_KEYS.TEXT_STROKE]: 0
+    })
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        applied: false,
+        loadId: initialLoadId
+      })
+    )
+
+    const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      viewport: { height: 700, width: 360 }
+    })
+    await testPage.bringToFront()
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SITE_PROFILES]: [],
+      [STORAGE_KEYS.SYNC_SETTINGS]: true,
+      [STORAGE_KEYS.TEXT_STROKE]: 0
+    })
+    await popupPage.waitForSelector(
+      '[data-testid="fontara-per-site-settings-open"]'
+    )
+    await popupPage.bringToFront()
+    await clickByTestId(popupPage, "fontara-per-site-settings-open")
+    await setValueByTestId(
+      popupPage,
+      "fontara-per-site-font-select",
+      "Samim-Fontara"
+    )
+
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.SITE_PROFILES, [
+      {
+        font: "Samim-Fontara",
+        pattern: sitePattern
+      }
+    ])
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.DISABLED_FOR, [])
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [])
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        applied: false,
+        loadId: initialLoadId
+      })
+    )
+
+    await sendSettingsFromOptions(popupPage, {
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern]
+    })
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId
+      })
+    )
+  })
+})
+
+test("Chrome MV3 popup per-site settings edit the strongest matching profile", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    const scopedPath = "/per-site/path"
+    const scopedPattern = `${sitePattern}${scopedPath}`
+    const testPage = await harness.createFixturePage({ path: scopedPath })
+
+    await waitForContentBridge(testPage)
+    const initialLoadId = await evaluate(testPage, () => window.__fontaraLoadId)
+
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SITE_PROFILES]: [
+        {
+          font: "Samim-Fontara",
+          pattern: scopedPattern,
+          textStroke: 0.5
+        }
+      ],
+      [STORAGE_KEYS.SYNC_SETTINGS]: true,
+      [STORAGE_KEYS.TEXT_STROKE]: 0
+    })
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId,
+        textStroke: 0.5
+      })
+    )
+
+    const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      viewport: { height: 700, width: 360 }
+    })
+    await testPage.bringToFront()
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SITE_PROFILES]: [
+        {
+          font: "Samim-Fontara",
+          pattern: scopedPattern,
+          textStroke: 0.5
+        }
+      ],
+      [STORAGE_KEYS.SYNC_SETTINGS]: true,
+      [STORAGE_KEYS.TEXT_STROKE]: 0
+    })
+    await popupPage.waitForSelector(
+      '[data-testid="fontara-per-site-settings-open"]'
+    )
+    await popupPage.bringToFront()
+    await clickByTestId(popupPage, "fontara-per-site-settings-open")
+    await waitFor(() =>
+      popupPage.$eval(
+        '[data-testid="fontara-per-site-font-select"]',
+        (element) => element.value === "Samim-Fontara"
+      )
+    )
+    await setValueByTestId(
+      popupPage,
+      "fontara-per-site-font-select",
+      "Vazirmatn-Fontara"
+    )
+
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.SITE_PROFILES, [
+      {
+        font: "Vazirmatn-Fontara",
+        pattern: scopedPattern,
+        textStroke: 0.5
+      }
+    ])
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [
+      sitePattern
+    ])
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: initialLoadId,
+        textStroke: 0.5
+      })
+    )
+  })
+})
+
 test("Chrome MV3 options UI exports, imports, and resets settings backups", async (t) => {
   await withChromeMv3ExtensionHarness(t, async (harness) => {
     const sitePattern = `127.0.0.1:${harness.server.port}`

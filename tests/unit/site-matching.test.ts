@@ -493,6 +493,18 @@ test("site list URL matching supports wildcard and path behavior", () => {
     true
   )
   assert.equal(
+    isURLMatched("https://www.linkedin.com/feed", "*linkedin.com"),
+    true
+  )
+  assert.equal(
+    isURLMatched("https://www.linkedin.com/feed", "https://*linkedin.com/*"),
+    true
+  )
+  assert.equal(
+    isURLMatched("https://www.linkedin.com/", "*.linkedin.com/*"),
+    true
+  )
+  assert.equal(
     isURLMatched(
       "https://leetcode.com/problems/two-sum/",
       "leetcode.com/problems"
@@ -542,6 +554,12 @@ test("site list helpers keep append order and reject invalid regex patterns", ()
   )
   assert.equal(normalizeSitePattern("%2a.dropbox.com"), "*.dropbox.com")
   assert.equal(normalizeSitePattern("%2A.linkedin.com"), "*.linkedin.com")
+  assert.equal(normalizeSitePattern("*linkedin.com"), "*.linkedin.com")
+  assert.equal(
+    normalizeSitePattern("https://*linkedin.com/*"),
+    "*.linkedin.com/*"
+  )
+  assert.equal(normalizeSitePattern("foo*linkedin.com"), null)
   assert.equal(normalizeSitePattern("%2a/github.com"), null)
   assert.equal(normalizeSitePattern("*/github.com"), null)
   assert.equal(normalizeSitePattern("اشسبشسیشسیشسیشسی"), null)

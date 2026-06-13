@@ -5,6 +5,8 @@ import {
   formatFontFamilyForCSS,
   getFontDataURLFormat,
   isFontFileSignatureSupported,
+  MAX_CUSTOM_FONT_DATA_URL_LENGTH,
+  MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
   splitFontFamilies
 } from "../../src/utils/font-data"
 
@@ -67,4 +69,9 @@ test("formatFontFamilyForCSS quotes real font names but preserves generic famili
     formatFontFamilyForCSS('Font "With Quote"'),
     '"Font \\"With Quote\\""'
   )
+})
+
+test("custom font storage limits allow larger local font uploads", () => {
+  assert.equal(MAX_CUSTOM_FONT_FILE_SIZE_BYTES, 5 * 1024 * 1024)
+  assert.ok(MAX_CUSTOM_FONT_DATA_URL_LENGTH > MAX_CUSTOM_FONT_FILE_SIZE_BYTES)
 })

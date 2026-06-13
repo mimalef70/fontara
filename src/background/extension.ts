@@ -35,7 +35,8 @@ import {
 import {
   ensureStorageValues,
   flushPendingSettingsSync,
-  registerSettingsSyncListeners
+  registerSettingsSyncListeners,
+  schedulePendingSettingsSync
 } from "./storage-manager"
 import {
   initTabManager,
@@ -184,14 +185,19 @@ export class ExtensionRuntime {
   }
 
   private static async writeSettingsChange(
-    settings: FontaraSettings
+    settings: FontaraSettings,
+    options: { flushSync?: boolean } = {}
   ): Promise<Record<string, unknown>> {
     await ExtensionRuntime.ensureStarted()
     const { settings: updatedSettings, syncSnapshot } =
       await writeBackgroundSettingsWithSyncSnapshot(settings)
 
     await ExtensionRuntime.publishSettingsChange(updatedSettings)
-    await flushPendingSettingsSync(syncSnapshot)
+    if (options.flushSync) {
+      await flushPendingSettingsSync(syncSnapshot)
+    } else {
+      schedulePendingSettingsSync(syncSnapshot)
+    }
 
     return updatedSettings
   }
@@ -232,7 +238,9 @@ export class ExtensionRuntime {
   ): Promise<FontaraImportedSettingsResult> {
     const normalizedBackup = await normalizeSettingsBackup(settings)
 
-    await ExtensionRuntime.writeSettingsChange(normalizedBackup.settings)
+    await ExtensionRuntime.writeSettingsChange(normalizedBackup.settings, {
+      flushSync: true
+    })
 
     return {
       ignoredKeyCount: normalizedBackup.ignoredKeyCount,
@@ -242,7 +250,10 @@ export class ExtensionRuntime {
 
   static async resetSettings(): Promise<void> {
     await ExtensionRuntime.writeSettingsChange(
-      await createSettingsResetValues()
+      await createSettingsResetValues(),
+      {
+        flushSync: true
+      }
     )
   }
 

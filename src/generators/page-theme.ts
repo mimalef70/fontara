@@ -13,8 +13,15 @@ import type {
   FontData
 } from "../definitions"
 import { getFontFaceCSS } from "./font-face"
-import { resolveFontSelection } from "./font-selection"
+import {
+  type GoogleFontCSSLoadMode,
+  resolveFontSelection
+} from "./font-selection"
 import { createTextStrokeCSS, getTextStrokeConfig } from "./text-stroke"
+
+export type FontaraPageThemeDataOptions = {
+  googleFontCSSLoadMode?: GoogleFontCSSLoadMode
+}
 
 const INACTIVE_FONT_THEME: FontaraFontThemeCommandData = {
   active: false,
@@ -46,7 +53,8 @@ function getCustomFontList(settings: Record<string, unknown>): FontData[] {
 async function createFontThemeData(
   settings: Record<string, unknown>,
   activationState: FontaraSiteActivationState,
-  applyMode: FontaraApplyMode
+  applyMode: FontaraApplyMode,
+  options: FontaraPageThemeDataOptions = {}
 ): Promise<FontaraFontThemeCommandData> {
   if (!activationState.active) {
     return {
@@ -64,6 +72,7 @@ async function createFontThemeData(
     )
   const selectedFontState = await resolveFontSelection(selectedFont, {
     customFontList: getCustomFontList(settings),
+    googleFontCSSLoadMode: options.googleFontCSSLoadMode,
     googleFontsEnabled: getSetting(
       settings,
       STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
@@ -111,12 +120,13 @@ function createRtlThemeData(
 export async function createFontaraPageThemeData(
   currentUrl: string,
   settings: Record<string, unknown>,
-  applyMode: FontaraApplyMode = "full"
+  applyMode: FontaraApplyMode = "full",
+  options: FontaraPageThemeDataOptions = {}
 ): Promise<FontaraPageThemeCommandData> {
   const siteConfig = resolveFontaraSiteConfig(currentUrl, settings)
 
   const [font, rtl] = await Promise.all([
-    createFontThemeData(settings, siteConfig.font, applyMode),
+    createFontThemeData(settings, siteConfig.font, applyMode, options),
     Promise.resolve(createRtlThemeData(siteConfig.rtl))
   ])
 

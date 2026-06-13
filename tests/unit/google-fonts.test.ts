@@ -11,6 +11,7 @@ import {
   getGoogleFontByValue,
   getGoogleFontList,
   isGoogleFontValue,
+  loadGoogleFontFaceCSS,
   sanitizeGoogleFontFaceCSS
 } from "../../src/utils/google-fonts"
 
@@ -149,4 +150,38 @@ test("Google Font CSS sanitizer rejects unexpected selectors and unsafe URLs", (
     ),
     null
   )
+})
+
+test("Google Font CSS loader skips network when cache-only mode has no cached CSS", async () => {
+  let fetchCalls = 0
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      get lastError() {
+        return undefined
+      }
+    },
+    storage: {
+      local: {
+        get(key: string, callback: (items: Record<string, unknown>) => void) {
+          callback({ [key]: {} })
+        },
+        set(_items: Record<string, unknown>, callback: () => void) {
+          callback()
+        }
+      }
+    }
+  })
+  Reflect.set(globalThis, "fetch", async () => {
+    fetchCalls += 1
+    throw new Error("unexpected network request")
+  })
+
+  assert.equal(
+    await loadGoogleFontFaceCSS(createGoogleFontValue("Inter"), {
+      allowNetwork: false
+    }),
+    null
+  )
+  assert.equal(fetchCalls, 0)
 })

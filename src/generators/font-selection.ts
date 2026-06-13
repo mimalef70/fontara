@@ -14,8 +14,11 @@ export type FontaraResolvedFontSelection = {
   googleFontCSS: string | null
 }
 
+export type GoogleFontCSSLoadMode = "allow-network" | "cache-only"
+
 export type FontaraFontSelectionOptions = {
   customFontList?: FontData[] | null
+  googleFontCSSLoadMode?: GoogleFontCSSLoadMode
   googleFontsEnabled?: boolean | null
   readCustomFontList?: () => Promise<FontData[] | null | undefined>
   readGoogleFontsEnabled?: () => Promise<boolean | null | undefined>
@@ -95,7 +98,9 @@ export async function resolveFontSelection(
       ? {
           customFontCSS: "",
           fontName: googleFontFamily,
-          googleFontCSS: await loadGoogleFontFaceCSS(selectedFont)
+          googleFontCSS: await loadGoogleFontFaceCSS(selectedFont, {
+            allowNetwork: options.googleFontCSSLoadMode !== "cache-only"
+          })
         }
       : createDefaultFontSelection()
   }

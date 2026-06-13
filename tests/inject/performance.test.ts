@@ -138,8 +138,9 @@ test("storage changes schedule the active injection pipeline", () => {
   assert.match(schedulerSource, /let backgroundCommandsEnabled = false/)
   assert.match(
     schedulerSource,
-    /requestResolvedPageThemeOrFallback\(\s*MESSAGE_TYPES_CS_TO_BG\.DOCUMENT_UPDATE,\s*mode\s*\)/
+    /requestResolvedPageThemeOrFallback\(\s*MESSAGE_TYPES_CS_TO_BG\.DOCUMENT_UPDATE,\s*scheduledMode\s*\)/
   )
+  assert.match(schedulerSource, /BACKGROUND_STORAGE_UPDATE_GRACE_MS/)
   assert.match(
     schedulerSource,
     /type ContentApplyMode = "font-styles" \| "full"/

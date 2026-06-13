@@ -20,13 +20,30 @@ type FontWorkCollection = {
   walker: TreeWalker
 }
 
-const ICON_FONT_FAMILY_PARTS = [
-  "fontawesome",
+const ICON_FONT_FAMILIES = new Set([
   "font awesome",
-  "material",
-  "icon",
-  "glyphicon"
-]
+  "font awesome 5 brands",
+  "font awesome 5 free",
+  "font awesome 6 brands",
+  "font awesome 6 free",
+  "fontawesome",
+  "glyphicon",
+  "glyphicons halflings",
+  "google symbols",
+  "icomoon",
+  "iconfont",
+  "luminous symbols",
+  "material design icons",
+  "material icons",
+  "material icons outlined",
+  "material icons round",
+  "material icons sharp",
+  "material symbols",
+  "material symbols outlined",
+  "material symbols rounded",
+  "material symbols sharp"
+])
+const ICON_FONT_FAMILY_PARTS = ["font awesome", "glyphicon"]
 const TEXT_CONTROL_TAGS = new Set(["input", "textarea", "select", "option"])
 const ROOT_COLLECTIONS_PER_TIMEOUT = 20
 const WORK_CHUNK_SIZE = 200
@@ -114,10 +131,17 @@ function hasRenderableText(node: HTMLElement): boolean {
 }
 
 function isIconFontFamily(fontFamily: string): boolean {
-  const normalizedFontFamily = fontFamily.toLowerCase()
-  return ICON_FONT_FAMILY_PARTS.some((part) =>
-    normalizedFontFamily.includes(part)
-  )
+  return splitFontFamilies(fontFamily).some((family) => {
+    const normalizedFamily = normalizeFontFamilyName(family)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+
+    return (
+      ICON_FONT_FAMILIES.has(normalizedFamily) ||
+      ICON_FONT_FAMILY_PARTS.some((part) => normalizedFamily.includes(part))
+    )
+  })
 }
 
 function getCleanFontFamily(fontFamily: string): string {

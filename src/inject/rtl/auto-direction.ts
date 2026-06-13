@@ -173,6 +173,7 @@ export class RtlAutoDirection {
   private attachAutoDirection(element: HTMLElement): void {
     if (
       !this.isEditable(element) ||
+      !element.isConnected ||
       this.trackedInputs.has(element) ||
       this.shouldSkipElement(element)
     ) {
@@ -196,9 +197,12 @@ export class RtlAutoDirection {
     this.updateDirection(element)
   }
 
-  private detachAll(): void {
-    this.trackedInputs.forEach((tracked, element) => {
-      tracked.cleanup()
+  private detachTrackedInput(element: HTMLElement, restore = false): void {
+    const tracked = this.trackedInputs.get(element)
+    if (!tracked) return
+
+    tracked.cleanup()
+    if (restore) {
       if (tracked.dirAttr === null) {
         element.removeAttribute("dir")
       } else {
@@ -206,8 +210,23 @@ export class RtlAutoDirection {
       }
       element.style.direction = tracked.styleDirection
       element.style.textAlign = tracked.styleTextAlign
+    }
+    this.trackedInputs.delete(element)
+  }
+
+  private detachAll(): void {
+    Array.from(this.trackedInputs.keys()).forEach((element) => {
+      this.detachTrackedInput(element, true)
     })
     this.trackedInputs.clear()
+  }
+
+  private cleanupDisconnectedTrackedInputs(): void {
+    Array.from(this.trackedInputs.keys()).forEach((element) => {
+      if (!element.isConnected) {
+        this.detachTrackedInput(element)
+      }
+    })
   }
 
   private cleanupTrackedInSubtree(root: Node): void {
@@ -226,19 +245,18 @@ export class RtlAutoDirection {
     }
 
     nodes.forEach((node) => {
-      const tracked = this.trackedInputs.get(node)
-      if (!tracked) return
-
-      tracked.cleanup()
-      this.trackedInputs.delete(node)
+      this.detachTrackedInput(node)
     })
   }
 
   private scanEditableNodes(root: ParentNode | HTMLElement = document): void {
+    this.cleanupDisconnectedTrackedInputs()
+
     const nodes: HTMLElement[] = []
 
     if (
       root instanceof HTMLElement &&
+      root.isConnected &&
       this.isEditable(root) &&
       !this.shouldSkipElement(root)
     ) {
@@ -247,7 +265,11 @@ export class RtlAutoDirection {
 
     if (hasQuerySelectorAll(root)) {
       root.querySelectorAll(EDITABLE_SELECTOR).forEach((node) => {
-        if (node instanceof HTMLElement && !this.shouldSkipElement(node)) {
+        if (
+          node instanceof HTMLElement &&
+          node.isConnected &&
+          !this.shouldSkipElement(node)
+        ) {
           nodes.push(node)
         }
       })
@@ -270,7 +292,11 @@ export class RtlAutoDirection {
 
           if (node instanceof HTMLElement) {
             if (node.shadowRoot) this.scanEditableNodes(node.shadowRoot)
-            if (this.isEditable(node) && !this.shouldSkipElement(node)) {
+            if (
+              node.isConnected &&
+              this.isEditable(node) &&
+              !this.shouldSkipElement(node)
+            ) {
               this.attachAutoDirection(node)
             }
             this.scanEditableNodes(node)
@@ -288,6 +314,8 @@ export class RtlAutoDirection {
           }
         })
       }
+
+      this.cleanupDisconnectedTrackedInputs()
     })
     this.observer.observe(document.documentElement, {
       childList: true,

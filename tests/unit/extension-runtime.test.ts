@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test, { afterEach } from "node:test"
 
 import { ExtensionRuntime } from "../../src/background/extension"
+import { flushPendingSettingsSync } from "../../src/background/storage-manager"
 import { STORAGE_KEYS } from "../../src/config/storage"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
@@ -169,6 +170,8 @@ test("runtime collect does not re-apply stale sync values after a local settings
     [STORAGE_KEYS.UI_LANGUAGE]: "fa"
   })
 
+  assert.equal(syncValues[STORAGE_KEYS.UI_LANGUAGE], "auto")
+
   await new Promise((resolve) => setTimeout(resolve, 80))
 
   assert.equal(localValues[STORAGE_KEYS.UI_LANGUAGE], "fa")
@@ -176,4 +179,9 @@ test("runtime collect does not re-apply stale sync values after a local settings
   await new Promise((resolve) => setTimeout(resolve, 1100))
 
   assert.equal(localValues[STORAGE_KEYS.UI_LANGUAGE], "fa")
+  assert.equal(syncValues[STORAGE_KEYS.UI_LANGUAGE], "auto")
+
+  await flushPendingSettingsSync()
+
+  assert.equal(syncValues[STORAGE_KEYS.UI_LANGUAGE], "fa")
 })

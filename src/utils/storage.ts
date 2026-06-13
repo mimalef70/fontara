@@ -9,6 +9,7 @@ export type StorageWatchers = Record<
 >
 
 const DEFAULT_SYNC_QUOTA_BYTES_PER_ITEM = 8192
+const DEFAULT_SYNC_MAX_ITEMS = 512
 const SYNC_STORAGE_CHUNK_META_KEY = "__meta_split_count"
 
 type StorageChangedEvent = typeof chrome.storage.onChanged
@@ -141,6 +142,10 @@ function getSyncQuotaBytesPerItem(): number {
   )
 }
 
+function getSyncMaxItems(): number {
+  return getSyncStorageArea()?.MAX_ITEMS ?? DEFAULT_SYNC_MAX_ITEMS
+}
+
 function getSyncStorageItemBytes(key: string, value: unknown): number {
   return new TextEncoder().encode(JSON.stringify({ [key]: value })).byteLength
 }
@@ -226,6 +231,7 @@ function prepareSyncStorageValues<T extends Record<string, unknown>>(
 ): Record<string, unknown> {
   const preparedValues: Record<string, unknown> = { ...values }
   const quotaBytesPerItem = getSyncQuotaBytesPerItem()
+  const maxItems = getSyncMaxItems()
 
   for (const key of Object.keys(values)) {
     const serializedValue = JSON.stringify(values[key])
@@ -244,6 +250,10 @@ function prepareSyncStorageValues<T extends Record<string, unknown>>(
     preparedValues[key] = {
       [SYNC_STORAGE_CHUNK_META_KEY]: chunks.length
     }
+  }
+
+  if (Object.keys(preparedValues).length > maxItems) {
+    throw new Error("sync-storage-too-many-items")
   }
 
   return preparedValues

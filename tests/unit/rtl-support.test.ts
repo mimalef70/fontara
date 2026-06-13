@@ -6,7 +6,7 @@ import test, { afterEach } from "node:test"
 import { DEFAULT_RTL_SITE_SETTINGS } from "../../src/config/rtl-sites"
 import { STORAGE_KEYS } from "../../src/config/storage"
 import { RtlAutoDirection } from "../../src/inject/rtl/auto-direction"
-import { RtlEngine } from "../../src/inject/rtl/rtl-engine"
+import { getElementText, RtlEngine } from "../../src/inject/rtl/rtl-engine"
 import { isRtlText } from "../../src/inject/rtl/text-direction"
 import { getRtlActivationStateFromSettings } from "../../src/utils/rtl"
 
@@ -137,6 +137,10 @@ class FakeElement {
     for (const listener of this.listeners.get(type) ?? []) {
       listener()
     }
+  }
+
+  listenerCount(type: string): number {
+    return this.listeners.get(type)?.length ?? 0
   }
 
   getAttribute(attribute: string): string | null {
@@ -478,4 +482,35 @@ test("RTL auto direction updates inputs and restores original values", () => {
   assert.equal(input.getAttribute("dir"), "ltr")
   assert.equal(input.style.direction, "ltr")
   assert.equal(input.style.textAlign, "left")
+})
+
+test("RTL auto direction cleans up disconnected tracked inputs", () => {
+  const input = new FakeInputElement()
+  input.setAttribute("dir", "ltr")
+  installRtlDom([input])
+
+  const autoDirection = new RtlAutoDirection()
+  autoDirection.enable()
+
+  assert.equal(input.listenerCount("input"), 1)
+
+  input.isConnected = false
+  ;(
+    autoDirection as unknown as {
+      scanEditableNodes: () => void
+    }
+  ).scanEditableNodes()
+
+  assert.equal(input.listenerCount("input"), 0)
+
+  autoDirection.disable()
+})
+
+test("RTL engine reads textContent without forcing innerText layout", () => {
+  const element = {
+    innerText: "expensive rendered text",
+    textContent: "cheap text content"
+  } as unknown as Element
+
+  assert.equal(getElementText(element), "cheap text content")
 })

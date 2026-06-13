@@ -1,7 +1,7 @@
 export type SupportedFontFormat = "woff2" | "woff" | "opentype" | "truetype"
 
-export const MAX_CUSTOM_FONT_FILE_SIZE_BYTES = 2 * 1024 * 1024
-export const MAX_CUSTOM_FONT_DATA_URL_LENGTH = 3 * 1024 * 1024
+export const MAX_CUSTOM_FONT_FILE_SIZE_BYTES = 5 * 1024 * 1024
+export const MAX_CUSTOM_FONT_DATA_URL_LENGTH = 7 * 1024 * 1024
 
 const CUSTOM_FONT_VALUE_PATTERN = /^[A-Za-z0-9_-]{1,64}-Fontara$/
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/

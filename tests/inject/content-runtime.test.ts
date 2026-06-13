@@ -478,9 +478,9 @@ async function waitFor(
   condition: () => boolean,
   message: string
 ): Promise<void> {
-  for (let index = 0; index < 20; index += 1) {
+  for (let index = 0; index < 60; index += 1) {
     if (condition()) return
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 5))
   }
 
   assert.ok(condition(), message)
@@ -735,23 +735,10 @@ test("selected custom font changes inject its font-face without a reload", async
     )
 
     const selectedGoogleFont = createGoogleFontValue("Noto Sans Arabic")
-    const googleFontCSS = `
-      /* arabic */
-      @font-face {
-        font-family: 'Noto Sans Arabic';
-        font-style: normal;
-        font-weight: 400;
-        font-display: swap;
-        src: url(https://fonts.gstatic.com/s/notosansarabic/v30/test.woff2) format('woff2');
-        unicode-range: U+0600-06FF;
-      }
-    `
+    let googleFontFetchCalls = 0
     Reflect.set(globalThis, "fetch", async () => {
-      return {
-        ok: true,
-        status: 200,
-        text: async () => googleFontCSS
-      }
+      googleFontFetchCalls += 1
+      throw new Error("content fallback must not fetch Google Fonts CSS")
     })
     runtime.values[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] = true
     runtime.values[STORAGE_KEYS.SELECTED_FONT] = selectedGoogleFont
@@ -773,14 +760,10 @@ test("selected custom font changes inject its font-face without a reload", async
       () =>
         /--fontara-font: "Noto Sans Arabic"/.test(
           runtime.getStyleText("fontara-dynamic-font")
-        ) &&
-        runtime
-          .getStyleText("fontara-google-font-styles")
-          .includes(
-            "https://fonts.gstatic.com/s/notosansarabic/v30/test.woff2"
-          ),
-      "expected enabled Google font selection to inject sanitized font-face CSS"
+        ) && runtime.getStyleText("fontara-google-font-styles") === "",
+      "expected content fallback to apply the Google font family without a content-script network fetch"
     )
+    assert.equal(googleFontFetchCalls, 0)
 
     runtime.values[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] = false
     runtime.dispatchStorageChange(

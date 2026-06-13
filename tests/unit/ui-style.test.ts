@@ -401,7 +401,7 @@ test("options page exposes extension hotkey controls", () => {
   )
   assert.match(
     extensionSource,
-    /private static async writeSettingsChange\([\s\S]*?const \{ settings: updatedSettings, syncSnapshot \} =[\s\S]*?writeBackgroundSettingsWithSyncSnapshot\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings\)[\s\S]*?flushPendingSettingsSync\(syncSnapshot\)/
+    /private static async writeSettingsChange\([\s\S]*?const \{ settings: updatedSettings, syncSnapshot \} =[\s\S]*?writeBackgroundSettingsWithSyncSnapshot\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings\)[\s\S]*?if \(options\.flushSync\)[\s\S]*?flushPendingSettingsSync\(syncSnapshot\)[\s\S]*?schedulePendingSettingsSync\(syncSnapshot\)/
   )
   assert.match(
     extensionSource,
@@ -413,11 +413,11 @@ test("options page exposes extension hotkey controls", () => {
   )
   assert.match(
     extensionSource,
-    /importSettings[\s\S]*writeSettingsChange\(normalizedBackup\.settings\)/
+    /importSettings[\s\S]*writeSettingsChange\(normalizedBackup\.settings,\s*\{\s*flushSync: true\s*\}\)/
   )
   assert.match(
     extensionSource,
-    /resetSettings[\s\S]*writeSettingsChange\(\s*await createSettingsResetValues\(\)\s*\)/
+    /resetSettings[\s\S]*writeSettingsChange\(\s*await createSettingsResetValues\(\),\s*\{\s*flushSync: true\s*\}\s*\)/
   )
   assert.match(extensionDataHookSource, /ExtensionDataContext/)
   assert.match(extensionDataHookSource, /ExtensionDataProvider/)

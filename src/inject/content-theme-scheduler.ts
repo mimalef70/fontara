@@ -13,6 +13,8 @@ import {
 
 export type ContentApplyMode = "font-styles" | "full"
 
+const BACKGROUND_STORAGE_UPDATE_GRACE_MS = 25
+
 export type ResolvedPageThemeRequestType =
   | typeof MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME
   | typeof MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE
@@ -56,6 +58,8 @@ export function createContentThemeScheduler(
   let localApplyQueuedMode: ContentApplyMode | null = null
   let localApplyRunning = false
   let localApplyScheduledMode: ContentApplyMode | null = null
+  let backgroundStorageUpdateTimeout: number | null = null
+  let backgroundStorageUpdateMode: ContentApplyMode | null = null
   let backgroundCommandsEnabled = false
   let resolvedThemeRevision = 0
   let localFallbackActive = false
@@ -87,7 +91,8 @@ export function createContentThemeScheduler(
         await createFontaraPageThemeData(
           window.location.href,
           await readLocalThemeSettings(),
-          mode
+          mode,
+          { googleFontCSSLoadMode: "cache-only" }
         ),
         themeApplierCallbacks
       )
@@ -148,12 +153,35 @@ export function createContentThemeScheduler(
     })
   }
 
+  function clearBackgroundStorageUpdate(): void {
+    if (backgroundStorageUpdateTimeout !== null) {
+      clearTimeout(backgroundStorageUpdateTimeout)
+      backgroundStorageUpdateTimeout = null
+    }
+    backgroundStorageUpdateMode = null
+  }
+
   function scheduleStorageFallbackApply(mode: ContentApplyMode = "full"): void {
     if (backgroundCommandsEnabled) {
-      requestResolvedPageThemeOrFallback(
-        MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE,
+      const alreadyScheduled = backgroundStorageUpdateTimeout !== null
+      backgroundStorageUpdateMode = mergeApplyMode(
+        backgroundStorageUpdateMode,
         mode
       )
+      if (alreadyScheduled) return
+
+      backgroundStorageUpdateTimeout = window.setTimeout(() => {
+        const scheduledMode = backgroundStorageUpdateMode
+        backgroundStorageUpdateTimeout = null
+        backgroundStorageUpdateMode = null
+
+        if (!options.isDisposed() && scheduledMode) {
+          requestResolvedPageThemeOrFallback(
+            MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE,
+            scheduledMode
+          )
+        }
+      }, BACKGROUND_STORAGE_UPDATE_GRACE_MS)
       return
     }
 
@@ -181,17 +209,20 @@ export function createContentThemeScheduler(
 
   function applyThemeCommand(data: FontaraPageThemeCommandData): void {
     markBackgroundCommandsEnabled()
+    clearBackgroundStorageUpdate()
     resolvedThemeRevision += 1
     void applyResolvedPageTheme(data, themeApplierCallbacks)
   }
 
   function cleanUpThemeCommand(): void {
     markBackgroundCommandsEnabled()
+    clearBackgroundStorageUpdate()
     resolvedThemeRevision += 1
     cleanupResolvedPageTheme()
   }
 
   function dispose(): void {
+    clearBackgroundStorageUpdate()
     localApplyQueuedMode = null
     localApplyScheduledMode = null
   }

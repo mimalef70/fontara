@@ -93,7 +93,9 @@ function setupDomProcessorGlobals(): void {
         fontFamily:
           element.getAttribute("data-font-kind") === "icon"
             ? '"Font Awesome 6 Free"'
-            : "system-ui, sans-serif"
+            : element.getAttribute("data-font-kind") === "material-text"
+              ? '"Material Sans", system-ui'
+              : "system-ui, sans-serif"
       }
     }
   })
@@ -128,6 +130,9 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
   const iconFontElement = root.appendChild(
     createTextElement("span", "icon font")
   )
+  const materialTextElement = root.appendChild(
+    createTextElement("span", "material text")
+  )
   const fontFamilyElement = root.appendChild(
     createTextElement("span", "inline font family")
   )
@@ -145,6 +150,7 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
   iconPrefixElement.classList.add("fa-user")
   iconSubstringElement.classList.add("buttonIcon")
   iconFontElement.setAttribute("data-font-kind", "icon")
+  materialTextElement.setAttribute("data-font-kind", "material-text")
   fontFamilyElement.setAttribute("style", "font-family: Arial, sans-serif")
   fontShorthandElement.setAttribute("style", "font: 16px Arial")
   fontWeightElement.setAttribute("style", "font-weight: 700")
@@ -154,6 +160,7 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
     visibleText,
     styledWrapper,
     childInsideStyledWrapper,
+    materialTextElement,
     fontWeightElement
   ] as unknown as HTMLElement[]
   const styledWrapperNode = styledWrapper as unknown as HTMLElement

@@ -197,6 +197,40 @@ test("sync storage helpers reject write errors and return null when unavailable"
   )
 })
 
+test("sync storage helpers reject payloads that would exceed the item count quota", async () => {
+  let runtimeError: { message: string } | undefined
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      get lastError() {
+        return runtimeError
+      }
+    },
+    storage: {
+      sync: {
+        MAX_ITEMS: 2,
+        QUOTA_BYTES_PER_ITEM: 48,
+        get(_keys: null, callback: (items: Record<string, unknown>) => void) {
+          runtimeError = undefined
+          callback({})
+        },
+        set(_items: Record<string, unknown>, callback: () => void) {
+          runtimeError = undefined
+          callback()
+        }
+      }
+    }
+  })
+
+  await assert.rejects(
+    () =>
+      setSyncValues({
+        enabledFor: ["https://example.com/path", "https://fontara.dev/path"]
+      }),
+    /sync-storage-too-many-items/
+  )
+})
+
 test("watchLocalStorage dispatches local changes and removes its listener", () => {
   type StorageListener = (
     changes: Record<string, chrome.storage.StorageChange>,

@@ -50,6 +50,7 @@ export class RtlEngine {
   messageSelector: string
   observeCharacterData: boolean
   observer: MutationObserver | null = null
+  observeRetryScheduled = false
   pendingNodes = new Set<Node>()
   rafId: number | null = null
   rtlClass: string | null
@@ -92,6 +93,7 @@ export class RtlEngine {
     if (this.initialized) return
 
     this.initialized = true
+    this.observeRetryScheduled = false
     this.observe()
     if (this.enabled) {
       this.scheduleScan(document.body || document.documentElement || document)
@@ -100,6 +102,8 @@ export class RtlEngine {
 
   dispose(): void {
     this.enabled = false
+    this.initialized = false
+    this.observeRetryScheduled = false
     this.observer?.disconnect()
     this.observer = null
     if (this.rafId !== null) {
@@ -111,9 +115,14 @@ export class RtlEngine {
   }
 
   observe(): void {
-    if (this.observer) return
+    if (!this.initialized || this.observer) return
     const target = document.body || document.documentElement
-    if (!target) return
+    if (!target) {
+      this.scheduleObserveRetry()
+      return
+    }
+
+    this.observeRetryScheduled = false
 
     this.observer = new MutationObserver((mutations) => {
       if (!this.enabled) return
@@ -139,6 +148,16 @@ export class RtlEngine {
       childList: true,
       subtree: true,
       characterData: this.observeCharacterData
+    })
+  }
+
+  private scheduleObserveRetry(): void {
+    if (this.observeRetryScheduled) return
+
+    this.observeRetryScheduled = true
+    queueMicrotask(() => {
+      this.observeRetryScheduled = false
+      this.observe()
     })
   }
 
@@ -406,11 +425,7 @@ export function normalizeText(text: string | null | undefined): string {
 }
 
 export function getElementText(element: Element): string {
-  return normalizeText(
-    "innerText" in element && typeof element.innerText === "string"
-      ? element.innerText
-      : element.textContent
-  )
+  return normalizeText(element.textContent)
 }
 
 export function getTextWithoutSelector(

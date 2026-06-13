@@ -23,9 +23,10 @@ import {
 
 export { mergeWebsiteLists, normalizeCustomFontList }
 
-const SYNC_SAVE_DELAY_MS = 1000
+const SYNC_SAVE_DELAY_MS = 3000
 
 let syncSaveTimeout: ReturnType<typeof setTimeout> | null = null
+let pendingSyncValues: Record<string, unknown> | null = null
 let applyingSyncToLocal = false
 
 function isSyncSettingsEnabled(value: unknown): boolean {
@@ -107,14 +108,24 @@ async function saveSyncedSettingsFromLocal(): Promise<void> {
   await saveSyncedSettings(await getLocalValues(getLocalStorageReadDefaults()))
 }
 
-function scheduleSyncedSettingsSave(): void {
+export function schedulePendingSettingsSync(
+  values?: Record<string, unknown>
+): void {
+  if (values) {
+    pendingSyncValues = values
+  }
+
   if (syncSaveTimeout !== null) {
     clearTimeout(syncSaveTimeout)
   }
 
   syncSaveTimeout = setTimeout(() => {
+    const valuesToSave = pendingSyncValues
+    pendingSyncValues = null
     syncSaveTimeout = null
-    void saveSyncedSettingsFromLocal()
+    void (valuesToSave
+      ? saveSyncedSettings(valuesToSave)
+      : saveSyncedSettingsFromLocal())
   }, SYNC_SAVE_DELAY_MS)
 }
 
@@ -126,7 +137,12 @@ export async function flushPendingSettingsSync(
     syncSaveTimeout = null
   }
 
-  await (values ? saveSyncedSettings(values) : saveSyncedSettingsFromLocal())
+  const valuesToSave = values ?? pendingSyncValues
+  pendingSyncValues = null
+
+  await (valuesToSave
+    ? saveSyncedSettings(valuesToSave)
+    : saveSyncedSettingsFromLocal())
 }
 
 async function applySyncStorageToLocal(): Promise<void> {
@@ -308,14 +324,14 @@ export function registerSettingsSyncListeners(): void {
       )
       void saveSyncSetting(syncSettings).then(() => {
         if (syncSettings) {
-          scheduleSyncedSettingsSave()
+          schedulePendingSettingsSync()
         }
       })
       return
     }
 
     if (FONTARA_SYNCED_STORAGE_KEYS.some((key) => key in changes)) {
-      scheduleSyncedSettingsSave()
+      schedulePendingSettingsSync()
     }
   })
 }

@@ -9,6 +9,9 @@ type GoogleFontCSSCacheEntry = {
 }
 
 type GoogleFontCSSCache = Record<string, GoogleFontCSSCacheEntry>
+export type GoogleFontFaceCSSLoadOptions = {
+  allowNetwork?: boolean
+}
 
 const GOOGLE_FONT_VALUE_PREFIX = "google-font:"
 const MAX_GOOGLE_FONT_FAMILY_LENGTH = 120
@@ -280,11 +283,13 @@ async function fetchGoogleFontCSS(url: string): Promise<string> {
 }
 
 export async function loadGoogleFontFaceCSS(
-  selectedFont: unknown
+  selectedFont: unknown,
+  options: GoogleFontFaceCSSLoadOptions = {}
 ): Promise<string | null> {
   const fontFamily = decodeGoogleFontValue(selectedFont)
   if (!fontFamily) return null
 
+  const allowNetwork = options.allowNetwork !== false
   const cacheKey = getCacheKey(fontFamily)
   const cachedInMemory = googleFontCSSMemoryCache.get(cacheKey)
   if (cachedInMemory) return cachedInMemory
@@ -296,6 +301,10 @@ export async function loadGoogleFontFaceCSS(
   if (isFreshCacheEntry(storedEntry, requestUrl, now)) {
     googleFontCSSMemoryCache.set(cacheKey, storedEntry.css)
     return storedEntry.css
+  }
+
+  if (!allowNetwork) {
+    return null
   }
 
   try {

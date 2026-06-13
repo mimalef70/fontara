@@ -4,6 +4,10 @@ import { normalizeTextStrokeValue } from "./text-stroke"
 
 export const EMPTY_SITE_PROFILES: SiteProfile[] = []
 
+export type SiteProfileMatchOptions = {
+  includeDisabled?: boolean
+}
+
 function normalizeFontOverride(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined
 
@@ -21,6 +25,10 @@ export function hasSiteProfileOverrides(profile: SiteProfile): boolean {
   return profile.font !== undefined || profile.textStroke !== undefined
 }
 
+export function isSiteProfileEnabled(profile: SiteProfile): boolean {
+  return profile.enabled !== false
+}
+
 export function normalizeSiteProfile(value: unknown): SiteProfile | null {
   if (typeof value !== "object" || value === null) return null
 
@@ -30,6 +38,9 @@ export function normalizeSiteProfile(value: unknown): SiteProfile | null {
 
   const normalizedProfile: SiteProfile = {
     pattern
+  }
+  if (profile.enabled === false) {
+    normalizedProfile.enabled = false
   }
   const font = normalizeFontOverride(profile.font)
   const textStroke = normalizeTextStrokeOverride(profile.textStroke)
@@ -61,10 +72,15 @@ export function normalizeSiteProfiles(value: unknown): SiteProfile[] {
       continue
     }
 
-    normalizedProfiles[existingIndex] = {
+    const mergedProfile = {
       ...normalizedProfiles[existingIndex],
       ...normalizedProfile
     }
+    if (normalizedProfile.enabled !== false) {
+      delete mergedProfile.enabled
+    }
+
+    normalizedProfiles[existingIndex] = mergedProfile
   }
 
   return normalizedProfiles
@@ -72,16 +88,20 @@ export function normalizeSiteProfiles(value: unknown): SiteProfile[] {
 
 export function getSiteProfileForUrl(
   currentUrl: string,
-  siteProfiles: SiteProfile[] | undefined
+  siteProfiles: SiteProfile[] | undefined,
+  options: SiteProfileMatchOptions = {}
 ): SiteProfile | null {
   const normalizedProfiles = normalizeSiteProfiles(siteProfiles)
+  const candidateProfiles = options.includeDisabled
+    ? normalizedProfiles
+    : normalizedProfiles.filter(isSiteProfileEnabled)
   const matchingPattern = getMatchingSiteListPattern(
     currentUrl,
-    normalizedProfiles.map((profile) => profile.pattern)
+    candidateProfiles.map((profile) => profile.pattern)
   )
 
   return (
-    normalizedProfiles.find((profile) => profile.pattern === matchingPattern) ??
+    candidateProfiles.find((profile) => profile.pattern === matchingPattern) ??
     null
   )
 }

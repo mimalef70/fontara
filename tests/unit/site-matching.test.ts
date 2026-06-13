@@ -602,6 +602,7 @@ test("site profiles normalize patterns and resolve the strongest matching overri
     normalizeSiteProfiles([
       { pattern: " https://ChatGPT.com/ ", font: "Vazirmatn-Fontara" },
       { pattern: "chatgpt.com", textStroke: 0.26 },
+      { enabled: false, font: "Samim-Fontara", pattern: "chatgpt.com/c/1" },
       { pattern: "empty.example.com" },
       { pattern: "/(/", font: "Samim-Fontara" }
     ]),
@@ -610,6 +611,11 @@ test("site profiles normalize patterns and resolve the strongest matching overri
         font: "Vazirmatn-Fontara",
         pattern: "chatgpt.com",
         textStroke: 0.3
+      },
+      {
+        enabled: false,
+        font: "Samim-Fontara",
+        pattern: "chatgpt.com/c/1"
       }
     ]
   )
@@ -630,6 +636,31 @@ test("site profiles normalize patterns and resolve the strongest matching overri
       { pattern: "chatgpt.com/c/1", textStroke: 0.5 }
     ]),
     {
+      pattern: "chatgpt.com/c/1",
+      textStroke: 0.5
+    }
+  )
+  assert.deepEqual(
+    getSiteProfileForUrl("https://chatgpt.com/c/1", [
+      { pattern: "chatgpt.com", font: "Samim-Fontara" },
+      { enabled: false, pattern: "chatgpt.com/c/1", textStroke: 0.5 }
+    ]),
+    {
+      font: "Samim-Fontara",
+      pattern: "chatgpt.com"
+    }
+  )
+  assert.deepEqual(
+    getSiteProfileForUrl(
+      "https://chatgpt.com/c/1",
+      [
+        { pattern: "chatgpt.com", font: "Samim-Fontara" },
+        { enabled: false, pattern: "chatgpt.com/c/1", textStroke: 0.5 }
+      ],
+      { includeDisabled: true }
+    ),
+    {
+      enabled: false,
       pattern: "chatgpt.com/c/1",
       textStroke: 0.5
     }
@@ -809,6 +840,11 @@ test("FontARA site manager resolves font, profile, and RTL config together", () 
     [STORAGE_KEYS.RTL_ENABLED]: true,
     [STORAGE_KEYS.RTL_SITE_SETTINGS]: DEFAULT_VALUES.RTL_SITE_SETTINGS,
     [STORAGE_KEYS.SITE_PROFILES]: [
+      {
+        enabled: false,
+        font: "Vazirmatn-Fontara",
+        pattern: "chatgpt.com/c/1"
+      },
       {
         font: "Samim-Fontara",
         pattern: "chatgpt.com",

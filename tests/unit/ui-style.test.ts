@@ -278,6 +278,12 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /createSiteListPatternAddUpdate/)
   assert.match(optionsSource, /createWebsiteSiteListToggleUpdate/)
   assert.match(optionsSource, /upsertSiteProfile/)
+  assert.match(optionsSource, /isSiteProfileEnabled/)
+  assert.match(optionsSource, /handleSiteProfileEnabledToggle/)
+  assert.match(optionsSource, /fontara-site-profile-enabled-/)
+  assert.match(optionsSource, /options\.siteProfiles\.applyProfile/)
+  assert.match(optionsSource, /options\.siteProfiles\.active/)
+  assert.match(optionsSource, /options\.siteProfiles\.inactive/)
   assert.match(optionsSource, /removeSiteProfileFontOverrides/)
   assert.match(optionsSource, /normalizeSitePattern/)
   assert.match(optionsSource, /normalizeSiteProfiles/)
@@ -485,7 +491,7 @@ test("options page exposes extension hotkey controls", () => {
   )
 })
 
-test("popup manage fonts action opens the fonts settings section", () => {
+test("popup settings action opens the options page", () => {
   const popupSource = fs.readFileSync(
     path.resolve("src/ui/popup/index.tsx"),
     "utf8"
@@ -498,10 +504,15 @@ test("popup manage fonts action opens the fonts settings section", () => {
   assert.match(popupSource, /<PerSiteSettings \/>/)
   assert.match(popupSource, /<TextStrokeToggle \/>/)
   assert.doesNotMatch(popupSource, /direction: "rtl"/)
-  assert.match(popupSource, /aria-label=\{t\("popup\.manageFonts"\)\}/)
-  assert.match(popupSource, /openOptionsPageSafely\(\{\s*section: "fonts"/)
+  assert.match(popupSource, /aria-label=\{t\("common\.settings"\)\}/)
+  assert.match(
+    popupSource,
+    /onClick=\{\(\) => void openOptionsPageSafely\(\)\}/
+  )
   assert.match(popupSource, /className="[^"]*size-\[3rem\]/)
-  assert.match(popupSource, /<FolderFileFont className="size-6" \/>/)
+  assert.match(popupSource, /<Settings className="size-5" \/>/)
+  assert.doesNotMatch(popupSource, /section: "fonts"/)
+  assert.doesNotMatch(popupSource, /popup\.manageFonts/)
   assert.doesNotMatch(popupSource, /<PlusCircle/)
   assert.doesNotMatch(popupSource, /popup\.addCustomFont/)
 })
@@ -605,6 +616,15 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /createSiteListPatternToggleUpdate/)
   assert.match(customUrlToggleSource, /createSitePathPatternFromUrl/)
   assert.match(customUrlToggleSource, /getMatchingSiteListPattern/)
+  assert.match(customUrlToggleSource, /POPULAR_WEBSITES/)
+  assert.match(
+    customUrlToggleSource,
+    /getMatchingWebsite\(currentUrl, POPULAR_WEBSITES\)/
+  )
+  assert.match(
+    customUrlToggleSource,
+    /!currentTab\?\.isSupported \|\| !currentUrl \|\| matchingPopularWebsite/
+  )
   assert.match(customUrlToggleSource, /addSitePatternToList/)
   assert.match(customUrlToggleSource, /removeSitePatternFromList/)
   assert.match(customUrlToggleSource, /<DrawerContent dir=\{direction\}/)
@@ -628,9 +648,26 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(perSiteSettingsSource, /STORAGE_KEYS\.SITE_PROFILES/)
   assert.match(perSiteSettingsSource, /getMatchingSiteListPattern/)
   assert.match(perSiteSettingsSource, /getSiteProfileForUrl/)
+  assert.match(perSiteSettingsSource, /includeDisabled: true/)
+  assert.match(perSiteSettingsSource, /const appliedProfile = active/)
+  assert.match(perSiteSettingsSource, /fallbackProfile/)
+  assert.match(perSiteSettingsSource, /fontara-per-site-fallback-notice/)
+  assert.match(perSiteSettingsSource, /fontara-per-site-site-off-notice/)
+  assert.match(perSiteSettingsSource, /popup\.perSite\.fallbackTitle/)
+  assert.match(perSiteSettingsSource, /popup\.perSite\.fallbackDescription/)
+  assert.match(perSiteSettingsSource, /popup\.perSite\.siteOffDescription/)
+  assert.match(perSiteSettingsSource, /popup\.perSite\.useCustomPaused/)
+  assert.match(perSiteSettingsSource, /popup\.perSite\.usingFallback/)
+  assert.match(perSiteSettingsSource, /<Trash2 className="size-4" \/>/)
+  assert.doesNotMatch(perSiteSettingsSource, /<RotateCcw/)
+  assert.match(perSiteSettingsSource, /isSiteProfileEnabled/)
   assert.match(perSiteSettingsSource, /getSitePatternScope/)
   assert.match(perSiteSettingsSource, /upsertSiteProfile/)
   assert.match(perSiteSettingsSource, /removeSiteProfile/)
+  assert.match(
+    perSiteSettingsSource,
+    /saveProfilePatch\(\{ enabled: false \}\)/
+  )
   assert.match(perSiteSettingsSource, /fontara-per-site-settings-open/)
   assert.match(perSiteSettingsSource, /fontara-per-site-font-select/)
   assert.doesNotMatch(

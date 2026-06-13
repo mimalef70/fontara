@@ -90,7 +90,8 @@ test("Chrome MV3 applies font, updates font, and excludes site without page relo
       testPage,
       createBasicPageStyleExpectation({
         fontName: "Vazirmatn-Fontara",
-        loadId: initialLoadId
+        loadId: initialLoadId,
+        textStroke: false
       })
     )
     assert.equal(secondState.loadId, initialLoadId)
@@ -458,6 +459,47 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
         textStroke: 0.5
       })
     )
+
+    await clickByTestId(
+      optionsPage,
+      `fontara-site-profile-enabled-${sitePattern}`
+    )
+    await waitForExtensionLocalValue(optionsPage, STORAGE_KEYS.SITE_PROFILES, [
+      {
+        enabled: false,
+        font: "Samim-Fontara",
+        pattern: sitePattern,
+        textStroke: 0.5
+      }
+    ])
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: initialLoadId,
+        textStroke: false
+      })
+    )
+
+    await clickByTestId(
+      optionsPage,
+      `fontara-site-profile-enabled-${sitePattern}`
+    )
+    await waitForExtensionLocalValue(optionsPage, STORAGE_KEYS.SITE_PROFILES, [
+      {
+        font: "Samim-Fontara",
+        pattern: sitePattern,
+        textStroke: 0.5
+      }
+    ])
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId,
+        textStroke: 0.5
+      })
+    )
   })
 })
 
@@ -506,6 +548,9 @@ test("Chrome MV3 popup per-site settings save profiles without enabling sites", 
     )
     await popupPage.bringToFront()
     await clickByTestId(popupPage, "fontara-per-site-settings-open")
+    await popupPage.waitForSelector(
+      '[data-testid="fontara-per-site-site-off-notice"]'
+    )
     await setValueByTestId(
       popupPage,
       "fontara-per-site-font-select",
@@ -559,6 +604,10 @@ test("Chrome MV3 popup per-site settings edit the strongest matching profile", a
       [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
       [STORAGE_KEYS.SITE_PROFILES]: [
         {
+          font: "Sahel-Fontara",
+          pattern: sitePattern
+        },
+        {
           font: "Samim-Fontara",
           pattern: scopedPattern,
           textStroke: 0.5
@@ -588,6 +637,10 @@ test("Chrome MV3 popup per-site settings edit the strongest matching profile", a
       [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
       [STORAGE_KEYS.SITE_PROFILES]: [
         {
+          font: "Sahel-Fontara",
+          pattern: sitePattern
+        },
+        {
           font: "Samim-Fontara",
           pattern: scopedPattern,
           textStroke: 0.5
@@ -615,6 +668,10 @@ test("Chrome MV3 popup per-site settings edit the strongest matching profile", a
 
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.SITE_PROFILES, [
       {
+        font: "Sahel-Fontara",
+        pattern: sitePattern
+      },
+      {
         font: "Vazirmatn-Fontara",
         pattern: scopedPattern,
         textStroke: 0.5
@@ -622,6 +679,127 @@ test("Chrome MV3 popup per-site settings edit the strongest matching profile", a
     ])
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [
       sitePattern
+    ])
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: initialLoadId,
+        textStroke: 0.5
+      })
+    )
+  })
+})
+
+test("Chrome MV3 popup per-site settings disable profiles without deleting path settings", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    const scopedPath = "/per-site/disable-path"
+    const scopedPattern = `${sitePattern}${scopedPath}`
+    const testPage = await harness.createFixturePage({ path: scopedPath })
+
+    await waitForContentBridge(testPage)
+    const initialLoadId = await evaluate(testPage, () => window.__fontaraLoadId)
+
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SITE_PROFILES]: [
+        {
+          font: "Sahel-Fontara",
+          pattern: sitePattern
+        },
+        {
+          font: "Samim-Fontara",
+          pattern: scopedPattern,
+          textStroke: 0.5
+        }
+      ],
+      [STORAGE_KEYS.SYNC_SETTINGS]: true,
+      [STORAGE_KEYS.TEXT_STROKE]: 0
+    })
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Samim-Fontara",
+        loadId: initialLoadId,
+        textStroke: 0.5
+      })
+    )
+
+    const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      viewport: { height: 700, width: 360 }
+    })
+    await testPage.bringToFront()
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SITE_PROFILES]: [
+        {
+          font: "Sahel-Fontara",
+          pattern: sitePattern
+        },
+        {
+          font: "Samim-Fontara",
+          pattern: scopedPattern,
+          textStroke: 0.5
+        }
+      ],
+      [STORAGE_KEYS.SYNC_SETTINGS]: true,
+      [STORAGE_KEYS.TEXT_STROKE]: 0
+    })
+    await popupPage.waitForSelector(
+      '[data-testid="fontara-per-site-settings-open"]'
+    )
+    await popupPage.bringToFront()
+    await clickByTestId(popupPage, "fontara-per-site-settings-open")
+    await clickByTestId(popupPage, "fontara-per-site-custom-toggle")
+
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.SITE_PROFILES, [
+      {
+        font: "Sahel-Fontara",
+        pattern: sitePattern
+      },
+      {
+        enabled: false,
+        font: "Samim-Fontara",
+        pattern: scopedPattern,
+        textStroke: 0.5
+      }
+    ])
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Sahel-Fontara",
+        loadId: initialLoadId,
+        textStroke: false
+      })
+    )
+    await popupPage.waitForSelector(
+      '[data-testid="fontara-per-site-fallback-notice"]'
+    )
+
+    await setValueByTestId(
+      popupPage,
+      "fontara-per-site-font-select",
+      "Vazirmatn-Fontara"
+    )
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.SITE_PROFILES, [
+      {
+        font: "Sahel-Fontara",
+        pattern: sitePattern
+      },
+      {
+        font: "Vazirmatn-Fontara",
+        pattern: scopedPattern,
+        textStroke: 0.5
+      }
     ])
     await expectPageStyles(
       testPage,

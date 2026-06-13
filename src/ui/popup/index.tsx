@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react"
 import { useEffect } from "react"
 import { createRoot } from "react-dom/client"
 
@@ -7,7 +8,6 @@ import { openOptionsPageSafely } from "../../utils/options-page"
 import CustomUrlToggle from "../components/CustomUrlToggle"
 import ErrorBoundary from "../components/ErrorBoundary"
 import FontSelector from "../components/FontSelector"
-import { FolderFileFont } from "../components/icons"
 import Footer from "../components/layout/Footer"
 import Header from "../components/layout/Header"
 import PerSiteSettings from "../components/PerSiteSettings"
@@ -66,21 +66,17 @@ function IndexPopup() {
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              aria-label={t("popup.manageFonts")}
-                              onClick={() =>
-                                void openOptionsPageSafely({
-                                  section: "fonts"
-                                })
-                              }
+                              aria-label={t("common.settings")}
+                              onClick={() => void openOptionsPageSafely()}
                               className="flex size-[3rem] shrink-0 cursor-pointer items-center justify-center rounded-[3px] border-0 bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(0,0,0,0.08)] transition-all duration-300 hover:bg-[#e4efff]">
-                              <FolderFileFont className="size-6" />
+                              <Settings className="size-5" />
                             </button>
                           </TooltipTrigger>
                           <TooltipContent
                             className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
                             side="top"
                             align="center">
-                            {t("popup.manageFonts")}
+                            {t("common.settings")}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>

@@ -1,4 +1,4 @@
-import { RotateCcw, Settings2 } from "lucide-react"
+import { Settings2, Trash2 } from "lucide-react"
 import * as React from "react"
 
 import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
@@ -16,6 +16,7 @@ import {
 import {
   getSiteProfileForUrl,
   hasSiteProfileOverrides,
+  isSiteProfileEnabled,
   normalizeSiteProfiles,
   removeSiteProfile,
   upsertSiteProfile
@@ -41,7 +42,6 @@ import {
   getSystemFontList,
   type SystemFontData
 } from "../../utils/system-fonts"
-import { fontaraConnector } from "../connect/connector"
 import { useExtensionData } from "../hooks/use-extension-data"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
@@ -79,6 +79,7 @@ type FontOptionGroup = {
 }
 
 type SiteProfilePatch = {
+  enabled?: boolean
   font?: string | null
   textStroke?: number | null
 }
@@ -202,12 +203,32 @@ export default function PerSiteSettings() {
       : null
   const currentProfile = getSiteProfileForUrl(
     currentUrl,
-    normalizedSiteProfiles
+    normalizedSiteProfiles,
+    {
+      includeDisabled: true
+    }
   )
+  const appliedProfile = active
+    ? getSiteProfileForUrl(currentUrl, normalizedSiteProfiles)
+    : null
+  const currentProfileEnabled = currentProfile
+    ? isSiteProfileEnabled(currentProfile)
+    : false
+  const fallbackProfile =
+    currentProfile &&
+    !currentProfileEnabled &&
+    appliedProfile &&
+    appliedProfile.pattern !== currentProfile.pattern
+      ? appliedProfile
+      : null
   const profilePattern =
     currentProfile?.pattern ?? activeRulePattern ?? domainPattern
   const displayedScope = getProfileScope(profilePattern)
   const siteDisplayName = getDisplaySitePattern(profilePattern ?? domainPattern)
+  const fallbackScope = getProfileScope(fallbackProfile?.pattern ?? null)
+  const fallbackDisplayName = fallbackProfile
+    ? getDisplaySitePattern(fallbackProfile.pattern)
+    : null
   const textStrokeLabel = getTextStrokeValueLabel(
     textStroke,
     formatNumber,
@@ -298,6 +319,14 @@ export default function PerSiteSettings() {
       }
     }
 
+    if ("enabled" in patch) {
+      if (patch.enabled === false) {
+        nextProfile.enabled = false
+      } else {
+        delete nextProfile.enabled
+      }
+    }
+
     const baseProfiles = normalizedSiteProfiles.filter(
       (profile) => profile.pattern !== nextPattern
     )
@@ -306,9 +335,7 @@ export default function PerSiteSettings() {
       : baseProfiles
 
     try {
-      await fontaraConnector.changeSettings({
-        [STORAGE_KEYS.SITE_PROFILES]: nextProfiles
-      })
+      await setSiteProfiles(nextProfiles)
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to save per-site settings.", error)
@@ -333,13 +360,19 @@ export default function PerSiteSettings() {
 
   const handleCustomToggle = async (checked: boolean) => {
     if (!checked) {
-      await removeCurrentProfile()
+      if (currentProfile) {
+        await saveProfilePatch({ enabled: false })
+      }
       return
     }
 
-    if (currentProfile) return
+    if (currentProfile) {
+      await saveProfilePatch({ enabled: true })
+      return
+    }
 
     await saveProfilePatch({
+      enabled: true,
       font: selectedFont || DEFAULT_VALUES.SELECTED_FONT
     })
   }
@@ -349,11 +382,12 @@ export default function PerSiteSettings() {
   ) => {
     const nextFont = event.currentTarget.value
 
-    await saveProfilePatch({ font: nextFont || null })
+    await saveProfilePatch({ enabled: true, font: nextFont || null })
   }
 
   const handleCustomStrokeToggle = async (checked: boolean) => {
     await saveProfilePatch({
+      enabled: true,
       textStroke: checked ? profileTextStrokeValue : null
     })
   }
@@ -362,6 +396,7 @@ export default function PerSiteSettings() {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     await saveProfilePatch({
+      enabled: true,
       textStroke: Number(event.currentTarget.value)
     })
   }
@@ -373,7 +408,7 @@ export default function PerSiteSettings() {
         data-testid="fontara-per-site-settings-open"
         className={cn(
           "flex w-full items-center gap-2 rounded-md border p-2 text-start transition",
-          currentProfile
+          currentProfileEnabled
             ? "border-[#bfdbfe] bg-[#f8fbff]"
             : "border-gray-200 bg-white hover:border-[#dbeafe] hover:bg-[#f8fbff]"
         )}
@@ -381,7 +416,7 @@ export default function PerSiteSettings() {
         <span
           className={cn(
             "flex size-8 shrink-0 items-center justify-center rounded-md",
-            currentProfile
+            currentProfileEnabled
               ? "bg-[#eaf2ff] text-[#2374ff]"
               : "bg-gray-50 text-[#64748b]"
           )}>
@@ -393,11 +428,17 @@ export default function PerSiteSettings() {
           </span>
           <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-[#64748b]">
             <span className="truncate">
-              {currentProfile
-                ? t("popup.perSite.usingCustom")
-                : t("popup.perSite.usingGlobal")}
+              {fallbackProfile
+                ? t("popup.perSite.usingFallback")
+                : currentProfileEnabled
+                  ? t("popup.perSite.usingCustom")
+                  : t("popup.perSite.usingGlobal")}
             </span>
-            {displayedScope && <SiteScopeBadge scope={displayedScope} />}
+            {fallbackScope ? (
+              <SiteScopeBadge scope={fallbackScope} />
+            ) : displayedScope ? (
+              <SiteScopeBadge scope={displayedScope} />
+            ) : null}
           </span>
         </span>
         {!active && (
@@ -464,18 +505,49 @@ export default function PerSiteSettings() {
                 </div>
                 <p className="mt-1 text-xs leading-5 text-[#64748b]">
                   {currentProfile
-                    ? t("popup.perSite.useCustomOn")
+                    ? currentProfileEnabled
+                      ? t("popup.perSite.useCustomOn")
+                      : t("popup.perSite.useCustomPaused")
                     : t("popup.perSite.useCustomOff")}
                 </p>
               </div>
               <Switch
                 dir="ltr"
-                checked={Boolean(currentProfile)}
+                checked={currentProfileEnabled}
                 data-testid="fontara-per-site-custom-toggle"
                 onCheckedChange={(checked) => void handleCustomToggle(checked)}
                 aria-label={t("popup.perSite.useCustom")}
               />
             </div>
+
+            {fallbackProfile && fallbackDisplayName && fallbackScope && (
+              <div
+                data-testid="fontara-per-site-fallback-notice"
+                className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                <div className="font-bold">
+                  {t("popup.perSite.fallbackTitle")}
+                </div>
+                <p className="mt-1">{t("popup.perSite.fallbackDescription")}</p>
+                <div className="mt-2 flex min-w-0 items-center gap-2" dir="ltr">
+                  <SiteScopeBadge scope={fallbackScope} />
+                  <bdi
+                    className="min-w-0 flex-1 truncate font-semibold"
+                    dir="ltr"
+                    title={fallbackDisplayName}>
+                    {fallbackDisplayName}
+                  </bdi>
+                </div>
+              </div>
+            )}
+
+            {!active && (
+              <div
+                data-testid="fontara-per-site-site-off-notice"
+                className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                <div className="font-bold">{t("popup.perSite.siteOff")}</div>
+                <p className="mt-1">{t("popup.perSite.siteOffDescription")}</p>
+              </div>
+            )}
 
             <div className="space-y-2 rounded-md border border-[#e5e7eb] p-3">
               <label
@@ -583,9 +655,12 @@ export default function PerSiteSettings() {
               disabled={!currentProfile}
               data-testid="fontara-per-site-reset"
               onClick={() => void removeCurrentProfile()}>
-              <RotateCcw className="size-4" />
-              {t("popup.perSite.reset")}
+              <Trash2 className="size-4" />
+              {t("popup.perSite.deleteProfile")}
             </Button>
+            <p className="text-center text-[11px] leading-5 text-[#64748b]">
+              {t("popup.perSite.deleteProfileHint")}
+            </p>
           </div>
 
           <DrawerFooter>

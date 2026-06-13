@@ -23,6 +23,7 @@ export interface FontData {
 
 export interface SiteProfile {
   pattern: string
+  enabled?: boolean
   font?: string
   textStroke?: number
 }

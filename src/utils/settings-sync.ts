@@ -93,11 +93,16 @@ function mergeLocalCustomFontSiteProfileOverrides(
       continue
     }
 
-    profilesByPattern.set(localProfile.pattern, {
+    const mergedProfile = {
       ...localProfile,
       ...profilesByPattern.get(localProfile.pattern),
       font: localProfile.font
-    })
+    }
+    if (localProfile.enabled === false) {
+      mergedProfile.enabled = false
+    }
+
+    profilesByPattern.set(localProfile.pattern, mergedProfile)
   }
 
   return Array.from(profilesByPattern.values()).filter(hasSiteProfileOverrides)

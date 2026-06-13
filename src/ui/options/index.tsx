@@ -71,6 +71,7 @@ import {
   type SitePatternScope
 } from "../../config/site-list"
 import {
+  isSiteProfileEnabled,
   normalizeSiteProfiles,
   removeSiteProfile,
   removeSiteProfileFontOverrides,
@@ -1373,8 +1374,12 @@ function OptionsPage() {
       return
     }
 
+    const existingProfile = normalizedSiteProfiles.find(
+      (profile) => profile.pattern === pattern
+    )
     const nextProfile: SiteProfile = {
       pattern,
+      ...(existingProfile?.enabled === false ? { enabled: false } : {}),
       ...(siteProfileFontInput ? { font: siteProfileFontInput } : {}),
       ...(siteProfileUsesGlobalStroke
         ? {}
@@ -1413,6 +1418,34 @@ function OptionsPage() {
   const handleRemoveSiteProfile = async (pattern: string) => {
     try {
       await setSiteProfiles(removeSiteProfile(normalizedSiteProfiles, pattern))
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.siteSettingsError")
+      })
+    }
+  }
+
+  const handleSiteProfileEnabledToggle = async (
+    profile: SiteProfile,
+    checked: boolean
+  ) => {
+    const nextProfile = {
+      ...profile
+    }
+
+    if (checked) {
+      delete nextProfile.enabled
+    } else {
+      nextProfile.enabled = false
+    }
+
+    try {
+      await setSiteProfiles(
+        upsertSiteProfile(normalizedSiteProfiles, nextProfile)
+      )
     } catch (error) {
       toast({
         title:
@@ -2675,22 +2708,63 @@ function OptionsPage() {
                               const hasCustomCss = hasCustomCssForSitePattern(
                                 profile.pattern
                               )
+                              const profileEnabled =
+                                isSiteProfileEnabled(profile)
 
                               return (
                                 <div
                                   key={profile.pattern}
                                   data-testid={`fontara-site-profile-row-${profile.pattern}`}
-                                  className="rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-3">
+                                  className={cn(
+                                    "rounded-md border px-3 py-3 transition",
+                                    profileEnabled
+                                      ? "border-[#eef2f7] bg-[#f8fafc]"
+                                      : "border-slate-200 bg-slate-50 opacity-75"
+                                  )}>
                                   <div className="mb-3 flex items-start justify-between gap-3">
                                     <div className="flex min-w-0 items-center gap-2">
-                                      <bdi className="min-w-0 truncate text-sm font-bold text-[#111827]">
+                                      <bdi
+                                        className={cn(
+                                          "min-w-0 truncate text-sm font-bold",
+                                          profileEnabled
+                                            ? "text-[#111827]"
+                                            : "text-[#64748b]"
+                                        )}>
                                         {getDisplaySitePattern(profile.pattern)}
                                       </bdi>
+                                      <span
+                                        className={cn(
+                                          "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                                          profileEnabled
+                                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                            : "border-slate-200 bg-white text-slate-500"
+                                        )}>
+                                        {profileEnabled
+                                          ? t("options.siteProfiles.active")
+                                          : t("options.siteProfiles.inactive")}
+                                      </span>
                                       {hasCustomCss && (
                                         <SiteModeBadge customCss />
                                       )}
                                     </div>
-                                    <div className="flex shrink-0 items-center gap-1">
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <Switch
+                                        dir="ltr"
+                                        checked={profileEnabled}
+                                        data-testid={`fontara-site-profile-enabled-${profile.pattern}`}
+                                        onCheckedChange={(checked) =>
+                                          void handleSiteProfileEnabledToggle(
+                                            profile,
+                                            checked
+                                          )
+                                        }
+                                        aria-label={t(
+                                          "options.siteProfiles.applyProfile",
+                                          {
+                                            site: profile.pattern
+                                          }
+                                        )}
+                                      />
                                       <Button
                                         type="button"
                                         variant="ghost"

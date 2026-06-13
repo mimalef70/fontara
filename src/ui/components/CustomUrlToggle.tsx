@@ -17,6 +17,7 @@ import {
   removeSitePatternFromList
 } from "../../config/site-list"
 import { getMatchingWebsite } from "../../config/site-manager"
+import { POPULAR_WEBSITES } from "../../config/sites"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
 import { cn } from "../../utils/cn"
@@ -81,6 +82,9 @@ const CustomUrlToggle = () => {
   )
 
   const currentUrl = currentTab?.url ?? null
+  const matchingPopularWebsite = currentUrl
+    ? getMatchingWebsite(currentUrl, POPULAR_WEBSITES)
+    : null
   const normalizedEnabledByDefault = normalizeEnabledByDefault(enabledByDefault)
   const normalizedEnabledFor = normalizeEnabledSiteList(enabledFor)
   const normalizedDisabledFor = normalizeSiteList(disabledFor)
@@ -295,7 +299,9 @@ const CustomUrlToggle = () => {
     )
   }
 
-  if (!currentTab?.isSupported || !currentUrl) return null
+  if (!currentTab?.isSupported || !currentUrl || matchingPopularWebsite) {
+    return null
+  }
 
   const isRtl = direction === "rtl"
   const displayPattern =

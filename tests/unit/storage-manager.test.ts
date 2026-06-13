@@ -1214,6 +1214,7 @@ test("ensureStorageValues normalizes per-site profile overrides", async () => {
       },
       {
         font: "MissingCustom-Fontara",
+        enabled: false,
         pattern: "custom.example.com",
         textStroke: 0.4
       },
@@ -1243,6 +1244,7 @@ test("ensureStorageValues normalizes per-site profile overrides", async () => {
       textStroke: 0.3
     },
     {
+      enabled: false,
       pattern: "custom.example.com",
       textStroke: 0.4
     }

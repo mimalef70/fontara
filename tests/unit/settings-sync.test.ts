@@ -28,6 +28,7 @@ test("settings sync excludes custom font files and custom font references", asyn
     [STORAGE_KEYS.CONTEXT_MENUS_ENABLED]: true,
     [STORAGE_KEYS.SITE_PROFILES]: [
       {
+        enabled: false,
         pattern: "example.com",
         font: localCustomFont.value,
         textStroke: 0.4
@@ -44,6 +45,7 @@ test("settings sync excludes custom font files and custom font references", asyn
   assert.equal(STORAGE_KEYS.SELECTED_FONT in syncedSettings, false)
   assert.deepEqual(syncedSettings[STORAGE_KEYS.SITE_PROFILES], [
     {
+      enabled: false,
       pattern: "example.com",
       textStroke: 0.4
     },
@@ -73,6 +75,7 @@ test("settings sync merges synced values with local-only custom fonts", async ()
           textStroke: 0.2
         },
         {
+          enabled: false,
           pattern: "local-only.example",
           font: localCustomFont.value
         }
@@ -115,6 +118,7 @@ test("settings sync merges synced values with local-only custom fonts", async ()
       font: localCustomFont.value
     },
     {
+      enabled: false,
       pattern: "local-only.example",
       font: localCustomFont.value
     }

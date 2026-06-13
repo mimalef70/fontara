@@ -24,7 +24,6 @@ export function createTextStrokeCSS(config: TextStrokeConfig): string {
   return [
     `*:not(${GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS.join(", ")}) {`,
     `  -webkit-text-stroke: ${config.widthPx}px !important;`,
-    `  text-stroke: ${config.widthPx}px !important;`,
     "}"
   ].join("\n")
 }

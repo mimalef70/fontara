@@ -49,6 +49,8 @@ type DisplayFont = {
   localizedName?: Partial<Record<SupportedUILanguage, string>>
   localizedAuthor?: Partial<Record<SupportedUILanguage, string>>
   fontFamily?: string
+  subsets?: string[]
+  unicodeRange?: string | null
 }
 
 type FontPreviewStyle = CSSProperties & {
@@ -69,7 +71,7 @@ type FontListRow =
 
 type FontListRowProps = {
   direction: "ltr" | "rtl"
-  fontSampleText: string
+  getFontSampleText: (font: DisplayFont) => string
   getFontDisplayName: (font: DisplayFont) => string
   getFontFamily: (font: DisplayFont) => string
   hoveredFont: string | null
@@ -112,6 +114,18 @@ function isRtlText(value: string): boolean {
   return RTL_TEXT_PATTERN.test(value)
 }
 
+function shouldUseLatinFontPreview(font: DisplayFont): boolean {
+  if (!decodeGoogleFontValue(font.value) || !Array.isArray(font.subsets)) {
+    return false
+  }
+
+  const subsets = new Set(font.subsets)
+  const hasLatinSubset = subsets.has("latin") || subsets.has("latin-ext")
+  const hasRtlSubset = subsets.has("arabic") || subsets.has("hebrew")
+
+  return hasLatinSubset && !hasRtlSubset
+}
+
 function getFontListRowHeight(
   index: number,
   rowProps: FontListRowProps
@@ -124,7 +138,7 @@ function getFontListRowHeight(
 function FontListRow({
   ariaAttributes,
   direction,
-  fontSampleText,
+  getFontSampleText,
   getFontDisplayName,
   getFontFamily,
   hoveredFont,
@@ -162,6 +176,7 @@ function FontListRow({
 
   const font = row.font
   const fontName = getFontDisplayName(font)
+  const fontSampleText = getFontSampleText(font)
   const isFontNameRtl = isRtlText(fontName)
   const isFontRowActive =
     hoveredFont === font.value || selectedFont === font.value
@@ -430,6 +445,12 @@ const FontSelector = () => {
         ? selectedGoogleFont.family
         : t("fontSelector.placeholder")
   const fontSampleText = t("fontSelector.previewText")
+  const latinFontSampleText = t("fontSelector.previewTextLatin")
+  const getFontSampleText = useCallback(
+    (font: DisplayFont) =>
+      shouldUseLatinFontPreview(font) ? latinFontSampleText : fontSampleText,
+    [fontSampleText, latinFontSampleText]
+  )
   const systemFontsStatusMessage =
     systemFontsEnabled && systemFontsLoading
       ? t("fontSelector.systemLoading")
@@ -439,7 +460,7 @@ const FontSelector = () => {
   const fontListRowProps = useMemo<FontListRowProps>(
     () => ({
       direction,
-      fontSampleText,
+      getFontSampleText,
       getFontDisplayName,
       getFontFamily,
       hoveredFont,
@@ -451,7 +472,7 @@ const FontSelector = () => {
     [
       direction,
       fontListRows,
-      fontSampleText,
+      getFontSampleText,
       getFontDisplayName,
       getFontFamily,
       handleFontSelect,

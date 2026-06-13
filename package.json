@@ -55,7 +55,7 @@
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
     "typecheck": "tsc --noEmit && node tasks/check-deprecations.js",
     "lint": "biome check . && node tasks/check-tailwind-canonical-classes.js",
-    "lint:extension": "pnpm build:firefox && web-ext lint --source-dir ./build/firefox-mv3-prod",
+    "lint:extension": "pnpm build:firefox && node tasks/check-web-ext-lint.js ./build/firefox-mv3-prod",
     "lint:fix": "biome check --write . && node tasks/check-tailwind-canonical-classes.js --write",
     "verify": "pnpm check && pnpm build:all && pnpm lint:extension",
     "format": "biome format --write .",

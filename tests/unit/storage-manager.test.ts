@@ -95,6 +95,13 @@ function mockExtensionStorage(
           runtimeError = undefined
           Object.assign(syncValues, items)
           callback()
+        },
+        remove(keys: string | string[], callback: () => void) {
+          runtimeError = undefined
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete syncValues[key]
+          }
+          callback()
         }
       }
     }
@@ -1329,6 +1336,22 @@ test("ensureStorageValues resets unknown selected Google font values", async () 
   const values: Record<string, unknown> = {
     [STORAGE_KEYS.EXTENSION_ENABLED]: true,
     [STORAGE_KEYS.SELECTED_FONT]: unknownGoogleFont,
+    [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: []
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
+})
+
+test("ensureStorageValues resets non-text Google font selections", async () => {
+  const iconGoogleFont = createGoogleFontValue("Material Icons")
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: iconGoogleFont,
     [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
     [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST,
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: []

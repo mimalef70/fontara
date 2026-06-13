@@ -828,6 +828,14 @@ test("Chrome MV3 options UI exports, imports, and resets settings backups", asyn
       [STORAGE_KEYS.SITE_PROFILES]: [],
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      "Samim-Fontara"
+    )
+    await waitForExtensionLocalValue(optionsPage, STORAGE_KEYS.ENABLED_FOR, [
+      sitePattern
+    ])
     await installDownloadCapture(optionsPage)
     await clickByTestId(optionsPage, "fontara-options-nav-advanced")
     await clickByTestId(optionsPage, "fontara-settings-export")

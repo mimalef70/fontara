@@ -150,6 +150,21 @@ function getSyncStorageItemBytes(key: string, value: unknown): number {
   return new TextEncoder().encode(JSON.stringify({ [key]: value })).byteLength
 }
 
+function createSyncStorageChunkKey(key: string, index: number): string {
+  return `${key}_${index.toString(36)}`
+}
+
+function getSyncStorageSplitCount(value: unknown): number {
+  if (typeof value !== "object" || value === null) return 0
+
+  const splitCount = (value as Record<string, unknown>)[
+    SYNC_STORAGE_CHUNK_META_KEY
+  ]
+  return Number.isInteger(splitCount) && Number(splitCount) > 0
+    ? Number(splitCount)
+    : 0
+}
+
 function splitSyncStorageValue(
   key: string,
   serializedValue: string,
@@ -159,7 +174,7 @@ function splitSyncStorageValue(
   let offset = 0
 
   while (offset < serializedValue.length) {
-    const chunkKey = `${key}_${chunks.length.toString(36)}`
+    const chunkKey = createSyncStorageChunkKey(key, chunks.length)
     let bestEnd = offset
     let low = offset + 1
     let high = serializedValue.length
@@ -206,7 +221,7 @@ function reassembleSyncStorageChunks(
 
     let serializedValue = ""
     for (let index = 0; index < splitCount; index += 1) {
-      const chunkKey = `${key}_${index.toString(36)}`
+      const chunkKey = createSyncStorageChunkKey(key, index)
       const chunk = reassembledValues[chunkKey]
       if (typeof chunk !== "string") {
         return null
@@ -245,7 +260,7 @@ function prepareSyncStorageValues<T extends Record<string, unknown>>(
       quotaBytesPerItem
     )
     for (let index = 0; index < chunks.length; index += 1) {
-      preparedValues[`${key}_${index.toString(36)}`] = chunks[index]
+      preparedValues[createSyncStorageChunkKey(key, index)] = chunks[index]
     }
     preparedValues[key] = {
       [SYNC_STORAGE_CHUNK_META_KEY]: chunks.length
@@ -257,6 +272,85 @@ function prepareSyncStorageValues<T extends Record<string, unknown>>(
   }
 
   return preparedValues
+}
+
+function getObsoleteSyncStorageChunkKeys(
+  currentValues: Record<string, unknown>,
+  retainedValues: Record<string, unknown>,
+  updatedKeys: string[]
+): string[] {
+  const obsoleteKeys: string[] = []
+
+  for (const key of updatedKeys) {
+    const currentSplitCount = getSyncStorageSplitCount(currentValues[key])
+    if (currentSplitCount === 0) continue
+
+    const retainedSplitCount = getSyncStorageSplitCount(retainedValues[key])
+    for (
+      let index = retainedSplitCount;
+      index < currentSplitCount;
+      index += 1
+    ) {
+      obsoleteKeys.push(createSyncStorageChunkKey(key, index))
+    }
+  }
+
+  return obsoleteKeys
+}
+
+function getSyncRawValues(
+  syncStorage: chrome.storage.SyncStorageArea
+): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    syncStorage.get(null, (items) => {
+      const error = getRuntimeError()
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(items as Record<string, unknown>)
+    })
+  })
+}
+
+function setSyncRawValues(
+  syncStorage: chrome.storage.SyncStorageArea,
+  values: Record<string, unknown>
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    syncStorage.set(values, () => {
+      const error = getRuntimeError()
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
+  })
+}
+
+function removeSyncRawValues(
+  syncStorage: chrome.storage.SyncStorageArea,
+  keys: string[]
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (keys.length === 0) {
+      resolve()
+      return
+    }
+
+    syncStorage.remove(keys, () => {
+      const error = getRuntimeError()
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
+  })
 }
 
 export function getSyncValues<T extends Record<string, unknown>>(
@@ -289,26 +383,25 @@ export function getSyncValues<T extends Record<string, unknown>>(
   })
 }
 
-export function setSyncValues<T extends Record<string, unknown>>(
+export async function setSyncValues<T extends Record<string, unknown>>(
   values: T
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const syncStorage = getSyncStorageArea()
-    if (!syncStorage) {
-      reject(new Error("sync-storage-unavailable"))
-      return
-    }
+  const syncStorage = getSyncStorageArea()
+  if (!syncStorage) {
+    throw new Error("sync-storage-unavailable")
+  }
 
-    syncStorage.set(prepareSyncStorageValues(values), () => {
-      const error = getRuntimeError()
-      if (error) {
-        reject(error)
-        return
-      }
+  const preparedValues = prepareSyncStorageValues(values)
+  const currentValues = await getSyncRawValues(syncStorage)
 
-      resolve()
-    })
-  })
+  await setSyncRawValues(syncStorage, preparedValues)
+  const latestValues = await getSyncRawValues(syncStorage)
+  const obsoleteChunkKeys = getObsoleteSyncStorageChunkKeys(
+    currentValues,
+    latestValues,
+    Object.keys(values)
+  )
+  await removeSyncRawValues(syncStorage, obsoleteChunkKeys)
 }
 
 export function watchLocalStorage(watchers: StorageWatchers): () => void {

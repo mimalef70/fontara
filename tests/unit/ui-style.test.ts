@@ -49,6 +49,9 @@ test("UI follows the selected extension font", () => {
   )
   assert.match(fontSelectorSource, /"--fontara-preview-font"/)
   assert.match(fontSelectorSource, /fontSelector\.previewText/)
+  assert.match(fontSelectorSource, /fontSelector\.previewTextLatin/)
+  assert.match(fontSelectorSource, /shouldUseLatinFontPreview/)
+  assert.match(fontSelectorSource, /subsets\.has\("latin"\)/)
   assert.match(fontSelectorSource, /fontSelector\.groupTitlePrefix/)
   assert.match(fontSelectorSource, /fontSelector\.systemGroup/)
   assert.match(fontSelectorSource, /from "react-window"/)
@@ -250,7 +253,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.doesNotMatch(optionsSource, /fontara-site-profile-advanced-toggle/)
   assert.match(optionsSource, /createSettingsBackup/)
   assert.match(optionsSource, /parseSettingsBackupText/)
-  assert.match(optionsSource, /fontaraConnector\.getData/)
+  assert.match(optionsSource, /fontaraConnector\.changeSettings/)
   assert.match(optionsSource, /fontaraConnector\.importSettings/)
   assert.match(optionsSource, /fontaraConnector\.resetSettings/)
   assert.match(optionsSource, /FONTARA_SETTINGS_STORAGE_KEYS/)
@@ -737,6 +740,21 @@ test("custom font uploads normalize stored names and data URLs", () => {
   assert.doesNotMatch(optionsSource, /data: base64Data/)
 })
 
+test("settings export reads the latest local storage snapshot", () => {
+  const optionsSource = fs.readFileSync(
+    path.resolve("src/ui/options/index.tsx"),
+    "utf8"
+  )
+
+  assert.match(optionsSource, /getLocalValues\(getSettingsBackupDefaults\(\)\)/)
+  assert.match(optionsSource, /normalizeStorageValues/)
+  assert.match(optionsSource, /createSettingsBackup\(settings/)
+  assert.doesNotMatch(
+    optionsSource,
+    /createSettingsBackup\(extensionData\.settings/
+  )
+})
+
 test("UI storage hooks use stable initial value references", () => {
   const storageHookSource = fs.readFileSync(
     path.resolve("src/ui/hooks/use-storage.ts"),
@@ -764,7 +782,7 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(storageHookSource, /valueRef\.current/)
   assert.match(storageHookSource, /useExtensionData\(\)/)
   assert.match(storageHookSource, /fontaraConnector\.changeSettings/)
-  assert.doesNotMatch(storageHookSource, /getLocalValue/)
+  assert.doesNotMatch(storageHookSource, /\bgetLocalValue\s*\(/)
   assert.doesNotMatch(storageHookSource, /chrome\.storage\.onChanged/)
   assert.doesNotMatch(uiSources, /setLocalValues/)
   assert.doesNotMatch(storageHookSource, /\[key, value\]/)
@@ -780,8 +798,9 @@ test("UI storage hooks use stable initial value references", () => {
   assert.match(uiSources, /getEnabledForInitialValue/)
   assert.match(uiSources, /getDisabledForInitialValue/)
   assert.match(uiSources, /getPinnedWebsiteUrlsInitialValue/)
-  assert.doesNotMatch(uiSources, /getLocalValue/)
-  assert.doesNotMatch(uiSources, /getLocalValues/)
+  assert.doesNotMatch(uiSources, /\bgetLocalValue\s*\(/)
+  assert.equal(uiSources.match(/\bgetLocalValues\s*\(/g)?.length ?? 0, 1)
+  assert.match(uiSources, /getLocalValues\(getSettingsBackupDefaults\(\)\)/)
   assert.doesNotMatch(uiSources, /reconcileStoredSiteLists/)
   assert.doesNotMatch(uiSources, /handleSiteListStorageChange/)
   assert.doesNotMatch(uiSources, /chrome\.storage\.onChanged/)

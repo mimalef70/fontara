@@ -20,8 +20,21 @@ export type GoogleFontData = GoogleFontMetadata & {
   value: string
 }
 
+const NON_TEXT_GOOGLE_FONT_FAMILY_PATTERNS = [
+  /^material icons(?:\b|$)/i,
+  /^material symbols(?:\b|$)/i,
+  /^libre barcode\b/i
+]
+
+export function isSelectableGoogleFont(font: GoogleFontMetadata): boolean {
+  return !NON_TEXT_GOOGLE_FONT_FAMILY_PATTERNS.some((pattern) =>
+    pattern.test(font.family)
+  )
+}
+
+const SELECTABLE_GOOGLE_FONTS = GOOGLE_FONTS.filter(isSelectableGoogleFont)
 const GOOGLE_FONT_FAMILIES = new Map(
-  GOOGLE_FONTS.map((font) => [font.family.toLowerCase(), font])
+  SELECTABLE_GOOGLE_FONTS.map((font) => [font.family.toLowerCase(), font])
 )
 
 function createGoogleFontData(font: GoogleFontMetadata): GoogleFontData {
@@ -49,7 +62,7 @@ export function getGoogleFontByValue(
 }
 
 export function getGoogleFontList(): GoogleFontData[] {
-  return GOOGLE_FONTS.map(createGoogleFontData)
+  return SELECTABLE_GOOGLE_FONTS.map(createGoogleFontData)
 }
 
 export function buildGoogleFontsCSS2URL(font: GoogleFontMetadata): string {

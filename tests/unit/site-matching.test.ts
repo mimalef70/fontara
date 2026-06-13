@@ -524,21 +524,19 @@ test("site list URL matching supports wildcard and path behavior", () => {
   )
 })
 
-test("site list URL cache is capped with LRU eviction", () => {
+test("site list pattern caches are capped with LRU eviction", () => {
   const siteListSource = fs.readFileSync(
     path.resolve("src/config/site-list.ts"),
     "utf8"
   )
 
-  assert.match(siteListSource, /const PREPARED_URL_CACHE_LIMIT = 500/)
-  assert.match(siteListSource, /function getPreparedURLCacheEntry/)
-  assert.match(siteListSource, /function setPreparedURLCacheEntry/)
-  assert.match(siteListSource, /preparedURLCache\.delete\(url\)/)
-  assert.match(
-    siteListSource,
-    /preparedURLCache\.size > PREPARED_URL_CACHE_LIMIT/
-  )
-  assert.match(siteListSource, /preparedURLCache\.delete\(oldestKey\)/)
+  assert.match(siteListSource, /const SITE_PATTERN_CACHE_LIMIT = 500/)
+  assert.match(siteListSource, /const SITE_REGEX_SOURCE_MAX_LENGTH = 512/)
+  assert.match(siteListSource, /function getCacheEntry/)
+  assert.match(siteListSource, /function setCacheEntry/)
+  assert.match(siteListSource, /cache\.delete\(key\)/)
+  assert.match(siteListSource, /cache\.size > SITE_PATTERN_CACHE_LIMIT/)
+  assert.match(siteListSource, /cache\.delete\(oldestKey\)/)
 })
 
 test("site list helpers keep append order and reject invalid regex patterns", () => {
@@ -548,6 +546,7 @@ test("site list helpers keep append order and reject invalid regex patterns", ()
   ])
   assert.equal(normalizeSitePattern("/(/"), null)
   assert.equal(normalizeSitePattern("/example\\s+site/"), "/example\\s+site/")
+  assert.equal(normalizeSitePattern(`/${"a".repeat(513)}/`), null)
   assert.equal(
     isURLMatched("https://example.com/path", "/example\\.com\\/path/"),
     true

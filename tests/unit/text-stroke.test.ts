@@ -31,7 +31,7 @@ test("text stroke CSS follows the protected text selector", () => {
   assert.match(css, /\[class\*="material-symbol"\]/)
   assert.match(css, /\[class\*="vjs-"\]/)
   assert.match(css, /-webkit-text-stroke: 0\.2px !important;/)
-  assert.match(css, /text-stroke: 0\.2px !important;/)
+  assert.doesNotMatch(css, /(^|\n)\s*text-stroke:/)
 })
 
 test("text stroke CSS stays empty when the global setting is off", () => {

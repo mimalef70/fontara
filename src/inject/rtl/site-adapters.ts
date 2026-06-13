@@ -34,6 +34,7 @@ type StandardAdapterConfig = {
   uiExcludeSelectors?: string[]
 }
 
+const DIRECTION_SAMPLE_CHAR_LIMIT = 1000
 const DEFAULT_TEXTUAL_DESCENDANTS = [
   "p",
   "div",
@@ -165,11 +166,15 @@ function detectDominantDirection(text: string): "ltr" | "rtl" | null {
   const normalized = normalizeText(text)
   if (!normalized) return null
 
+  const sample =
+    normalized.length > DIRECTION_SAMPLE_CHAR_LIMIT
+      ? normalized.slice(0, DIRECTION_SAMPLE_CHAR_LIMIT)
+      : normalized
   let rtlCount = 0
   let ltrCount = 0
   let firstStrong: string | null = null
 
-  for (const char of normalized) {
+  for (const char of sample) {
     if (!isStrongLetter(char)) continue
     firstStrong ??= char
     if (isRtlCharacter(char)) {

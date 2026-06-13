@@ -395,6 +395,11 @@ test("RTL adapters preserve sample platform coverage without font injection", ()
   assert.match(siteAdaptersSource, /fontara-gemini-rtl-list/)
   assert.match(siteAdaptersSource, /createTextWalkerAdapter/)
   assert.match(siteAdaptersSource, /ms-chat-session/)
+  assert.match(siteAdaptersSource, /const DIRECTION_SAMPLE_CHAR_LIMIT = 1000/)
+  assert.match(
+    siteAdaptersSource,
+    /normalized\.slice\(0, DIRECTION_SAMPLE_CHAR_LIMIT\)/
+  )
   assert.match(autoDirectionSource, /EDITABLE_SELECTOR/)
   assert.match(autoDirectionSource, /GEMINI_UI_SKIP/)
   assert.match(

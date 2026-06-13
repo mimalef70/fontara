@@ -45,10 +45,27 @@ test("Google Font display list exposes safe selectable data", () => {
 
   assert.equal(GOOGLE_FONTS_CATALOG_SOURCE, "google-fonts-developer-api-v1")
   assert.ok(GOOGLE_FONTS.length > 1000)
-  assert.equal(fonts.length, GOOGLE_FONTS.length)
+  assert.ok(fonts.length < GOOGLE_FONTS.length)
   assert.ok(fonts.some((font) => font.family === "Vazirmatn"))
   assert.ok(fonts.some((font) => font.family === "Inter"))
   assert.ok(fonts.some((font) => font.recommended))
+  assert.equal(
+    fonts.some((font) => font.family === "Material Icons"),
+    false
+  )
+  assert.equal(
+    fonts.some((font) => font.family === "Material Symbols Outlined"),
+    false
+  )
+  assert.equal(
+    fonts.some((font) => font.family === "Libre Barcode 128"),
+    false
+  )
+  assert.equal(getGoogleFontByFamily("Material Icons"), null)
+  assert.equal(
+    getGoogleFontByValue(createGoogleFontValue("Material Symbols Outlined")),
+    null
+  )
   assert.ok(
     fonts.every(
       (font) =>

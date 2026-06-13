@@ -136,6 +136,13 @@ test("sync storage helpers split and reassemble large items", async () => {
           runtimeError = undefined
           Object.assign(values, items)
           callback()
+        },
+        remove(keys: string | string[], callback: () => void) {
+          runtimeError = undefined
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete values[key]
+          }
+          callback()
         }
       }
     }
@@ -157,6 +164,67 @@ test("sync storage helpers split and reassemble large items", async () => {
     assert.equal(typeof values[`enabledFor_${index.toString(36)}`], "string")
   }
   assert.deepEqual(await getSyncValues({ enabledFor: [] }), settings)
+
+  await setSyncValues({ enabledFor: ["example.com"] })
+
+  assert.deepEqual(values.enabledFor, ["example.com"])
+  for (let index = 0; index < splitCount; index += 1) {
+    assert.equal(values[`enabledFor_${index.toString(36)}`], undefined)
+  }
+  assert.deepEqual(await getSyncValues({ enabledFor: [] }), {
+    enabledFor: ["example.com"]
+  })
+})
+
+test("sync storage cleanup preserves newer concurrent split chunks", async () => {
+  const values: Record<string, unknown> = {
+    enabledFor: { __meta_split_count: 3 },
+    enabledFor_0: "old-0",
+    enabledFor_1: "old-1",
+    enabledFor_2: "old-2"
+  }
+  let runtimeError: { message: string } | undefined
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      get lastError() {
+        return runtimeError
+      }
+    },
+    storage: {
+      sync: {
+        QUOTA_BYTES_PER_ITEM: 8192,
+        get(_keys: null, callback: (items: Record<string, unknown>) => void) {
+          runtimeError = undefined
+          callback({ ...values })
+        },
+        set(items: Record<string, unknown>, callback: () => void) {
+          runtimeError = undefined
+          Object.assign(values, items)
+
+          values.enabledFor = { __meta_split_count: 2 }
+          values.enabledFor_0 = "new-0"
+          values.enabledFor_1 = "new-1"
+
+          callback()
+        },
+        remove(keys: string | string[], callback: () => void) {
+          runtimeError = undefined
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete values[key]
+          }
+          callback()
+        }
+      }
+    }
+  })
+
+  await setSyncValues({ enabledFor: ["example.com"] })
+
+  assert.deepEqual(values.enabledFor, { __meta_split_count: 2 })
+  assert.equal(values.enabledFor_0, "new-0")
+  assert.equal(values.enabledFor_1, "new-1")
+  assert.equal(values.enabledFor_2, undefined)
 })
 
 test("sync storage helpers reject write errors and return null when unavailable", async () => {
@@ -179,6 +247,10 @@ test("sync storage helpers reject write errors and return null when unavailable"
           runtimeError = { message: "sync quota exceeded" }
           callback()
           runtimeError = undefined
+        },
+        remove(_keys: string | string[], callback: () => void) {
+          runtimeError = undefined
+          callback()
         }
       }
     }
@@ -215,6 +287,10 @@ test("sync storage helpers reject payloads that would exceed the item count quot
           callback({})
         },
         set(_items: Record<string, unknown>, callback: () => void) {
+          runtimeError = undefined
+          callback()
+        },
+        remove(_keys: string | string[], callback: () => void) {
           runtimeError = undefined
           callback()
         }

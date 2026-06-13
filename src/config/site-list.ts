@@ -23,32 +23,30 @@ type PreparedPattern = PreparedURL & {
 const regexpCache = new Map<string, RegExp | null>()
 const preparedPatternCache = new Map<string, PreparedPattern | null>()
 const preparedURLCache = new Map<string, PreparedURL | null>()
-const PREPARED_URL_CACHE_LIMIT = 500
+const SITE_PATTERN_CACHE_LIMIT = 500
+const SITE_REGEX_SOURCE_MAX_LENGTH = 512
 const PROTOCOL_PATTERN = /^[a-z*][a-z0-9+.-]*:\/\//i
 
-function getPreparedURLCacheEntry(url: string): PreparedURL | null | undefined {
-  const cached = preparedURLCache.get(url)
+function getCacheEntry<T>(cache: Map<string, T>, key: string): T | undefined {
+  const cached = cache.get(key)
   if (cached === undefined) return undefined
 
-  preparedURLCache.delete(url)
-  preparedURLCache.set(url, cached)
+  cache.delete(key)
+  cache.set(key, cached)
   return cached
 }
 
-function setPreparedURLCacheEntry(
-  url: string,
-  preparedURL: PreparedURL | null
-): void {
-  if (preparedURLCache.has(url)) {
-    preparedURLCache.delete(url)
+function setCacheEntry<T>(cache: Map<string, T>, key: string, value: T): void {
+  if (cache.has(key)) {
+    cache.delete(key)
   }
 
-  preparedURLCache.set(url, preparedURL)
+  cache.set(key, value)
 
-  while (preparedURLCache.size > PREPARED_URL_CACHE_LIMIT) {
-    const oldestKey = preparedURLCache.keys().next().value
+  while (cache.size > SITE_PATTERN_CACHE_LIMIT) {
+    const oldestKey = cache.keys().next().value
     if (oldestKey === undefined) return
-    preparedURLCache.delete(oldestKey)
+    cache.delete(oldestKey)
   }
 }
 
@@ -117,7 +115,7 @@ function isUsableWildcardSiteHost(host: string): boolean {
 }
 
 function createRegExp(pattern: string): RegExp | null {
-  const cached = regexpCache.get(pattern)
+  const cached = getCacheEntry(regexpCache, pattern)
   if (cached !== undefined) return cached
 
   let source = pattern
@@ -127,19 +125,23 @@ function createRegExp(pattern: string): RegExp | null {
   if (source.endsWith("/")) {
     source = source.slice(0, -1)
   }
+  if (source.length > SITE_REGEX_SOURCE_MAX_LENGTH) {
+    setCacheEntry(regexpCache, pattern, null)
+    return null
+  }
 
   try {
     const regexp = new RegExp(source, "i")
-    regexpCache.set(pattern, regexp)
+    setCacheEntry(regexpCache, pattern, regexp)
     return regexp
   } catch {
-    regexpCache.set(pattern, null)
+    setCacheEntry(regexpCache, pattern, null)
     return null
   }
 }
 
 function prepareURL(url: string): PreparedURL | null {
-  const cached = getPreparedURLCacheEntry(url)
+  const cached = getCacheEntry(preparedURLCache, url)
   if (cached !== undefined) return cached
 
   try {
@@ -155,20 +157,20 @@ function prepareURL(url: string): PreparedURL | null {
       port: parsed.port,
       protocol: parsed.protocol
     }
-    setPreparedURLCacheEntry(url, prepared)
+    setCacheEntry(preparedURLCache, url, prepared)
     return prepared
   } catch {
-    setPreparedURLCacheEntry(url, null)
+    setCacheEntry(preparedURLCache, url, null)
     return null
   }
 }
 
 function preparePattern(pattern: string): PreparedPattern | null {
-  const cached = preparedPatternCache.get(pattern)
+  const cached = getCacheEntry(preparedPatternCache, pattern)
   if (cached !== undefined) return cached
 
   if (!pattern) {
-    preparedPatternCache.set(pattern, null)
+    setCacheEntry(preparedPatternCache, pattern, null)
     return null
   }
 
@@ -225,7 +227,7 @@ function preparePattern(pattern: string): PreparedPattern | null {
     port,
     protocol
   }
-  preparedPatternCache.set(pattern, prepared)
+  setCacheEntry(preparedPatternCache, pattern, prepared)
   return prepared
 }
 

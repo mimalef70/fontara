@@ -106,8 +106,11 @@ import {
   createSettingsBackup,
   createSettingsBackupFileName,
   FONTARA_SETTINGS_STORAGE_KEYS,
+  getSettingsBackupDefaults,
   parseSettingsBackupText
 } from "../../utils/settings-backup"
+import { getLocalValues } from "../../utils/storage"
+import { normalizeStorageValues } from "../../utils/storage-normalization"
 import {
   decodeSystemFontValue,
   getSystemFontList,
@@ -796,8 +799,10 @@ function OptionsPage() {
     setIsBackupBusy(true)
 
     try {
-      const extensionData = await fontaraConnector.getData()
-      const backup = createSettingsBackup(extensionData.settings, {
+      const settings = await normalizeStorageValues(
+        await getLocalValues(getSettingsBackupDefaults())
+      )
+      const backup = createSettingsBackup(settings, {
         extensionVersion: version
       })
       downloadTextFile(

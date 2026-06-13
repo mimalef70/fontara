@@ -121,6 +121,21 @@ test("Google Fonts catalog is generated at build time without shipping API secre
   assert.doesNotMatch(generatedSource, /"files"/)
 })
 
+test("extension lint fails unexpected web-ext warnings", () => {
+  const packageSource = fs.readFileSync(path.resolve("package.json"), "utf8")
+  const lintSource = fs.readFileSync(
+    path.resolve("tasks/check-web-ext-lint.js"),
+    "utf8"
+  )
+
+  assert.match(packageSource, /node tasks\/check-web-ext-lint\.js/)
+  assert.match(lintSource, /--output", "json"/)
+  assert.match(lintSource, /UNSAFE_VAR_ASSIGNMENT/)
+  assert.match(lintSource, /ui\/options\/index\.js/)
+  assert.match(lintSource, /ui\/popup\/index\.js/)
+  assert.match(lintSource, /unexpected warning/)
+})
+
 test("release archives use reproducible file metadata", () => {
   const zipSource = fs.readFileSync(path.resolve("tasks/zip.js"), "utf8")
   const sourcePackageSource = fs.readFileSync(

@@ -385,6 +385,7 @@ const CustomUrlToggle = () => {
           <div className="space-y-2 px-4 pb-2">
             <button
               type="button"
+              data-testid="fontara-current-site-scope-domain"
               className="flex w-full items-center gap-3 rounded-md border border-blue-100 bg-blue-50/70 p-3 text-start transition hover:border-blue-300 hover:bg-blue-50"
               onClick={() => void handleScopeChoice("domain")}>
               <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-700">
@@ -407,6 +408,7 @@ const CustomUrlToggle = () => {
             {hasPathScope && pathPattern && (
               <button
                 type="button"
+                data-testid="fontara-current-site-scope-path"
                 className="flex w-full items-center gap-3 rounded-md border border-emerald-100 bg-emerald-50/70 p-3 text-start transition hover:border-emerald-300 hover:bg-emerald-50"
                 onClick={() => void handleScopeChoice("path")}>
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">

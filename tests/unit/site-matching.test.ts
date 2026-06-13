@@ -579,7 +579,7 @@ test("site list helpers keep append order and reject invalid regex patterns", ()
   ])
 })
 
-test("site profiles normalize patterns and resolve the first matching override", () => {
+test("site profiles normalize patterns and resolve the strongest matching override", () => {
   assert.deepEqual(
     normalizeSiteProfiles([
       { pattern: " https://ChatGPT.com/ ", font: "Vazirmatn-Fontara" },
@@ -604,6 +604,16 @@ test("site profiles normalize patterns and resolve the first matching override",
     {
       pattern: "chatgpt.com",
       textStroke: 0.4
+    }
+  )
+  assert.deepEqual(
+    getSiteProfileForUrl("https://chatgpt.com/c/1", [
+      { pattern: "chatgpt.com", font: "Samim-Fontara" },
+      { pattern: "chatgpt.com/c/1", textStroke: 0.5 }
+    ]),
+    {
+      pattern: "chatgpt.com/c/1",
+      textStroke: 0.5
     }
   )
 })

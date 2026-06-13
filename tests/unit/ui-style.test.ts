@@ -232,6 +232,22 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.textStroke\.title/)
   assert.match(optionsSource, /options\.siteList\.title/)
   assert.match(optionsSource, /options\.siteProfiles\.title/)
+  assert.match(optionsSource, /SiteProfileTargetOption/)
+  assert.match(optionsSource, /siteProfileTargetOptions/)
+  assert.match(optionsSource, /new Map<string, SiteProfileTargetOption>/)
+  assert.match(optionsSource, /siteProfileTargetOpen/)
+  assert.match(optionsSource, /<Popover/)
+  assert.match(optionsSource, /<CommandInput/)
+  assert.match(optionsSource, /<CommandGroup/)
+  assert.match(optionsSource, /fontara-site-profile-target-trigger/)
+  assert.match(optionsSource, /fontara-site-profile-target-search/)
+  assert.match(optionsSource, /fontara-site-profile-target-add/)
+  assert.match(optionsSource, /options\.siteProfiles\.targetLabel/)
+  assert.match(optionsSource, /STORAGE_KEYS\.SITE_PROFILES/)
+  assert.doesNotMatch(optionsSource, /siteProfileRuleTargetOptions/)
+  assert.doesNotMatch(optionsSource, /siteProfilePopularTargetOptions/)
+  assert.doesNotMatch(optionsSource, /fontara-site-profile-patterns/)
+  assert.doesNotMatch(optionsSource, /fontara-site-profile-advanced-toggle/)
   assert.match(optionsSource, /createSettingsBackup/)
   assert.match(optionsSource, /parseSettingsBackupText/)
   assert.match(optionsSource, /fontaraConnector\.getData/)
@@ -479,6 +495,7 @@ test("popup add custom font action is an icon button beside the selector", () =>
   assert.match(popupSource, /flex flex-col gap-3 mb-3/)
   assert.match(popupSource, /<div dir=\{direction\}>[\s\S]*<PopularSection \/>/)
   assert.match(popupSource, /<RtlSiteToggle \/>/)
+  assert.match(popupSource, /<PerSiteSettings \/>/)
   assert.match(popupSource, /<TextStrokeToggle \/>/)
   assert.doesNotMatch(popupSource, /direction: "rtl"/)
   assert.match(popupSource, /aria-label=\{t\("popup\.addCustomFont"\)\}/)
@@ -536,6 +553,10 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   )
   const popularSectionSource = fs.readFileSync(
     path.resolve("src/ui/components/PopularSection.tsx"),
+    "utf8"
+  )
+  const perSiteSettingsSource = fs.readFileSync(
+    path.resolve("src/ui/components/PerSiteSettings.tsx"),
     "utf8"
   )
   const rtlSiteToggleSource = fs.readFileSync(
@@ -605,6 +626,27 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(popularSectionSource, /normalizePinnedWebsiteUrls/)
   assert.match(popularSectionSource, /pinnedWebsites/)
   assert.doesNotMatch(popularSectionSource, /POPULAR_WEBSITES\.map/)
+  assert.match(perSiteSettingsSource, /STORAGE_KEYS\.SITE_PROFILES/)
+  assert.match(perSiteSettingsSource, /getMatchingSiteListPattern/)
+  assert.match(perSiteSettingsSource, /getSitePatternScope/)
+  assert.match(perSiteSettingsSource, /upsertSiteProfile/)
+  assert.match(perSiteSettingsSource, /removeSiteProfile/)
+  assert.match(perSiteSettingsSource, /createSiteListPatternToggleUpdate/)
+  assert.match(perSiteSettingsSource, /disabled=\{!canEditProfile\}/)
+  assert.match(perSiteSettingsSource, /popup\.perSite\.chooseScopeFirst/)
+  assert.doesNotMatch(perSiteSettingsSource, /createSitePathPatternFromUrl/)
+  assert.doesNotMatch(perSiteSettingsSource, /scopeChoice/)
+  assert.doesNotMatch(perSiteSettingsSource, /handleScopeChange/)
+  assert.doesNotMatch(perSiteSettingsSource, /customUrl\.scopePathOption/)
+  assert.match(
+    perSiteSettingsSource,
+    /openOptionsPageSafely\(\{ section: "sites" \}\)/
+  )
+  assert.match(perSiteSettingsSource, /popup\.perSite\.useCustom/)
+  assert.match(perSiteSettingsSource, /popup\.perSite\.drawerTitle/)
+  assert.match(perSiteSettingsSource, /<DrawerContent/)
+  assert.match(perSiteSettingsSource, /<Switch/)
+  assert.match(perSiteSettingsSource, /DEFAULT_ACTIVE_TEXT_STROKE/)
   assert.match(customUrlToggleSource, /isSiteListUrlEnabled/)
   assert.match(customUrlToggleSource, /STORAGE_KEYS\.ENABLED_FOR/)
   assert.match(customUrlToggleSource, /STORAGE_KEYS\.DISABLED_FOR/)
@@ -663,6 +705,7 @@ test("UI storage hooks use stable initial value references", () => {
     "src/ui/options/index.tsx",
     "src/ui/components/CustomUrlToggle.tsx",
     "src/ui/components/FontSelector.tsx",
+    "src/ui/components/PerSiteSettings.tsx",
     "src/ui/components/PopularSection.tsx",
     "src/ui/components/RtlSiteToggle.tsx",
     "src/ui/components/TextStrokeToggle.tsx",

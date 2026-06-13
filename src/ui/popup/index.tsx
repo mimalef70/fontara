@@ -10,6 +10,7 @@ import FontSelector from "../components/FontSelector"
 import { PlusCircle } from "../components/icons"
 import Footer from "../components/layout/Footer"
 import Header from "../components/layout/Header"
+import PerSiteSettings from "../components/PerSiteSettings"
 import PopularSection from "../components/PopularSection"
 import RtlSiteToggle from "../components/RtlSiteToggle"
 import TextStrokeToggle from "../components/TextStrokeToggle"
@@ -98,6 +99,7 @@ function IndexPopup() {
                   </div>
 
                   <CustomUrlToggle />
+                  <PerSiteSettings />
                   <TextStrokeToggle />
                   <RtlSiteToggle />
                 </div>

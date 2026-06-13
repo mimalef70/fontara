@@ -1,6 +1,7 @@
 import {
   AlignRight,
   Check,
+  ChevronsUpDown,
   Cloud,
   Download,
   FileDown,
@@ -129,6 +130,19 @@ import {
   AlertDialogTrigger
 } from "../components/ui/alert-dialog"
 import { Button } from "../components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from "../components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "../components/ui/popover"
 import { Switch } from "../components/ui/Switch"
 import {
   Select,
@@ -271,6 +285,14 @@ type SiteFontOption = {
 type SiteFontOptionGroup = {
   label: string
   options: SiteFontOption[]
+}
+
+type SiteProfileTargetOption = {
+  iconUrl?: string
+  id: string
+  pattern: string
+  subtitle?: string
+  title: string
 }
 
 type CustomFontUnicodeRangeSelectValue =
@@ -550,6 +572,8 @@ function OptionsPage() {
     useState<SitePatternScope>("domain")
   const [sitePatternInput, setSitePatternInput] = useState("")
   const [siteProfilePatternInput, setSiteProfilePatternInput] = useState("")
+  const [siteProfileTargetSearch, setSiteProfileTargetSearch] = useState("")
+  const [siteProfileTargetOpen, setSiteProfileTargetOpen] = useState(false)
   const [siteProfileFontInput, setSiteProfileFontInput] = useState("")
   const [siteProfileTextStroke, setSiteProfileTextStroke] = useState(
     DEFAULT_VALUES.TEXT_STROKE
@@ -923,6 +947,96 @@ function OptionsPage() {
     Boolean(currentTabPathPattern) &&
     Boolean(currentTabDomainPattern) &&
     currentTabPathPattern !== currentTabDomainPattern
+  const selectedSiteProfilePattern = normalizeSitePattern(
+    siteProfilePatternInput
+  )
+  const selectedSiteProfileScope = selectedSiteProfilePattern
+    ? getSitePatternScope(selectedSiteProfilePattern)
+    : null
+  const siteProfileTargetSearchTerm = siteProfileTargetSearch
+    .trim()
+    .toLowerCase()
+  const siteProfileTargetOptions = React.useMemo(() => {
+    const options = new Map<string, SiteProfileTargetOption>()
+    const addTargetOption = (option: SiteProfileTargetOption) => {
+      const currentOption = options.get(option.pattern)
+
+      if (!currentOption) {
+        options.set(option.pattern, option)
+        return
+      }
+
+      const currentPatternTitle = getDisplaySitePattern(currentOption.pattern)
+      const nextPatternTitle = getDisplaySitePattern(option.pattern)
+      options.set(option.pattern, {
+        ...currentOption,
+        iconUrl: currentOption.iconUrl ?? option.iconUrl,
+        subtitle: currentOption.subtitle ?? option.subtitle,
+        title:
+          currentOption.title === currentPatternTitle &&
+          option.title !== nextPatternTitle
+            ? option.title
+            : currentOption.title
+      })
+    }
+    const addPatternTarget = (pattern: string, idPrefix: string) => {
+      const normalizedPattern = normalizeSitePattern(pattern)
+
+      if (!normalizedPattern) return
+
+      addTargetOption({
+        id: `${idPrefix}-${normalizedPattern}`,
+        pattern: normalizedPattern,
+        subtitle: getDisplaySitePattern(normalizedPattern),
+        title: getDisplaySitePattern(normalizedPattern)
+      })
+    }
+
+    for (const profile of normalizeSiteProfiles(siteProfiles)) {
+      addPatternTarget(profile.pattern, "profile")
+    }
+
+    for (const pattern of normalizeSiteList([
+      ...normalizeEnabledSiteList(enabledFor),
+      ...normalizeSiteList(disabledFor)
+    ])) {
+      addPatternTarget(pattern, "rule")
+    }
+
+    for (const website of defaultWebsiteList) {
+      const pattern = getWebsiteSitePattern(website)
+      if (!pattern) continue
+
+      addTargetOption({
+        iconUrl: website.icon ? getExtensionAssetURL(website.icon) : undefined,
+        id: `default-${website.url}`,
+        pattern,
+        subtitle: getDisplaySitePattern(pattern),
+        title: website.siteName || getDisplaySitePattern(pattern)
+      })
+    }
+
+    return [...options.values()]
+  }, [disabledFor, enabledFor, siteProfiles])
+  const selectedSiteProfileTarget = selectedSiteProfilePattern
+    ? (siteProfileTargetOptions.find(
+        (option) => option.pattern === selectedSiteProfilePattern
+      ) ?? null)
+    : null
+  const siteProfileAddTargetScope = inferSitePatternScopeFromInput(
+    siteProfileTargetSearch,
+    "domain"
+  )
+  const siteProfileAddTargetPattern = normalizeSitePatternForScope(
+    siteProfileTargetSearch,
+    siteProfileAddTargetScope
+  )
+  const canAddSiteProfileTarget =
+    Boolean(siteProfileTargetSearchTerm) &&
+    Boolean(siteProfileAddTargetPattern) &&
+    !siteProfileTargetOptions.some(
+      (option) => option.pattern === siteProfileAddTargetPattern
+    )
   const activeWebsiteCount = defaultWebsiteList.filter((website) =>
     isSiteListUrlEnabled(website.url, siteListSettings)
   ).length
@@ -1214,15 +1328,32 @@ function OptionsPage() {
     setSitePatternInput(pattern)
   }
 
+  const selectSiteProfileTarget = (pattern: string) => {
+    const normalizedPattern = normalizeSitePattern(pattern)
+    if (!normalizedPattern) return
+
+    setSiteProfilePatternInput(normalizedPattern)
+    setSiteProfileTargetOpen(false)
+    setSiteProfileTargetSearch("")
+  }
+
+  const handleAddSiteProfileTarget = () => {
+    if (siteProfileAddTargetPattern) {
+      selectSiteProfileTarget(siteProfileAddTargetPattern)
+    }
+  }
+
   const resetSiteProfileForm = () => {
     setSiteProfilePatternInput("")
+    setSiteProfileTargetSearch("")
+    setSiteProfileTargetOpen(false)
     setSiteProfileFontInput("")
     setSiteProfileTextStroke(DEFAULT_VALUES.TEXT_STROKE)
     setSiteProfileUsesGlobalStroke(true)
   }
 
   const handleSaveSiteProfile = async () => {
-    const pattern = normalizeSitePattern(siteProfilePatternInput)
+    const pattern = selectedSiteProfilePattern
 
     if (!pattern) {
       toast({ title: t("options.toast.invalidSitePattern") })
@@ -1249,11 +1380,13 @@ function OptionsPage() {
         ? {}
         : { textStroke: normalizeTextStrokeValue(siteProfileTextStroke) })
     }
-
     try {
-      await setSiteProfiles(
-        upsertSiteProfile(normalizedSiteProfiles, nextProfile)
-      )
+      await fontaraConnector.changeSettings({
+        [STORAGE_KEYS.SITE_PROFILES]: upsertSiteProfile(
+          normalizedSiteProfiles,
+          nextProfile
+        )
+      })
       resetSiteProfileForm()
     } catch (error) {
       toast({
@@ -1271,7 +1404,7 @@ function OptionsPage() {
   }
 
   const handleEditSiteProfile = (profile: SiteProfile) => {
-    setSiteProfilePatternInput(profile.pattern)
+    selectSiteProfileTarget(profile.pattern)
     setSiteProfileFontInput(profile.font ?? "")
     setSiteProfileTextStroke(profile.textStroke ?? textStroke)
     setSiteProfileUsesGlobalStroke(profile.textStroke === undefined)
@@ -1394,6 +1527,50 @@ function OptionsPage() {
   const formattedSiteProfileTextStroke = formatTextStrokeDisplay(
     siteProfileTextStroke
   )
+  const renderSiteProfileTargetItem = (option: SiteProfileTargetOption) => {
+    const selected = selectedSiteProfilePattern === option.pattern
+    const scope = getSitePatternScope(option.pattern)
+    const hasCustomCss = hasCustomCssForSitePattern(option.pattern)
+
+    return (
+      <CommandItem
+        key={option.id}
+        value={`${option.title} ${option.subtitle ?? ""} ${option.pattern}`}
+        data-testid={`fontara-site-profile-target-${option.id}`}
+        className="min-h-11 cursor-pointer gap-3 px-2"
+        onSelect={() => selectSiteProfileTarget(option.pattern)}>
+        {option.iconUrl ? (
+          <img
+            alt=""
+            src={option.iconUrl}
+            className="size-7 shrink-0 rounded-md object-contain"
+          />
+        ) : (
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[#f1f5f9] text-[#64748b]">
+            <Globe2 className="size-4" />
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <bdi
+            className="block truncate text-sm font-bold text-[#111827]"
+            dir="ltr"
+            title={option.title}>
+            {option.title}
+          </bdi>
+          {option.subtitle && (
+            <span className="mt-0.5 block truncate text-xs text-[#64748b]">
+              {option.subtitle}
+            </span>
+          )}
+        </span>
+        <span className="flex shrink-0 items-center gap-1">
+          <SiteScopeBadge scope={scope} />
+          {hasCustomCss && <SiteModeBadge customCss />}
+          {selected && <Check className="size-4 text-[#2374ff]" />}
+        </span>
+      </CommandItem>
+    )
+  }
 
   const handleRtlSiteToggle = async (site: RtlSiteConfig, checked: boolean) => {
     try {
@@ -2235,47 +2412,129 @@ function OptionsPage() {
                       <form
                         className="space-y-4 rounded-md border border-[#e5e7eb] p-4"
                         onSubmit={handleSiteProfileSubmit}>
-                        <div>
+                        <div className="space-y-2">
                           <label
-                            htmlFor="site-profile-pattern"
-                            className="mb-2 block text-sm font-medium text-[#334155]">
-                            {t("options.siteProfiles.patternLabel")}
+                            htmlFor="site-profile-target"
+                            className="block text-sm font-medium text-[#334155]">
+                            {t("options.siteProfiles.targetLabel")}
                           </label>
-                          <input
-                            id="site-profile-pattern"
-                            list="fontara-site-profile-patterns"
-                            type="text"
-                            value={siteProfilePatternInput}
-                            data-testid="fontara-site-profile-pattern-input"
-                            onChange={(event) =>
-                              setSiteProfilePatternInput(event.target.value)
-                            }
-                            placeholder={t(
-                              "options.siteProfiles.patternPlaceholder"
-                            )}
-                            dir="ltr"
-                            className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-                          />
-                          <datalist id="fontara-site-profile-patterns">
-                            {defaultWebsiteList.map((website) => {
-                              const pattern = normalizeSitePattern(website.url)
-                              if (!pattern) return null
-
-                              return (
-                                <option
-                                  key={`website-${website.url}`}
-                                  value={pattern}>
-                                  {website.siteName || website.url}
-                                </option>
-                              )
-                            })}
-                            {managedSiteList.map((pattern) => (
-                              <option
-                                key={`managed-${pattern}`}
-                                value={pattern}
-                              />
-                            ))}
-                          </datalist>
+                          <Popover
+                            open={siteProfileTargetOpen}
+                            onOpenChange={setSiteProfileTargetOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                id="site-profile-target"
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={siteProfileTargetOpen}
+                                data-testid="fontara-site-profile-target-trigger"
+                                className="h-auto min-h-11 w-full justify-between border-[#dbe3ef] bg-white px-3 py-2 text-start hover:bg-white">
+                                <span className="flex min-w-0 flex-1 items-center gap-2">
+                                  {selectedSiteProfileTarget?.iconUrl && (
+                                    <img
+                                      alt=""
+                                      src={selectedSiteProfileTarget.iconUrl}
+                                      className="size-6 shrink-0 rounded object-contain"
+                                    />
+                                  )}
+                                  <span className="min-w-0 flex-1">
+                                    <bdi
+                                      className={cn(
+                                        "block truncate text-sm font-bold",
+                                        selectedSiteProfilePattern
+                                          ? "text-[#111827]"
+                                          : "text-[#94a3b8]"
+                                      )}
+                                      dir="ltr">
+                                      {selectedSiteProfilePattern
+                                        ? getDisplaySitePattern(
+                                            selectedSiteProfilePattern
+                                          )
+                                        : t(
+                                            "options.siteProfiles.targetPlaceholder"
+                                          )}
+                                    </bdi>
+                                    {selectedSiteProfileTarget?.title &&
+                                      selectedSiteProfileTarget.title !==
+                                        getDisplaySitePattern(
+                                          selectedSiteProfilePattern ?? ""
+                                        ) && (
+                                        <span className="mt-0.5 block truncate text-xs text-[#64748b]">
+                                          {selectedSiteProfileTarget.title}
+                                        </span>
+                                      )}
+                                  </span>
+                                  {selectedSiteProfileScope && (
+                                    <SiteScopeBadge
+                                      scope={selectedSiteProfileScope}
+                                    />
+                                  )}
+                                </span>
+                                <ChevronsUpDown className="ms-2 size-4 shrink-0 text-[#94a3b8]" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="start"
+                              className="w-[var(--radix-popover-trigger-width)] p-0">
+                              <Command>
+                                <CommandInput
+                                  value={siteProfileTargetSearch}
+                                  data-testid="fontara-site-profile-target-search"
+                                  onValueChange={setSiteProfileTargetSearch}
+                                  placeholder={t(
+                                    "options.siteProfiles.targetSearchPlaceholder"
+                                  )}
+                                />
+                                <CommandList>
+                                  <CommandEmpty>
+                                    {t("options.siteProfiles.noTargets")}
+                                  </CommandEmpty>
+                                  {canAddSiteProfileTarget &&
+                                    siteProfileAddTargetPattern && (
+                                      <CommandGroup>
+                                        <CommandItem
+                                          value={siteProfileAddTargetPattern}
+                                          data-testid="fontara-site-profile-target-add"
+                                          className="min-h-11 cursor-pointer gap-3 px-2"
+                                          onSelect={handleAddSiteProfileTarget}>
+                                          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                                            <Plus className="size-4" />
+                                          </span>
+                                          <span className="min-w-0 flex-1">
+                                            <span className="block text-sm font-bold text-[#111827]">
+                                              {t(
+                                                "options.siteProfiles.addTarget",
+                                                {
+                                                  site: getDisplaySitePattern(
+                                                    siteProfileAddTargetPattern
+                                                  )
+                                                }
+                                              )}
+                                            </span>
+                                            <bdi
+                                              className="mt-0.5 block truncate text-xs text-[#64748b]"
+                                              dir="ltr">
+                                              {siteProfileAddTargetPattern}
+                                            </bdi>
+                                          </span>
+                                          <SiteScopeBadge
+                                            scope={getSitePatternScope(
+                                              siteProfileAddTargetPattern
+                                            )}
+                                          />
+                                        </CommandItem>
+                                      </CommandGroup>
+                                    )}
+                                  <CommandGroup>
+                                    {siteProfileTargetOptions.map(
+                                      renderSiteProfileTargetItem
+                                    )}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
 
                         <div>

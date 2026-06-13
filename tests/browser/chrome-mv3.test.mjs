@@ -335,7 +335,11 @@ test("Chrome MV3 popup and options UI update current-site include/exclude lists"
     )
 
     await clickByTestId(popupPage, "fontara-current-site-toggle")
+    await clickByTestId(popupPage, "fontara-current-site-scope-domain")
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.DISABLED_FOR, [])
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [
+      sitePattern
+    ])
     await expectPageStyles(
       testPage,
       createBasicPageStyleExpectation({
@@ -385,7 +389,7 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
     await sendSettingsFromContentBridge(testPage, {
       [STORAGE_KEYS.DISABLED_FOR]: [],
       [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
-      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.ENABLED_FOR]: [],
       [STORAGE_KEYS.EXTENSION_ENABLED]: true,
       [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
       [STORAGE_KEYS.SITE_PROFILES]: [],
@@ -395,7 +399,7 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
     await expectPageStyles(
       testPage,
       createBasicPageStyleExpectation({
-        fontName: "Vazirmatn-Fontara",
+        applied: false,
         loadId: initialLoadId
       })
     )
@@ -404,11 +408,13 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
       "ui/options/index.html"
     )
     await clickByTestId(optionsPage, "fontara-options-nav-sites")
+    await clickByTestId(optionsPage, "fontara-site-profile-target-trigger")
     await setValueByTestId(
       optionsPage,
-      "fontara-site-profile-pattern-input",
+      "fontara-site-profile-target-search",
       sitePattern
     )
+    await clickByTestId(optionsPage, "fontara-site-profile-target-add")
     await setValueByTestId(
       optionsPage,
       "fontara-site-profile-font-select",
@@ -429,9 +435,21 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
         textStroke: 0.5
       }
     ])
+    await waitForExtensionLocalValue(optionsPage, STORAGE_KEYS.ENABLED_FOR, [])
     await optionsPage.waitForSelector(
       `[data-testid="fontara-site-profile-row-${sitePattern}"]`
     )
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        applied: false,
+        loadId: initialLoadId
+      })
+    )
+
+    await sendSettingsFromOptions(optionsPage, {
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern]
+    })
     await expectPageStyles(
       testPage,
       createBasicPageStyleExpectation({

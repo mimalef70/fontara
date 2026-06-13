@@ -64,6 +64,7 @@
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.16",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-popover": "^1.1.16",
     "@radix-ui/react-select": "^2.3.0",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.1.2",
@@ -72,6 +73,7 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "lucide-react": "^1.17.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",

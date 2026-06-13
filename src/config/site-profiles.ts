@@ -1,5 +1,5 @@
 import type { SiteProfile } from "../definitions"
-import { isURLMatched, normalizeSitePattern } from "./site-list"
+import { getMatchingSiteListPattern, normalizeSitePattern } from "./site-list"
 import { normalizeTextStrokeValue } from "./text-stroke"
 
 export const EMPTY_SITE_PROFILES: SiteProfile[] = []
@@ -75,11 +75,14 @@ export function getSiteProfileForUrl(
   siteProfiles: SiteProfile[] | undefined
 ): SiteProfile | null {
   const normalizedProfiles = normalizeSiteProfiles(siteProfiles)
+  const matchingPattern = getMatchingSiteListPattern(
+    currentUrl,
+    normalizedProfiles.map((profile) => profile.pattern)
+  )
 
   return (
-    normalizedProfiles.find((profile) =>
-      isURLMatched(currentUrl, profile.pattern)
-    ) ?? null
+    normalizedProfiles.find((profile) => profile.pattern === matchingPattern) ??
+    null
   )
 }
 

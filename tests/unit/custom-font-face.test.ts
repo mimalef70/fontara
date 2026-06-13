@@ -22,6 +22,40 @@ test("createCustomFontFaces creates reusable font-face CSS", () => {
   assert.ok(css.includes(`unicode-range: ${FONTARA_TEXT_UNICODE_RANGE};`))
 })
 
+test("createCustomFontFaces uses selected custom unicode ranges", () => {
+  const css = createCustomFontFaces([
+    {
+      value: "LatinCustom-Fontara",
+      name: "Latin Custom",
+      data: "data:font/woff2;base64,AAAA",
+      fileHash: "abc123",
+      originalFileName: "latin.woff2",
+      type: "woff2",
+      unicodeRange: "U+0000-00FF U+0100-024F"
+    }
+  ])
+
+  assert.match(css, /font-family: "LatinCustom-Fontara"/)
+  assert.match(css, /unicode-range: U\+0000-00FF, U\+0100-024F;/)
+})
+
+test("createCustomFontFaces can omit unicode-range for all text", () => {
+  const css = createCustomFontFaces([
+    {
+      value: "AllTextCustom-Fontara",
+      name: "All Text Custom",
+      data: "data:font/woff2;base64,AAAA",
+      fileHash: "abc123",
+      originalFileName: "all.woff2",
+      type: "woff2",
+      unicodeRange: null
+    }
+  ])
+
+  assert.match(css, /font-family: "AllTextCustom-Fontara"/)
+  assert.doesNotMatch(css, /unicode-range:/)
+})
+
 test("createCustomFontFaces normalizes generic font data URL MIME types", () => {
   const css = createCustomFontFaces([
     {

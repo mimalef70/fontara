@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
+import { FONTARA_TEXT_UNICODE_RANGE } from "../../src/config/font-unicode-range"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontData } from "../../src/definitions"
 import {
@@ -15,7 +16,8 @@ const localCustomFont: FontData = {
   data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
   type: "woff2",
   fileHash: "a".repeat(64),
-  originalFileName: "LocalCustom.woff2"
+  originalFileName: "LocalCustom.woff2",
+  unicodeRange: FONTARA_TEXT_UNICODE_RANGE
 }
 
 test("settings sync excludes custom font files and custom font references", async () => {

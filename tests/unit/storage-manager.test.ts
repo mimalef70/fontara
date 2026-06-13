@@ -7,6 +7,7 @@ import {
   mergeWebsiteLists,
   normalizeCustomFontList
 } from "../../src/background/storage-manager"
+import { FONTARA_TEXT_UNICODE_RANGE } from "../../src/config/font-unicode-range"
 import { getActiveWebsiteSitePatterns } from "../../src/config/site-list"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontData, WebsiteItem } from "../../src/definitions"
@@ -886,6 +887,38 @@ test("normalizeCustomFontList normalizes generic font data URL MIME types", asyn
   assert.equal(font.data.startsWith("data:font/ttf;base64,"), true)
   assert.equal(font.type, "ttf")
   assert.equal(font.fileHash.length, 64)
+})
+
+test("normalizeCustomFontList normalizes custom font unicode ranges", async () => {
+  const fonts = await normalizeCustomFontList([
+    {
+      value: "LegacyCustom-Fontara",
+      name: "Legacy Custom",
+      data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+      type: "woff2",
+      originalFileName: "legacy.woff2"
+    },
+    {
+      value: "LatinCustom-Fontara",
+      name: "Latin Custom",
+      data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+      type: "woff2",
+      originalFileName: "latin.woff2",
+      unicodeRange: "U+0000-00FF U+0100-024F"
+    },
+    {
+      value: "AllTextCustom-Fontara",
+      name: "All Text Custom",
+      data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+      type: "woff2",
+      originalFileName: "all.woff2",
+      unicodeRange: null
+    }
+  ])
+
+  assert.equal(fonts[0].unicodeRange, FONTARA_TEXT_UNICODE_RANGE)
+  assert.equal(fonts[1].unicodeRange, "U+0000-00FF, U+0100-024F")
+  assert.equal(fonts[2].unicodeRange, null)
 })
 
 test("normalizeCustomFontList rejects unsafe custom font records", async () => {

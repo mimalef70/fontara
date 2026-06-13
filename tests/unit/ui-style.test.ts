@@ -568,6 +568,9 @@ test("custom font uploads normalize stored names and data URLs", () => {
     /isFontFileSignatureSupported\(extension, fileBytes\)/
   )
   assert.match(optionsSource, /normalizeFontDataURL\(base64Data, extension\)/)
+  assert.match(optionsSource, /parseCustomFontUnicodeRangeInput/)
+  assert.match(optionsSource, /unicodeRange/)
+  assert.match(optionsSource, /options\.addFont\.unicodeRangeLabel/)
   assert.match(optionsSource, /name: normalizedFontName/)
   assert.doesNotMatch(optionsSource, /data: base64Data/)
 })

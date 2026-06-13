@@ -26,6 +26,15 @@ import React, { useState } from "react"
 import { createRoot } from "react-dom/client"
 
 import { version } from "../../../package.json"
+import {
+  CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE,
+  CUSTOM_FONT_UNICODE_RANGE_PRESETS,
+  type CustomFontUnicodeRangePresetId,
+  DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET,
+  getCustomFontUnicodeRangePreset,
+  normalizeCustomFontUnicodeRange,
+  parseCustomFontUnicodeRangeInput
+} from "../../config/font-unicode-range"
 import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
 import {
   type SupportedUILanguage,
@@ -108,6 +117,13 @@ import {
 } from "../components/ui/alert-dialog"
 import { Button } from "../components/ui/button"
 import { Switch } from "../components/ui/Switch"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "../components/ui/select"
 import {
   Sidebar,
   SidebarContent,
@@ -215,6 +231,24 @@ type SiteFontOptionGroup = {
   label: string
   options: SiteFontOption[]
 }
+
+type CustomFontUnicodeRangeSelectValue =
+  | CustomFontUnicodeRangePresetId
+  | typeof CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
+
+const unicodeRangeLabelKeys = {
+  all: "options.addFont.unicodeRangePreset.all",
+  "arabic-persian": "options.addFont.unicodeRangePreset.arabicPersian",
+  cjk: "options.addFont.unicodeRangePreset.cjk",
+  custom: "options.addFont.unicodeRangePreset.custom",
+  cyrillic: "options.addFont.unicodeRangePreset.cyrillic",
+  devanagari: "options.addFont.unicodeRangePreset.devanagari",
+  greek: "options.addFont.unicodeRangePreset.greek",
+  hebrew: "options.addFont.unicodeRangePreset.hebrew",
+  latin: "options.addFont.unicodeRangePreset.latin",
+  "latin-arabic": "options.addFont.unicodeRangePreset.latinArabic",
+  thai: "options.addFont.unicodeRangePreset.thai"
+} satisfies Record<CustomFontUnicodeRangeSelectValue, MessageKey>
 
 function getLanguageLabelKey(language: SupportedUILanguage): MessageKey {
   switch (language) {
@@ -413,6 +447,11 @@ function OptionsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFileHash, setSelectedFileHash] = useState("")
   const [fontName, setFontName] = useState("")
+  const [fontUnicodeRangePreset, setFontUnicodeRangePreset] =
+    useState<CustomFontUnicodeRangeSelectValue>(
+      DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET
+    )
+  const [customFontUnicodeRange, setCustomFontUnicodeRange] = useState("")
   const [sitePatternInput, setSitePatternInput] = useState("")
   const [siteProfilePatternInput, setSiteProfilePatternInput] = useState("")
   const [siteProfileFontInput, setSiteProfileFontInput] = useState("")
@@ -466,6 +505,25 @@ function OptionsPage() {
     }
   }
 
+  const resetCustomFontForm = () => {
+    resetSelectedFile()
+    setFontName("")
+    setFontUnicodeRangePreset(DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET)
+    setCustomFontUnicodeRange("")
+  }
+
+  const resolveSelectedFontUnicodeRange = (): string | null | undefined => {
+    if (fontUnicodeRangePreset === CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE) {
+      const normalizedRange = parseCustomFontUnicodeRangeInput(
+        customFontUnicodeRange
+      )
+
+      return normalizedRange || undefined
+    }
+
+    return getCustomFontUnicodeRangePreset(fontUnicodeRangePreset)?.unicodeRange
+  }
+
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -510,9 +568,15 @@ function OptionsPage() {
 
   const handleSaveFont = async () => {
     const normalizedFontName = fontName.trim()
+    const unicodeRange = resolveSelectedFontUnicodeRange()
 
     if (!selectedFile || !normalizedFontName) {
       toast({ title: t("options.toast.emptyFields") })
+      return
+    }
+
+    if (unicodeRange === undefined) {
+      toast({ title: t("options.toast.invalidUnicodeRange") })
       return
     }
 
@@ -565,7 +629,8 @@ function OptionsPage() {
         data: normalizedDataURL,
         fileHash: fileHash,
         type: extension,
-        originalFileName: selectedFile.name
+        originalFileName: selectedFile.name,
+        unicodeRange
       }
 
       const updatedFonts = [...customFontList, fontData]
@@ -573,8 +638,7 @@ function OptionsPage() {
 
       toast({ title: t("options.toast.fontAdded") })
 
-      resetSelectedFile()
-      setFontName("")
+      resetCustomFontForm()
     } catch (error) {
       toast({
         title:
@@ -821,6 +885,21 @@ function OptionsPage() {
       return fontValue
     },
     [siteFontOptions, t]
+  )
+  const getCustomFontUnicodeRangeLabel = React.useCallback(
+    (unicodeRange: string | null | undefined): string => {
+      const normalizedRange = normalizeCustomFontUnicodeRange(unicodeRange)
+      const matchingPreset = CUSTOM_FONT_UNICODE_RANGE_PRESETS.find(
+        (preset) => preset.unicodeRange === normalizedRange
+      )
+
+      if (matchingPreset) {
+        return t(unicodeRangeLabelKeys[matchingPreset.id])
+      }
+
+      return t("options.savedFonts.unicodeRangeCustom")
+    },
+    [t]
   )
 
   const handleWebsiteToggle = async (website: WebsiteItem) => {
@@ -1517,6 +1596,71 @@ function OptionsPage() {
                           />
                         </div>
 
+                        <div>
+                          <label
+                            htmlFor="custom-font-unicode-range"
+                            className="mb-2 block text-sm font-medium text-[#334155]">
+                            {t("options.addFont.unicodeRangeLabel")}
+                          </label>
+                          <Select
+                            dir={direction}
+                            disabled={isLoading}
+                            value={fontUnicodeRangePreset}
+                            onValueChange={(value) =>
+                              setFontUnicodeRangePreset(
+                                value as CustomFontUnicodeRangeSelectValue
+                              )
+                            }>
+                            <SelectTrigger
+                              id="custom-font-unicode-range"
+                              className="h-11 border-[#dbe3ef] bg-white text-sm text-[#111827] focus:ring-2 focus:ring-[#2374ff]/15">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent dir={direction}>
+                              {CUSTOM_FONT_UNICODE_RANGE_PRESETS.map(
+                                (preset) => (
+                                  <SelectItem key={preset.id} value={preset.id}>
+                                    {t(unicodeRangeLabelKeys[preset.id])}
+                                  </SelectItem>
+                                )
+                              )}
+                              <SelectItem
+                                value={CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE}>
+                                {t(
+                                  unicodeRangeLabelKeys[
+                                    CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
+                                  ]
+                                )}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {fontUnicodeRangePreset ===
+                          CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE && (
+                          <div>
+                            <label
+                              htmlFor="custom-font-unicode-range-value"
+                              className="mb-2 block text-sm font-medium text-[#334155]">
+                              {t("options.addFont.unicodeRangeCustomLabel")}
+                            </label>
+                            <input
+                              id="custom-font-unicode-range-value"
+                              type="text"
+                              value={customFontUnicodeRange}
+                              onChange={(event) =>
+                                setCustomFontUnicodeRange(event.target.value)
+                              }
+                              placeholder={t(
+                                "options.addFont.unicodeRangeCustomPlaceholder"
+                              )}
+                              className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                              disabled={isLoading}
+                              dir="ltr"
+                            />
+                          </div>
+                        )}
+
                         <Button
                           type="button"
                           onClick={handleSaveFont}
@@ -1570,6 +1714,13 @@ function OptionsPage() {
                                     {font.originalFileName}
                                   </div>
                                 )}
+                                <div className="mt-1 truncate text-xs text-[#64748b]">
+                                  {t("options.savedFonts.unicodeRange", {
+                                    range: getCustomFontUnicodeRangeLabel(
+                                      font.unicodeRange
+                                    )
+                                  })}
+                                </div>
                               </div>
                               <Button
                                 type="button"

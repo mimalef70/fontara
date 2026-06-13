@@ -18,6 +18,7 @@ export interface FontData {
   type: string
   fileHash: string
   originalFileName: string
+  unicodeRange?: string | null
 }
 
 export interface SiteProfile {

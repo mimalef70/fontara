@@ -1,4 +1,4 @@
-import { FONTARA_TEXT_UNICODE_RANGE } from "../config/font-unicode-range"
+import { normalizeCustomFontUnicodeRange } from "../config/font-unicode-range"
 import type { FontData } from "../definitions"
 import {
   escapeCSSString,
@@ -23,15 +23,22 @@ export function createCustomFontFaces(
 
       const fontFamily = escapeCSSString(font.value)
       const fontData = escapeCSSString(normalizedDataURL)
+      const unicodeRange = normalizeCustomFontUnicodeRange(font.unicodeRange)
+      const declarations = [
+        `font-family: "${fontFamily}";`,
+        `src: url("${fontData}") format("${format}");`,
+        "font-weight: normal;",
+        "font-style: normal;",
+        "font-display: swap;",
+        unicodeRange ? `unicode-range: ${unicodeRange};` : ""
+      ]
+        .filter(Boolean)
+        .map((declaration) => `          ${declaration}`)
+        .join("\n")
 
       return `
         @font-face {
-          font-family: "${fontFamily}";
-          src: url("${fontData}") format("${format}");
-          font-weight: normal;
-          font-style: normal;
-          font-display: swap;
-          unicode-range: ${FONTARA_TEXT_UNICODE_RANGE};
+${declarations}
         }
       `
     })

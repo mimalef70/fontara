@@ -1,3 +1,4 @@
+import { normalizeCustomFontUnicodeRange } from "../config/font-unicode-range"
 import { DEFAULT_FONTS } from "../config/fonts"
 import { normalizeUILanguagePreference } from "../config/i18n"
 import { normalizeRtlSiteSettings } from "../config/rtl-sites"
@@ -232,12 +233,16 @@ export async function normalizeCustomFontList(
         data: normalizedData,
         type,
         fileHash,
-        originalFileName
+        originalFileName,
+        unicodeRange: normalizeCustomFontUnicodeRange(customFont.unicodeRange)
       }
     })
   )
 
-  return normalizedFonts.filter((font): font is FontData => font !== null)
+  return normalizedFonts.filter(
+    (font): font is NonNullable<(typeof normalizedFonts)[number]> =>
+      font !== null
+  )
 }
 
 export function isSelectedFontAvailable(

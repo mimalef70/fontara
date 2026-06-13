@@ -1300,7 +1300,9 @@ function OptionsPage() {
     }
   }
 
-  const handleSitePatternSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSitePatternSubmit = (
+    event: React.SyntheticEvent<HTMLFormElement>
+  ) => {
     event.preventDefault()
     void handleAddSitePattern()
   }
@@ -1403,7 +1405,9 @@ function OptionsPage() {
     }
   }
 
-  const handleSiteProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSiteProfileSubmit = (
+    event: React.SyntheticEvent<HTMLFormElement>
+  ) => {
     event.preventDefault()
     void handleSaveSiteProfile()
   }
@@ -2509,7 +2513,7 @@ function OptionsPage() {
                             </PopoverTrigger>
                             <PopoverContent
                               align="start"
-                              className="w-[var(--radix-popover-trigger-width)] p-0">
+                              className="w-(--radix-popover-trigger-width) p-0">
                               <Command>
                                 <CommandInput
                                   value={siteProfileTargetSearch}

@@ -53,10 +53,10 @@
     "test:e2e:chrome": "pnpm run test:browser:chrome",
     "test:inject": "node --import tsx --test tests/inject/*.test.ts",
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check .",
+    "typecheck": "tsc --noEmit && node tasks/check-deprecations.js",
+    "lint": "biome check . && node tasks/check-tailwind-canonical-classes.js",
     "lint:extension": "pnpm build:firefox && web-ext lint --source-dir ./build/firefox-mv3-prod",
-    "lint:fix": "biome check --write .",
+    "lint:fix": "biome check --write . && node tasks/check-tailwind-canonical-classes.js --write",
     "verify": "pnpm check && pnpm build:all && pnpm lint:extension",
     "format": "biome format --write .",
     "format:check": "biome format ."

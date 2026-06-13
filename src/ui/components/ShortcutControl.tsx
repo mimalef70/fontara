@@ -44,11 +44,7 @@ function getShortcutKey(event: KeyboardEvent): string | null {
     return event.key.toUpperCase()
   }
 
-  if (event.keyCode !== 0) {
-    return event.code.slice(3)
-  }
-
-  return null
+  return event.code.slice(3)
 }
 
 function formatShortcutParts(parts: {

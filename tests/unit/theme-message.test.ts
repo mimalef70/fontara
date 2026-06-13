@@ -7,17 +7,23 @@ import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { FontaraContentCommandMessage } from "../../src/definitions"
 import { MESSAGE_TYPES_BG_TO_CS } from "../../src/utils/message"
 
+type CssModuleLoader = (module: { exports: string }) => void
+type RequireWithCssExtensions = {
+  extensions: Record<string, CssModuleLoader | undefined>
+}
+
 const require = createRequire(import.meta.url)
-const originalCSSExtension = require.extensions[".css"]
+const requireWithCssExtensions = require as unknown as RequireWithCssExtensions
+const originalCSSExtension = requireWithCssExtensions.extensions[".css"]
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
 afterEach(() => {
-  require.extensions[".css"] = originalCSSExtension
+  requireWithCssExtensions.extensions[".css"] = originalCSSExtension
   Reflect.set(globalThis, "chrome", originalChrome)
 })
 
 function installCSSModuleMock(): void {
-  require.extensions[".css"] = (module) => {
+  requireWithCssExtensions.extensions[".css"] = (module) => {
     module.exports = `
       :root {
         --fontara-test-site-css: 1;

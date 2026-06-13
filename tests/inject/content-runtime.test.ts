@@ -13,6 +13,11 @@ type StorageListener = (
   areaName: "sync" | "local" | "managed" | "session"
 ) => void
 
+type CssModuleLoader = (module: { exports: string }) => void
+type RequireWithCssExtensions = {
+  extensions: Record<string, CssModuleLoader | undefined>
+}
+
 type StoredValues = {
   [STORAGE_KEYS.CUSTOM_FONT_LIST]: FontData[]
   [STORAGE_KEYS.DISABLED_FOR]: string[]
@@ -28,7 +33,8 @@ type StoredValues = {
 }
 
 const require = createRequire(import.meta.url)
-const originalCSSExtension = require.extensions[".css"]
+const requireWithCssExtensions = require as unknown as RequireWithCssExtensions
+const originalCSSExtension = requireWithCssExtensions.extensions[".css"]
 const originalGlobals = {
   __DEBUG__: Reflect.get(globalThis, "__DEBUG__") as unknown,
   addEventListener: Reflect.get(globalThis, "addEventListener") as unknown,
@@ -152,7 +158,7 @@ afterEach(() => {
     Reflect.set(globalThis, key, value)
   }
 
-  require.extensions[".css"] = originalCSSExtension
+  requireWithCssExtensions.extensions[".css"] = originalCSSExtension
 })
 
 function createRuntimeMocks(): {
@@ -432,7 +438,7 @@ function createRuntimeMocks(): {
       }
     }
   })
-  require.extensions[".css"] = (module) => {
+  requireWithCssExtensions.extensions[".css"] = (module) => {
     module.exports = `
       @font-face {
         font-family: "Vazirmatn-Fontara";

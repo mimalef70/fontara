@@ -125,7 +125,7 @@ the popup current-site toggle, or per-site profiles. Browser-internal pages and
 other restricted pages are covered under [Known Limitations](#known-limitations).
 
 The curated list below is FontARA's built-in optimized support. It currently
-ships with 31 site entries, 27 bundled site CSS files, and 10 smart RTL site
+ships with 31 site entries, 27 bundled site CSS files, and 11 smart RTL site
 adapters. These sites get faster and higher-quality font application through
 targeted CSS injection, careful text selectors, icon/code protection, and curated
 RTL behavior where needed. With help from users and contributors, this optimized
@@ -133,7 +133,7 @@ list can keep growing.
 
 | Area | Examples |
 | --- | --- |
-| AI tools | ChatGPT, Claude, Gemini, Copilot, Perplexity, Poe, DeepSeek, Qwen, NotebookLM, AI Studio, Arena |
+| AI tools | ChatGPT, Claude, Gemini, Copilot, Perplexity, Poe, OpenRouter, DeepSeek, Qwen, NotebookLM, AI Studio, Arena |
 | Search and Google apps | Google, Gmail, YouTube, DuckDuckGo |
 | Social and communities | X, LinkedIn, Instagram, Facebook, GitHub |
 | Messaging and productivity | WhatsApp, Telegram, Slack, TickTick, Messages, Trello, Dropbox |

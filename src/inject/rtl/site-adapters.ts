@@ -728,6 +728,126 @@ function createGeminiAdapter(): RtlSiteAdapter {
   }
 }
 
+function createOpenRouterAdapter(): RtlSiteAdapter {
+  const rootSelector = '[data-testid="playground-chat-pane"]'
+  const messageSelectors = [
+    '[data-testid="playground-message-list"] [data-message-id]',
+    '[data-testid="message-list-content"] [data-message-id]',
+    '[data-testid="user-message"]',
+    '[data-testid="assistant-message"]'
+  ]
+  const textSelectors = [
+    '[data-message-bubble="user"]',
+    '[data-message-bubble="assistant"]',
+    "p",
+    "span",
+    "li",
+    "blockquote",
+    "figcaption",
+    "strong",
+    "em",
+    "td",
+    "th",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6"
+  ]
+  const codeGuardSelectors = [
+    ...COMMON_CODE_GUARD_SELECTORS,
+    "[data-language]",
+    '[class*="syntax"]',
+    '[class*="CodeMirror"]'
+  ]
+  const mathGuardSelectors = COMMON_MATH_GUARD_SELECTORS
+  const uiExcludeSelectors = [
+    "header",
+    "nav",
+    "aside",
+    "footer",
+    '[role="banner"]',
+    '[role="navigation"]',
+    '[role="complementary"]',
+    '[role="search"]',
+    '[data-testid="playground-composer"]',
+    '[data-testid="playground-composer"] *',
+    '[data-testid="composer-input"]',
+    '[data-testid*="model"]',
+    '[data-testid*="Model"]',
+    "form",
+    "button",
+    "input",
+    "textarea",
+    "svg",
+    '[data-slot="icon"]',
+    '[contenteditable="true"]',
+    '[contenteditable=""]',
+    '[contenteditable]:not([contenteditable="false"])'
+  ]
+  const protectedSelector = joinSelectors([
+    ...codeGuardSelectors,
+    ...mathGuardSelectors,
+    ...uiExcludeSelectors
+  ])
+  const textSelector = joinSelectors(textSelectors)
+
+  return createStandardAdapter({
+    siteId: "openrouter",
+    messageSelectors,
+    rootSelector,
+    textSelectors: [],
+    codeGuardSelectors,
+    mathGuardSelectors,
+    uiExcludeSelectors,
+    rtlStyle: { unicodeBidi: "plaintext" },
+    applyToMessage: (element, engine) => {
+      if (!(element instanceof HTMLElement) || !element.closest(rootSelector)) {
+        return true
+      }
+
+      if (
+        detectDominantDirection(
+          getTextWithoutSelector(element, protectedSelector)
+        ) !== "rtl"
+      ) {
+        return true
+      }
+
+      element.querySelectorAll(textSelector).forEach((child) => {
+        if (!(child instanceof HTMLElement)) return
+        if (child.closest(protectedSelector)) return
+
+        const childText = getTextWithoutSelector(child, protectedSelector)
+        if (detectDominantDirection(childText) === "rtl") {
+          engine.applyRTL(child)
+        }
+      })
+
+      return true
+    },
+    extraCss: `
+        [data-testid="playground-message-list"] [data-message-bubble][dir="rtl"] {
+          direction: rtl !important;
+          text-align: right !important;
+          unicode-bidi: plaintext;
+        }
+
+        [data-testid="playground-message-list"] [dir="rtl"] :is(ul, ol),
+        [data-testid="playground-message-list"] :is(ul, ol)[dir="rtl"] {
+          padding-right: 1.6rem;
+          padding-left: 0;
+        }
+
+        [data-testid="playground-message-list"] [dir="rtl"] :is(li, p, blockquote),
+        [data-testid="playground-message-list"] :is(li, p, blockquote)[dir="rtl"] {
+          text-align: right;
+        }
+      `
+  })
+}
+
 function createMathAwareAdapter(
   siteId: RtlSiteId,
   messageSelectors: string[],
@@ -1043,6 +1163,8 @@ export function createRtlSiteAdapter(siteId: RtlSiteId): RtlSiteAdapter {
           ]
         }
       )
+    case "openrouter":
+      return createOpenRouterAdapter()
     case "deepseek":
       return createMathAwareAdapter(
         siteId,

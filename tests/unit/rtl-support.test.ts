@@ -382,6 +382,7 @@ test("RTL adapters preserve sample platform coverage without font injection", ()
     "gemini",
     "copilot",
     "perplexity",
+    "openrouter",
     "deepseek",
     "notebooklm",
     "aistudio",
@@ -392,6 +393,22 @@ test("RTL adapters preserve sample platform coverage without font injection", ()
   }
 
   assert.match(siteAdaptersSource, /\[data-testid="conversation-turn"\]/)
+  assert.match(siteAdaptersSource, /\[data-testid="playground-message-list"\]/)
+  assert.match(siteAdaptersSource, /\[data-message-bubble="assistant"\]/)
+  assert.match(siteAdaptersSource, /const protectedSelector = joinSelectors/)
+  assert.match(
+    siteAdaptersSource,
+    /getTextWithoutSelector\(element, protectedSelector\)/
+  )
+  assert.match(
+    siteAdaptersSource,
+    /detectDominantDirection\(\s*getTextWithoutSelector\(element, protectedSelector\)\s*\) !== "rtl"/
+  )
+  assert.match(
+    siteAdaptersSource,
+    /detectDominantDirection\(childText\) === "rtl"/
+  )
+  assert.match(siteAdaptersSource, /child\.closest\(protectedSelector\)/)
   assert.match(siteAdaptersSource, /fontara-gemini-rtl-list/)
   assert.match(siteAdaptersSource, /createTextWalkerAdapter/)
   assert.match(siteAdaptersSource, /ms-chat-session/)

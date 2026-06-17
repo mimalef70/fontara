@@ -79,7 +79,7 @@ test("project documentation exposes contributor and maintainer guides", () => {
   assert.match(readme, /FontARA screenshot/)
   assert.match(readme, /31 site entries/)
   assert.match(readme, /27 bundled site CSS files/)
-  assert.match(readme, /10 smart RTL site\s+adapters/)
+  assert.match(readme, /11 smart RTL site\s+adapters/)
   assert.match(readme, /Google Fonts network access/)
   assert.match(readme, /Browser-restricted pages/)
   assert.match(readme, /docs\/images\/demo\/screens\/Version4\.jpg/)

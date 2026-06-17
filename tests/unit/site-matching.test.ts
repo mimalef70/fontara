@@ -218,6 +218,7 @@ test("AI website icons use provided brand assets", () => {
     ["DeepSeek", "assets/logos/Deepseek.svg"],
     ["Gemini", "assets/logos/Gemini.svg"],
     ["NotebookLM", "assets/logos/NotebookLM.svg"],
+    ["OpenRouter", "assets/logos/openrouter-active.svg"],
     ["Perplexity", "assets/logos/Perplexity.svg"],
     ["Poe", "assets/logos/poe.svg"],
     ["Qwen", "assets/logos/Qwen.svg"]
@@ -284,6 +285,7 @@ test("RTL supported sites mirror the imported sample extension platforms", () =>
       "gemini",
       "copilot",
       "perplexity",
+      "openrouter",
       "deepseek",
       "notebooklm",
       "aistudio",
@@ -312,6 +314,7 @@ test("RTL site matching handles supported host aliases", () => {
     getRtlSiteByUrl("https://www.perplexity.ai/search")?.id,
     "perplexity"
   )
+  assert.equal(getRtlSiteByUrl("https://openrouter.ai/chat")?.id, "openrouter")
   assert.equal(getRtlSiteByUrl("https://deepseek.com/")?.id, "deepseek")
   assert.equal(getRtlSiteByUrl("https://chat.deepseek.com/")?.id, "deepseek")
   assert.equal(getRtlSiteByUrl("https://www.deepseek.com/")?.id, "deepseek")
@@ -320,6 +323,7 @@ test("RTL site matching handles supported host aliases", () => {
   assert.equal(getRtlSiteByUrl("https://www.arena.ai/")?.id, "arena")
   assert.equal(getRtlSiteByUrl("https://example.com/"), null)
   assert.equal(getRtlSiteByUrl("https://docs.deepseek.com/"), null)
+  assert.equal(getRtlSiteByUrl("https://docs.openrouter.ai/"), null)
   assert.equal(getRtlSiteByUrl("https://foo.qwen.ai/"), null)
   assert.equal(getRtlSiteByUrl("https://labs.perplexity.ai/"), null)
   assert.equal(getRtlSiteByUrl("https://foo.arena.ai/"), null)

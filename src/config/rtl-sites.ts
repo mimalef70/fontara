@@ -4,6 +4,7 @@ export const RTL_SUPPORTED_SITE_IDS = [
   "gemini",
   "copilot",
   "perplexity",
+  "openrouter",
   "deepseek",
   "notebooklm",
   "aistudio",
@@ -60,6 +61,13 @@ export const RTL_SUPPORTED_SITES: RtlSiteConfig[] = [
     matches: ["perplexity.ai", "www.perplexity.ai"],
     icon: "assets/logos/Perplexity.svg",
     siteName: "Perplexity"
+  },
+  {
+    id: "openrouter",
+    url: "https://openrouter.ai",
+    matches: ["openrouter.ai"],
+    icon: "assets/logos/openrouter-active.svg",
+    siteName: "OpenRouter"
   },
   {
     id: "deepseek",

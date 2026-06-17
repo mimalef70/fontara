@@ -619,6 +619,7 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /createSiteListToggleUpdate/)
   assert.match(customUrlToggleSource, /createSiteListPatternToggleUpdate/)
   assert.match(customUrlToggleSource, /createSitePathPatternFromUrl/)
+  assert.match(customUrlToggleSource, /isHomepagePathPattern/)
   assert.match(customUrlToggleSource, /getMatchingSiteListPattern/)
   assert.match(customUrlToggleSource, /POPULAR_WEBSITES/)
   assert.match(
@@ -635,6 +636,7 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /<SiteScopeBadge/)
   assert.match(customUrlToggleSource, /handleScopeChoice/)
   assert.match(customUrlToggleSource, /customUrl\.scopeDomainOption/)
+  assert.match(customUrlToggleSource, /customUrl\.scopeHomepageOption/)
   assert.match(customUrlToggleSource, /customUrl\.scopePathOption/)
   assert.match(customUrlToggleSource, /customUrl\.manageRules/)
   assert.match(

@@ -140,6 +140,14 @@ function createRegExp(pattern: string): RegExp | null {
   }
 }
 
+function escapeRegExpLiteral(value: string): string {
+  return value.replace(/[\\^$.*+?()[\]{}|/]/g, "\\$&")
+}
+
+function unescapeRegExpLiteral(value: string): string {
+  return value.replace(/\\(.)/g, "$1")
+}
+
 function prepareURL(url: string): PreparedURL | null {
   const cached = getCacheEntry(preparedURLCache, url)
   if (cached !== undefined) return cached
@@ -294,6 +302,56 @@ function matchPreparedURLPattern(
   return true
 }
 
+function getHomepagePathPatternHost(pattern: string): string | null {
+  const trimmed = pattern.trim()
+  if (!isRegExpPattern(trimmed)) return null
+
+  const source = trimmed.slice(1, -1)
+  const prefix = String.raw`^https?:\/\/`
+  const suffix = String.raw`\/?(?:[?#].*)?$`
+
+  if (!source.startsWith(prefix) || !source.endsWith(suffix)) {
+    return null
+  }
+
+  let hostSource = source.slice(prefix.length, -suffix.length)
+  if (hostSource.startsWith(String.raw`(?:www\.)?`)) {
+    hostSource = hostSource.slice(String.raw`(?:www\.)?`.length)
+  }
+  if (!hostSource) return null
+
+  return unescapeRegExpLiteral(hostSource)
+}
+
+export function isHomepagePathPattern(pattern: string): boolean {
+  return getHomepagePathPatternHost(pattern) !== null
+}
+
+export function createHomepagePathPatternFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(PROTOCOL_PATTERN.test(url) ? url : `https://${url}`)
+    if (!parsed.host) return null
+
+    const normalizedHostname = parsed.hostname.toLowerCase()
+    const baseHostname = normalizedHostname.startsWith("www.")
+      ? normalizedHostname.slice(4)
+      : normalizedHostname
+    if (!baseHostname) return null
+
+    const supportsOptionalWWW =
+      baseHostname.includes(".") && !isIPAddressLikeHost(baseHostname)
+    const hostPattern = `${supportsOptionalWWW ? String.raw`(?:www\.)?` : ""}${escapeRegExpLiteral(baseHostname)}${
+      parsed.port ? `:${escapeRegExpLiteral(parsed.port)}` : ""
+    }`
+
+    return normalizeSitePattern(
+      String.raw`/^https?:\/\/${hostPattern}\/?(?:[?#].*)?$/`
+    )
+  } catch {
+    return null
+  }
+}
+
 function normalizeWildcardSiteHost(host: string): string | null {
   const normalizedHost = host.toLowerCase()
   if (!normalizedHost.includes("*")) return normalizedHost
@@ -324,6 +382,11 @@ export function getURLHostOrProtocol(url: string): string {
 }
 
 export function getDisplaySitePattern(pattern: string): string {
+  const homepagePathHost = getHomepagePathPatternHost(pattern)
+  if (homepagePathHost) {
+    return `${homepagePathHost}/`
+  }
+
   const normalizedPattern =
     normalizeSitePattern(pattern) ?? pattern.trim().replace(/%2a/gi, "*")
   return normalizedPattern.startsWith("www.")
@@ -353,7 +416,9 @@ export function createSitePathPatternFromUrl(url: string): string | null {
         ? parsed.pathname.replace(/\/+$/, "")
         : ""
 
-    return normalizeSitePattern(`${parsed.host}${path}`)
+    return path
+      ? normalizeSitePattern(`${parsed.host}${path}`)
+      : createHomepagePathPatternFromUrl(url)
   } catch {
     return createSitePatternFromUrl(url)
   }
@@ -500,7 +565,7 @@ export function inferSitePatternScopeFromInput(
     return "path"
   }
 
-  return "domain"
+  return fallback === "path" ? "path" : "domain"
 }
 
 function createSitePatternFromURLLikeInput(
@@ -524,7 +589,9 @@ function createSitePatternFromURLLikeInput(
         ? parsed.pathname.replace(/\/+$/, "")
         : ""
 
-    return normalizeSitePattern(`${parsed.host}${path}`)
+    return scope === "path" && !path
+      ? createHomepagePathPatternFromUrl(trimmed)
+      : normalizeSitePattern(`${parsed.host}${path}`)
   } catch {
     return normalizeSitePattern(trimmed)
   }
@@ -634,6 +701,7 @@ export function getSitePatternScope(pattern: string): SitePatternScope {
 
   const normalizedPattern = normalizeSitePattern(pattern)
   if (!normalizedPattern || normalizedPattern === "*") return "custom"
+  if (isHomepagePathPattern(normalizedPattern)) return "path"
   if (isRegExpPattern(normalizedPattern)) return "regex"
   if (normalizedPattern.includes("*")) return "custom"
   if (normalizedPattern.includes("/")) return "path"

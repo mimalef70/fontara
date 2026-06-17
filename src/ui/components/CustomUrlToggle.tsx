@@ -10,6 +10,7 @@ import {
   getMatchingSiteListPattern,
   getSitePatternScope,
   getURLHostOrProtocol,
+  isHomepagePathPattern,
   isSiteListUrlEnabled,
   normalizeEnabledByDefault,
   normalizeEnabledSiteList,
@@ -422,7 +423,11 @@ const CustomUrlToggle = () => {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-[#111827]">
-                    {t("customUrl.scopePathOption")}
+                    {t(
+                      isHomepagePathPattern(pathPattern)
+                        ? "customUrl.scopeHomepageOption"
+                        : "customUrl.scopePathOption"
+                    )}
                   </span>
                   <bdi
                     className="mt-1 block truncate text-xs text-[#64748b]"

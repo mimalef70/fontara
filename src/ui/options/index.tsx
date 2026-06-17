@@ -1333,7 +1333,9 @@ function OptionsPage() {
     if (!pattern) return
 
     setSitePatternScope(scope)
-    setSitePatternInput(pattern)
+    setSitePatternInput(
+      scope === "path" ? getDisplaySitePattern(pattern) : pattern
+    )
   }
 
   const selectSiteProfileTarget = (pattern: string) => {

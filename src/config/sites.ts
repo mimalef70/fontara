@@ -216,6 +216,15 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     siteName: "Messages"
   },
   {
+    url: "https://ticktick.com",
+    regex: "^https://ticktick\\.com/.*$",
+    icon: "assets/logos/ticktick-active.svg",
+    pattern: "https://ticktick.com/*",
+    siteName: "TickTick",
+    customCss: true,
+    version: "4.3.0"
+  },
+  {
     url: "https://trello.com",
     regex: "^https://trello\\.com/.*$",
     icon: "assets/logos/trello-active.png",

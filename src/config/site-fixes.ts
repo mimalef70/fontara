@@ -19,6 +19,7 @@ import poe from "../../assets/styles/poe.css"
 import qwen from "../../assets/styles/qwen.css"
 import slack from "../../assets/styles/slack.css"
 import telegram from "../../assets/styles/telegram.css"
+import ticktick from "../../assets/styles/ticktick.css"
 import trello from "../../assets/styles/trello.css"
 import whatsapp from "../../assets/styles/whatsapp.css"
 import wikipedia from "../../assets/styles/wikipedia.css"
@@ -48,6 +49,7 @@ export const CUSTOM_CSS_BY_SITE: Record<string, string> = {
   "https://chat.qwen.ai": qwen,
   "https://app.slack.com": slack,
   "https://web.telegram.org": telegram,
+  "https://ticktick.com": ticktick,
   "https://trello.com": trello,
   "https://web.whatsapp.com": whatsapp,
   "https://www.wikipedia.org": wikipedia,

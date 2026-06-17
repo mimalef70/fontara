@@ -262,6 +262,7 @@ test("popular websites are ordered by priority and category", () => {
       "Telegram",
       "Slack",
       "Messages",
+      "TickTick",
       "Trello",
       "Wikipedia",
       "DuckDuckGo",

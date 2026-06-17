@@ -1,33 +1,81 @@
 :root {
-  --fontara-linkedin-reset-sans-fallback: var(
-    --artdeco-reset-typography-font-family-sans
-  );
-  --fontara-linkedin-app-ui-fallback: var(--_5a455dfe);
-  --fontara-linkedin-artdeco-ui-fallback: var(--artdeco-typography-sans);
-  --fontara-linkedin-editor-fallback: Helvetica, Arial, sans-serif;
+  --fontara-linkedin-ui-fallback: system-ui, -apple-system, "system-ui",
+    "Segoe UI", Roboto, Ubuntu, Oxygen, Cantarell, "Fira Sans", "Droid Sans",
+    "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol";
 }
 
-:host,
-:lang(en) {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-reset-sans-fallback) !important;
-}
 
-._38c8bff9,
-body {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-app-ui-fallback) !important;
-}
-
-.artdeco-entity-lockup__subtitle,
-.artdeco-entity-lockup__title,
-.artdeco-modal__header,
-.artdeco-modal__header h2 {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-artdeco-ui-fallback) !important;
-}
-
-.ql-container {
-  font-family: var(--fontara-font),
-    var(--fontara-linkedin-editor-fallback) !important;
+:where(
+  p,
+  span,
+  div,
+  mark,
+  a,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  li,
+  label,
+  button,
+  input,
+  textarea,
+  select,
+  option,
+  em,
+  strong,
+  b,
+  i,
+  small,
+  time,
+  cite,
+  q,
+  blockquote,
+  figcaption,
+  summary,
+  dt,
+  dd,
+  th,
+  td,
+  caption,
+  legend,
+  [role="heading"],
+  [role="button"],
+  [role="menuitem"],
+  [role="option"],
+  [role="tab"]
+):not(
+  pre,
+  pre *,
+  code,
+  code *,
+  [aria-hidden="true"],
+  [class*="fa-"],
+  .fa,
+  .fab,
+  .fad,
+  .fal,
+  .far,
+  .fas,
+  .fass,
+  .fasr,
+  .fat,
+  .icofont,
+  [style*="font-"],
+  [class*="icon"],
+  [class*="Icon"],
+  [class*="symbol"],
+  [class*="Symbol"],
+  .glyphicon,
+  [class*="material-symbol"],
+  [class*="material-icon"],
+  mu,
+  [class*="mu-"],
+  .typcn,
+  [class*="vjs-"]
+) {
+  font-family: var(--fontara-font), var(--fontara-linkedin-ui-fallback) !important;
 }

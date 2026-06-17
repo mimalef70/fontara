@@ -84,8 +84,8 @@ are mainly for testers, reviewers, and contributors.
 - Works on normal websites the user enables, with built-in optimized support for
   AI tools, search, social, productivity, and publishing sites such as ChatGPT,
   Claude, Gemini, Copilot, Perplexity, Google, YouTube, Gmail, X, LinkedIn,
-  Instagram, Facebook, GitHub, Telegram, Slack, Trello, Wikipedia, DuckDuckGo,
-  Medium, Goodreads, Dropbox, and more.
+  Instagram, Facebook, GitHub, Telegram, Slack, TickTick, Trello, Wikipedia,
+  DuckDuckGo, Medium, Goodreads, Dropbox, and more.
 - Per-site font and text-stroke profiles.
 - Smart RTL support for right-to-left scripts, editable text surfaces, and
   curated site adapters.
@@ -125,7 +125,7 @@ the popup current-site toggle, or per-site profiles. Browser-internal pages and
 other restricted pages are covered under [Known Limitations](#known-limitations).
 
 The curated list below is FontARA's built-in optimized support. It currently
-ships with 30 site entries, 26 bundled site CSS files, and 10 smart RTL site
+ships with 31 site entries, 27 bundled site CSS files, and 10 smart RTL site
 adapters. These sites get faster and higher-quality font application through
 targeted CSS injection, careful text selectors, icon/code protection, and curated
 RTL behavior where needed. With help from users and contributors, this optimized
@@ -136,7 +136,7 @@ list can keep growing.
 | AI tools | ChatGPT, Claude, Gemini, Copilot, Perplexity, Poe, DeepSeek, Qwen, NotebookLM, AI Studio, Arena |
 | Search and Google apps | Google, Gmail, YouTube, DuckDuckGo |
 | Social and communities | X, LinkedIn, Instagram, Facebook, GitHub |
-| Messaging and productivity | WhatsApp, Telegram, Slack, Messages, Trello, Dropbox |
+| Messaging and productivity | WhatsApp, Telegram, Slack, TickTick, Messages, Trello, Dropbox |
 | Reading and publishing | Wikipedia, Medium, Goodreads |
 
 General font injection works across the web. Site matching, optimized CSS fixes,

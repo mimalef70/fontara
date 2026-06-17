@@ -1,0 +1,14 @@
+:root {
+  --fontara-ticktick-ui-fallback: "Color Emoji", system-ui, -apple-system,
+    "system-ui", "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+#root,
+body,
+html,
+html > body.sidebar-focus.tick.webkit > textarea,
+pre {
+  font-family: var(--fontara-font),
+    var(--fontara-ticktick-ui-fallback) !important;
+}

@@ -31,7 +31,7 @@ codetree.txt
 out/
 build/
 dist/
-# JSONS/
+JSONS/
 # docs/
 # assets/
 # README.md

@@ -619,7 +619,6 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.match(customUrlToggleSource, /createSiteListToggleUpdate/)
   assert.match(customUrlToggleSource, /createSiteListPatternToggleUpdate/)
   assert.match(customUrlToggleSource, /createSitePathPatternFromUrl/)
-  assert.match(customUrlToggleSource, /isHomepagePathPattern/)
   assert.match(customUrlToggleSource, /getMatchingSiteListPattern/)
   assert.match(customUrlToggleSource, /POPULAR_WEBSITES/)
   assert.match(
@@ -632,17 +631,15 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   )
   assert.match(customUrlToggleSource, /addSitePatternToList/)
   assert.match(customUrlToggleSource, /removeSitePatternFromList/)
-  assert.match(customUrlToggleSource, /<DrawerContent dir=\{direction\}/)
   assert.match(customUrlToggleSource, /<SiteScopeBadge/)
-  assert.match(customUrlToggleSource, /handleScopeChoice/)
-  assert.match(customUrlToggleSource, /customUrl\.scopeDomainOption/)
-  assert.match(customUrlToggleSource, /customUrl\.scopeHomepageOption/)
-  assert.match(customUrlToggleSource, /customUrl\.scopePathOption/)
-  assert.match(customUrlToggleSource, /customUrl\.manageRules/)
   assert.match(
     customUrlToggleSource,
-    /openOptionsPageSafely\(\{ section: "sites" \}\)/
+    /saveSiteListSettings\([\s\S]*enabledFor: addSitePatternToList/
   )
+  assert.doesNotMatch(customUrlToggleSource, /<Drawer/)
+  assert.doesNotMatch(customUrlToggleSource, /handleScopeChoice/)
+  assert.doesNotMatch(customUrlToggleSource, /scopeDrawerOpen/)
+  assert.doesNotMatch(customUrlToggleSource, /customUrl\.scopePathOption/)
   assert.doesNotMatch(customUrlToggleSource, /MoreHorizontal/)
   assert.doesNotMatch(customUrlToggleSource, /overflow-y-hidden/)
   assert.match(popularSectionSource, /createWebsiteSiteListToggleUpdate/)

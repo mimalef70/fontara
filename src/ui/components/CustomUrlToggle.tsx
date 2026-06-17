@@ -1,5 +1,3 @@
-import { Globe2, Route } from "lucide-react"
-import { useState } from "react"
 import {
   addSitePatternToList,
   createSiteListPatternToggleUpdate,
@@ -10,7 +8,6 @@ import {
   getMatchingSiteListPattern,
   getSitePatternScope,
   getURLHostOrProtocol,
-  isHomepagePathPattern,
   isSiteListUrlEnabled,
   normalizeEnabledByDefault,
   normalizeEnabledSiteList,
@@ -22,7 +19,6 @@ import { POPULAR_WEBSITES } from "../../config/sites"
 import { STORAGE_KEYS } from "../../config/storage"
 import type { WebsiteItem } from "../../definitions"
 import { cn } from "../../utils/cn"
-import { openOptionsPageSafely } from "../../utils/options-page"
 import { createRegexFromUrl } from "../../utils/url"
 import { fontaraConnector } from "../connect/connector"
 import { useExtensionData } from "../hooks/use-extension-data"
@@ -36,18 +32,6 @@ import {
 } from "../storage-defaults"
 import { Check as CheckIcon } from "./icons"
 import { SiteScopeBadge, type SiteScopeBadgeKind } from "./SiteScopeBadge"
-import { Button } from "./ui/button"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle
-} from "./ui/drawer"
-
-type SiteScopeChoice = "domain" | "path"
 
 const activeCheckClasses = {
   custom: "border-slate-500 bg-slate-500",
@@ -63,7 +47,6 @@ function removeOptionalSitePattern(list: string[], pattern: string | null) {
 
 const CustomUrlToggle = () => {
   const { direction, t } = useI18n()
-  const [scopeDrawerOpen, setScopeDrawerOpen] = useState(false)
   const currentTab = useExtensionData()?.activeTab ?? null
   const [websiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
@@ -115,11 +98,6 @@ const CustomUrlToggle = () => {
         ? "global"
         : null
     : null
-  const hasPathScope =
-    Boolean(pathPattern) &&
-    Boolean(domainPattern) &&
-    pathPattern !== domainPattern
-
   const createUpdatedWebsiteList = (currentUrl: string, checked: boolean) => {
     const existingWebsiteIndex = websiteList.findIndex(
       (item) => getMatchingWebsite(currentUrl, [item]) !== null
@@ -169,7 +147,7 @@ const CustomUrlToggle = () => {
     }
   }
 
-  const saveScopeSettings = async (
+  const saveSiteListSettings = async (
     nextSettings: Pick<typeof siteListSettings, "disabledFor" | "enabledFor">,
     checked: boolean
   ) => {
@@ -184,10 +162,9 @@ const CustomUrlToggle = () => {
           checked
         )
       })
-      setScopeDrawerOpen(false)
     } catch (error) {
       if (__DEBUG__) {
-        console.warn("Failed to update custom URL scope setting.", error)
+        console.warn("Failed to update custom URL setting.", error)
       }
     }
   }
@@ -196,7 +173,33 @@ const CustomUrlToggle = () => {
     if (!currentUrl) return
 
     if (checked) {
-      setScopeDrawerOpen(true)
+      if (domainPattern) {
+        await saveSiteListSettings(
+          {
+            disabledFor: removeOptionalSitePattern(
+              removeSitePatternFromList(normalizedDisabledFor, domainPattern),
+              pathPattern
+            ),
+            enabledFor: addSitePatternToList(
+              removeOptionalSitePattern(normalizedEnabledFor, pathPattern),
+              domainPattern
+            )
+          },
+          true
+        )
+        return
+      }
+
+      const siteListUpdate = createSiteListToggleUpdate(
+        currentUrl,
+        {
+          disabledFor,
+          enabledByDefault,
+          enabledFor
+        },
+        checked
+      )
+      await saveSiteListSettings(siteListUpdate, true)
       return
     }
 
@@ -231,73 +234,6 @@ const CustomUrlToggle = () => {
         }
       }
     }
-  }
-
-  const handleScopeChoice = async (scope: SiteScopeChoice) => {
-    if (!domainPattern) {
-      await handleUrlToggle(true)
-      return
-    }
-
-    if (scope === "domain") {
-      const disabledWithoutCurrentPattern =
-        activePattern && activePattern !== domainPattern
-          ? removeSitePatternFromList(normalizedDisabledFor, activePattern)
-          : normalizedDisabledFor
-      const enabledWithoutCurrentPattern =
-        activePattern && activePattern !== domainPattern
-          ? removeSitePatternFromList(normalizedEnabledFor, activePattern)
-          : normalizedEnabledFor
-
-      await saveScopeSettings(
-        {
-          disabledFor: removeOptionalSitePattern(
-            removeSitePatternFromList(
-              disabledWithoutCurrentPattern,
-              domainPattern
-            ),
-            pathPattern
-          ),
-          enabledFor: addSitePatternToList(
-            removeOptionalSitePattern(
-              enabledWithoutCurrentPattern,
-              pathPattern
-            ),
-            domainPattern
-          )
-        },
-        true
-      )
-      return
-    }
-
-    if (!pathPattern) return
-
-    const disabledWithoutCurrentPattern =
-      activePattern && activePattern !== pathPattern
-        ? removeSitePatternFromList(normalizedDisabledFor, activePattern)
-        : normalizedDisabledFor
-    const enabledWithoutCurrentPattern =
-      activePattern && activePattern !== pathPattern
-        ? removeSitePatternFromList(normalizedEnabledFor, activePattern)
-        : normalizedEnabledFor
-
-    await saveScopeSettings(
-      {
-        disabledFor: addSitePatternToList(
-          removeSitePatternFromList(disabledWithoutCurrentPattern, pathPattern),
-          domainPattern
-        ),
-        enabledFor: addSitePatternToList(
-          removeSitePatternFromList(
-            enabledWithoutCurrentPattern,
-            domainPattern
-          ),
-          pathPattern
-        )
-      },
-      true
-    )
   }
 
   if (!currentTab?.isSupported || !currentUrl || matchingPopularWebsite) {
@@ -376,87 +312,6 @@ const CustomUrlToggle = () => {
           {isRtl && checkboxControl}
         </label>
       </div>
-      <Drawer
-        open={scopeDrawerOpen}
-        onOpenChange={setScopeDrawerOpen}
-        direction="bottom">
-        <DrawerContent dir={direction} className="max-h-[85vh] overflow-hidden">
-          <DrawerHeader>
-            <DrawerTitle className="text-center">
-              {t("customUrl.scopeDrawerTitle")}
-            </DrawerTitle>
-            <DrawerDescription className="text-center">
-              {t("customUrl.scopeDrawerDescription")}
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="space-y-2 px-4 pb-2">
-            <button
-              type="button"
-              data-testid="fontara-current-site-scope-domain"
-              className="flex w-full items-center gap-3 rounded-md border border-blue-100 bg-blue-50/70 p-3 text-start transition hover:border-blue-300 hover:bg-blue-50"
-              onClick={() => void handleScopeChoice("domain")}>
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-700">
-                <Globe2 className="size-4" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-[#111827]">
-                  {t("customUrl.scopeDomainOption")}
-                </span>
-                {domainPattern && (
-                  <bdi
-                    className="mt-1 block truncate text-xs text-[#64748b]"
-                    dir="ltr">
-                    {getDisplaySitePattern(domainPattern)}
-                  </bdi>
-                )}
-              </span>
-              <SiteScopeBadge scope="domain" />
-            </button>
-            {hasPathScope && pathPattern && (
-              <button
-                type="button"
-                data-testid="fontara-current-site-scope-path"
-                className="flex w-full items-center gap-3 rounded-md border border-emerald-100 bg-emerald-50/70 p-3 text-start transition hover:border-emerald-300 hover:bg-emerald-50"
-                onClick={() => void handleScopeChoice("path")}>
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
-                  <Route className="size-4" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-[#111827]">
-                    {t(
-                      isHomepagePathPattern(pathPattern)
-                        ? "customUrl.scopeHomepageOption"
-                        : "customUrl.scopePathOption"
-                    )}
-                  </span>
-                  <bdi
-                    className="mt-1 block truncate text-xs text-[#64748b]"
-                    dir="ltr">
-                    {getDisplaySitePattern(pathPattern)}
-                  </bdi>
-                </span>
-                <SiteScopeBadge scope="path" />
-              </button>
-            )}
-          </div>
-          <DrawerFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setScopeDrawerOpen(false)
-                void openOptionsPageSafely({ section: "sites" })
-              }}>
-              {t("customUrl.manageRules")}
-            </Button>
-            <DrawerClose asChild>
-              <Button type="button" variant="ghost">
-                {t("common.close")}
-              </Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
     </div>
   )
 }

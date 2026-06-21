@@ -510,6 +510,7 @@ function OptionsPage() {
   const activeNavigation = settingsNavigation.find(
     (item) => item.id === activeSection
   )
+  const ActiveSectionIcon = activeNavigation?.icon ?? Settings
   const sidebarSide = direction === "rtl" ? "right" : "left"
 
   React.useEffect(() => {
@@ -585,6 +586,7 @@ function OptionsPage() {
   const [siteProfileUsesGlobalStroke, setSiteProfileUsesGlobalStroke] =
     useState(true)
   const [systemFontList, setSystemFontList] = useState<SystemFontData[]>([])
+  const systemFontsSupported = isSystemFontAccessSupported()
   const { toast } = useToast()
 
   React.useEffect(() => {
@@ -594,7 +596,7 @@ function OptionsPage() {
   React.useEffect(() => {
     let cancelled = false
 
-    if (!systemFontsEnabled) {
+    if (!systemFontsSupported || !systemFontsEnabled) {
       setSystemFontList([])
       return () => {
         cancelled = true
@@ -619,7 +621,7 @@ function OptionsPage() {
     return () => {
       cancelled = true
     }
-  }, [systemFontsEnabled])
+  }, [systemFontsEnabled, systemFontsSupported])
 
   const resetSelectedFile = () => {
     setSelectedFile(null)
@@ -1634,16 +1636,21 @@ function OptionsPage() {
 
   return (
     <ToastProvider>
-      <div className="font-estedad" dir={direction} lang={language}>
+      <div
+        className="font-estedad fontara-options-page"
+        dir={direction}
+        lang={language}>
         <SidebarProvider>
           <Sidebar collapsible="icon" dir={direction} side={sidebarSide}>
-            <SidebarHeader>
-              <div className="flex items-center gap-3 overflow-hidden">
-                <img
-                  alt=""
-                  src={getExtensionAssetURL("assets/newlogo.svg")}
-                  className="size-10 shrink-0"
-                />
+            <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+              <div className="flex min-h-11 items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white shadow-[inset_0_0_0_1px_#e6edf5] group-data-[collapsible=icon]:size-8">
+                  <img
+                    alt=""
+                    src={getExtensionAssetURL("assets/icon-active-32.png")}
+                    className="size-7 shrink-0"
+                  />
+                </span>
                 <div className="min-w-0 group-data-[collapsible=icon]:hidden">
                   <h1 className="truncate text-base font-bold text-[#111827]">
                     {t("common.appName")}
@@ -1655,9 +1662,9 @@ function OptionsPage() {
               </div>
             </SidebarHeader>
 
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel>
+            <SidebarContent className="px-2 py-3">
+              <SidebarGroup className="p-0">
+                <SidebarGroupLabel className="px-3">
                   {t("options.sidebar.sections")}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -1670,6 +1677,7 @@ function OptionsPage() {
                           <SidebarMenuButton
                             isActive={activeSection === item.id}
                             data-testid={`fontara-options-nav-${item.id}`}
+                            tooltip={t(item.labelKey)}
                             onClick={() => handleSectionChange(item.id)}>
                             <Icon className="size-4 shrink-0" />
                             <span className="truncate group-data-[collapsible=icon]:hidden">
@@ -1684,8 +1692,8 @@ function OptionsPage() {
               </SidebarGroup>
             </SidebarContent>
 
-            <SidebarFooter>
-              <div className="flex items-center gap-3 rounded-md bg-[#f8fafc] px-3 py-2 text-xs text-[#64748b]">
+            <SidebarFooter className="px-4 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+              <div className="flex h-8 items-center gap-3 rounded-md bg-white px-3 text-xs text-[#667085] shadow-[inset_0_0_0_1px_#e6edf5] group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
                 <Info className="size-4 shrink-0" />
                 <span className="truncate group-data-[collapsible=icon]:hidden">
                   {t("common.version", { version: formatVersion(version) })}
@@ -1696,66 +1704,85 @@ function OptionsPage() {
           </Sidebar>
 
           <SidebarInset>
-            <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b bg-white/90 px-6 backdrop-blur">
-              <SidebarTrigger className="shrink-0" />
-              <div>
+            <header className="fontara-options-header sticky top-0 z-10 flex h-[4.5rem] items-center gap-3 px-5 backdrop-blur sm:px-7">
+              <SidebarTrigger className="size-9 shrink-0 rounded-md text-[#475467] hover:bg-[#eef4ff] hover:text-[#2374ff]" />
+              <div className="fontara-icon-tile hidden sm:flex">
+                <ActiveSectionIcon className="size-4" />
+              </div>
+              <div className="min-w-0">
                 <h2 className="text-lg font-bold text-[#111827]">
                   {activeNavigation
                     ? t(activeNavigation.labelKey)
                     : t("common.settings")}
                 </h2>
-                <p className="text-xs text-[#64748b]">
+                <p className="truncate text-xs text-[#667085]">
                   {t(sectionDescriptionKeys[activeSection])}
                 </p>
               </div>
             </header>
 
-            <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+            <div className="fontara-options-content mx-auto w-full max-w-6xl space-y-5 p-5 sm:p-6 lg:p-7">
               {activeSection === "general" && (
                 <div className="space-y-6">
                   <div className="grid gap-4 md:grid-cols-4">
-                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                      <Type className="mb-4 size-5 text-[#2374ff]" />
-                      <div className="text-2xl font-bold text-[#111827]">
-                        {formatNumber(customFontList.length)}
+                    <section className="fontara-panel flex items-center gap-3 p-4">
+                      <div className="fontara-icon-tile">
+                        <Type className="size-4" />
                       </div>
-                      <div className="mt-1 text-sm text-[#64748b]">
-                        {t("options.status.customFonts")}
-                      </div>
-                    </section>
-
-                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                      <Globe2 className="mb-4 size-5 text-[#2374ff]" />
-                      <div className="text-2xl font-bold text-[#111827]">
-                        {formatNumber(activeWebsiteCount)}
-                      </div>
-                      <div className="mt-1 text-sm text-[#64748b]">
-                        {t("options.status.activeSites")}
+                      <div className="min-w-0">
+                        <div className="text-2xl font-bold leading-none text-[#111827]">
+                          {formatNumber(customFontList.length)}
+                        </div>
+                        <div className="mt-1 truncate text-sm text-[#667085]">
+                          {t("options.status.customFonts")}
+                        </div>
                       </div>
                     </section>
 
-                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                      <ListChecks className="mb-4 size-5 text-[#2374ff]" />
-                      <div className="text-2xl font-bold text-[#111827]">
-                        {formatNumber(cssOnlyWebsiteCount)}
+                    <section className="fontara-panel flex items-center gap-3 p-4">
+                      <div className="fontara-icon-tile">
+                        <Globe2 className="size-4" />
                       </div>
-                      <div className="mt-1 text-sm text-[#64748b]">
-                        {t("options.status.cssOnly")}
+                      <div className="min-w-0">
+                        <div className="text-2xl font-bold leading-none text-[#111827]">
+                          {formatNumber(activeWebsiteCount)}
+                        </div>
+                        <div className="mt-1 truncate text-sm text-[#667085]">
+                          {t("options.status.activeSites")}
+                        </div>
                       </div>
                     </section>
 
-                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                      <AlignRight className="mb-4 size-5 text-[#2374ff]" />
-                      <div className="text-2xl font-bold text-[#111827]">
-                        {formatNumber(activeRtlSiteCount)}
+                    <section className="fontara-panel flex items-center gap-3 p-4">
+                      <div className="fontara-icon-tile">
+                        <ListChecks className="size-4" />
                       </div>
-                      <div className="mt-1 text-sm text-[#64748b]">
-                        {t("options.status.rtlSites")}
+                      <div className="min-w-0">
+                        <div className="text-2xl font-bold leading-none text-[#111827]">
+                          {formatNumber(cssOnlyWebsiteCount)}
+                        </div>
+                        <div className="mt-1 truncate text-sm text-[#667085]">
+                          {t("options.status.cssOnly")}
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="fontara-panel flex items-center gap-3 p-4">
+                      <div className="fontara-icon-tile">
+                        <AlignRight className="size-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-2xl font-bold leading-none text-[#111827]">
+                          {formatNumber(activeRtlSiteCount)}
+                        </div>
+                        <div className="mt-1 truncate text-sm text-[#667085]">
+                          {t("options.status.rtlSites")}
+                        </div>
                       </div>
                     </section>
                   </div>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -1765,7 +1792,7 @@ function OptionsPage() {
                           {t("language.subtitle")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <Languages className="size-5" />
                       </div>
                     </div>
@@ -1791,10 +1818,8 @@ function OptionsPage() {
                             aria-pressed={active}
                             onClick={() => void setPreference(option.value)}
                             className={cn(
-                              "flex min-h-24 items-start justify-between gap-3 rounded-md border p-4 text-start transition",
-                              active
-                                ? "border-[#2374ff] bg-[#f8fbff]"
-                                : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe] hover:bg-[#f8fafc]"
+                              "fontara-choice flex min-h-20 items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
+                              active && "border-[#b9d4ff]"
                             )}>
                             <div className="min-w-0">
                               <div className="text-sm font-bold text-[#111827]">
@@ -1823,17 +1848,16 @@ function OptionsPage() {
 
               {activeSection === "fonts" && (
                 <div className="space-y-6">
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="grid gap-3 lg:grid-cols-3">
                       <div
+                        data-active={systemFontsSupported && systemFontsEnabled}
                         className={cn(
-                          "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
-                          systemFontsEnabled
-                            ? "border-[#dbeafe] bg-[#f8fbff]"
-                            : "border-[#e5e7eb] bg-white"
+                          "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-md border p-4 transition",
+                          !systemFontsSupported && "opacity-75"
                         )}>
                         <div className="flex min-w-0 items-start gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                          <div className="fontara-icon-tile">
                             <HardDrive className="size-5" />
                           </div>
                           <div className="min-w-0">
@@ -1844,15 +1868,18 @@ function OptionsPage() {
                               {t("options.systemFonts.description")}
                             </p>
                             <p className="mt-2 text-xs text-[#64748b]">
-                              {systemFontsEnabled
-                                ? t("options.systemFonts.enabled")
-                                : t("options.systemFonts.disabled")}
+                              {!systemFontsSupported
+                                ? t("options.systemFonts.unsupported")
+                                : systemFontsEnabled
+                                  ? t("options.systemFonts.enabled")
+                                  : t("options.systemFonts.disabled")}
                             </p>
                           </div>
                         </div>
                         <Switch
                           dir="ltr"
-                          checked={systemFontsEnabled}
+                          checked={systemFontsSupported && systemFontsEnabled}
+                          disabled={!systemFontsSupported}
                           onCheckedChange={(checked) =>
                             void handleSystemFontsToggle(checked)
                           }
@@ -1861,14 +1888,12 @@ function OptionsPage() {
                       </div>
 
                       <div
+                        data-active={googleFontsEnabled}
                         className={cn(
-                          "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
-                          googleFontsEnabled
-                            ? "border-[#dbeafe] bg-[#f8fbff]"
-                            : "border-[#e5e7eb] bg-white"
+                          "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-md border p-4 transition"
                         )}>
                         <div className="flex min-w-0 items-start gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                          <div className="fontara-icon-tile">
                             <Cloud className="size-5" />
                           </div>
                           <div className="min-w-0">
@@ -1883,9 +1908,6 @@ function OptionsPage() {
                                 ? t("options.googleFonts.enabled")
                                 : t("options.googleFonts.disabled")}
                             </p>
-                            <p className="mt-2 text-xs leading-5 text-[#946200]">
-                              {t("options.googleFonts.privacyNotice")}
-                            </p>
                           </div>
                         </div>
                         <Switch
@@ -1899,15 +1921,13 @@ function OptionsPage() {
                       </div>
 
                       <div
+                        data-active={textStroke > 0}
                         className={cn(
-                          "flex flex-col gap-4 rounded-md border px-4 py-4 transition",
-                          textStroke > 0
-                            ? "border-[#dbeafe] bg-[#f8fbff]"
-                            : "border-[#e5e7eb] bg-white"
+                          "fontara-choice flex min-h-36 flex-col gap-4 rounded-md border p-4 transition"
                         )}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex min-w-0 items-start gap-3">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                            <div className="fontara-icon-tile">
                               <Type className="size-5" />
                             </div>
                             <div className="min-w-0">
@@ -1975,10 +1995,16 @@ function OptionsPage() {
                         </button>
                       </div>
                     </div>
+                    <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
+                      <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                      <p className="text-xs leading-5 text-amber-800">
+                        {t("options.googleFonts.privacyNotice")}
+                      </p>
+                    </div>
                   </section>
 
                   <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <section className="fontara-panel p-4 sm:p-5">
                       <div className="mb-5 flex items-center justify-between gap-3">
                         <div>
                           <h3 className="text-base font-bold text-[#111827]">
@@ -1988,7 +2014,7 @@ function OptionsPage() {
                             {t("options.addFont.subtitle")}
                           </p>
                         </div>
-                        <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                        <div className="fontara-icon-tile">
                           <Upload className="size-5" />
                         </div>
                       </div>
@@ -2109,7 +2135,7 @@ function OptionsPage() {
                       </div>
                     </section>
 
-                    <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <section className="fontara-panel p-4 sm:p-5">
                       <div className="mb-5 flex items-center justify-between gap-3">
                         <div>
                           <h3 className="text-base font-bold text-[#111827]">
@@ -2182,7 +2208,7 @@ function OptionsPage() {
 
               {activeSection === "sites" && (
                 <div className="space-y-6">
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -2194,7 +2220,7 @@ function OptionsPage() {
                             : t("options.siteList.includeDescription")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <ListChecks className="size-5" />
                       </div>
                     </div>
@@ -2207,10 +2233,8 @@ function OptionsPage() {
                           data-testid="fontara-site-list-include-mode"
                           onClick={() => void handleSiteListModeChange(false)}
                           className={cn(
-                            "flex w-full items-start justify-between gap-3 rounded-md border p-4 text-start transition",
-                            !normalizedEnabledByDefault
-                              ? "border-[#2374ff] bg-[#f8fbff]"
-                              : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe]"
+                            "fontara-choice flex w-full items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
+                            !normalizedEnabledByDefault && "border-[#b9d4ff]"
                           )}>
                           <div className="min-w-0">
                             <div className="text-sm font-bold text-[#111827]">
@@ -2237,10 +2261,8 @@ function OptionsPage() {
                           data-testid="fontara-site-list-exclude-mode"
                           onClick={() => void handleSiteListModeChange(true)}
                           className={cn(
-                            "flex w-full items-start justify-between gap-3 rounded-md border p-4 text-start transition",
-                            normalizedEnabledByDefault
-                              ? "border-[#2374ff] bg-[#f8fbff]"
-                              : "border-[#e5e7eb] bg-white hover:border-[#bfdbfe]"
+                            "fontara-choice flex w-full items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
+                            normalizedEnabledByDefault && "border-[#b9d4ff]"
                           )}>
                           <div className="min-w-0">
                             <div className="text-sm font-bold text-[#111827]">
@@ -2262,7 +2284,7 @@ function OptionsPage() {
                         </button>
                       </div>
 
-                      <div className="rounded-md border border-[#e5e7eb] p-4">
+                      <div className="fontara-soft-panel p-4">
                         <div className="mb-3">
                           <h4 className="text-sm font-bold text-[#111827]">
                             {normalizedEnabledByDefault
@@ -2396,7 +2418,7 @@ function OptionsPage() {
                                 <div
                                   key={pattern}
                                   data-testid={`fontara-site-list-row-${pattern}`}
-                                  className="flex items-center justify-between gap-2 rounded-md border border-[#eef2f7] bg-[#f8fafc] px-3 py-2">
+                                  className="flex items-center justify-between gap-2 rounded-md border border-[#e8eef6] bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_70%)]">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <bdi className="min-w-0 truncate text-sm font-semibold text-[#111827]">
                                       {getDisplaySitePattern(pattern)}
@@ -2437,7 +2459,7 @@ function OptionsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -2447,14 +2469,14 @@ function OptionsPage() {
                           {t("options.siteProfiles.description")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <Settings className="size-5" />
                       </div>
                     </div>
 
                     <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                       <form
-                        className="space-y-4 rounded-md border border-[#e5e7eb] p-4"
+                        className="fontara-soft-panel space-y-4 p-4"
                         onSubmit={handleSiteProfileSubmit}>
                         <div className="space-y-2">
                           <label
@@ -2701,7 +2723,7 @@ function OptionsPage() {
                         </div>
                       </form>
 
-                      <div className="rounded-md border border-[#e5e7eb] p-4">
+                      <div className="fontara-soft-panel p-4">
                         <div className="mb-3">
                           <h4 className="text-sm font-bold text-[#111827]">
                             {t("options.siteProfiles.savedTitle")}
@@ -2850,7 +2872,7 @@ function OptionsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -2863,12 +2885,12 @@ function OptionsPage() {
                           })}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <Globe2 className="size-5" />
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
                       {defaultWebsiteList.map((website) => {
                         const active = isWebsiteActive(website)
                         const pinned = isWebsitePinned(website)
@@ -2885,10 +2907,10 @@ function OptionsPage() {
                           <div
                             key={website.url}
                             className={cn(
-                              "flex items-center justify-between gap-3 rounded-md border px-3 py-3 transition",
+                              "flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition",
                               active
-                                ? "border-[#dbeafe] bg-[#f8fbff]"
-                                : "border-[#e5e7eb] bg-white opacity-70"
+                                ? "border-[#d7e7ff] bg-white shadow-[inset_0_0_0_1px_rgb(35_116_255_/_8%)]"
+                                : "border-[#e8eef6] bg-[#fbfdff] opacity-80"
                             )}>
                             <div className="flex min-w-0 items-center gap-3">
                               {website.icon && (
@@ -2896,7 +2918,7 @@ function OptionsPage() {
                                   alt=""
                                   src={getExtensionAssetURL(website.icon)}
                                   className={cn(
-                                    "size-8 rounded-md object-contain",
+                                    "size-7 rounded-md object-contain",
                                     !active && "grayscale"
                                   )}
                                 />
@@ -2907,7 +2929,7 @@ function OptionsPage() {
                                   title={websiteTitle}>
                                   {websiteTitle}
                                 </div>
-                                <div className="mt-1 flex min-w-0 items-center gap-2">
+                                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
                                   <SiteModeBadge
                                     customCss={website.customCss === true}
                                   />
@@ -2979,8 +3001,8 @@ function OptionsPage() {
               )}
 
               {activeSection === "rtl" && (
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -2990,17 +3012,15 @@ function OptionsPage() {
                           {t("options.rtl.subtitle")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <AlignRight className="size-5" />
                       </div>
                     </div>
 
                     <div
+                      data-active={rtlEnabled}
                       className={cn(
-                        "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
-                        rtlEnabled
-                          ? "border-[#dbeafe] bg-[#f8fbff]"
-                          : "border-[#e5e7eb] bg-white"
+                        "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
                       )}>
                       <div className="min-w-0">
                         <div className="text-sm font-bold text-[#111827]">
@@ -3021,7 +3041,7 @@ function OptionsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -3041,7 +3061,7 @@ function OptionsPage() {
                       )}
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2.5 sm:grid-cols-2">
                       {RTL_SUPPORTED_SITES.map((site) => {
                         const siteEnabled = isRtlSiteEnabled(
                           normalizedRtlSiteSettings,
@@ -3053,17 +3073,17 @@ function OptionsPage() {
                           <div
                             key={site.id}
                             className={cn(
-                              "flex items-center justify-between gap-3 rounded-md border px-3 py-3 transition",
+                              "flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition",
                               active
-                                ? "border-[#dbeafe] bg-[#f8fbff]"
-                                : "border-[#e5e7eb] bg-white opacity-70"
+                                ? "border-[#d7e7ff] bg-white shadow-[inset_0_0_0_1px_rgb(35_116_255_/_8%)]"
+                                : "border-[#e8eef6] bg-[#fbfdff] opacity-80"
                             )}>
                             <div className="flex min-w-0 items-center gap-3">
                               <img
                                 alt=""
                                 src={getExtensionAssetURL(site.icon)}
                                 className={cn(
-                                  "size-8 rounded-md object-contain",
+                                  "size-7 rounded-md object-contain",
                                   !active && "grayscale"
                                 )}
                               />
@@ -3102,8 +3122,8 @@ function OptionsPage() {
               {activeSection === "hotkeys" && <HotkeysSettings />}
 
               {activeSection === "advanced" && (
-                <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-4">
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                <div className="mx-auto grid max-w-5xl items-start gap-5 lg:grid-cols-2">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -3115,18 +3135,16 @@ function OptionsPage() {
                             : t("options.sync.disabledDescription")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <Cloud className="size-5" />
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <div
+                        data-active={syncSettings}
                         className={cn(
-                          "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
-                          syncSettings
-                            ? "border-[#dbeafe] bg-[#f8fbff]"
-                            : "border-[#e5e7eb] bg-white"
+                          "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
                         )}>
                         <div className="min-w-0">
                           <div className="text-sm font-bold text-[#111827]">
@@ -3147,7 +3165,7 @@ function OptionsPage() {
                         />
                       </div>
 
-                      <div className="flex items-start gap-3 rounded-md border border-[#dbeafe] bg-[#f8fbff] px-4 py-3">
+                      <div className="flex items-start gap-3 rounded-md border border-[#e1ecff] bg-[#fbfdff] px-4 py-3">
                         <Info className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
                         <p className="text-xs leading-5 text-[#334155]">
                           {t("options.sync.customFontsExcluded")}
@@ -3156,7 +3174,7 @@ function OptionsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -3168,17 +3186,15 @@ function OptionsPage() {
                             : t("options.contextMenus.disabledDescription")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <Menu className="size-5" />
                       </div>
                     </div>
 
                     <div
+                      data-active={contextMenusEnabled}
                       className={cn(
-                        "flex items-center justify-between gap-4 rounded-md border px-4 py-4 transition",
-                        contextMenusEnabled
-                          ? "border-[#dbeafe] bg-[#f8fbff]"
-                          : "border-[#e5e7eb] bg-white"
+                        "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
                       )}>
                       <div className="min-w-0">
                         <div className="text-sm font-bold text-[#111827]">
@@ -3200,7 +3216,7 @@ function OptionsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <input
                       ref={settingsImportInputRef}
                       type="file"
@@ -3218,7 +3234,7 @@ function OptionsPage() {
                           {t("options.backup.importDescription")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <FileUp className="size-5" />
                       </div>
                     </div>
@@ -3267,7 +3283,7 @@ function OptionsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                  <section className="fontara-panel p-4 sm:p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-base font-bold text-[#111827]">
@@ -3277,13 +3293,13 @@ function OptionsPage() {
                           {t("options.backup.exportDescription")}
                         </p>
                       </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                      <div className="fontara-icon-tile">
                         <FileDown className="size-5" />
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex items-start gap-3 rounded-md border border-[#dbeafe] bg-[#f8fbff] px-4 py-3">
+                      <div className="flex items-start gap-3 rounded-md border border-[#e1ecff] bg-[#fbfdff] px-4 py-3">
                         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
                         <p className="text-xs leading-5 text-[#334155]">
                           {t("options.backup.exportNote")}
@@ -3301,59 +3317,61 @@ function OptionsPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.backup.resetTitle")}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {t("options.backup.resetDescription")}
-                        </p>
-                      </div>
-                      <div className="flex size-10 items-center justify-center rounded-md bg-red-50 text-red-600">
-                        <RotateCcw className="size-5" />
-                      </div>
-                    </div>
-
-                    <AlertDialog
-                      open={isResetWarningVisible}
-                      onOpenChange={setIsResetWarningVisible}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={isBackupBusy}
-                          data-testid="fontara-settings-reset-open"
-                          className="h-11 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">
+                  <section className="fontara-panel p-4 sm:p-5 lg:col-span-2">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600">
                           <RotateCcw className="size-4" />
-                          {t("options.backup.resetButton")}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent dir={direction}>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t("options.backup.resetWarningTitle")}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t("options.backup.resetWarningDescription")}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isBackupBusy}>
-                            {t("options.backup.cancelButton")}
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => void handleResetSettings()}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.backup.resetTitle")}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {t("options.backup.resetDescription")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <AlertDialog
+                        open={isResetWarningVisible}
+                        onOpenChange={setIsResetWarningVisible}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
                             disabled={isBackupBusy}
-                            data-testid="fontara-settings-reset-confirm"
-                            className="bg-red-600 text-white hover:bg-red-700">
+                            data-testid="fontara-settings-reset-open"
+                            className="h-11 shrink-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">
                             <RotateCcw className="size-4" />
-                            {t("options.backup.resetConfirmButton")}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            {t("options.backup.resetButton")}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent dir={direction}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {t("options.backup.resetWarningTitle")}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t("options.backup.resetWarningDescription")}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isBackupBusy}>
+                              {t("options.backup.cancelButton")}
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => void handleResetSettings()}
+                              disabled={isBackupBusy}
+                              data-testid="fontara-settings-reset-confirm"
+                              className="bg-red-600 text-white hover:bg-red-700">
+                              <RotateCcw className="size-4" />
+                              {t("options.backup.resetConfirmButton")}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </section>
                 </div>
               )}

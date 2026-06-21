@@ -251,7 +251,7 @@ export function ShortcutControl({
   const shortcutIsDefault = !editing && !shortcut
 
   return (
-    <div className="space-y-2">
+    <div className="rounded-md border border-[#e8eef6] bg-white p-3">
       <Button
         ref={buttonRef}
         type="button"
@@ -259,10 +259,10 @@ export function ShortcutControl({
         onClick={handleClick}
         aria-label={title}
         className={cn(
-          "h-14 w-full rounded-[3px] border-2 border-[#2f86a0] bg-[#f8fbff] px-4 text-[#111827] shadow-none hover:bg-[#eef7fb]",
-          editing && "border-[#2374ff] text-[#2374ff]"
+          "h-12 w-full rounded-md border border-[#d6e4f5] bg-[#fbfdff] px-4 text-[#111827] shadow-none hover:border-[#bfd3ef] hover:bg-white",
+          editing && "border-[#2374ff] bg-white text-[#2374ff]"
         )}>
-        <span className="min-w-0 flex-1 truncate text-center font-mono text-lg font-bold tracking-normal">
+        <span className="min-w-0 flex-1 truncate text-center font-mono text-base font-bold tracking-normal">
           {shortcutLabel}
         </span>
         {shortcutIsDefault && (
@@ -272,9 +272,9 @@ export function ShortcutControl({
         )}
         {!isFirefox && <ExternalLink className="size-3.5" />}
       </Button>
-      <div className="text-center">
+      <div className="mt-3 text-center">
         <h3 className="text-sm font-bold text-[#111827]">{title}</h3>
-        <p className="mt-1 text-xs leading-5 text-[#2f86a0]">{description}</p>
+        <p className="mt-1 text-xs leading-5 text-[#667085]">{description}</p>
         {shortcutIsDefault && (
           <p className="mt-1 text-[0.7rem] leading-4 text-[#64748b]">
             {defaultLabel}: {rawShortcutLabel}

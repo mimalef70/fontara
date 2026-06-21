@@ -230,6 +230,9 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /STORAGE_KEYS\.SYNC_SETTINGS/)
   assert.match(optionsSource, /STORAGE_KEYS\.CONTEXT_MENUS_ENABLED/)
   assert.match(optionsSource, /options\.systemFonts\.title/)
+  assert.match(optionsSource, /systemFontsSupported/)
+  assert.match(optionsSource, /disabled=\{!systemFontsSupported\}/)
+  assert.match(optionsSource, /options\.systemFonts\.unsupported/)
   assert.match(optionsSource, /options\.googleFonts\.title/)
   assert.match(optionsSource, /options\.googleFonts\.privacyNotice/)
   assert.match(optionsSource, /options\.textStroke\.title/)
@@ -349,7 +352,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /<SidebarInset>/)
   assert.match(
     optionsSource,
-    /<header className="[^"]*gap-3[\s\S]*<SidebarTrigger className="shrink-0" \/>[\s\S]*<h2/
+    /<header className="[^"]*fontara-options-header[^"]*gap-3[\s\S]*<SidebarTrigger className="[^"]*shrink-0[^"]*" \/>[\s\S]*<h2/
   )
   assert.match(sidebarSource, /const SidebarProvider = React\.forwardRef/)
   assert.match(sidebarSource, /const SidebarTrigger = React\.forwardRef/)

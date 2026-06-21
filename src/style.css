@@ -124,6 +124,108 @@ html.fontara-popup-page #root {
   overflow: hidden;
 }
 
+.fontara-options-page {
+  min-height: 100svh;
+  background: #f7f9fc;
+  color: #111827;
+}
+
+.fontara-options-page [data-sidebar="sidebar"] {
+  background: #f8fafc;
+  border-color: #e6edf5;
+}
+
+.fontara-options-page main {
+  background: #f7f9fc;
+}
+
+.fontara-options-page [data-sidebar="header"] {
+  border-bottom: 1px solid #e6edf5;
+}
+
+.fontara-options-page [data-sidebar="footer"] {
+  border-top: 1px solid #e6edf5;
+}
+
+.fontara-options-page [data-sidebar="group-label"] {
+  color: #667085;
+  font-weight: 600;
+}
+
+.fontara-options-page [data-sidebar="menu-button"] {
+  height: 2.375rem;
+  border-radius: 8px;
+  color: #344054;
+}
+
+.fontara-options-page [data-sidebar="menu-button"]:hover {
+  background: #eef4ff;
+  color: #175cd3;
+}
+
+.fontara-options-page [data-sidebar="menu-button"][data-active="true"] {
+  background: #ffffff;
+  color: #175cd3;
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 6%),
+    inset 0 0 0 1px #d6e7ff;
+}
+
+.fontara-options-header {
+  border-bottom: 1px solid #e6edf5;
+  background: rgb(255 255 255 / 86%);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 3%);
+}
+
+.fontara-options-content {
+  min-height: calc(100svh - 4.5rem);
+  background: #f7f9fc;
+}
+
+.fontara-panel {
+  border: 1px solid #e4ebf5;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 4%),
+    0 10px 24px rgb(16 24 40 / 3.5%);
+}
+
+.fontara-soft-panel {
+  border: 1px solid #e8eef6;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.fontara-icon-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: #eef5ff;
+  color: #2374ff;
+}
+
+.fontara-choice {
+  border-color: #e4ebf5;
+  background: #ffffff;
+}
+
+.fontara-choice:hover {
+  border-color: #c9d8ee;
+  background: #fbfdff;
+}
+
+.fontara-choice[aria-pressed="true"],
+.fontara-choice[data-active="true"] {
+  border-color: #b9d4ff;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgb(35 116 255 / 10%);
+}
+
 #root .fontara-font-preview {
   font-family: var(--fontara-preview-font), "Vazirmatn-Fontara", sans-serif !important;
 }

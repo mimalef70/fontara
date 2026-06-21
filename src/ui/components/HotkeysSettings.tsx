@@ -86,8 +86,8 @@ export function HotkeysSettings() {
   )
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-md border border-[#e5e7eb] bg-white p-5 shadow-sm">
+    <div className="max-w-5xl space-y-5">
+      <section className="fontara-panel p-4 sm:p-5">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-[#111827]">
@@ -97,7 +97,7 @@ export function HotkeysSettings() {
               {t("options.hotkeys.description")}
             </p>
           </div>
-          <div className="flex size-10 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+          <div className="fontara-icon-tile">
             <Keyboard className="size-5" />
           </div>
         </div>
@@ -123,7 +123,7 @@ export function HotkeysSettings() {
           ))}
         </div>
 
-        <div className="mt-5 flex items-start gap-3 rounded-md border border-[#dbeafe] bg-[#f8fbff] px-4 py-3">
+        <div className="mt-5 flex items-start gap-3 rounded-md border border-[#e1ecff] bg-[#fbfdff] px-4 py-3">
           <Info className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
           <p className="text-xs leading-5 text-[#334155]">
             {commandsAvailable

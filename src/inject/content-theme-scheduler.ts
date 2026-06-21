@@ -14,6 +14,8 @@ import {
 export type ContentApplyMode = "font-styles" | "full"
 
 const BACKGROUND_STORAGE_UPDATE_GRACE_MS = 25
+const BACKGROUND_RESPONSE_RETRY_MS = 2500
+const BACKGROUND_RESPONSE_RETRY_COUNT = 2
 
 export type ResolvedPageThemeRequestType =
   | typeof MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME
@@ -60,6 +62,7 @@ export function createContentThemeScheduler(
   let localApplyScheduledMode: ContentApplyMode | null = null
   let backgroundStorageUpdateTimeout: number | null = null
   let backgroundStorageUpdateMode: ContentApplyMode | null = null
+  let backgroundResponseRetryTimeout: number | null = null
   let backgroundCommandsEnabled = false
   let resolvedThemeRevision = 0
   let localFallbackActive = false
@@ -153,6 +156,13 @@ export function createContentThemeScheduler(
     })
   }
 
+  function clearBackgroundResponseRetries(): void {
+    if (backgroundResponseRetryTimeout !== null) {
+      clearTimeout(backgroundResponseRetryTimeout)
+      backgroundResponseRetryTimeout = null
+    }
+  }
+
   function clearBackgroundStorageUpdate(): void {
     if (backgroundStorageUpdateTimeout !== null) {
       clearTimeout(backgroundStorageUpdateTimeout)
@@ -188,28 +198,80 @@ export function createContentThemeScheduler(
     scheduleLocalThemeApply(mode)
   }
 
+  function scheduleBackgroundResponseRetries(
+    type: ResolvedPageThemeRequestType,
+    expectedRevision: number
+  ): void {
+    clearBackgroundResponseRetries()
+    let retryCount = 0
+
+    const retryBackgroundRequest = (): void => {
+      backgroundResponseRetryTimeout = null
+
+      if (options.isDisposed()) return
+      if (resolvedThemeRevision !== expectedRevision) return
+      if (retryCount >= BACKGROUND_RESPONSE_RETRY_COUNT) return
+
+      retryCount += 1
+      options.sendDocumentLifecycleMessage(type)
+      backgroundResponseRetryTimeout = window.setTimeout(
+        retryBackgroundRequest,
+        BACKGROUND_RESPONSE_RETRY_MS
+      )
+    }
+
+    backgroundResponseRetryTimeout = window.setTimeout(
+      retryBackgroundRequest,
+      BACKGROUND_RESPONSE_RETRY_MS
+    )
+  }
+
+  async function reconcileCleanUpThemeCommand(): Promise<void> {
+    if (options.isDisposed()) return
+
+    try {
+      const localTheme = await createFontaraPageThemeData(
+        window.location.href,
+        await readLocalThemeSettings(),
+        "full",
+        { googleFontCSSLoadMode: "cache-only" }
+      )
+
+      if (localTheme.font.active || localTheme.rtl.active) {
+        void applyResolvedPageTheme(localTheme, themeApplierCallbacks)
+        return
+      }
+    } catch (error) {
+      if (isExtensionContextInvalidated(error)) {
+        options.onExtensionContextInvalidated()
+        return
+      }
+      options.warn?.("Failed to reconcile FontAra cleanup command.", error)
+    }
+
+    cleanupResolvedPageTheme()
+  }
+
   function requestResolvedPageThemeOrFallback(
     type: ResolvedPageThemeRequestType,
     mode: ContentApplyMode = "full"
   ): void {
     const expectedRevision = resolvedThemeRevision
-    const sent = options.sendDocumentLifecycleMessage(type)
 
+    scheduleLocalThemeApply(mode)
+
+    const sent = options.sendDocumentLifecycleMessage(type)
     if (!sent) {
-      scheduleLocalThemeApply(mode)
       return
     }
 
-    window.setTimeout(() => {
-      if (!options.isDisposed() && resolvedThemeRevision === expectedRevision) {
-        scheduleLocalThemeApply(mode)
-      }
-    }, 100)
+    scheduleBackgroundResponseRetries(type, expectedRevision)
   }
 
   function applyThemeCommand(data: FontaraPageThemeCommandData): void {
     markBackgroundCommandsEnabled()
     clearBackgroundStorageUpdate()
+    clearBackgroundResponseRetries()
     resolvedThemeRevision += 1
     void applyResolvedPageTheme(data, themeApplierCallbacks)
   }
@@ -217,12 +279,14 @@ export function createContentThemeScheduler(
   function cleanUpThemeCommand(): void {
     markBackgroundCommandsEnabled()
     clearBackgroundStorageUpdate()
+    clearBackgroundResponseRetries()
     resolvedThemeRevision += 1
-    cleanupResolvedPageTheme()
+    void reconcileCleanUpThemeCommand()
   }
 
   function dispose(): void {
     clearBackgroundStorageUpdate()
+    clearBackgroundResponseRetries()
     localApplyQueuedMode = null
     localApplyScheduledMode = null
   }

@@ -13,6 +13,37 @@ const CUSTOM_FONT_STYLES_ID = "fontara-custom-font-styles"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
 const GOOGLE_FONT_STYLES_ID = "fontara-google-font-styles"
 
+let customCssStyleObserver: MutationObserver | null = null
+let observedCustomCssBody: HTMLElement | null = null
+
+function getCustomCssStyleHost(): HTMLElement {
+  return document.body ?? getStyleHost()
+}
+
+function stopWatchingCustomCssStyleOrder(): void {
+  customCssStyleObserver?.disconnect()
+  customCssStyleObserver = null
+  observedCustomCssBody = null
+}
+
+function ensureCustomCssStyleLast(styleElement: HTMLStyleElement): void {
+  const host = getCustomCssStyleHost()
+  if (host.lastElementChild !== styleElement) {
+    host.appendChild(styleElement)
+  }
+
+  if (observedCustomCssBody === host && customCssStyleObserver) return
+
+  stopWatchingCustomCssStyleOrder()
+  observedCustomCssBody = host
+  customCssStyleObserver = new MutationObserver(() => {
+    if (host.lastElementChild !== styleElement) {
+      host.appendChild(styleElement)
+    }
+  })
+  customCssStyleObserver.observe(host, { childList: true })
+}
+
 export function removeInlineFontStyles(): void {
   for (const root of getDocumentAndShadowStyleRoots()) {
     root.querySelectorAll("[style*='fontara-font']").forEach((element) => {
@@ -52,16 +83,19 @@ export function injectResolvedFontStyles(
   if (data.customCSS) {
     removeEditableFontStyles()
     removeInlineFontStyles()
-    upsertStyle(CUSTOM_CSS_ID, data.customCSS)
+    const styleElement = upsertStyle(CUSTOM_CSS_ID, data.customCSS)
+    ensureCustomCssStyleLast(styleElement)
     return true
   }
 
+  stopWatchingCustomCssStyleOrder()
   removeStyle(CUSTOM_CSS_ID)
   refreshEditableFontStyles()
   return false
 }
 
 export function removeFontStyles(): void {
+  stopWatchingCustomCssStyleOrder()
   removeStyle(FONT_STYLES_ID)
   removeStyle(DYNAMIC_FONT_ID)
   removeEditableFontStyles()

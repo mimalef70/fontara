@@ -141,6 +141,9 @@ test("storage changes schedule the active injection pipeline", () => {
     /requestResolvedPageThemeOrFallback\(\s*MESSAGE_TYPES_CS_TO_BG\.DOCUMENT_UPDATE,\s*scheduledMode\s*\)/
   )
   assert.match(schedulerSource, /BACKGROUND_STORAGE_UPDATE_GRACE_MS/)
+  assert.match(schedulerSource, /BACKGROUND_RESPONSE_RETRY_MS/)
+  assert.match(schedulerSource, /scheduleLocalThemeApply\(mode\)/)
+  assert.match(schedulerSource, /reconcileCleanUpThemeCommand/)
   assert.match(
     schedulerSource,
     /type ContentApplyMode = "font-styles" \| "full"/
@@ -253,6 +256,8 @@ test("content messaging helpers own runtime messaging and teardown errors", () =
     messagingSource,
     /export function isExpectedRuntimeTeardownError/
   )
+  assert.match(messagingSource, /isTransientRuntimeSendError/)
+  assert.match(messagingSource, /DOCUMENT_LIFECYCLE_SEND_MAX_RETRIES/)
   assert.match(messagingSource, /runtime\.sendMessage\(message/)
   assert.match(messagingSource, /chrome\.runtime\?\.lastError/)
   assert.match(messagingSource, /onExtensionContextInvalidated/)

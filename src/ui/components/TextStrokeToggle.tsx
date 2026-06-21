@@ -56,23 +56,21 @@ const TextStrokeToggle = () => {
   return (
     <div
       className={cn(
-        "mx-auto mt-2 w-full select-none rounded-md border p-2 transition",
-        textStroke > 0
-          ? "border-[#bfdbfe] bg-[#f8fbff]"
-          : "border-gray-200 bg-white"
+        "mx-auto mt-2 w-full select-none rounded-md p-1.5 transition",
+        textStroke > 0 ? "bg-[#f8fbff]" : "bg-white"
       )}
       dir="ltr">
-      <div className="grid grid-cols-[2.35rem_minmax(0,1fr)_2.35rem] gap-2">
+      <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] gap-2">
         <button
           type="button"
-          className="flex h-8 items-center justify-center rounded-[3px] border border-[#dbeafe] bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(35,116,255,0.08)] transition hover:border-[#bfdbfe] hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none"
+          className="flex h-8 items-center justify-center rounded-[3px] bg-[#edf3fd] text-[#2374ff] transition hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
           disabled={textStroke <= TEXT_STROKE_MIN}
           aria-label={t("popup.textStroke.decrease")}
           onClick={() => void decreaseTextStroke()}>
           <ChevronLeft className="size-5" strokeWidth={2.5} />
         </button>
 
-        <div className="relative flex h-8 min-w-0 items-center justify-center overflow-hidden rounded-[3px] border border-[#dbe3ef] bg-white text-sm font-bold text-[#111827] shadow-[0_3px_8px_rgba(15,23,42,0.04)] transition hover:border-[#bfdbfe] focus-within:border-[#2474FF] focus-within:ring-2 focus-within:ring-[#2474FF]/15">
+        <div className="relative flex h-8 min-w-0 items-center justify-center overflow-hidden rounded-[3px] bg-white text-sm font-bold text-[#111827] transition focus-within:ring-2 focus-within:ring-[#2474FF]/15">
           <span
             className="absolute inset-y-0 left-0 bg-[#dbeafe] transition-[width] duration-150"
             style={{ width: trackFillPercentage }}
@@ -80,6 +78,7 @@ const TextStrokeToggle = () => {
           <span className="absolute inset-y-0 left-0 w-px bg-[#2374ff]/60" />
           <span className="relative z-[1] truncate">
             {t("popup.textStroke.title")}
+            <bdi className="font-bold text-[#2374ff]"> ({valueText})</bdi>
           </span>
           <input
             type="range"
@@ -95,17 +94,13 @@ const TextStrokeToggle = () => {
 
         <button
           type="button"
-          className="flex h-8 items-center justify-center rounded-[3px] border border-[#dbeafe] bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(35,116,255,0.08)] transition hover:border-[#bfdbfe] hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-300 disabled:shadow-none"
+          className="flex h-8 items-center justify-center rounded-[3px] bg-[#edf3fd] text-[#2374ff] transition hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
           disabled={textStroke >= TEXT_STROKE_MAX}
           aria-label={t("popup.textStroke.increase")}
           onClick={() => void increaseTextStroke()}>
           <ChevronRight className="size-5" strokeWidth={2.5} />
         </button>
       </div>
-
-      <bdi className="mt-1 block text-center text-xs font-bold text-[#2374ff]">
-        {valueText}
-      </bdi>
     </div>
   )
 }

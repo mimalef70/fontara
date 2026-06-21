@@ -14,16 +14,16 @@ function Footer() {
 
   return (
     <div
-      className={cn("transition-opacity duration-200 p-4", {
+      className={cn("shrink-0 pt-2 transition-opacity duration-200", {
         "opacity-30": !extensionActive,
         "opacity-100": extensionActive
       })}>
-      <footer className="w-full flex flex-col gap-2 items-center justify-center">
+      <footer className="flex w-full flex-col items-center justify-center gap-0.5">
         <p
-          className="flex max-w-full items-center justify-center gap-1 whitespace-nowrap text-center text-[11px] leading-5 text-gray-500"
+          className="flex max-w-full items-center justify-center gap-1 whitespace-nowrap text-center text-[11px] leading-4 text-gray-500"
           dir={direction}>
           <span className="font-medium">{t("footer.designedBeforeHeart")}</span>
-          <HeartBold className="size-4 shrink-0 text-[#ff0000]" />
+          <HeartBold className="size-3.5 shrink-0 text-[#ff0000]" />
           <span className="font-medium">{t("footer.designedAfterHeart")}</span>
           <a
             href="https://www.linkedin.com/in/mostafaalahyari/"
@@ -41,7 +41,7 @@ function Footer() {
             className="flex items-center">
             <img src={muchatLogo} alt="muchat" className="h-3" />
           </a> */}
-          <span className="mt-2 mb-1 text-center text-xs text-gray-500">
+          <span className="text-center text-[10px] leading-4 text-gray-500">
             {t("footer.sponsoredBy")}{" "}
             <a
               href="https://mu.chat"

@@ -116,6 +116,14 @@ body,
     "Vazirmatn-Fontara", sans-serif !important;
 }
 
+html.fontara-popup-page,
+html.fontara-popup-page body,
+html.fontara-popup-page #root {
+  width: 20rem;
+  max-height: 600px;
+  overflow: hidden;
+}
+
 #root .fontara-font-preview {
   font-family: var(--fontara-preview-font), "Vazirmatn-Fontara", sans-serif !important;
 }

@@ -40,75 +40,74 @@ function IndexPopup() {
   }, [t])
 
   return (
-    <div className="w-[20rem] h-[570px] py-4" dir={direction} lang={language}>
-      <section className="h-full">
-        <div className="flex flex-col justify-between h-full w-[90%] mx-auto relative">
-          <div className="relative flex flex-col justify-between h-full">
-            <Header />
+    <div
+      className="max-h-[600px] w-[20rem] overflow-hidden p-4"
+      dir={direction}
+      lang={language}>
+      <section className="flex max-h-[calc(600px-2rem)] min-h-0 flex-col overflow-hidden">
+        <Header />
 
-            <div
-              className={cn(
-                "flex-1 flex flex-col transition-opacity duration-200",
-                {
-                  "opacity-50 pointer-events-none": !extensionActive,
-                  "opacity-100": extensionActive
-                }
-              )}>
-              <div className="relative z-20">
-                <div className="relative">
-                  <div className="flex flex-col gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="min-w-0 flex-1">
-                        <FontSelector />
-                      </div>
-                      <TooltipProvider delayDuration={90}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              aria-label={t("common.settings")}
-                              onClick={() => void openOptionsPageSafely()}
-                              className="flex size-[3rem] shrink-0 cursor-pointer items-center justify-center rounded-[3px] border-0 bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(0,0,0,0.08)] transition-all duration-300 hover:bg-[#e4efff]">
-                              <Settings className="size-5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
-                            side="top"
-                            align="center">
-                            {t("common.settings")}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    {/* <a
-                      href="https://mimalef70.github.io/fontara/#donate"
-                      target="_blank"
-                      className="flex cursor-pointer justify-center items-center h-10 gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#4caf4f1c] rounded-[3px] text-[13px] text-[#4caf50] text-center py-[9px] relative"
-                      rel="noopener">
-                      حمایت از FontAra
-                    </a> */}
+        <div
+          className={cn(
+            "min-h-0 flex-auto overflow-y-auto overscroll-contain py-3 transition-opacity duration-200",
+            {
+              "opacity-50 pointer-events-none": !extensionActive,
+              "opacity-100": extensionActive
+            }
+          )}>
+          <div className="relative z-20">
+            <div className="relative">
+              <div className="flex flex-col gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <FontSelector />
                   </div>
+                  <TooltipProvider delayDuration={90}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={t("common.settings")}
+                          onClick={() => void openOptionsPageSafely()}
+                          className="flex size-[3rem] shrink-0 cursor-pointer items-center justify-center rounded-[3px] border-0 bg-[#edf3fd] text-[#2374ff] shadow-[0_3px_8px_rgba(0,0,0,0.08)] transition-all duration-300 hover:bg-[#e4efff]">
+                          <Settings className="size-5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
+                        side="top"
+                        align="center">
+                        {t("common.settings")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
-              </div>
-
-              <div>
-                <div dir={direction}>
-                  <div>
-                    <PopularSection />
-                  </div>
-
-                  <CustomUrlToggle />
-                  <PerSiteSettings />
-                  <TextStrokeToggle />
-                  <RtlSiteToggle />
-                </div>
+                {/* <a
+                  href="https://mimalef70.github.io/fontara/#donate"
+                  target="_blank"
+                  className="flex cursor-pointer justify-center items-center h-10 gap-1 mb-[15px] font-bold antialiased tracking-[0.2px] bg-[#4caf4f1c] rounded-[3px] text-[13px] text-[#4caf50] text-center py-[9px] relative"
+                  rel="noopener">
+                  حمایت از FontAra
+                </a> */}
               </div>
             </div>
+          </div>
 
-            <Footer />
+          <div>
+            <div dir={direction}>
+              <div>
+                <PopularSection />
+              </div>
+
+              <CustomUrlToggle />
+              <PerSiteSettings />
+              <TextStrokeToggle />
+              <RtlSiteToggle />
+            </div>
           </div>
         </div>
+
+        <Footer />
       </section>
     </div>
   )

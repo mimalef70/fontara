@@ -39,6 +39,22 @@ body {
 .has-sticky-header {
   padding-top: 72px;
 }
+.version-alert {
+  position: sticky;
+  top: 72px;
+  z-index: 1020;
+  width: auto;
+  margin: 24px auto;
+  padding: 24px 30px;
+  border-radius: 16px;
+  background-color: #ff7a00;
+  color: white;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.6;
+  box-shadow: 0 18px 40px rgba(255, 122, 0, 0.35);
+}
 a {
   line-height: 1;
   color: #2f5be7;

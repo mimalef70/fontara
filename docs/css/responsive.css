@@ -121,6 +121,13 @@ RESPONSIVES
   .has-sticky-header {
     padding-top: 50px;
   }
+  .version-alert {
+    top: 50px;
+    margin: 16px auto;
+    padding: 16px 18px;
+    border-radius: 12px;
+    font-size: 20px;
+  }
   .container {
     padding-left: 15px;
     padding-right: 15px;

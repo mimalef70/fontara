@@ -8,6 +8,7 @@ import {
   normalizeCustomFontList,
   normalizeStorageValues
 } from "./storage-normalization"
+import { isSystemFontValue } from "./system-fonts"
 
 export const FONTARA_SYNCED_STORAGE_KEYS = [
   STORAGE_KEYS.EXTENSION_ENABLED,
@@ -19,7 +20,6 @@ export const FONTARA_SYNCED_STORAGE_KEYS = [
   STORAGE_KEYS.DISABLED_FOR,
   STORAGE_KEYS.SITE_PROFILES,
   STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
-  STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
   STORAGE_KEYS.TEXT_STROKE,
   STORAGE_KEYS.UI_LANGUAGE,
   STORAGE_KEYS.RTL_ENABLED,
@@ -63,13 +63,13 @@ function getCustomFontValueSet(customFontList: FontData[]): Set<string> {
   return new Set(customFontList.map((font) => font.value))
 }
 
-function stripCustomFontSiteProfileOverrides(
+function stripLocalOnlySiteProfileOverrides(
   siteProfiles: unknown,
-  customFontValues: Set<string>
+  isLocalOnlyFont: (font: string) => boolean
 ): SiteProfile[] {
   return normalizeSiteProfiles(siteProfiles)
     .map((profile) => {
-      if (!profile.font || !customFontValues.has(profile.font)) {
+      if (!profile.font || !isLocalOnlyFont(profile.font)) {
         return profile
       }
 
@@ -79,17 +79,17 @@ function stripCustomFontSiteProfileOverrides(
     .filter(hasSiteProfileOverrides)
 }
 
-function mergeLocalCustomFontSiteProfileOverrides(
+function mergeLocalOnlySiteProfileOverrides(
   syncedProfiles: SiteProfile[],
   localProfiles: SiteProfile[],
-  customFontValues: Set<string>
+  isLocalOnlyFont: (font: string) => boolean
 ): SiteProfile[] {
   const profilesByPattern = new Map(
     syncedProfiles.map((profile) => [profile.pattern, profile])
   )
 
   for (const localProfile of localProfiles) {
-    if (!localProfile.font || !customFontValues.has(localProfile.font)) {
+    if (!localProfile.font || !isLocalOnlyFont(localProfile.font)) {
       continue
     }
 
@@ -176,7 +176,8 @@ export async function createSyncedSettings(
   const customFontValues = getCustomFontValueSet(customFontList)
   const selectedFontIsLocalOnly =
     typeof values[STORAGE_KEYS.SELECTED_FONT] === "string" &&
-    customFontValues.has(values[STORAGE_KEYS.SELECTED_FONT] as string)
+    (customFontValues.has(values[STORAGE_KEYS.SELECTED_FONT] as string) ||
+      isSystemFontValue(values[STORAGE_KEYS.SELECTED_FONT]))
   const syncInput: Record<string, unknown> = {
     ...getSettingsSyncDefaults(),
     ...pickSyncedSettings(values),
@@ -187,9 +188,9 @@ export async function createSyncedSettings(
     syncInput[STORAGE_KEYS.SELECTED_FONT] = DEFAULT_VALUES.SELECTED_FONT
   }
 
-  syncInput[STORAGE_KEYS.SITE_PROFILES] = stripCustomFontSiteProfileOverrides(
+  syncInput[STORAGE_KEYS.SITE_PROFILES] = stripLocalOnlySiteProfileOverrides(
     syncInput[STORAGE_KEYS.SITE_PROFILES],
-    customFontValues
+    (font) => customFontValues.has(font) || isSystemFontValue(font)
   )
 
   const syncedSettings = pickSyncedSettings(
@@ -229,21 +230,26 @@ export async function mergeSyncedSettingsWithLocalOnlyValues(
   const localSelectedFont = normalizedLocalValues[
     STORAGE_KEYS.SELECTED_FONT
   ] as string
+  const localSystemFontsEnabled =
+    normalizedLocalValues[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] === true
+  const isLocalOnlyFont = (font: string): boolean =>
+    customFontValues.has(font) ||
+    (localSystemFontsEnabled && isSystemFontValue(font))
   const mergedValues: Record<string, unknown> = {
     ...normalizedSyncedValues,
+    [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: localSystemFontsEnabled,
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: normalizedCustomFontList
   }
 
-  if (customFontValues.has(localSelectedFont)) {
+  if (isLocalOnlyFont(localSelectedFont)) {
     mergedValues[STORAGE_KEYS.SELECTED_FONT] = localSelectedFont
   }
 
-  mergedValues[STORAGE_KEYS.SITE_PROFILES] =
-    mergeLocalCustomFontSiteProfileOverrides(
-      normalizedSyncedValues[STORAGE_KEYS.SITE_PROFILES] as SiteProfile[],
-      normalizedLocalValues[STORAGE_KEYS.SITE_PROFILES] as SiteProfile[],
-      customFontValues
-    )
+  mergedValues[STORAGE_KEYS.SITE_PROFILES] = mergeLocalOnlySiteProfileOverrides(
+    normalizedSyncedValues[STORAGE_KEYS.SITE_PROFILES] as SiteProfile[],
+    normalizedLocalValues[STORAGE_KEYS.SITE_PROFILES] as SiteProfile[],
+    isLocalOnlyFont
+  )
   const updatedAt = Math.max(
     getSettingsUpdatedAt(localValues),
     getSettingsUpdatedAt(syncedValues)

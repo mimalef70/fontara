@@ -8,6 +8,7 @@ import {
   getSystemFontList,
   isSafeSystemFontFamily,
   isSystemFontAccessSupported,
+  isSystemFontFeatureSupported,
   normalizeSystemFontList
 } from "../../src/utils/system-fonts"
 
@@ -57,7 +58,7 @@ test("system font list uses font ids, deduplicates, and sorts display names", ()
   )
 })
 
-test("system font list falls back to generic families when fontSettings is unavailable", async () => {
+test("system font access is unsupported when fontSettings is unavailable", async () => {
   Reflect.set(globalThis, "chrome", {
     runtime: {
       getURL() {
@@ -70,11 +71,9 @@ test("system font list falls back to generic families when fontSettings is unava
     }
   })
 
-  assert.equal(isSystemFontAccessSupported(), true)
-  assert.deepEqual(
-    (await getSystemFontList()).map((font) => font.fontFamily),
-    ["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"]
-  )
+  assert.equal(isSystemFontAccessSupported(), false)
+  assert.equal(isSystemFontFeatureSupported(), false)
+  assert.deepEqual(await getSystemFontList(), [])
 })
 
 test("generic system font fallbacks cover cross-browser families", () => {
@@ -98,6 +97,8 @@ test("system font list reads chrome fontSettings when available", async () => {
     }
   })
 
+  assert.equal(isSystemFontAccessSupported(), true)
+  assert.equal(isSystemFontFeatureSupported(), true)
   assert.deepEqual(await getSystemFontList(), [
     {
       name: "Noto",

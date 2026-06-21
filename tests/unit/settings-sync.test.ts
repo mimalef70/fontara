@@ -9,6 +9,7 @@ import {
   FONTARA_SETTINGS_UPDATED_AT_KEY,
   mergeSyncedSettingsWithLocalOnlyValues
 } from "../../src/utils/settings-sync"
+import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 const localCustomFont: FontData = {
   value: "LocalCustom-Fontara",
@@ -20,12 +21,15 @@ const localCustomFont: FontData = {
   unicodeRange: FONTARA_TEXT_UNICODE_RANGE
 }
 
-test("settings sync excludes custom font files and custom font references", async () => {
+test("settings sync excludes local-only font files and font references", async () => {
+  const systemFont = createSystemFontValue("Noto Sans Arabic")
+  assert.ok(systemFont)
   const syncedSettings = await createSyncedSettings({
     ...DEFAULT_VALUES,
-    [STORAGE_KEYS.SELECTED_FONT]: localCustomFont.value,
+    [STORAGE_KEYS.SELECTED_FONT]: systemFont,
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [localCustomFont],
     [STORAGE_KEYS.CONTEXT_MENUS_ENABLED]: true,
+    [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: true,
     [STORAGE_KEYS.SITE_PROFILES]: [
       {
         enabled: false,
@@ -35,6 +39,11 @@ test("settings sync excludes custom font files and custom font references", asyn
       },
       {
         pattern: "fontara.dev",
+        font: systemFont,
+        textStroke: 0.2
+      },
+      {
+        pattern: "synced.example",
         font: "Sahel-Fontara"
       }
     ],
@@ -43,6 +52,7 @@ test("settings sync excludes custom font files and custom font references", asyn
 
   assert.equal(STORAGE_KEYS.CUSTOM_FONT_LIST in syncedSettings, false)
   assert.equal(STORAGE_KEYS.SELECTED_FONT in syncedSettings, false)
+  assert.equal(STORAGE_KEYS.SYSTEM_FONTS_ENABLED in syncedSettings, false)
   assert.deepEqual(syncedSettings[STORAGE_KEYS.SITE_PROFILES], [
     {
       enabled: false,
@@ -51,6 +61,10 @@ test("settings sync excludes custom font files and custom font references", asyn
     },
     {
       pattern: "fontara.dev",
+      textStroke: 0.2
+    },
+    {
+      pattern: "synced.example",
       font: "Sahel-Fontara"
     }
   ])
@@ -63,11 +77,14 @@ test("settings sync excludes custom font files and custom font references", asyn
 })
 
 test("settings sync merges synced values with local-only custom fonts", async () => {
+  const systemFont = createSystemFontValue("Noto Sans Arabic")
+  assert.ok(systemFont)
   const mergedSettings = await mergeSyncedSettingsWithLocalOnlyValues(
     {
       ...DEFAULT_VALUES,
-      [STORAGE_KEYS.SELECTED_FONT]: localCustomFont.value,
+      [STORAGE_KEYS.SELECTED_FONT]: systemFont,
       [STORAGE_KEYS.CUSTOM_FONT_LIST]: [localCustomFont],
+      [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: true,
       [STORAGE_KEYS.SITE_PROFILES]: [
         {
           pattern: "example.com",
@@ -78,6 +95,10 @@ test("settings sync merges synced values with local-only custom fonts", async ()
           enabled: false,
           pattern: "local-only.example",
           font: localCustomFont.value
+        },
+        {
+          pattern: "system.example",
+          font: systemFont
         }
       ]
     },
@@ -100,10 +121,8 @@ test("settings sync merges synced values with local-only custom fonts", async ()
     }
   )
 
-  assert.equal(
-    mergedSettings[STORAGE_KEYS.SELECTED_FONT],
-    localCustomFont.value
-  )
+  assert.equal(mergedSettings[STORAGE_KEYS.SELECTED_FONT], systemFont)
+  assert.equal(mergedSettings[STORAGE_KEYS.SYSTEM_FONTS_ENABLED], true)
   assert.deepEqual(mergedSettings[STORAGE_KEYS.CUSTOM_FONT_LIST], [
     localCustomFont
   ])
@@ -121,6 +140,10 @@ test("settings sync merges synced values with local-only custom fonts", async ()
       enabled: false,
       pattern: "local-only.example",
       font: localCustomFont.value
+    },
+    {
+      pattern: "system.example",
+      font: systemFont
     }
   ])
 })

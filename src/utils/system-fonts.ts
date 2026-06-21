@@ -30,6 +30,16 @@ function getFontSettingsAPI(): typeof chrome.fontSettings | null {
   return (chrome as ChromeWithFontSettings).fontSettings ?? null
 }
 
+function getExtensionRuntimeURL(): string | null {
+  if (typeof chrome === "undefined") return null
+
+  try {
+    return chrome.runtime?.getURL?.("") ?? null
+  } catch {
+    return null
+  }
+}
+
 function hasControlCharacter(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index)
@@ -125,13 +135,17 @@ export function getGenericSystemFontList(): SystemFontData[] {
 }
 
 export function isSystemFontAccessSupported(): boolean {
-  return typeof chrome !== "undefined"
+  return getFontSettingsAPI() !== null
+}
+
+export function isSystemFontFeatureSupported(): boolean {
+  return !getExtensionRuntimeURL()?.startsWith("moz-extension://")
 }
 
 export function getSystemFontList(): Promise<SystemFontData[]> {
   const fontSettings = getFontSettingsAPI()
   if (!fontSettings) {
-    return Promise.resolve(getGenericSystemFontList())
+    return Promise.resolve([])
   }
 
   return new Promise((resolve) => {

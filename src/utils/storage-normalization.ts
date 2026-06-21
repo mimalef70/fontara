@@ -26,7 +26,7 @@ import {
   normalizeFontDataURL
 } from "./font-data"
 import { getGoogleFontByValue } from "./google-fonts"
-import { isSystemFontValue } from "./system-fonts"
+import { isSystemFontFeatureSupported, isSystemFontValue } from "./system-fonts"
 
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
 
@@ -294,10 +294,12 @@ export async function normalizeStorageValues(
     typeof values[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] === "boolean"
       ? (values[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] as boolean)
       : DEFAULT_VALUES.GOOGLE_FONTS_ENABLED
+  const systemFontsSupported = isSystemFontFeatureSupported()
   const systemFontsEnabled =
-    typeof values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] === "boolean"
+    systemFontsSupported &&
+    (typeof values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] === "boolean"
       ? (values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] as boolean)
-      : DEFAULT_VALUES.SYSTEM_FONTS_ENABLED
+      : DEFAULT_VALUES.SYSTEM_FONTS_ENABLED)
   const websiteList = normalizeWebsiteListForStorage(
     values[STORAGE_KEYS.WEBSITE_LIST]
   )

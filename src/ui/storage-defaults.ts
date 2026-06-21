@@ -17,6 +17,7 @@ import { normalizePinnedWebsiteUrls } from "../config/sites"
 import { DEFAULT_VALUES } from "../config/storage"
 import { normalizeTextStrokeValue } from "../config/text-stroke"
 import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
+import { isSystemFontAccessSupported } from "../utils/system-fonts"
 
 export const EMPTY_CUSTOM_FONT_LIST: FontData[] = []
 export const EMPTY_SITE_PROFILE_LIST: SiteProfile[] = EMPTY_SITE_PROFILES
@@ -51,7 +52,7 @@ export function getContextMenusEnabledInitialValue(
 export function getSystemFontsEnabledInitialValue(
   value: boolean | undefined
 ): boolean {
-  return value === true
+  return isSystemFontAccessSupported() && value === true
 }
 
 export function getGoogleFontsEnabledInitialValue(

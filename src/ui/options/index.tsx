@@ -172,6 +172,14 @@ import {
   SidebarTrigger
 } from "../components/ui/sidebar"
 import { ToastProvider } from "../components/ui/Toast"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "../components/ui/table"
 import { Toaster } from "../components/ui/toaster"
 import { fontaraConnector } from "../connect/connector"
 import {
@@ -2890,111 +2898,141 @@ function OptionsPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
-                      {defaultWebsiteList.map((website) => {
-                        const active = isWebsiteActive(website)
-                        const pinned = isWebsitePinned(website)
-                        const websitePattern = getWebsiteCardPattern(website)
-                        const websitePatternLabel = websitePattern
-                          ? getDisplaySitePattern(websitePattern)
-                          : null
-                        const websiteTitle = getWebsiteCardTitle(
-                          website,
-                          websitePattern
-                        )
+                    <div className="overflow-hidden rounded-md border border-[#e5edf6] bg-white">
+                      <Table className="min-w-[760px]">
+                        <TableHeader className="bg-[#f8fbff]">
+                          <TableRow className="hover:bg-[#f8fbff]">
+                            <TableHead className="w-[28%] ps-4 text-start text-xs font-bold text-[#64748b]">
+                              {t("options.sites.column.site")}
+                            </TableHead>
+                            <TableHead className="w-[28%] text-start text-xs font-bold text-[#64748b]">
+                              {t("options.sites.column.pattern")}
+                            </TableHead>
+                            <TableHead className="w-[22%] text-start text-xs font-bold text-[#64748b]">
+                              {t("options.sites.column.mode")}
+                            </TableHead>
+                            <TableHead className="w-[11%] text-center text-xs font-bold text-[#64748b]">
+                              {t("options.sites.column.popup")}
+                            </TableHead>
+                            <TableHead className="w-[11%] pe-4 text-end text-xs font-bold text-[#64748b]">
+                              {t("options.sites.column.enabled")}
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {defaultWebsiteList.map((website) => {
+                            const active = isWebsiteActive(website)
+                            const pinned = isWebsitePinned(website)
+                            const websitePattern =
+                              getWebsiteCardPattern(website)
+                            const websitePatternLabel = websitePattern
+                              ? getDisplaySitePattern(websitePattern)
+                              : null
+                            const websiteTitle = getWebsiteCardTitle(
+                              website,
+                              websitePattern
+                            )
 
-                        return (
-                          <div
-                            key={website.url}
-                            className={cn(
-                              "flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition",
-                              active
-                                ? "border-[#d7e7ff] bg-white shadow-[inset_0_0_0_1px_rgb(35_116_255_/_8%)]"
-                                : "border-[#e8eef6] bg-[#fbfdff] opacity-80"
-                            )}>
-                            <div className="flex min-w-0 items-center gap-3">
-                              {website.icon && (
-                                <img
-                                  alt=""
-                                  src={getExtensionAssetURL(website.icon)}
-                                  className={cn(
-                                    "size-7 rounded-md object-contain",
-                                    !active && "grayscale"
-                                  )}
-                                />
-                              )}
-                              <div className="min-w-0">
-                                <div
-                                  className="truncate text-sm font-semibold text-[#111827]"
-                                  title={websiteTitle}>
-                                  {websiteTitle}
-                                </div>
-                                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-                                  <SiteModeBadge
-                                    customCss={website.customCss === true}
-                                  />
-                                  {websitePattern && (
-                                    <SiteScopeBadge
-                                      scope={getSitePatternScope(
-                                        websitePattern
-                                      )}
-                                    />
-                                  )}
-                                </div>
-                                {website.siteName && websitePatternLabel && (
-                                  <div className="mt-1 flex min-w-0 items-center gap-2">
+                            return (
+                              <TableRow
+                                key={website.url}
+                                className={cn(
+                                  "h-[4.25rem] hover:bg-[#f8fbff]",
+                                  !active && "bg-[#fbfdff] opacity-75"
+                                )}>
+                                <TableCell className="ps-4">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    {website.icon && (
+                                      <img
+                                        alt=""
+                                        src={getExtensionAssetURL(website.icon)}
+                                        className={cn(
+                                          "size-8 rounded-md object-contain",
+                                          !active && "grayscale"
+                                        )}
+                                      />
+                                    )}
+                                    <div
+                                      className="min-w-0 truncate text-sm font-semibold text-[#111827]"
+                                      title={websiteTitle}>
+                                      {websiteTitle}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {websitePatternLabel ? (
                                     <bdi
-                                      className="min-w-0 truncate text-xs text-[#94a3b8]"
+                                      className="block max-w-[13rem] truncate text-xs text-[#64748b]"
                                       dir="ltr"
                                       title={websitePatternLabel}>
                                       {websitePatternLabel}
                                     </bdi>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className={cn(
-                                  "h-8 w-8 text-[#94a3b8] hover:bg-[#eaf2ff] hover:text-[#2374ff]",
-                                  pinned &&
-                                    "bg-[#eaf2ff] text-[#2374ff] hover:bg-[#dbeafe]"
-                                )}
-                                aria-pressed={pinned}
-                                aria-label={t(
-                                  pinned
-                                    ? "options.sites.unpinFromPopup"
-                                    : "options.sites.pinToPopup",
-                                  {
-                                    site: websiteTitle
-                                  }
-                                )}
-                                onClick={() =>
-                                  void handleWebsitePinToggle(website)
-                                }>
-                                <Pin
-                                  className={cn(
-                                    "size-4",
-                                    pinned && "fill-current"
+                                  ) : (
+                                    <span className="text-xs text-[#94a3b8]">
+                                      -
+                                    </span>
                                   )}
-                                />
-                              </Button>
-                              <Switch
-                                checked={active}
-                                onCheckedChange={() =>
-                                  void handleWebsiteToggle(website)
-                                }
-                                aria-label={t("options.siteToggleAria", {
-                                  site: websiteTitle
-                                })}
-                              />
-                            </div>
-                          </div>
-                        )
-                      })}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                    <SiteModeBadge
+                                      customCss={website.customCss === true}
+                                    />
+                                    {websitePattern && (
+                                      <SiteScopeBadge
+                                        scope={getSitePatternScope(
+                                          websitePattern
+                                        )}
+                                      />
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                      "mx-auto h-8 w-8 text-[#94a3b8] hover:bg-[#eaf2ff] hover:text-[#2374ff]",
+                                      pinned &&
+                                        "bg-[#eaf2ff] text-[#2374ff] hover:bg-[#dbeafe]"
+                                    )}
+                                    aria-pressed={pinned}
+                                    aria-label={t(
+                                      pinned
+                                        ? "options.sites.unpinFromPopup"
+                                        : "options.sites.pinToPopup",
+                                      {
+                                        site: websiteTitle
+                                      }
+                                    )}
+                                    onClick={() =>
+                                      void handleWebsitePinToggle(website)
+                                    }>
+                                    <Pin
+                                      className={cn(
+                                        "size-4",
+                                        pinned && "fill-current"
+                                      )}
+                                    />
+                                  </Button>
+                                </TableCell>
+                                <TableCell className="pe-4 text-end">
+                                  <Switch
+                                    checked={active}
+                                    onCheckedChange={() =>
+                                      void handleWebsiteToggle(website)
+                                    }
+                                    aria-label={t("options.siteToggleAria", {
+                                      site: websiteTitle
+                                    })}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
                     </div>
                   </section>
                 </div>

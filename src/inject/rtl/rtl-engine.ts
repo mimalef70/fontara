@@ -19,7 +19,12 @@ const DEFAULT_TEXTUAL_SELECTORS = [
 type ElementSnapshot = {
   classes: Map<string, boolean>
   dirAttr: string | null
-  styleProperties: Map<string, string>
+  styleProperties: Map<string, StyleSnapshot>
+}
+
+type StyleSnapshot = {
+  priority: string
+  value: string
 }
 
 type StyleableElement = Element & ElementCSSInlineStyle
@@ -346,10 +351,10 @@ export class RtlEngine {
 
     for (const property of styleProperties) {
       if (!snapshot.styleProperties.has(property)) {
-        snapshot.styleProperties.set(
-          property,
-          element.style.getPropertyValue(property)
-        )
+        snapshot.styleProperties.set(property, {
+          priority: element.style.getPropertyPriority(property),
+          value: element.style.getPropertyValue(property)
+        })
       }
     }
 
@@ -383,9 +388,9 @@ export class RtlEngine {
       element.setAttribute("dir", snapshot.dirAttr)
     }
 
-    snapshot.styleProperties.forEach((value, property) => {
+    snapshot.styleProperties.forEach(({ priority, value }, property) => {
       if (value) {
-        element.style.setProperty(property, value)
+        element.style.setProperty(property, value, priority)
       } else {
         element.style.removeProperty(property)
       }

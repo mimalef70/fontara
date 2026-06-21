@@ -46,6 +46,11 @@ class FakeStyleDeclaration {
   direction = ""
   textAlign = ""
   private properties = new Map<string, string>()
+  private priorities = new Map<string, string>()
+
+  getPropertyPriority(property: string): string {
+    return this.priorities.get(property) ?? ""
+  }
 
   getPropertyValue(property: string): string {
     if (property === "direction") return this.direction
@@ -56,6 +61,7 @@ class FakeStyleDeclaration {
   removeProperty(property: string): string {
     const previousValue = this.getPropertyValue(property)
     this.properties.delete(property)
+    this.priorities.delete(property)
 
     if (property === "direction") {
       this.direction = ""
@@ -66,8 +72,13 @@ class FakeStyleDeclaration {
     return previousValue
   }
 
-  setProperty(property: string, value: string): void {
+  setProperty(property: string, value: string, priority = ""): void {
     this.properties.set(property, value)
+    if (priority) {
+      this.priorities.set(property, priority)
+    } else {
+      this.priorities.delete(property)
+    }
 
     if (property === "direction") {
       this.direction = value
@@ -468,6 +479,33 @@ test("RTL engine applies and restores directional styles", () => {
   assert.equal(element.style.getPropertyValue("text-align"), "left")
   assert.equal(element.style.getPropertyValue("unicode-bidi"), "")
   assert.equal(element.classList.contains("fontara-rtl-text"), false)
+})
+
+test("RTL engine restores original inline style priorities", () => {
+  installRtlDom([])
+  const element = new FakeHTMLElement("article")
+  element.style.setProperty("direction", "ltr", "important")
+  element.style.setProperty("text-align", "left", "important")
+  element.style.setProperty("unicode-bidi", "normal", "important")
+
+  const engine = new RtlEngine()
+  engine.applyRTL(element as unknown as Element)
+
+  assert.equal(element.style.getPropertyValue("direction"), "rtl")
+  assert.equal(element.style.getPropertyPriority("direction"), "")
+  assert.equal(element.style.getPropertyValue("text-align"), "right")
+  assert.equal(element.style.getPropertyPriority("text-align"), "")
+  assert.equal(element.style.getPropertyValue("unicode-bidi"), "plaintext")
+  assert.equal(element.style.getPropertyPriority("unicode-bidi"), "")
+
+  engine.restoreStyles()
+
+  assert.equal(element.style.getPropertyValue("direction"), "ltr")
+  assert.equal(element.style.getPropertyPriority("direction"), "important")
+  assert.equal(element.style.getPropertyValue("text-align"), "left")
+  assert.equal(element.style.getPropertyPriority("text-align"), "important")
+  assert.equal(element.style.getPropertyValue("unicode-bidi"), "normal")
+  assert.equal(element.style.getPropertyPriority("unicode-bidi"), "important")
 })
 
 test("RTL auto direction updates inputs and restores original values", () => {

@@ -46,9 +46,7 @@ async function getLastCommitTime() {
   return new Promise((resolve) => {
     exec("git log -1 --format=%ct", (_error, stdout) => {
       const timestamp = Number(stdout)
-      const seconds = Number.isFinite(timestamp)
-        ? timestamp + new Date().getTimezoneOffset() * 60
-        : 0
+      const seconds = Number.isFinite(timestamp) ? timestamp : 0
       resolve(new Date(Math.max(0, seconds) * 1000))
     })
   })

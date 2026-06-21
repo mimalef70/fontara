@@ -145,8 +145,11 @@ test("release archives use reproducible file metadata", () => {
 
   for (const source of [zipSource, sourcePackageSource]) {
     assert.match(source, /git log -1 --format=%ct/)
+    assert.match(source, /Number\.isFinite\(timestamp\) \? timestamp : 0/)
+    assert.match(source, /new Date\(Math\.max\(0, seconds\) \* 1000\)/)
     assert.match(source, /\.sort\(\(a, b\) =>/)
     assert.match(source, /mode: 0o644/)
     assert.match(source, /mtime/)
+    assert.doesNotMatch(source, /getTimezoneOffset/)
   }
 })

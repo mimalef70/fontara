@@ -22,6 +22,7 @@ const COMMAND_DEBOUNCE_DELAY_MS = 75
 
 let commandListenerRegistered = false
 let commandRunner: FontaraCommandRunner | null = null
+const commandTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 function debugWarn(message: string, error?: unknown): void {
   if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
@@ -40,24 +41,6 @@ function isFirefoxBrowser(): boolean {
     typeof navigator !== "undefined" &&
     navigator.userAgent.toLowerCase().includes("firefox")
   )
-}
-
-function debounce<T extends unknown[]>(
-  delay: number,
-  fn: (...args: T) => void
-): (...args: T) => void {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null
-
-  return (...args: T) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId)
-    }
-
-    timeoutId = setTimeout(() => {
-      timeoutId = null
-      fn(...args)
-    }, delay)
-  }
 }
 
 export async function runFontaraCommand(
@@ -82,12 +65,20 @@ export function setFontaraCommandRunner(
   commandRunner = runner
 }
 
-const runDebouncedCommand = debounce(
-  COMMAND_DEBOUNCE_DELAY_MS,
-  (command: string, tab?: chrome.tabs.Tab) => {
-    void runFontaraCommand(command, { tab })
+function runDebouncedCommand(command: string, tab?: chrome.tabs.Tab): void {
+  const timeoutId = commandTimeouts.get(command)
+  if (timeoutId) {
+    clearTimeout(timeoutId)
   }
-)
+
+  commandTimeouts.set(
+    command,
+    setTimeout(() => {
+      commandTimeouts.delete(command)
+      void runFontaraCommand(command, { tab })
+    }, COMMAND_DEBOUNCE_DELAY_MS)
+  )
+}
 
 export function registerCommandListeners(): void {
   const commands = getCommandsAPI()
@@ -106,4 +97,14 @@ export function registerCommandListeners(): void {
   }
 
   addCommandListener()
+}
+
+export function resetCommandManagerStateForTesting(): void {
+  for (const timeoutId of commandTimeouts.values()) {
+    clearTimeout(timeoutId)
+  }
+
+  commandTimeouts.clear()
+  commandListenerRegistered = false
+  commandRunner = null
 }

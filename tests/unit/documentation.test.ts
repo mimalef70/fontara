@@ -28,6 +28,7 @@ test("project documentation exposes contributor and maintainer guides", () => {
     "docs/site-fixes.md",
     "docs/testing.md",
     "docs/release.md",
+    "docs/index.html",
     "docs/images/demo/logo.svg",
     "docs/images/demo/browsers/chrome.svg",
     "docs/images/demo/browsers/firefox.svg",
@@ -72,14 +73,17 @@ test("project documentation exposes contributor and maintainer guides", () => {
   assert.match(readme, /Roadmap/)
   assert.match(readme, /CHANGELOG\.md/)
   assert.match(readme, /cross-browser WebExtension/)
+  assert.match(readme, /Version 5\.0\.0/)
   assert.match(readme, /Font replacement across the web/)
   assert.match(readme, /Smart RTL support/)
+  assert.match(readme, /English, Persian, and Arabic/)
   assert.match(readme, /docs\/images\/demo\/logo\.svg/)
   assert.match(readme, /docs\/images\/demo\/browsers\/chrome\.svg/)
   assert.match(readme, /FontARA screenshot/)
   assert.match(readme, /31 site entries/)
   assert.match(readme, /27 bundled site CSS files/)
   assert.match(readme, /11 smart RTL site\s+adapters/)
+  assert.match(readme, /20 high-priority sites/)
   assert.match(readme, /Google Fonts network access/)
   assert.match(readme, /Browser-restricted pages/)
   assert.match(readme, /docs\/images\/demo\/screens\/Version4\.jpg/)
@@ -91,6 +95,7 @@ test("project documentation exposes contributor and maintainer guides", () => {
   assert.match(readme, /https:\/\/mu\.chat/)
   assert.match(readme, /linkedin\.com\/in\/mostafaalahyari/)
   assert.match(readme, /MIT License/)
+  assert.match(readme, /docs\/index\.html/)
 
   const contributing = readText("CONTRIBUTING.md")
   assert.match(contributing, /CODE_OF_CONDUCT\.md/)
@@ -101,12 +106,28 @@ test("project documentation exposes contributor and maintainer guides", () => {
 
   const changelog = readText("CHANGELOG.md")
   assert.match(changelog, /## Unreleased/)
+  assert.match(changelog, /## 5\.0\.0/)
   assert.match(changelog, /## 4\.3\.0/)
   assert.match(changelog, /Known issues/)
 
+  const docsPage = readText("docs/index.html")
+  assert.match(docsPage, /نسخه جدید ۵\.۰\.۰/)
+  assert.match(docsPage, /تغییرات نسخه جدید ۵\.۰\.۰/)
+  assert.match(docsPage, /رابط چندزبانه و RTL هوشمند/)
+  assert.match(docsPage, /۲۰ مورد مهم‌تر/)
+
   const releaseGuide = readText("docs/release.md")
+  assert.match(releaseGuide, /src\/manifest\.json/)
   assert.match(releaseGuide, /CHANGELOG\.md/)
+  assert.match(releaseGuide, /docs\/index\.html/)
+  assert.match(releaseGuide, /default popup pins/)
   assert.match(releaseGuide, /known\s+issues/)
+
+  const firefoxSourceReadme = readText("FIREFOX_SOURCE_README.md")
+  assert.match(firefoxSourceReadme, /fontSettings/)
+  assert.match(firefoxSourceReadme, /system fonts feature stays disabled/)
+  assert.match(firefoxSourceReadme, /No remote executable code/)
+  assert.match(firefoxSourceReadme, /Google Fonts endpoints/)
 
   const packageJSON = readJSON<{
     bugs?: { url?: string }

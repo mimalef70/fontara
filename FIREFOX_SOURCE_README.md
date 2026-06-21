@@ -50,6 +50,10 @@ The generated uploadable Firefox add-on package will be written to:
 build/firefox-mv3-prod.zip
 ```
 
+Firefox MV3 builds intentionally omit the Chromium-only `fontSettings`
+permission. The system fonts feature stays disabled in Firefox because installed
+font enumeration is not exposed there.
+
 ## One-Command Build Script
 
 The package includes this build script in `package.json`:
@@ -77,7 +81,7 @@ The source package includes:
 - `tests/` unit tests.
 - `package.json`, `pnpm-lock.yaml`, and `pnpm-workspace.yaml`.
 - TypeScript, Tailwind, PostCSS, Biome, and component configuration files.
-- `README.md` and this reviewer source README.
+- `README.md`, `CHANGELOG.md`, and this reviewer source README.
 
 The source package intentionally excludes generated output and unrelated files:
 
@@ -87,5 +91,8 @@ The source package intentionally excludes generated output and unrelated files:
 - generated reports such as `repomix-output.xml`
 - the website documentation folder `docs/`, which is not used to build the add-on
 
-No remote code is loaded by the extension at runtime. Bundled fonts and assets
-are included in the add-on package.
+No remote executable code is loaded by the extension at runtime. Bundled fonts
+and extension assets are included in the add-on package. If the user explicitly
+enables and selects a Google Font, the extension may request the selected font's
+CSS and font files from Google Fonts endpoints; no Google API key is shipped or
+needed at runtime.

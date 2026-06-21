@@ -4,15 +4,17 @@ This guide is a practical checklist for preparing FontARA release packages.
 
 ## Before Release
 
-1. Confirm the intended version in `package.json`.
+1. Confirm the intended version in `package.json` and `src/manifest.json`.
 2. Review user-facing strings in `src/i18n/messages.json`.
 3. Update `CHANGELOG.md` with user-visible changes, migration notes, and known
    issues.
-4. Confirm `_locales` output is generated from the shared catalog, not edited by
+4. Update public documentation surfaces such as `README.md`, `docs/index.html`,
+   and release/store copy when the release changes user-visible behavior.
+5. Confirm `_locales` output is generated from the shared catalog, not edited by
    hand.
-5. Review site config migrations and site rule versions.
-6. Check whether the Google Fonts catalog needs a refresh.
-7. Run local verification.
+6. Review site config migrations, default popup pins, and site rule versions.
+7. Check whether the Google Fonts catalog needs a refresh.
+8. Run local verification.
 
 ## Verification
 
@@ -98,5 +100,6 @@ Known warning category:
 - Browser matrix is green or reviewed if a browser channel has a known external
   failure.
 - Store-facing text and screenshots are current.
+- README and `docs/index.html` describe the current release accurately.
 - `CHANGELOG.md` mentions user-visible changes, migration notes, and known
   issues.

@@ -23,7 +23,7 @@ test("settings backup exports a versioned allowlisted JSON envelope", () => {
     },
     {
       exportedAt: new Date("2026-06-08T10:00:00.000Z"),
-      extensionVersion: "4.3.0"
+      extensionVersion: "5.0.0"
     }
   )
 
@@ -31,7 +31,7 @@ test("settings backup exports a versioned allowlisted JSON envelope", () => {
   assert.equal(backup.format, FONTARA_SETTINGS_EXPORT_FORMAT)
   assert.equal(backup.version, 1)
   assert.equal(backup.exportedAt, "2026-06-08T10:00:00.000Z")
-  assert.equal(backup.extensionVersion, "4.3.0")
+  assert.equal(backup.extensionVersion, "5.0.0")
   assert.deepEqual(Object.keys(backup.settings), [
     ...FONTARA_SETTINGS_STORAGE_KEYS
   ])

@@ -29,7 +29,8 @@ Main responsibilities:
 
 - Initialize and normalize extension storage.
 - Merge default site configuration with user settings.
-- Mirror syncable settings while keeping local-only custom font files local.
+- Mirror syncable settings while keeping local-only custom font files and system
+  font choices local.
 - Route popup/options messages.
 - Track tabs and content documents.
 - Broadcast settings updates after tab delivery failures or service worker
@@ -108,14 +109,17 @@ URL logic locally.
 
 Settings are normalized at startup and when imported. Important groups:
 
-- Global state: extension enabled, selected font, text stroke, sync settings.
+- Global state: extension enabled, UI language, selected font source, selected
+  font, text stroke, Google/system font preferences, sync settings.
 - Site activation: enabled-by-default mode, enabled list, disabled list, legacy
   website list migration.
-- Per-site profiles: font and text-stroke overrides.
+- Per-site profiles: font, activation, and text-stroke overrides.
 - Custom fonts: local-only font records and safe data URLs.
+- RTL settings: global enablement and curated site adapter preferences.
 - Runtime state: tab/content document tracking for update delivery.
 
-Custom font files are intentionally excluded from sync storage.
+Custom font files and system font choices are intentionally excluded from sync
+storage.
 
 ## Build System
 

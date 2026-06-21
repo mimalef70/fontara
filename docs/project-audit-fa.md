@@ -1,6 +1,10 @@
-# گزارش جامع بررسی پروژه FontARA V4
+# گزارش تاریخی بررسی پروژه FontARA V4
 
 تاریخ بررسی: 2026-06-05
+
+> این سند یک snapshot تاریخی از وضعیت پروژه پیش از آماده‌سازی نسخه 5.0.0 است.
+> برای وضعیت فعلی release، امکانات نسخه جدید، و مسیرهای build/test به
+> `README.md`، `CHANGELOG.md`، `docs/release.md` و `docs/testing.md` رجوع کنید.
 
 مسیر پروژه: `/Users/mimalef70/Local Sites/fontaraV4`
 

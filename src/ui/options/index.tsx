@@ -104,6 +104,10 @@ import {
   normalizeCustomFontFormat
 } from "../../utils/custom-font-format"
 import {
+  normalizeCustomFontFileName,
+  normalizeCustomFontText
+} from "../../utils/custom-font-name"
+import {
   createCustomFontFaceBackupMap,
   MAX_CUSTOM_FONT_BATCH_FILES,
   MAX_CUSTOM_FONT_FAMILY_SIZE_BYTES,
@@ -1028,7 +1032,7 @@ function OptionsPage() {
           face: {
             id: createCustomFontFaceId(fileHash),
             fileHash,
-            fileName: file.name,
+            fileName: normalizeCustomFontFileName(file.name, `font.${format}`),
             format,
             byteLength: bytes.byteLength,
             weight: metadata.weight,
@@ -1089,7 +1093,7 @@ function OptionsPage() {
   }
 
   const handleSaveFont = async () => {
-    const normalizedFontName = fontName.trim()
+    const normalizedFontName = normalizeCustomFontText(fontName)
     const unicodeRange = resolveSelectedFontUnicodeRange()
 
     if (preparedFontFiles.length === 0 || !normalizedFontName) {
@@ -2877,9 +2881,12 @@ function OptionsPage() {
                                 data-testid={`fontara-custom-font-family-${font.value}`}
                                 className="flex items-center justify-between gap-3 rounded-md border border-[#e5e7eb] px-3 py-3">
                                 <div className="min-w-0">
-                                  <div className="truncate text-sm font-semibold text-[#111827]">
+                                  <bdi
+                                    dir="auto"
+                                    title={font.displayName}
+                                    className="block truncate text-sm font-semibold text-[#111827]">
                                     {font.displayName}
-                                  </div>
+                                  </bdi>
                                   <div className="mt-1 truncate text-xs text-[#64748b]">
                                     {t("options.customFonts.familySummary", {
                                       count: formatNumber(font.faces.length),

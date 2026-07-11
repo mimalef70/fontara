@@ -60,6 +60,6 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src https://fonts.googleapis.com; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src https://fonts.googleapis.com; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
   }
 }

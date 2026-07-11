@@ -28,6 +28,7 @@ type MessageListener = (
 function createChromeMock(
   openTabs: chrome.tabs.Tab[] = [],
   options: {
+    deferSendCallbacks?: boolean
     queryThrows?: boolean
     removeThrows?: boolean
     sendFailures?: number
@@ -42,6 +43,7 @@ function createChromeMock(
     tabId: number
   }> = []
   const removedStorageKeys: string[] = []
+  const pendingSendCallbacks: Array<() => void> = []
   let runtimeError: { message: string } | undefined
   let sendFailures = options.sendFailures ?? 0
   let sendThrows = options.sendThrows ?? 0
@@ -91,22 +93,26 @@ function createChromeMock(
           sendThrows -= 1
           throw new Error("send unavailable")
         }
-        const options =
+        const sendOptions =
           typeof optionsOrCallback === "function"
             ? undefined
             : optionsOrCallback
-        sentMessages.push({ message, options, tabId })
+        sentMessages.push({ message, options: sendOptions, tabId })
         const callback =
           typeof optionsOrCallback === "function"
             ? optionsOrCallback
             : maybeCallback
-        runtimeError =
-          sendFailures > 0
+        const shouldFail = sendFailures > 0
+        if (shouldFail) sendFailures -= 1
+        const runCallback = () => {
+          runtimeError = shouldFail
             ? { message: "receiving end unavailable" }
             : undefined
-        if (sendFailures > 0) sendFailures -= 1
-        callback?.()
-        runtimeError = undefined
+          callback?.()
+          runtimeError = undefined
+        }
+        if (options.deferSendCallbacks) pendingSendCallbacks.push(runCallback)
+        else runCallback()
       }
     }
   })
@@ -115,6 +121,11 @@ function createChromeMock(
     messageListeners,
     removedListeners,
     removedStorageKeys,
+    flushSendCallbacks() {
+      while (pendingSendCallbacks.length > 0) {
+        pendingSendCallbacks.shift()?.()
+      }
+    },
     setSendFailures(count: number) {
       sendFailures = count
     },
@@ -301,7 +312,10 @@ test("tab manager handles rejected factories, thrown sends, forgets, and invalid
   assert.equal(getTrackedDocumentCountForTesting(), 1)
 
   runtime.messageListeners[0]?.(
-    { scriptId: "forget", type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET },
+    {
+      scriptId: "reject-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET
+    },
     {
       frameId: 0,
       tab: { id: 70 } as chrome.tabs.Tab,
@@ -309,6 +323,57 @@ test("tab manager handles rejected factories, thrown sends, forgets, and invalid
     }
   )
   assert.equal(getTrackedDocumentCountForTesting(), 0)
+})
+
+test("stale document callbacks and forgets cannot remove a replacement", () => {
+  const runtime = createChromeMock([], {
+    deferSendCallbacks: true,
+    sendFailures: 3
+  })
+  initTabManager({
+    createDocumentMessage(document) {
+      if (document.scriptId === "new-script") {
+        return new Promise(() => {})
+      }
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
+    }
+  })
+
+  const sender = {
+    documentId: "old-document",
+    frameId: 0,
+    tab: { id: 81 } as chrome.tabs.Tab,
+    url: "https://example.com/old"
+  }
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "old-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    sender
+  )
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "new-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      ...sender,
+      documentId: "new-document",
+      url: "https://example.com/new"
+    }
+  )
+
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "old-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET
+    },
+    sender
+  )
+  runtime.flushSendCallbacks()
+
+  assert.equal(getTrackedDocumentCountForTesting(), 1)
 })
 
 test("tab manager tolerates unavailable storage and tabs APIs", async () => {

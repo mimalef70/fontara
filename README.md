@@ -288,6 +288,7 @@ custom font records, site lists, backup/import data, and syncable preferences.
 - [Site fixes and configuration](docs/site-fixes.md)
 - [Testing](docs/testing.md)
 - [Release process](docs/release.md)
+- [Dark Reader comparative audit (Persian)](docs/dark-reader-review-fa.md)
 - [Test layers](tests/README.md)
 - [Static website](docs/index.html)
 

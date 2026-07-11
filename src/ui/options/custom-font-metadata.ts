@@ -1,6 +1,10 @@
 import * as fontkit from "fontkit"
 
 import type { CustomFontAxis } from "../../custom-font-types"
+import {
+  normalizeCustomFontFamilyKey,
+  normalizeCustomFontText
+} from "../../utils/custom-font-name"
 import type { CustomFontExtractedMetadata } from "./custom-font-metadata-types"
 
 type FontkitAxis = {
@@ -26,8 +30,6 @@ const WIDTH_CLASS_TO_PERCENT = [
 ]
 
 const MAX_FAMILY_NAME_LENGTH = 128
-const MAX_SOURCE_FAMILY_KEY_LENGTH = 256
-
 const LEGACY_FACE_SUFFIX_PATTERN =
   /[\s_-]+((?:extra|ultra)[\s_-]*black|(?:extra|ultra)[\s_-]*bold|(?:semi|demi)[\s_-]*bold|(?:extra|ultra)[\s_-]*light|bold[\s_-]*(?:italic|oblique)|(?:italic|oblique)|hairline|thin|light|book|regular|normal|medium|bold|black|heavy)$/i
 
@@ -93,33 +95,11 @@ function getAxis(axes: CustomFontAxis[], tag: string): CustomFontAxis | null {
 }
 
 function createSourceFamilyKey(value: string): string {
-  return value
-    .normalize("NFKC")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase("en")
-    .slice(0, MAX_SOURCE_FAMILY_KEY_LENGTH)
+  return normalizeCustomFontFamilyKey(value)
 }
 
 function normalizeOpenTypeName(value: unknown, maxLength: number): string {
-  return typeof value === "string"
-    ? value
-        .normalize("NFKC")
-        .split("")
-        .filter((character) => {
-          const codePoint = character.codePointAt(0) ?? 0
-          return !(
-            codePoint <= 0x1f ||
-            (codePoint >= 0x7f && codePoint <= 0x9f) ||
-            (codePoint >= 0x202a && codePoint <= 0x202e) ||
-            (codePoint >= 0x2066 && codePoint <= 0x2069)
-          )
-        })
-        .join("")
-        .trim()
-        .replace(/\s+/g, " ")
-        .slice(0, maxLength)
-    : ""
+  return normalizeCustomFontText(value, maxLength)
 }
 
 function getPreferredName(font: FontkitFont, key: string): string {

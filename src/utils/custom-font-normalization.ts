@@ -12,15 +12,14 @@ import {
   isCustomFontFaceSignatureValid,
   isValidCustomFontFaceMeta
 } from "./custom-font-format"
+import {
+  normalizeCustomFontFamilyKey,
+  normalizeCustomFontFileName,
+  normalizeCustomFontText
+} from "./custom-font-name"
 import { isSafeCustomFontValue } from "./font-data"
 
-const MAX_DISPLAY_NAME_LENGTH = 128
-const MAX_SOURCE_FAMILY_KEY_LENGTH = 256
 const MAX_CUSTOM_FONT_FACES_PER_FAMILY = 20
-
-function normalizeText(value: unknown, maxLength: number): string {
-  return typeof value === "string" ? value.trim().slice(0, maxLength) : ""
-}
 
 function normalizeFace(value: unknown): CustomFontFaceMeta | null {
   if (!isValidCustomFontFaceMeta(value)) return null
@@ -28,7 +27,10 @@ function normalizeFace(value: unknown): CustomFontFaceMeta | null {
   return {
     id: value.id,
     fileHash: value.fileHash.toLowerCase(),
-    fileName: value.fileName.trim().slice(0, 255),
+    fileName: normalizeCustomFontFileName(
+      value.fileName,
+      `font.${value.format}`
+    ),
     format: value.format,
     byteLength: value.byteLength,
     weight: { ...value.weight },
@@ -44,11 +46,8 @@ export function normalizeCustomFontFamily(
 ): CustomFontFamily | null {
   if (!value || typeof value !== "object") return null
   const family = value as Partial<CustomFontFamily>
-  const displayName = normalizeText(family.displayName, MAX_DISPLAY_NAME_LENGTH)
-  const sourceFamilyKey = normalizeText(
-    family.sourceFamilyKey,
-    MAX_SOURCE_FAMILY_KEY_LENGTH
-  )
+  const displayName = normalizeCustomFontText(family.displayName)
+  const sourceFamilyKey = normalizeCustomFontFamilyKey(family.sourceFamilyKey)
   if (
     !isSafeCustomFontValue(family.value) ||
     !displayName ||
@@ -109,9 +108,10 @@ export async function normalizeLegacyCustomFontFamily(
   const format = detectedFormat ?? "ttf"
 
   const fileHash = await createCustomFontFileHash(bytes)
-  const fileName =
-    normalizeText(value.originalFileName, 255) ||
-    `${normalizeText(value.name, MAX_DISPLAY_NAME_LENGTH)}.${format}`
+  const fileName = normalizeCustomFontFileName(
+    value.originalFileName,
+    `${normalizeCustomFontText(value.name)}.${format}`
+  )
   const validation =
     decodedBytes &&
     detectedFormat &&
@@ -121,8 +121,8 @@ export async function normalizeLegacyCustomFontFamily(
 
   return {
     value: value.value,
-    displayName: normalizeText(value.name, MAX_DISPLAY_NAME_LENGTH),
-    sourceFamilyKey: normalizeText(value.name, MAX_SOURCE_FAMILY_KEY_LENGTH),
+    displayName: normalizeCustomFontText(value.name),
+    sourceFamilyKey: normalizeCustomFontFamilyKey(value.name),
     unicodeRange: normalizeCustomFontUnicodeRange(value.unicodeRange),
     revision: 1,
     faces: [

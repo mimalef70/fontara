@@ -752,7 +752,10 @@ test("custom font uploads validate metadata and commit binary transactions", () 
     "utf8"
   )
 
-  assert.match(optionsSource, /normalizedFontName = fontName\.trim\(\)/)
+  assert.match(
+    optionsSource,
+    /normalizedFontName = normalizeCustomFontText\(fontName\)/
+  )
   assert.match(
     optionsSource,
     /isFontFileSignatureSupported\(extension, byteView\)/

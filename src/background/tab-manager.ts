@@ -93,6 +93,16 @@ function removeDocument(tabId: number, frameId: number): void {
   }
 }
 
+function removeDocumentIfCurrent(
+  tabId: number,
+  document: Pick<FontaraTrackedDocument, "frameId" | "scriptId">
+): void {
+  const currentDocument = documentsByTab.get(tabId)?.get(document.frameId)
+  if (currentDocument?.scriptId !== document.scriptId) return
+
+  removeDocument(tabId, document.frameId)
+}
+
 function sendDocumentMessage(
   tabId: number,
   document: FontaraTrackedDocument,
@@ -111,7 +121,7 @@ function sendDocumentMessage(
   const sendNext = (): void => {
     const options = sendOptions[optionIndex]
     if (!options) {
-      removeDocument(tabId, document.frameId)
+      removeDocumentIfCurrent(tabId, document)
       onDeliveryFailure?.()
       return
     }
@@ -220,7 +230,10 @@ function messageListener(
       break
     }
     case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET:
-      removeDocument(tabId, frameId)
+      removeDocumentIfCurrent(tabId, {
+        frameId,
+        scriptId: message.scriptId
+      })
       break
   }
 

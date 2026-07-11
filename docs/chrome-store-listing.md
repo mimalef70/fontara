@@ -1,0 +1,115 @@
+# Chrome Web Store Listing Copy
+
+Use this copy for Chrome Web Store submissions. Keep named website and brand
+examples out of the main description to avoid keyword spam review issues.
+
+## Reviewer Note
+
+We removed the long list of website and brand names from the Chrome Web Store
+description. The updated listing describes FontAra's functionality in context
+and uses broad website categories instead of keyword lists.
+
+## English Short Description
+
+Apply readable fonts and smart RTL support across the web, with custom fonts and
+per-site settings.
+
+## English Description
+
+FontAra is a privacy-friendly font changer for the web. It lets you apply more
+readable Persian, Arabic, Kurdish, Dari, and other selected fonts across pages
+you choose, using built-in fonts, optional Google Fonts, browser/system fonts
+where supported, and custom uploaded fonts.
+
+Use global mode, include/exclude lists, or per-site profiles to decide where
+FontAra runs. Smart RTL support improves direction and alignment for
+right-to-left text in mixed-language pages and editable fields. The extension
+also includes optimized handling for common web app patterns such as chat
+surfaces, feeds, editors, search results, and reading pages while protecting
+icons, code, and UI glyphs from unwanted font changes.
+
+Features:
+
+- Built-in open-source fonts optimized for readability.
+- Custom font uploads stored locally in your browser.
+- Optional Google Fonts and system-font sources.
+- Per-site font and text-stroke profiles.
+- Smart RTL detection and editable-field direction support.
+- One-click enable/disable controls.
+- Backup, import, export, reset, and sync-friendly settings.
+- Multilingual interface in English, Persian, and Arabic.
+
+Privacy:
+
+FontAra processes page text locally in your browser. Your settings stay in
+browser extension storage. We do not collect, sell, or share browsing data.
+
+## Persian Short Description
+
+فونت‌های خواناتر و راست‌چین هوشمند را با تنظیمات اختصاصی هر سایت در وب اعمال کنید.
+
+## Persian Description
+
+فونت‌آرا یک افزونه حریم‌خصوصی‌محور برای تغییر فونت در وب است. با FontAra
+می‌توانید فونت‌های خواناتر فارسی، عربی، کردی، دری و دیگر فونت‌های انتخابی را
+روی صفحه‌هایی که خودتان تعیین می‌کنید اعمال کنید؛ با فونت‌های داخلی، Google
+Fonts اختیاری، فونت‌های مرورگر/سیستم در مرورگرهای پشتیبانی‌شده، یا فونت‌های
+دلخواهی که خودتان اضافه می‌کنید.
+
+می‌توانید با حالت سراسری، لیست‌های فعال/غیرفعال، یا پروفایل اختصاصی هر سایت
+مشخص کنید FontAra کجا اجرا شود. پشتیبانی راست‌چین هوشمند، جهت و چینش متن‌های
+راست‌به‌چپ را در صفحه‌های چندزبانه و فیلدهای قابل ویرایش بهتر می‌کند. افزونه
+همچنین برای الگوهای رایج اپلیکیشن‌های وب مثل محیط‌های گفت‌وگو، فیدها،
+ویرایشگرها، نتایج جست‌وجو و صفحه‌های مطالعه بهینه شده و تلاش می‌کند آیکن‌ها،
+کدها و نشانه‌های رابط کاربری را ناخواسته تغییر ندهد.
+
+ویژگی‌ها:
+
+- فونت‌های متن‌باز داخلی با تمرکز بر خوانایی.
+- افزودن فونت دلخواه با ذخیره‌سازی محلی در مرورگر.
+- پشتیبانی اختیاری از Google Fonts و فونت‌های سیستم.
+- پروفایل فونت و حاشیه متن برای هر سایت.
+- تشخیص راست‌چین هوشمند و تنظیم جهت فیلدهای قابل ویرایش.
+- فعال/غیرفعال کردن سریع با یک کلیک.
+- پشتیبان‌گیری، import، export، بازنشانی و تنظیمات مناسب همگام‌سازی.
+- رابط چندزبانه فارسی، انگلیسی و عربی.
+
+حریم خصوصی:
+
+FontAra پردازش متن صفحه را به‌صورت محلی در مرورگر شما انجام می‌دهد. تنظیمات شما
+در فضای ذخیره‌سازی افزونه داخل مرورگر می‌ماند. ما داده‌های مرور شما را جمع‌آوری،
+فروش یا به اشتراک نمی‌گذاریم.
+
+## Arabic Short Description
+
+طبّق خطوطًا أوضح ودعم RTL ذكيًا عبر الويب مع خطوط مخصصة وإعدادات لكل موقع.
+
+## Arabic Description
+
+FontAra إضافة تراعي الخصوصية لتغيير الخطوط على الويب. تتيح لك تطبيق خطوط أوضح
+للفارسية والعربية والكردية والدارية وغيرها من الخطوط التي تختارها على الصفحات
+التي تحددها، باستخدام الخطوط المدمجة، وGoogle Fonts اختياريًا، وخطوط
+المتصفح/النظام عند دعمها، والخطوط المخصصة التي تضيفها بنفسك.
+
+يمكنك تحديد مكان تشغيل FontAra عبر الوضع العام، أو قوائم التضمين والاستبعاد، أو
+ملفات إعدادات لكل موقع. يساعد دعم RTL الذكي على تحسين اتجاه ومحاذاة النصوص من
+اليمين إلى اليسار في الصفحات متعددة اللغات وحقول التحرير. كما تتعامل الإضافة مع
+أنماط تطبيقات الويب الشائعة مثل واجهات المحادثة، والخلاصات، والمحررات، ونتائج
+البحث، وصفحات القراءة، مع حماية الأيقونات والأكواد ورموز الواجهة من تغييرات
+الخط غير المرغوبة.
+
+الميزات:
+
+- خطوط مدمجة مفتوحة المصدر ومحسّنة للقراءة.
+- رفع خطوط مخصصة مع تخزينها محليًا في المتصفح.
+- دعم اختياري لـ Google Fonts وخطوط النظام.
+- ملفات إعدادات للخط وحدود النص لكل موقع.
+- اكتشاف RTL ذكي ودعم اتجاه حقول التحرير.
+- تفعيل أو تعطيل سريع بنقرة واحدة.
+- النسخ الاحتياطي، والاستيراد، والتصدير، وإعادة الضبط، وإعدادات مناسبة للمزامنة.
+- واجهة متعددة اللغات بالإنجليزية والفارسية والعربية.
+
+الخصوصية:
+
+يعالج FontAra نصوص الصفحات محليًا داخل متصفحك. تبقى إعداداتك في مساحة تخزين
+الإضافة داخل المتصفح. نحن لا نجمع بيانات التصفح ولا نبيعها ولا نشاركها.

@@ -7,6 +7,8 @@ const bundleLocales = require("./bundle-locales")
 const bundleManifest = require("./bundle-manifest")
 const copyAssets = require("./copy")
 const { getDestDir } = require("./paths")
+const { PLATFORM } = require("./platform")
+const createFirefoxSourcePackage = require("./source-package")
 const { emptyDirectory } = require("./utils")
 const validateBuild = require("./validate-build")
 const zipBuild = require("./zip")
@@ -39,6 +41,11 @@ async function buildPlatform({ platform, debug, zip }) {
 async function build({ platforms, debug, zip }) {
   for (const platform of platforms) {
     await buildPlatform({ platform, debug, zip })
+  }
+
+  if (zip && !debug && platforms.includes(PLATFORM.FIREFOX_MV3)) {
+    const zipPath = await createFirefoxSourcePackage()
+    console.log(`Created Firefox source package: ${zipPath}`)
   }
 }
 

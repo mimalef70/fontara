@@ -153,3 +153,24 @@ test("release archives use reproducible file metadata", () => {
     assert.doesNotMatch(source, /getTimezoneOffset/)
   }
 })
+
+test("Firefox release builds create a reviewer source package", () => {
+  const buildSource = fs.readFileSync(path.resolve("tasks/build.js"), "utf8")
+  const sourcePackageSource = fs.readFileSync(
+    path.resolve("tasks/source-package.js"),
+    "utf8"
+  )
+  const packageSource = fs.readFileSync(path.resolve("package.json"), "utf8")
+
+  assert.match(buildSource, /require\("\.\/source-package"\)/)
+  assert.match(buildSource, /PLATFORM\.FIREFOX_MV3/)
+  assert.match(buildSource, /createFirefoxSourcePackage\(\)/)
+  assert.match(sourcePackageSource, /if \(require\.main === module\)/)
+  assert.match(sourcePackageSource, /module\.exports = createSourcePackage/)
+  assert.match(sourcePackageSource, /"CHANGELOG\.md"/)
+  assert.match(packageSource, /"build:firefox"/)
+  assert.match(
+    packageSource,
+    /"package:firefox:review": "pnpm package:firefox"/
+  )
+})

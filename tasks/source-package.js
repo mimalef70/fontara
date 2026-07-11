@@ -6,6 +6,7 @@ const yazl = require("yazl")
 const { absolutePath } = require("./paths")
 
 const SOURCE_PACKAGE_FILES = [
+  "CHANGELOG.md",
   "FIREFOX_SOURCE_README.md",
   "README.md",
   "biome.json",
@@ -117,11 +118,15 @@ async function createSourcePackage() {
   return zipPath
 }
 
-createSourcePackage()
-  .then((zipPath) => {
-    console.log(`Created Firefox source package: ${zipPath}`)
-  })
-  .catch((error) => {
-    console.error(error)
-    process.exit(1)
-  })
+if (require.main === module) {
+  createSourcePackage()
+    .then((zipPath) => {
+      console.log(`Created Firefox source package: ${zipPath}`)
+    })
+    .catch((error) => {
+      console.error(error)
+      process.exit(1)
+    })
+}
+
+module.exports = createSourcePackage

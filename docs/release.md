@@ -58,7 +58,9 @@ pnpm build:opera
 pnpm build:safari
 ```
 
-Release archives are written to `build/*-prod.zip`.
+Release archives are written to `build/*-prod.zip`. When Firefox is part of the
+build, the Firefox source review package is also written to
+`build/firefox-mv3-source-<version>.zip`.
 
 ## Firefox Review Package
 
@@ -67,6 +69,9 @@ pnpm package:firefox:review
 ```
 
 This creates the Firefox release package and a source package for review.
+
+`pnpm build:firefox` and `pnpm build:all` create the same Firefox source review
+package automatically.
 
 ## Extension Lint
 
@@ -93,7 +98,7 @@ Known warning category:
 ## Release Checklist
 
 - `pnpm check` passes.
-- `pnpm build:all` passes.
+- `pnpm build:all` passes and creates the Firefox source review package.
 - `pnpm lint:extension` passes with no errors.
 - Chrome browser smoke passes.
 - Firefox browser smoke passes when Firefox behavior changed.

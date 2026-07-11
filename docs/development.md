@@ -57,7 +57,7 @@ Output directories:
 | Target | Debug output | Release output |
 | --- | --- | --- |
 | Chrome MV3 | `build/chrome-mv3-dev` | `build/chrome-mv3-prod.zip` |
-| Firefox MV3 | `build/firefox-mv3-dev` | `build/firefox-mv3-prod.zip` |
+| Firefox MV3 | `build/firefox-mv3-dev` | `build/firefox-mv3-prod.zip` and `build/firefox-mv3-source-<version>.zip` |
 | Edge MV3 | `build/edge-mv3-dev` when requested | `build/edge-mv3-prod.zip` |
 | Brave MV3 | `build/brave-mv3-dev` when requested | `build/brave-mv3-prod.zip` |
 | Opera MV3 | `build/opera-mv3-dev` when requested | `build/opera-mv3-prod.zip` |
@@ -89,10 +89,10 @@ they go through the runtime settings pipeline.
 | Command | Purpose |
 | --- | --- |
 | `pnpm build` | Build Chrome MV3 release package. |
-| `pnpm build:all` | Build every configured MV3 release package. |
-| `pnpm build:firefox` | Build Firefox MV3 release package. |
-| `pnpm package:firefox:source` | Create source package for Firefox review. |
-| `pnpm package:firefox:review` | Build Firefox package and source package together. |
+| `pnpm build:all` | Build every configured MV3 release package, including the Firefox source review package. |
+| `pnpm build:firefox` | Build Firefox MV3 release package and Firefox source review package. |
+| `pnpm package:firefox:source` | Create only the source package for Firefox review. |
+| `pnpm package:firefox:review` | Compatibility alias for the Firefox release and source review build. |
 
 ## Google Fonts Catalog
 

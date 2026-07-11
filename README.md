@@ -84,10 +84,7 @@ are mainly for testers, reviewers, and contributors.
 - Font replacement across the web through built-in, Google, custom, and
   Chromium system font sources.
 - Works on normal websites the user enables, with built-in optimized support for
-  AI tools, search, social, productivity, and publishing sites such as ChatGPT,
-  Claude, Gemini, Copilot, Perplexity, Google, YouTube, Gmail, X, LinkedIn,
-  Instagram, Facebook, GitHub, Telegram, Slack, TickTick, Trello, Wikipedia,
-  DuckDuckGo, Medium, Goodreads, Dropbox, and more.
+  high-traffic AI, search, social, productivity, and publishing surfaces.
 - Per-site font and text-stroke profiles.
 - Smart RTL support for right-to-left scripts, editable text surfaces, and
   curated site adapters.
@@ -135,13 +132,13 @@ RTL behavior where needed. With help from users and contributors, this optimized
 list can keep growing. The popup default grid highlights 20 high-priority sites
 from this built-in list.
 
-| Area | Examples |
+| Area | Optimized coverage |
 | --- | --- |
-| AI tools | ChatGPT, Claude, Gemini, Copilot, Perplexity, Poe, OpenRouter, DeepSeek, Qwen, NotebookLM, AI Studio, Arena |
-| Search and Google apps | Google, Gmail, YouTube, DuckDuckGo |
-| Social and communities | X, LinkedIn, Instagram, Facebook, GitHub |
-| Messaging and productivity | WhatsApp, Telegram, Slack, TickTick, Messages, Trello, Dropbox |
-| Reading and publishing | Wikipedia, Medium, Goodreads |
+| AI tools | Chat interfaces, answer streams, editors, sidebars, and tool navigation. |
+| Search and browser apps | Search results, mail views, video pages, and dense navigation surfaces. |
+| Social and communities | Feeds, posts, comments, profiles, and repository-style text surfaces. |
+| Messaging and productivity | Conversations, task boards, workspace panels, and editable fields. |
+| Reading and publishing | Articles, encyclopedic pages, reviews, and long-form reading views. |
 
 General font injection works across the web. Site matching, optimized CSS fixes,
 profiles, and RTL adapters for the built-in list are maintained in `src/config`
@@ -152,7 +149,7 @@ and documented in [docs/site-fixes.md](docs/site-fixes.md).
 | Target | Build command | Test coverage | Notes |
 | --- | --- | --- | --- |
 | Chrome MV3 | `pnpm build:chrome` | Local, CI, and browser workflow | Primary Chromium release target. |
-| Firefox MV3 | `pnpm build:firefox` | Local and browser workflow | Includes Firefox review packaging and `web-ext lint`. |
+| Firefox MV3 | `pnpm build:firefox` | Local and browser workflow | Creates the add-on zip, Firefox source review zip, and supports `web-ext lint`. |
 | Edge MV3 | `pnpm build:edge` | Chromium-compatible package | Store release should still be smoke-tested manually. |
 | Brave MV3 | `pnpm build:brave` | Chromium-compatible package | Uses the Chromium extension package path. |
 | Opera MV3 | `pnpm build:opera` | Manual smoke | Store behavior should be checked before publishing. |
@@ -185,7 +182,8 @@ Common commands:
 | `pnpm dev` | Watch Chrome MV3 debug build. |
 | `pnpm dev:firefox` | Watch Firefox MV3 debug build. |
 | `pnpm build` | Package Chrome MV3 release build. |
-| `pnpm build:all` | Package all configured MV3 release targets. |
+| `pnpm build:firefox` | Package Firefox MV3 release and source review zips. |
+| `pnpm build:all` | Package all configured MV3 release targets, including Firefox source review zip. |
 | `pnpm check` | Run lint, typecheck, unit tests, and inject tests. |
 | `pnpm verify` | Run check, all release builds, and extension lint. |
 | `pnpm test:browser:chrome` | Run real Chrome extension browser tests. |

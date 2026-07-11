@@ -38,7 +38,7 @@
     "package": "node tasks/cli.js build --release --chrome-mv3",
     "package:firefox": "node tasks/cli.js build --release --firefox-mv3",
     "package:firefox:source": "node tasks/source-package.js",
-    "package:firefox:review": "pnpm package:firefox && pnpm package:firefox:source",
+    "package:firefox:review": "pnpm package:firefox",
     "start": "web-ext run --source-dir ./build/chrome-mv3-dev -t chromium --start-url chrome://newtab",
     "start:firefox": "web-ext run --source-dir ./build/firefox-mv3-dev",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:inject",

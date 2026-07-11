@@ -103,6 +103,49 @@ test("storage helpers resolve values when chrome storage succeeds", async () => 
   assert.equal(await getLocalBytesInUse(), 128)
 })
 
+test("getLocalValues preserves undefined read keys across extension serialization", async () => {
+  const storedValues = {
+    selectedFont: "system-font:Arial",
+    systemFontsEnabled: true
+  }
+  let receivedDefaults: Record<string, unknown> | null = null
+
+  Reflect.set(globalThis, "chrome", {
+    runtime: {},
+    storage: {
+      local: {
+        get(
+          defaults: Record<string, unknown>,
+          callback: (items: Record<string, unknown>) => void
+        ) {
+          // Extension API arguments cross a serialization boundary. JSON
+          // round-tripping accurately reproduces how `undefined` properties
+          // disappear before chrome.storage.local.get receives the object.
+          receivedDefaults = JSON.parse(JSON.stringify(defaults))
+          callback({ ...receivedDefaults, ...storedValues })
+        }
+      }
+    }
+  })
+
+  const values = await getLocalValues({
+    selectedFont: undefined,
+    systemFontsEnabled: undefined,
+    syncSettings: undefined
+  })
+
+  assert.deepEqual(receivedDefaults, {
+    selectedFont: null,
+    systemFontsEnabled: null,
+    syncSettings: null
+  })
+  assert.deepEqual(values, {
+    selectedFont: "system-font:Arial",
+    systemFontsEnabled: true,
+    syncSettings: undefined
+  })
+})
+
 test("storage helpers reject chrome runtime errors", async () => {
   mockChromeStorage({ getError: "read failed" })
   await assert.rejects(() => getLocalValue("enabled"), /read failed/)

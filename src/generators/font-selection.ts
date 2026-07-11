@@ -1,15 +1,15 @@
 import { DEFAULT_FONTS } from "../config/fonts"
 import { DEFAULT_VALUES } from "../config/storage"
-import type { FontData } from "../definitions"
+import type { CustomFontFamily } from "../custom-font-types"
 import {
   decodeGoogleFontValue,
   loadGoogleFontFaceCSS
 } from "../utils/google-font-runtime"
 import { decodeSystemFontValue } from "../utils/system-fonts"
-import { createCustomFontFaces } from "./custom-font-face"
 
 export type FontaraResolvedFontSelection = {
-  customFontCSS: string
+  customFontFamilyRevision: number | null
+  customFontFamilyValue: string | null
   fontName: string
   googleFontCSS: string | null
 }
@@ -17,10 +17,10 @@ export type FontaraResolvedFontSelection = {
 export type GoogleFontCSSLoadMode = "allow-network" | "cache-only"
 
 export type FontaraFontSelectionOptions = {
-  customFontList?: FontData[] | null
+  customFontList?: CustomFontFamily[] | null
   googleFontCSSLoadMode?: GoogleFontCSSLoadMode
   googleFontsEnabled?: boolean | null
-  readCustomFontList?: () => Promise<FontData[] | null | undefined>
+  readCustomFontList?: () => Promise<CustomFontFamily[] | null | undefined>
   readGoogleFontsEnabled?: () => Promise<boolean | null | undefined>
   readSystemFontsEnabled?: () => Promise<boolean | null | undefined>
   systemFontsEnabled?: boolean | null
@@ -28,13 +28,14 @@ export type FontaraFontSelectionOptions = {
 
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
 const DEFAULT_FONT_SELECTION: FontaraResolvedFontSelection = {
-  customFontCSS: "",
+  customFontFamilyRevision: null,
+  customFontFamilyValue: null,
   fontName: DEFAULT_VALUES.SELECTED_FONT,
   googleFontCSS: null
 }
 
-function normalizeCustomFontList(value: unknown): FontData[] {
-  return Array.isArray(value) ? (value as FontData[]) : []
+function normalizeCustomFontList(value: unknown): CustomFontFamily[] {
+  return Array.isArray(value) ? (value as CustomFontFamily[]) : []
 }
 
 async function resolveBooleanOption(
@@ -48,7 +49,7 @@ async function resolveBooleanOption(
 
 async function resolveCustomFontList(
   options: FontaraFontSelectionOptions
-): Promise<FontData[]> {
+): Promise<CustomFontFamily[]> {
   if (options.customFontList) {
     return normalizeCustomFontList(options.customFontList)
   }
@@ -60,11 +61,11 @@ function createDefaultFontSelection(): FontaraResolvedFontSelection {
   return { ...DEFAULT_FONT_SELECTION }
 }
 
-function getSelectedCustomFonts(
-  customFontList: FontData[],
+function getSelectedCustomFont(
+  customFontList: CustomFontFamily[],
   selectedFont: string
-): FontData[] {
-  return customFontList.filter((font) => font.value === selectedFont)
+): CustomFontFamily | null {
+  return customFontList.find((font) => font.value === selectedFont) ?? null
 }
 
 export function isBundledFontValue(value: string | undefined): boolean {
@@ -81,7 +82,8 @@ export async function resolveFontSelection(
 
   if (isBundledFontValue(selectedFont)) {
     return {
-      customFontCSS: "",
+      customFontFamilyRevision: null,
+      customFontFamilyValue: null,
       fontName: selectedFont,
       googleFontCSS: null
     }
@@ -96,7 +98,8 @@ export async function resolveFontSelection(
 
     return googleFontsEnabled
       ? {
-          customFontCSS: "",
+          customFontFamilyRevision: null,
+          customFontFamilyValue: null,
           fontName: googleFontFamily,
           googleFontCSS: await loadGoogleFontFaceCSS(selectedFont, {
             allowNetwork: options.googleFontCSSLoadMode !== "cache-only"
@@ -114,23 +117,25 @@ export async function resolveFontSelection(
 
     return systemFontsEnabled
       ? {
-          customFontCSS: "",
+          customFontFamilyRevision: null,
+          customFontFamilyValue: null,
           fontName: systemFontFamily,
           googleFontCSS: null
         }
       : createDefaultFontSelection()
   }
 
-  const selectedCustomFonts = getSelectedCustomFonts(
+  const selectedCustomFont = getSelectedCustomFont(
     await resolveCustomFontList(options),
     selectedFont
   )
-  if (selectedCustomFonts.length === 0) {
+  if (!selectedCustomFont) {
     return createDefaultFontSelection()
   }
 
   return {
-    customFontCSS: createCustomFontFaces(selectedCustomFonts),
+    customFontFamilyRevision: selectedCustomFont.revision,
+    customFontFamilyValue: selectedCustomFont.value,
     fontName: selectedFont,
     googleFontCSS: null
   }

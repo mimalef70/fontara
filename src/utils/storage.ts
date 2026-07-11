@@ -101,14 +101,33 @@ export function getLocalValues<T extends Record<string, unknown>>(
   defaults: T
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(defaults, (items) => {
+    const undefinedDefaultKeys = new Set(
+      Object.entries(defaults)
+        .filter(([, value]) => value === undefined)
+        .map(([key]) => key)
+    )
+    const serializableDefaults = Object.fromEntries(
+      Object.entries(defaults).map(([key, value]) => [
+        key,
+        value === undefined ? null : value
+      ])
+    )
+
+    chrome.storage.local.get(serializableDefaults, (items) => {
       const error = getRuntimeError()
       if (error) {
         reject(error)
         return
       }
 
-      resolve(items as T)
+      const values = { ...defaults, ...items } as Record<string, unknown>
+      for (const key of undefinedDefaultKeys) {
+        if (values[key] === null) {
+          values[key] = undefined
+        }
+      }
+
+      resolve(values as T)
     })
   })
 }

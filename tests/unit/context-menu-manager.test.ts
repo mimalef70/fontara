@@ -3,7 +3,10 @@ import test, { afterEach } from "node:test"
 
 import { setFontaraCommandRunner } from "../../src/background/command-manager"
 import { createToggleCurrentSiteSettings } from "../../src/background/command-settings"
-import { ensureContextMenus } from "../../src/background/context-menu-manager"
+import {
+  ensureContextMenus,
+  registerContextMenuListeners
+} from "../../src/background/context-menu-manager"
 import { STORAGE_KEYS } from "../../src/config/storage"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
@@ -146,7 +149,7 @@ test("context menu manager registers menus and toggles the current site", async 
   assert.deepEqual(localValues[STORAGE_KEYS.DISABLED_FOR], [])
   assert.deepEqual(localValues[STORAGE_KEYS.WEBSITE_LIST], [
     {
-      url: "https://example.com/path",
+      url: "example.com",
       regex: "^https?://example\\.com/?.*$",
       isActive: true
     }
@@ -260,4 +263,72 @@ test("context menu manager removes menus when the setting is disabled", async ()
   await ensureContextMenus()
 
   assert.equal(removeAllCount, 1)
+})
+
+test("revoking optional contextMenus permission also disables the stored setting", async () => {
+  const localValues: Record<string, unknown> = {
+    [STORAGE_KEYS.CONTEXT_MENUS_ENABLED]: true
+  }
+  const removedPermissionListeners: Array<
+    (permissions: chrome.permissions.Permissions) => void
+  > = []
+
+  Reflect.set(globalThis, "chrome", {
+    contextMenus: {
+      create(
+        _properties: chrome.contextMenus.CreateProperties,
+        callback?: () => void
+      ) {
+        callback?.()
+      },
+      onClicked: { addListener() {} },
+      removeAll(callback?: () => void) {
+        callback?.()
+      }
+    },
+    permissions: {
+      contains(
+        _permissions: chrome.permissions.Permissions,
+        callback: (hasPermission: boolean) => void
+      ) {
+        callback(true)
+      },
+      onRemoved: {
+        addListener(
+          listener: (permissions: chrome.permissions.Permissions) => void
+        ) {
+          removedPermissionListeners.push(listener)
+        }
+      }
+    },
+    runtime: {
+      get lastError() {
+        return undefined
+      }
+    },
+    storage: {
+      local: {
+        get(
+          keys: Record<string, unknown>,
+          callback: (items: Record<string, unknown>) => void
+        ) {
+          callback({ ...keys, ...localValues })
+        },
+        set(items: Record<string, unknown>, callback: () => void) {
+          Object.assign(localValues, items)
+          callback()
+        }
+      },
+      onChanged: {
+        addListener() {},
+        removeListener() {}
+      }
+    }
+  })
+
+  registerContextMenuListeners()
+  removedPermissionListeners[0]?.({ permissions: ["contextMenus"] })
+  await waitForAsyncCommand()
+
+  assert.equal(localValues[STORAGE_KEYS.CONTEXT_MENUS_ENABLED], false)
 })

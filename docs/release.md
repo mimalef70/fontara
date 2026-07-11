@@ -30,11 +30,24 @@ Full release gate:
 pnpm verify
 ```
 
+Determinism and version gates:
+
+```sh
+pnpm check:release-version
+pnpm check:reproducible-zip
+pnpm audit --prod
+```
+
+The reproducibility gate rebuilds every production target plus the Firefox
+source-review archive in UTC and Asia/Tehran and compares each SHA-256 digest.
+
 Browser smoke tests:
 
 ```sh
 pnpm test:browser:chrome
 FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:firefox
+pnpm test:browser:production:chrome
+FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:production:firefox
 ```
 
 Nightly/manual CI also runs the browser version matrix.
@@ -105,6 +118,26 @@ Known warning category:
 - Browser matrix is green or reviewed if a browser channel has a known external
   failure.
 - Store-facing text and screenshots are current.
+- `LICENSE`, `THIRD_PARTY_NOTICES.md`, the OFL text, and
+  `assets/fonts/provenance.json` are present in both production ZIPs.
+- Chrome and Firefox production ZIPs install and pass smoke tests; neither
+  contains the browser-test RPC strings.
+- A real v5 backup migrates successfully, and no open High-severity finding
+  remains.
 - README and `docs/index.html` describe the current release accurately.
 - `CHANGELOG.md` mentions user-visible changes, migration notes, and known
   issues.
+
+## 5.1.0 Staged Rollout
+
+1. Install the signed Chrome and Firefox artifacts in the internal test channel
+   for three full days.
+2. Publish Chrome Web Store at 10%, then advance to 25% after 48 hours, 50%
+   after another 48 hours, and 100% after another 72 hours.
+3. Publish Firefox only after Chrome has remained at 50% for 72 hours without a
+   P0/P1 regression.
+4. Stop rollout and roll back for any data loss, binary disclosure, extension
+   startup failure, or three independent reports of the same regression.
+
+Store publication, percentage changes, and rollback are manual external actions
+and are never performed by the build or CI workflows.

@@ -7,8 +7,14 @@ const { absolutePath } = require("./paths")
 
 const SOURCE_PACKAGE_FILES = [
   "CHANGELOG.md",
+  "CODE_OF_CONDUCT.md",
+  "CONTRIBUTING.md",
   "FIREFOX_SOURCE_README.md",
+  "LICENSE",
   "README.md",
+  "SECURITY.md",
+  "THIRD_PARTY_NOTICES.md",
+  ".env.example",
   "biome.json",
   "components.json",
   "package.json",
@@ -19,7 +25,15 @@ const SOURCE_PACKAGE_FILES = [
   "tsconfig.json"
 ]
 
-const SOURCE_PACKAGE_DIRECTORIES = ["assets", "src", "tasks", "tests"]
+const SOURCE_PACKAGE_DIRECTORIES = [
+  ".github/workflows",
+  "FONT_LICENSES",
+  "assets",
+  "docs",
+  "src",
+  "tasks",
+  "tests"
+]
 
 const EXCLUDED_NAMES = new Set([".DS_Store"])
 
@@ -48,7 +62,17 @@ async function getLastCommitTime() {
     exec("git log -1 --format=%ct", (_error, stdout) => {
       const timestamp = Number(stdout)
       const seconds = Number.isFinite(timestamp) ? timestamp : 0
-      resolve(new Date(Math.max(0, seconds) * 1000))
+      const commitDate = new Date(Math.max(0, seconds) * 1000)
+      resolve(
+        new Date(
+          commitDate.getUTCFullYear(),
+          commitDate.getUTCMonth(),
+          commitDate.getUTCDate(),
+          commitDate.getUTCHours(),
+          commitDate.getUTCMinutes(),
+          commitDate.getUTCSeconds()
+        )
+      )
     })
   })
 }
@@ -91,29 +115,51 @@ async function createSourcePackage() {
   )
 
   await fs.promises.mkdir(path.dirname(zipPath), { recursive: true })
+  const buildEntries = await fs.promises.readdir(path.dirname(zipPath))
+  await Promise.all(
+    buildEntries
+      .filter(
+        (entry) =>
+          /^firefox-mv3-source-.*\.zip$/.test(entry) &&
+          path.join(path.dirname(zipPath), entry) !== zipPath
+      )
+      .map((entry) =>
+        fs.promises.rm(path.join(path.dirname(zipPath), entry), { force: true })
+      )
+  )
   await fs.promises.rm(zipPath, { force: true })
   const files = await collectSourcePackageFiles()
-  const options = await getZipFileOptions()
 
-  await new Promise((resolve, reject) => {
-    const zipFile = new yazl.ZipFile()
-    const output = fs.createWriteStream(zipPath)
+  const originalTimezone = process.env.TZ
+  process.env.TZ = "UTC"
+  try {
+    const options = await getZipFileOptions()
+    await new Promise((resolve, reject) => {
+      const zipFile = new yazl.ZipFile()
+      const output = fs.createWriteStream(zipPath)
 
-    output.on("close", resolve)
-    output.on("error", reject)
-    zipFile.outputStream.on("error", reject)
-    zipFile.outputStream.pipe(output)
+      output.on("close", resolve)
+      output.on("error", reject)
+      zipFile.outputStream.on("error", reject)
+      zipFile.outputStream.pipe(output)
 
-    Promise.resolve()
-      .then(async () => {
-        for (const file of files) {
-          await fs.promises.access(file.sourcePath)
-          zipFile.addFile(file.sourcePath, file.zipPath, options)
-        }
-        zipFile.end()
-      })
-      .catch(reject)
-  })
+      Promise.resolve()
+        .then(async () => {
+          for (const file of files) {
+            await fs.promises.access(file.sourcePath)
+            zipFile.addFile(file.sourcePath, file.zipPath, options)
+          }
+          zipFile.end()
+        })
+        .catch(reject)
+    })
+  } finally {
+    if (originalTimezone === undefined) {
+      delete process.env.TZ
+    } else {
+      process.env.TZ = originalTimezone
+    }
+  }
 
   return zipPath
 }

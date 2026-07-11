@@ -12,6 +12,55 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+## 5.1.0
+
+- Rebuilt custom fonts around multi-face families with Regular, Bold, Italic,
+  Oblique, and variable-axis metadata. Font files now remain as content-addressed
+  local blobs and are loaded with `FontFace(ArrayBuffer)` instead of exposing
+  base64 data in the page DOM.
+- Added transactional multi-file imports, native font validation, strict
+  per-face/family/library quotas, resumable legacy migration, orphan cleanup,
+  backup format v2, and WOFF/WOFF2/TTF/OTF metadata extraction in an isolated
+  worker.
+- Fixed Chromium System Fonts detection and retry states. The feature remains
+  opt-in, preserves dormant global/per-site choices when disabled, and is
+  explicitly unsupported in Firefox.
+- Removed the unnecessary `tabs` permission, made context menus optional,
+  narrowed web scope to HTTP(S), removed persisted full tab URLs and remote
+  favicons, and isolated the browser-test bridge from debug/production builds.
+- Serialized settings mutations with monotonic revisions, race-safe optimistic
+  UI rollback, revision-consistent sync snapshots, and 150 ms trailing slider
+  persistence.
+- Lazy-loaded the Google Fonts catalog from one generated JSON asset, cutting
+  production runtime bundles below their release budgets.
+- Improved keyboard navigation, disabled states, loading skeletons, mobile
+  navigation, ARIA state, contrast, visible scrollbars, RTL layout, and deletion
+  confirmation across popup and options.
+- Removed Google Analytics from the project website and published a concrete
+  privacy policy covering local fonts, browser sync, URL handling, permissions,
+  and opt-in Google Fonts requests.
+- Added deterministic release archives, manifest/permission assertions,
+  license and exact font provenance checks, a matched-selector site CSS
+  generator/validator, Chrome/Firefox browser gates, and source-package upload.
+
+Migration notes:
+
+- Existing custom-font values are preserved so global and per-site selections
+  continue to resolve. Legacy data URLs are moved to separate local face blobs
+  and initially marked `legacy-unverified`.
+- System-font selections are no longer deleted when the feature is disabled;
+  they become dormant and resume when the user enables System Fonts again.
+- AzarMehr is no longer bundled because the audited binary declared “All rights
+  reserved” and no redistribution grant for that exact file was available.
+
+Known limitations:
+
+- Variable fonts that combine upright and italic through the `ital` axis show a
+  compatibility warning and are not synthesized into two faces in this release.
+- TTC and OTC collections are not accepted yet.
+- Site captures with high-churn generated selectors remain exact to their
+  source JSON; semantic rewrites require a separate, site-specific review.
+
 ## 5.0.0
 
 - Added a multilingual, RTL-aware interface for English, Persian, and Arabic.

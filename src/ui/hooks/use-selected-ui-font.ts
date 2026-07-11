@@ -1,8 +1,11 @@
 import { useEffect } from "react"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
-import type { FontData } from "../../definitions"
-import { createCustomFontFaces } from "../../generators/custom-font-face"
+import type { CustomFontFamily } from "../../custom-font-types"
+import {
+  activatePreparedCustomFontFamily,
+  prepareCustomFontFamily
+} from "../../inject/custom-font-manager"
 import { formatFontFamilyForCSS } from "../../utils/font-data"
 import {
   decodeGoogleFontValue,
@@ -16,30 +19,7 @@ import {
 } from "../storage-defaults"
 import { useStorageValue } from "./use-storage"
 
-const CUSTOM_FONT_STYLE_ID = "fontara-ui-custom-font-styles"
 const GOOGLE_FONT_STYLE_ID = "fontara-ui-google-font-styles"
-
-function upsertCustomFontStyles(customFontList: FontData[]): void {
-  const customFontFaces = createCustomFontFaces(customFontList)
-  const existingStyle = document.getElementById(CUSTOM_FONT_STYLE_ID)
-
-  if (!customFontFaces) {
-    existingStyle?.remove()
-    return
-  }
-
-  const styleElement =
-    existingStyle instanceof HTMLStyleElement
-      ? existingStyle
-      : document.createElement("style")
-
-  styleElement.id = CUSTOM_FONT_STYLE_ID
-  styleElement.textContent = customFontFaces
-
-  if (!styleElement.parentElement) {
-    document.head.appendChild(styleElement)
-  }
-}
 
 function upsertGoogleFontStyles(css: string | null): void {
   const existingStyle = document.getElementById(GOOGLE_FONT_STYLE_ID)
@@ -67,7 +47,7 @@ export function useSelectedUIFont(): void {
     STORAGE_KEYS.SELECTED_FONT,
     DEFAULT_VALUES.SELECTED_FONT
   )
-  const [customFontList] = useStorageValue<FontData[]>(
+  const [customFontList] = useStorageValue<CustomFontFamily[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
@@ -81,44 +61,58 @@ export function useSelectedUIFont(): void {
   )
 
   useEffect(() => {
-    upsertCustomFontStyles(customFontList)
-  }, [customFontList])
-
-  useEffect(() => {
     let cancelled = false
     const systemFontFamily = decodeSystemFontValue(selectedFont)
     const googleFontFamily = decodeGoogleFontValue(selectedFont)
+    const customFont = customFontList.find(
+      (family) => family.value === selectedFont
+    )
 
-    if (googleFontFamily && googleFontsEnabled) {
+    void (async () => {
+      const customFontReference = customFont
+        ? { value: customFont.value, revision: customFont.revision }
+        : null
+      const customFontReady = await prepareCustomFontFamily(customFontReference)
+      if (cancelled) return
+
+      if (customFont && customFontReady) {
+        upsertGoogleFontStyles(null)
+        document.documentElement.style.setProperty(
+          "--fontara-ui-font",
+          formatFontFamilyForCSS(customFont.value)
+        )
+        activatePreparedCustomFontFamily(customFontReference)
+        return
+      }
+
+      if (googleFontFamily && googleFontsEnabled) {
+        document.documentElement.style.setProperty(
+          "--fontara-ui-font",
+          formatFontFamilyForCSS(googleFontFamily)
+        )
+        activatePreparedCustomFontFamily(null)
+
+        const css = await loadGoogleFontFaceCSS(selectedFont)
+        if (!cancelled) upsertGoogleFontStyles(css)
+        return
+      }
+
+      upsertGoogleFontStyles(null)
+      const fontName =
+        systemFontsEnabled && systemFontFamily
+          ? systemFontFamily
+          : googleFontFamily || customFont
+            ? DEFAULT_VALUES.SELECTED_FONT
+            : selectedFont || DEFAULT_VALUES.SELECTED_FONT
       document.documentElement.style.setProperty(
         "--fontara-ui-font",
-        formatFontFamilyForCSS(googleFontFamily)
+        formatFontFamilyForCSS(fontName)
       )
+      activatePreparedCustomFontFamily(null)
+    })()
 
-      loadGoogleFontFaceCSS(selectedFont).then((css) => {
-        if (!cancelled) {
-          upsertGoogleFontStyles(css)
-        }
-      })
-
-      return () => {
-        cancelled = true
-      }
-    }
-
-    upsertGoogleFontStyles(null)
-    const fontName =
-      systemFontsEnabled && systemFontFamily
-        ? systemFontFamily
-        : googleFontFamily
-          ? DEFAULT_VALUES.SELECTED_FONT
-          : selectedFont || DEFAULT_VALUES.SELECTED_FONT
-    document.documentElement.style.setProperty(
-      "--fontara-ui-font",
-      formatFontFamilyForCSS(fontName)
-    )
     return () => {
       cancelled = true
     }
-  }, [googleFontsEnabled, selectedFont, systemFontsEnabled])
+  }, [customFontList, googleFontsEnabled, selectedFont, systemFontsEnabled])
 }

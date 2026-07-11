@@ -157,6 +157,8 @@ const Sidebar = React.forwardRef<
     side?: "left" | "right"
     variant?: "sidebar" | "floating" | "inset"
     collapsible?: "offcanvas" | "icon" | "none"
+    mobileDescription: React.ReactNode
+    mobileTitle: React.ReactNode
   }
 >(
   (
@@ -164,6 +166,8 @@ const Sidebar = React.forwardRef<
       side = "left",
       variant = "sidebar",
       collapsible = "offcanvas",
+      mobileDescription,
+      mobileTitle,
       className,
       children,
       dir,
@@ -202,8 +206,8 @@ const Sidebar = React.forwardRef<
             }
             side={side}>
             <SheetHeader className="sr-only">
-              <SheetTitle>Sidebar</SheetTitle>
-              <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+              <SheetTitle>{mobileTitle}</SheetTitle>
+              <SheetDescription>{mobileDescription}</SheetDescription>
             </SheetHeader>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
@@ -253,14 +257,16 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
   React.ComponentRef<typeof Button>,
-  React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  React.ComponentProps<typeof Button> & { label: string }
+>(({ className, label, onClick, ...props }, ref) => {
+  const { isMobile, open, openMobile, toggleSidebar } = useSidebar()
 
   return (
     <Button
       ref={ref}
       data-sidebar="trigger"
+      aria-label={label}
+      aria-expanded={isMobile ? openMobile : open}
       variant="ghost"
       size="icon"
       className={cn("h-7 w-7", className)}
@@ -269,8 +275,8 @@ const SidebarTrigger = React.forwardRef<
         toggleSidebar()
       }}
       {...props}>
-      <PanelLeft className="rtl:rotate-180" />
-      <span className="sr-only">Toggle Sidebar</span>
+      <PanelLeft aria-hidden="true" className="rtl:rotate-180" />
+      <span className="sr-only">{label}</span>
     </Button>
   )
 })
@@ -278,18 +284,18 @@ SidebarTrigger.displayName = "SidebarTrigger"
 
 const SidebarRail = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentProps<"button">
->(({ className, ...props }, ref) => {
+  React.ComponentProps<"button"> & { "aria-label": string }
+>(({ "aria-label": ariaLabel, className, title, ...props }, ref) => {
   const { toggleSidebar } = useSidebar()
 
   return (
     <button
       ref={ref}
       data-sidebar="rail"
-      aria-label="Toggle Sidebar"
+      aria-label={ariaLabel}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={title ?? ariaLabel}
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
         "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",

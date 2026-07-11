@@ -14,8 +14,8 @@ const htmlEntries = [
   }
 ]
 
-async function bundleHTML({ platform, debug }) {
-  const outDir = getDestDir({ platform, debug })
+async function bundleHTML({ platform, debug, test = false }) {
+  const outDir = getDestDir({ platform, debug, test })
 
   await Promise.all(
     htmlEntries.map((entry) =>

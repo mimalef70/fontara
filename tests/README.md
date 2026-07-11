@@ -27,9 +27,22 @@ injection pipeline directly.
 pnpm test:inject
 ```
 
+## Coverage
+
+The Node coverage gate enforces a 90% line, 82% branch, and 88% function
+budget across release-critical core modules. Font, storage, and tab modules
+have a stricter 85% branch budget while retaining at least 90% line and 88%
+function coverage. The generated Google Fonts catalog is excluded; browser-only
+React surfaces are verified by the browser matrix instead of being counted as
+uncovered Node code.
+
+```sh
+pnpm test:coverage
+```
+
 ## Browser
 
-Real browser extension smoke tests. The browser harness builds the debug
+Real browser extension smoke tests. The browser harness builds the dedicated test
 extension, launches Chrome/Chromium through Puppeteer with the unpacked
 extension installed, drives extension and fixture pages, and verifies
 user-visible runtime behavior such as applying a selected font without
@@ -72,6 +85,22 @@ exercise real extension installs across browser channels.
 
 The Chrome browser suite also includes viewport coverage for extension pages:
 mobile, tablet, desktop, and wide desktop.
+
+Licensed local font packages can be exercised without committing their binary
+files. Set `FONTARA_LOCAL_FONT_FAMILY_DIR` to a package whose root contains one
+complete family, then run `pnpm test:browser:local-font-family` or the matching
+Firefox script. `pnpm audit:font-family -- <directory>` additionally checks
+every supported file in nested format directories.
+
+It also runs axe against popup and options in English, Persian, and Arabic at
+mobile and desktop sizes, plus browser-level keyboard navigation checks. The
+production-artifact suite separately installs the unpacked contents represented
+by the Chrome and Firefox release ZIPs and verifies that no test bridge ships.
+
+```sh
+pnpm test:browser:production:chrome
+FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:production:firefox
+```
 
 ## All
 

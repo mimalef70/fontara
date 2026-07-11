@@ -1,8 +1,14 @@
 import type {
+  CustomFontFamilyDraft,
+  CustomFontTransactionBeginResult,
+  CustomFontTransactionCommitResult
+} from "../custom-font-types"
+import type {
   FontaraExtensionData,
   FontaraImportedSettingsResult,
   FontaraMessageResponse,
   FontaraSettings,
+  FontaraSettingsMutationResult,
   FontaraUIMessage
 } from "../definitions"
 import { isFontaraBrowserTestRelayMessage } from "../utils/browser-test-bridge"
@@ -15,13 +21,32 @@ import {
 } from "../utils/message"
 
 export type FontaraMessengerAdapter = {
-  changeSettings(settings: FontaraSettings): Promise<void>
+  abortCustomFontTransaction(transactionId: string): Promise<void>
+  beginCustomFontTransaction(
+    family: CustomFontFamilyDraft
+  ): Promise<CustomFontTransactionBeginResult>
+  changeSettings(
+    settings: FontaraSettings
+  ): Promise<FontaraSettingsMutationResult>
   collect(): Promise<FontaraExtensionData>
+  commitCustomFontTransaction(
+    transactionId: string
+  ): Promise<CustomFontTransactionCommitResult>
+  importCustomFontBatch(
+    transactionIds: string[],
+    settings: FontaraSettings
+  ): Promise<FontaraImportedSettingsResult>
+  deleteCustomFont(familyValue: string): Promise<FontaraSettingsMutationResult>
   importSettings(
     settings: FontaraSettings
   ): Promise<FontaraImportedSettingsResult>
-  resetSettings(): Promise<void>
+  resetSettings(): Promise<FontaraSettingsMutationResult>
   runCommand(command: string, details?: { url?: string | null }): Promise<void>
+  putCustomFontFace(
+    transactionId: string,
+    faceId: string,
+    base64: string
+  ): Promise<void>
 }
 
 type SendResponse = (response: FontaraMessageResponse) => void
@@ -70,12 +95,22 @@ function isAllowedUIMessageSender(
   })
 }
 
-function isDebugBuild(): boolean {
-  return typeof __DEBUG__ !== "undefined" && __DEBUG__
-}
-
 function isContentScriptSender(sender: chrome.runtime.MessageSender): boolean {
-  return typeof sender.tab?.id === "number" && typeof sender.url === "string"
+  if (typeof sender.tab?.id !== "number" || typeof sender.url !== "string") {
+    return false
+  }
+
+  try {
+    const url = new URL(sender.url)
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      (url.hostname === "localhost" ||
+        url.hostname === "127.0.0.1" ||
+        url.hostname === "::1")
+    )
+  } catch {
+    return false
+  }
 }
 
 async function handleMessage(message: FontaraUIMessage): Promise<unknown> {
@@ -93,16 +128,35 @@ async function handleMessage(message: FontaraUIMessage): Promise<unknown> {
       subscriberCount = Math.max(0, subscriberCount - 1)
       return true
     case MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS:
-      await adapter.changeSettings(message.data)
-      return true
+      return adapter.changeSettings(message.data.settings)
     case MESSAGE_TYPES_UI_TO_BG.IMPORT_SETTINGS:
-      return adapter.importSettings(message.data)
+      return adapter.importSettings(message.data.settings)
     case MESSAGE_TYPES_UI_TO_BG.RESET_SETTINGS:
-      await adapter.resetSettings()
-      return true
+      return adapter.resetSettings()
     case MESSAGE_TYPES_UI_TO_BG.RUN_COMMAND:
       await adapter.runCommand(message.data.command, { url: message.data.url })
       return true
+    case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN:
+      return adapter.beginCustomFontTransaction(message.data.family)
+    case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_PUT_FACE:
+      await adapter.putCustomFontFace(
+        message.data.transactionId,
+        message.data.faceId,
+        message.data.base64
+      )
+      return true
+    case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_COMMIT:
+      return adapter.commitCustomFontTransaction(message.data.transactionId)
+    case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_IMPORT_BATCH:
+      return adapter.importCustomFontBatch(
+        message.data.transactionIds,
+        message.data.settings
+      )
+    case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_ABORT:
+      await adapter.abortCustomFontTransaction(message.data.transactionId)
+      return true
+    case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_DELETE:
+      return adapter.deleteCustomFont(message.data.familyValue)
   }
 }
 
@@ -112,7 +166,8 @@ function messageListener(
   sendResponse: SendResponse
 ): boolean {
   if (
-    isDebugBuild() &&
+    typeof __TEST__ !== "undefined" &&
+    __TEST__ &&
     isContentScriptSender(sender) &&
     isFontaraBrowserTestRelayMessage(message)
   ) {

@@ -4,6 +4,7 @@ import {
   FONTARA_SETTINGS_UPDATED_AT_KEY,
   FONTARA_SYNCED_STORAGE_KEYS,
   getLocalStorageReadDefaults,
+  getSettingsRevision,
   getSettingsSyncReadDefaults,
   getSettingsUpdatedAt,
   hasSyncedSettingsValues,
@@ -20,6 +21,7 @@ import {
   normalizeCustomFontList,
   normalizeStorageValues
 } from "../utils/storage-normalization"
+import { migrateLegacyCustomFontStorage } from "./custom-font-migration"
 
 export { mergeWebsiteLists, normalizeCustomFontList }
 
@@ -28,6 +30,14 @@ const SYNC_SAVE_DELAY_MS = 3000
 let syncSaveTimeout: ReturnType<typeof setTimeout> | null = null
 let pendingSyncValues: Record<string, unknown> | null = null
 let applyingSyncToLocal = false
+let latestScheduledSyncRevision = 0
+let syncWriteQueue: Promise<void> = Promise.resolve()
+
+function enqueueSyncWrite(operation: () => Promise<void>): Promise<void> {
+  const result = syncWriteQueue.then(operation, operation)
+  syncWriteQueue = result.catch(() => {})
+  return result
+}
 
 function isSyncSettingsEnabled(value: unknown): boolean {
   return value !== false
@@ -113,6 +123,10 @@ export function schedulePendingSettingsSync(
 ): void {
   if (values) {
     pendingSyncValues = values
+    latestScheduledSyncRevision = Math.max(
+      latestScheduledSyncRevision,
+      getSettingsRevision(values)
+    )
   }
 
   if (syncSaveTimeout !== null) {
@@ -123,9 +137,17 @@ export function schedulePendingSettingsSync(
     const valuesToSave = pendingSyncValues
     pendingSyncValues = null
     syncSaveTimeout = null
-    void (valuesToSave
-      ? saveSyncedSettings(valuesToSave)
-      : saveSyncedSettingsFromLocal())
+    void enqueueSyncWrite(async () => {
+      if (
+        valuesToSave &&
+        getSettingsRevision(valuesToSave) < latestScheduledSyncRevision
+      ) {
+        return
+      }
+      await (valuesToSave
+        ? saveSyncedSettings(valuesToSave)
+        : saveSyncedSettingsFromLocal())
+    })
   }, SYNC_SAVE_DELAY_MS)
 }
 
@@ -139,10 +161,24 @@ export async function flushPendingSettingsSync(
 
   const valuesToSave = values ?? pendingSyncValues
   pendingSyncValues = null
+  if (valuesToSave) {
+    latestScheduledSyncRevision = Math.max(
+      latestScheduledSyncRevision,
+      getSettingsRevision(valuesToSave)
+    )
+  }
 
-  await (valuesToSave
-    ? saveSyncedSettings(valuesToSave)
-    : saveSyncedSettingsFromLocal())
+  await enqueueSyncWrite(async () => {
+    if (
+      valuesToSave &&
+      getSettingsRevision(valuesToSave) < latestScheduledSyncRevision
+    ) {
+      return
+    }
+    await (valuesToSave
+      ? saveSyncedSettings(valuesToSave)
+      : saveSyncedSettingsFromLocal())
+  })
 }
 
 async function applySyncStorageToLocal(): Promise<void> {
@@ -217,7 +253,9 @@ async function applySyncStorageToLocal(): Promise<void> {
 }
 
 export async function ensureStorageValues(): Promise<void> {
-  const localValues = await getLocalValues(getLocalStorageReadDefaults())
+  const initialLocalValues = await getLocalValues(getLocalStorageReadDefaults())
+  const { values: localValues } =
+    await migrateLegacyCustomFontStorage(initialLocalValues)
   const normalizedLocalValues = await normalizeStorageValues(localValues)
 
   if (

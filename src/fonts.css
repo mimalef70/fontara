@@ -228,17 +228,3 @@
   font-display: swap;
   unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200B-200F, U+202A-202F;
 }
-
-/* ========== Azarmehr ========== */
-@font-face {
-  font-family: "Azarmehr-Fontara";
-  src:
-    url("assets/fonts/azarmehr/AzarMehr[wght].woff2")
-      format("woff2 supports variations"),
-    url("assets/fonts/azarmehr/AzarMehr[wght].woff2")
-      format("woff2-variations");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0600-06FF, U+0750-077F, U+0870-089F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200B-200F, U+202A-202F;
-}

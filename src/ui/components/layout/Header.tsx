@@ -8,7 +8,7 @@ import { getExtensionEnabledInitialValue } from "../../storage-defaults"
 import { Badge } from "../ui/badge"
 import { Switch } from "../ui/Switch"
 
-const Header = () => {
+const Header = ({ disabled = false }: { disabled?: boolean }) => {
   const { direction, formatVersion, t } = useI18n()
   const [extensionActive, setExtensionActive] = useStorageValue<boolean>(
     STORAGE_KEYS.EXTENSION_ENABLED,
@@ -35,8 +35,10 @@ const Header = () => {
         <Switch
           dir="ltr"
           checked={extensionActive}
+          disabled={disabled}
           onCheckedChange={handleExtensionToggle}
           aria-label={t("header.toggleAriaLabel")}
+          aria-busy={disabled}
           data-testid="fontara-extension-enabled-toggle"
         />
       </div>
@@ -46,11 +48,14 @@ const Header = () => {
           "flex items-center gap-2",
           direction === "ltr" && "flex-row-reverse"
         )}>
-        <Badge className="!border-gray-200 !bg-gray-100 !px-2 !py-[1px] !text-[9px] !font-medium !text-gray-500 hover:!bg-gray-100">
+        <Badge className="!border-gray-200 !bg-gray-100 !px-2 !py-[1px] !text-[9px] !font-medium !text-gray-600 hover:!bg-gray-100">
           <a
             href={URLS.CHANGELOG}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={t("header.changelogAriaLabel", {
+              version: formatVersion(version)
+            })}
             className="cursor-pointer">
             {t("common.version", { version: formatVersion(version) })}
           </a>
@@ -59,10 +64,11 @@ const Header = () => {
           href={URLS.WELCOME_PAGE}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={t("header.homeAriaLabel")}
           className="cursor-pointer">
           <img
             src={getExtensionAssetURL("assets/newlogo.svg")}
-            alt="logo"
+            alt=""
             className="h-auto max-h-8"
           />
         </a>

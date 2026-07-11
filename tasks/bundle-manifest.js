@@ -76,7 +76,26 @@ function withDebugCommandDescriptions(manifest, messages) {
   }
 }
 
-async function bundleManifest({ platform, debug }) {
+function withBrowserTestScope(manifest) {
+  const matches = ["http://localhost/*", "http://127.0.0.1/*"]
+
+  return {
+    ...manifest,
+    content_scripts: (manifest.content_scripts || []).map((script) => ({
+      ...script,
+      matches
+    })),
+    host_permissions: matches,
+    web_accessible_resources: (manifest.web_accessible_resources || []).map(
+      (rule) => ({
+        ...rule,
+        matches
+      })
+    )
+  }
+}
+
+async function bundleManifest({ platform, debug, test = false }) {
   const manifest = await readJSON(absolutePath("src/manifest.json"))
   const patch = await readPatch(platform)
   const packageJSON = await readJSON(absolutePath("package.json"))
@@ -90,11 +109,11 @@ async function bundleManifest({ platform, debug }) {
     platform
   )
 
-  if (debug) {
+  if (debug || test) {
     const catalog = await readJSON(absolutePath("src/i18n/messages.json"))
     const defaultMessages = catalog.extension?.en
 
-    patchedManifest.name = "FontAra Debug"
+    patchedManifest.name = test ? "FontAra Browser Test" : "FontAra Debug"
     patchedManifest.short_name = getMessageText(
       defaultMessages,
       "extensionShortName",
@@ -109,11 +128,15 @@ async function bundleManifest({ platform, debug }) {
       patchedManifest,
       defaultMessages
     )
-    patchedManifest.version_name = `${packageJSON.version} Debug`
+    patchedManifest.version_name = `${packageJSON.version} ${test ? "Test" : "Debug"}`
     delete patchedManifest.default_locale
   }
 
-  const outDir = getDestDir({ platform, debug })
+  if (test) {
+    patchedManifest = withBrowserTestScope(patchedManifest)
+  }
+
+  const outDir = getDestDir({ platform, debug, test })
   await writeJSON(`${outDir}/manifest.json`, patchedManifest)
 }
 

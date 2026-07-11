@@ -39,27 +39,88 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Biome lint
-        run: pnpm lint
+      - name: Check source
+        run: pnpm check
 
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Unit tests
-        run: pnpm test
-
-      - name: Inject tests
-        run: pnpm test:inject
+      - name: Enforce coverage budgets
+        run: pnpm test:coverage
 
       - name: Build all browser targets
         run: pnpm build:all
 
       - name: Validate Firefox package
-        run: pnpm exec web-ext lint --source-dir ./build/firefox-mv3-prod
+        run: pnpm lint:extension
+
+      - name: Validate versions and production dependencies
+        run: pnpm check:release-version && pnpm audit --prod && pnpm audit
+
+      - name: Check reproducible ZIP
+        run: pnpm check:reproducible-zip
 
       - name: Upload extension packages
         uses: actions/upload-artifact@v4
         with:
           name: fontara-extension-packages
-          path: build/*-prod.zip
+          path: |
+            build/*-prod.zip
+            build/firefox-mv3-source-*.zip
           retention-days: 7
+
+  browser-smoke:
+    name: ${{ matrix.browser }} stable browser smoke
+    needs: test-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Set up Chrome
+        if: matrix.browser == 'chrome'
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+      - name: Set up Firefox
+        if: matrix.browser == 'firefox'
+        id: firefox
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: latest
+      - name: Run Chrome tests
+        if: matrix.browser == 'chrome'
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: pnpm test:browser:chrome
+      - name: Install and smoke-test the Chrome production artifact
+        if: matrix.browser == 'chrome'
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: pnpm test:browser:production:chrome
+      - name: Run Firefox tests
+        if: matrix.browser == 'firefox'
+        env:
+          FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
+          FONTARA_FIREFOX_BROWSER_TESTS: "1"
+          FONTARA_FIREFOX_HEADLESS: "1"
+        run: pnpm test:browser:firefox
+      - name: Install and smoke-test the Firefox production artifact
+        if: matrix.browser == 'firefox'
+        env:
+          FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
+          FONTARA_FIREFOX_BROWSER_TESTS: "1"
+          FONTARA_FIREFOX_HEADLESS: "1"
+        run: pnpm test:browser:production:firefox

@@ -30,6 +30,11 @@ const GOOGLE_FONT_FACE_ALLOWED_PROPERTIES = new Set([
   "src",
   "unicode-range"
 ])
+const NON_TEXT_GOOGLE_FONT_FAMILY_PATTERNS = [
+  /^material icons(?:\b|$)/i,
+  /^material symbols(?:\b|$)/i,
+  /^libre barcode\b/i
+]
 
 const googleFontCSSMemoryCache = new Map<string, string>()
 
@@ -52,6 +57,17 @@ export function isSafeGoogleFontFamily(
     normalizedFontFamily.length > 0 &&
     normalizedFontFamily.length <= MAX_GOOGLE_FONT_FAMILY_LENGTH &&
     !hasControlCharacter(normalizedFontFamily)
+  )
+}
+
+export function isSelectableGoogleFontFamily(
+  fontFamily: unknown
+): fontFamily is string {
+  return (
+    isSafeGoogleFontFamily(fontFamily) &&
+    !NON_TEXT_GOOGLE_FONT_FAMILY_PATTERNS.some((pattern) =>
+      pattern.test(fontFamily.trim())
+    )
   )
 }
 
@@ -91,7 +107,7 @@ export function decodeGoogleFontValue(value: unknown): string | null {
 }
 
 export function isGoogleFontValue(value: unknown): value is string {
-  return decodeGoogleFontValue(value) !== null
+  return isSelectableGoogleFontFamily(decodeGoogleFontValue(value))
 }
 
 export function buildGoogleFontsCSS2URLFromFamily(fontFamily: string): string {

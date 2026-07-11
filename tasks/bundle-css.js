@@ -5,8 +5,8 @@ const tailwindcssPostcss = require("@tailwindcss/postcss")
 
 const { absolutePath, getDestDir } = require("./paths")
 
-async function bundleCSS({ platform, debug }) {
-  const outDir = getDestDir({ platform, debug })
+async function bundleCSS({ platform, debug, test = false }) {
+  const outDir = getDestDir({ platform, debug, test })
   const sourceCSS = await fs.promises.readFile(
     absolutePath("src/style.css"),
     "utf8"

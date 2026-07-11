@@ -1,4 +1,17 @@
 import type { RtlSiteId } from "./config/rtl-sites"
+import type {
+  CustomFontFamilyDraft,
+  CustomFontLoadResult,
+  CustomFontTransactionBatchCommitData,
+  CustomFontTransactionBeginData,
+  CustomFontTransactionIdData,
+  CustomFontTransactionPutFaceData
+} from "./custom-font-types"
+
+export type {
+  CustomFontFaceMeta,
+  CustomFontFamily
+} from "./custom-font-types"
 
 export interface WebsiteItem {
   url: string
@@ -9,16 +22,6 @@ export interface WebsiteItem {
   siteName?: string
   version?: string
   customCss?: boolean
-}
-
-export interface FontData {
-  value: string
-  name: string
-  data: string
-  type: string
-  fileHash: string
-  originalFileName: string
-  unicodeRange?: string | null
 }
 
 export interface SiteProfile {
@@ -33,7 +36,6 @@ export type FontaraSettings = Record<string, unknown>
 export type FontaraShortcuts = Partial<Record<"addSite" | "toggle", string>>
 
 export interface FontaraTabInfo {
-  favIconUrl: string | null
   id: number | null
   isActive: boolean
   isSupported: boolean
@@ -44,12 +46,18 @@ export interface FontaraExtensionData {
   activeTab: FontaraTabInfo
   isReady: boolean
   settings: FontaraSettings
+  settingsRevision: number
   shortcuts: FontaraShortcuts
 }
 
 export interface FontaraImportedSettingsResult {
   ignoredKeyCount: number
   importedKeyCount: number
+  revision: number
+}
+
+export interface FontaraSettingsMutationResult {
+  revision: number
 }
 
 export type FontaraApplyMode = "font-styles" | "full"
@@ -58,7 +66,8 @@ export interface FontaraFontThemeCommandData {
   active: boolean
   applyMode: FontaraApplyMode
   customCSS: string | null
-  customFontCSS: string
+  customFontFamilyRevision: number | null
+  customFontFamilyValue: string | null
   fontFaceCSS: string
   fontName: string
   googleFontCSS: string | null
@@ -86,14 +95,23 @@ export type FontaraUIMessage =
       type: "fontara-ui-bg-unsubscribe-from-changes"
     }
   | {
-      data: FontaraSettings
+      data: {
+        clientMutationId: string
+        settings: FontaraSettings
+      }
       type: "fontara-ui-bg-change-settings"
     }
   | {
-      data: FontaraSettings
+      data: {
+        clientMutationId: string
+        settings: FontaraSettings
+      }
       type: "fontara-ui-bg-import-settings"
     }
   | {
+      data: {
+        clientMutationId: string
+      }
       type: "fontara-ui-bg-reset-settings"
     }
   | {
@@ -103,6 +121,30 @@ export type FontaraUIMessage =
       }
       type: "fontara-ui-bg-run-command"
     }
+  | {
+      data: CustomFontTransactionBeginData
+      type: "fontara-ui-bg-custom-font-begin"
+    }
+  | {
+      data: CustomFontTransactionPutFaceData
+      type: "fontara-ui-bg-custom-font-put-face"
+    }
+  | {
+      data: CustomFontTransactionIdData
+      type: "fontara-ui-bg-custom-font-commit"
+    }
+  | {
+      data: CustomFontTransactionBatchCommitData
+      type: "fontara-ui-bg-custom-font-import-batch"
+    }
+  | {
+      data: CustomFontTransactionIdData
+      type: "fontara-ui-bg-custom-font-abort"
+    }
+  | {
+      data: { clientMutationId: string; familyValue: string }
+      type: "fontara-ui-bg-custom-font-delete"
+    }
 
 export type FontaraBackgroundMessage = {
   data: FontaraExtensionData
@@ -110,10 +152,6 @@ export type FontaraBackgroundMessage = {
 }
 
 export type FontaraContentScriptMessage = {
-  data: {
-    isTopFrame: boolean
-    url: string
-  }
   scriptId: string
   type:
     | "fontara-cs-bg-document-connect"
@@ -121,6 +159,13 @@ export type FontaraContentScriptMessage = {
     | "fontara-cs-bg-document-update"
     | "fontara-cs-bg-document-resume"
 }
+
+export type FontaraCustomFontLoadResultMessage = {
+  data: CustomFontLoadResult
+  type: "fontara-cs-bg-custom-font-load-result"
+}
+
+export type FontaraCustomFontTransactionFamily = CustomFontFamilyDraft
 
 export type FontaraContentCommandMessage =
   | {

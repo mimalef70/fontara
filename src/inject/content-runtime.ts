@@ -18,7 +18,9 @@ import { cleanupRtlSupport } from "./rtl"
 import { cleanupFontTheme } from "./theme-applier"
 
 export function startContentRuntime(): void {
-  startContentTestBridge()
+  if (typeof __TEST__ !== "undefined" && __TEST__) {
+    startContentTestBridge()
+  }
 
   const scriptId = `${Date.now().toString(36)}-${Math.random()
     .toString(36)
@@ -49,6 +51,10 @@ export function startContentRuntime(): void {
 
   themeScheduler = createContentThemeScheduler({
     isDisposed: () => disposed,
+    onBackgroundCommandsEnabled: () => {
+      stopWatchingStorage?.()
+      stopWatchingStorage = null
+    },
     onExtensionContextInvalidated: () =>
       cleanupRuntimeListeners({ removeStyles: true }),
     onLocalFallbackActivated: ensureStorageFallbackWatcher,
@@ -56,8 +62,6 @@ export function startContentRuntime(): void {
       sendDocumentLifecycleMessage(type, documentLifecycleMessageOptions),
     warn: debugWarn
   })
-
-  ensureStorageFallbackWatcher()
 
   stopWaitingForBody = runWhenBodyIsReady(() => {
     themeScheduler.requestResolvedPageThemeOrFallback(

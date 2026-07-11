@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>سیاست حریم خصوصی FontARA</title>
+    <meta name="description" content="سیاست حریم خصوصی افزونه FontARA">
+    <style>
+      :root { color-scheme: light; font-family: system-ui, sans-serif; line-height: 1.8; }
+      body { margin: 0; color: #172033; background: #f7f9fc; }
+      main { max-width: 780px; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+      article { padding: clamp(1.25rem, 4vw, 3rem); background: white; border: 1px solid #dbe3ef; border-radius: 1rem; box-shadow: 0 12px 36px rgb(25 50 90 / 8%); }
+      h1, h2 { line-height: 1.4; color: #101828; }
+      h1 { margin-top: 0; }
+      h2 { margin-top: 2rem; font-size: 1.15rem; }
+      a { color: #175cd3; }
+      .summary { padding: 1rem; background: #eef5ff; border-radius: .75rem; }
+      .meta { color: #526074; font-size: .9rem; }
+      [lang="en"] { direction: ltr; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>
+        <h1>سیاست حریم خصوصی FontARA</h1>
+        <p class="meta">تاریخ اجرا: ۲۰ تیر ۱۴۰۵ (۱۱ ژوئیهٔ ۲۰۲۶) · نسخهٔ سیاست: ۱٫۰</p>
+
+        <p class="summary"><strong>خلاصه:</strong> FontARA دادهٔ مرور، محتوای صفحه یا فایل فونت شما را برای سازندهٔ افزونه ارسال نمی‌کند. پردازش در مرورگر انجام می‌شود. تنها درخواست شبکهٔ اختیاری افزونه مربوط به Google Fonts است و فقط پس از فعال‌کردن آن توسط کاربر انجام می‌شود.</p>
+
+        <h2>داده‌هایی که FontARA پردازش می‌کند</h2>
+        <p>برای اعمال فونت و تنظیمات هر سایت، افزونه باید آدرس و محتوای قابل‌نمایش همان صفحه را داخل مرورگر پردازش کند. آدرس کامل تب و فریم فقط به‌صورت موقت در حافظهٔ runtime استفاده می‌شود. نام میزبان به حروف کوچک برای قوانین دامنه ذخیره می‌شود؛ path فقط وقتی نگه‌داری می‌شود که کاربر صریحاً scope مسیر را انتخاب کند. نام کاربری، گذرواژه، query و hash در تنظیمات، sync یا فایل پشتیبان ذخیره نمی‌شوند.</p>
+
+        <h2>ذخیره‌سازی محلی و همگام‌سازی</h2>
+        <p>تنظیمات در storage افزونهٔ مرورگر ذخیره می‌شوند. اگر همگام‌سازی فعال باشد، تنظیمات قابل‌همگام‌سازی از طریق سرویس sync خود مرورگر و مطابق حساب و سیاست حریم خصوصی ارائه‌دهندهٔ مرورگر منتقل می‌شوند. FontARA سرور sync مستقلی ندارد.</p>
+        <p>فایل‌های Custom Font به‌صورت blobهای جداگانه و content-addressed فقط در storage محلی افزونه نگه‌داری می‌شوند؛ باینری آن‌ها وارد browser sync، پیام‌های عمومی UI یا DOM صفحه نمی‌شود و به سرور FontARA ارسال نمی‌شود. فقط وقتی کاربر خودش خروجی پشتیبان می‌گیرد، باینری فونت در فایل پشتیبان دانلودشده روی دستگاه او قرار می‌گیرد.</p>
+
+        <h2>Google Fonts اختیاری</h2>
+        <p>Google Fonts در نصب اولیه خاموش است. پس از opt-in کاربر، انتخاب یک Google Font باعث درخواست CSS و فایل فونت از <code>fonts.googleapis.com</code> و <code>fonts.gstatic.com</code> می‌شود. در نتیجه Google می‌تواند اطلاعات معمول یک درخواست شبکه، از جمله نشانی IP و user agent، را دریافت کند. با خاموش‌کردن Google Fonts این درخواست‌ها متوقف می‌شوند.</p>
+
+        <h2>مجوزهای مرورگر</h2>
+        <p>دسترسی سایت‌ها برای اعمال فونت روی صفحه‌های وب استفاده می‌شود. <code>storage</code> و <code>unlimitedStorage</code> برای تنظیمات و کتابخانهٔ محلی فونت لازم‌اند. <code>fontSettings</code> فقط در Chromium برای فهرست‌کردن فونت‌های نصب‌شده به‌کار می‌رود؛ System Fonts در Firefox پشتیبانی نمی‌شود. <code>contextMenus</code> اختیاری است و فقط با درخواست کاربر گرفته می‌شود و هنگام خاموش‌کردن قابلیت پس داده می‌شود.</p>
+
+        <h2>جمع‌آوری، فروش و تحلیل آماری</h2>
+        <p>FontARA هیچ analytics، تبلیغ، fingerprinting یا سازوکار فروش و اشتراک داده ندارد. وب‌سایت معرفی FontARA نیز اسکریپت Google Analytics ندارد.</p>
+
+        <h2>حذف و نگه‌داری</h2>
+        <p>کاربر می‌تواند هر خانوادهٔ فونت، تنظیمات سایت یا همهٔ تنظیمات را از داخل افزونه حذف کند. حذف افزونه نیز storage محلی آن را مطابق رفتار مرورگر پاک می‌کند. transactionهای ناتمام فونت حداکثر ۳۰ دقیقه نگه‌داری و سپس garbage-collect می‌شوند.</p>
+
+        <h2>تغییرات و تماس</h2>
+        <p>تغییر مهم این سیاست در همین صفحه و یادداشت انتشار اعلام می‌شود. برای پرسش حریم خصوصی یا درخواست امنیتی از <a href="mailto:mostafa.a.aut@gmail.com">mostafa.a.aut@gmail.com</a> یا <a href="https://github.com/mimalef70/fontara/issues">مخزن FontARA</a> استفاده کنید.</p>
+
+        <hr>
+
+        <section lang="en">
+          <h2>English summary</h2>
+          <p>FontARA does not send browsing data, page content, or locally uploaded font files to a FontARA server. Settings stay in browser extension storage; optional sync is provided by the browser. Custom-font binaries remain local. Google Fonts is disabled by default and makes requests to Google only after explicit opt-in. FontARA and this website contain no analytics or advertising SDK.</p>
+        </section>
+
+        <p><a href="index.html">بازگشت به وب‌سایت FontARA</a></p>
+      </article>
+    </main>
+  </body>
+</html>

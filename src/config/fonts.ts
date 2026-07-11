@@ -75,13 +75,6 @@ export const DEFAULT_FONTS = [
     localizedAuthor: { en: "Saber Rastikerdar", ar: "الراحل صابر راستي كردار" }
   },
   {
-    value: "Azarmehr-Fontara",
-    name: "آذرمهر",
-    author: "امین عابدی",
-    localizedName: { en: "Azarmehr", ar: "آذرمهر" },
-    localizedAuthor: { en: "Amin Abedi", ar: "أمين عابدي" }
-  },
-  {
     value: "Mikhak-Fontara",
     name: "میخک",
     author: "امین عابدی",

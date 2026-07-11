@@ -34,33 +34,37 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Biome lint
-        run: pnpm lint
+      - name: Check source
+        run: pnpm check
 
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Unit tests
-        run: pnpm test
-
-      - name: Inject tests
-        run: pnpm test:inject
+      - name: Enforce coverage budgets
+        run: pnpm test:coverage
 
       - name: Build all browser targets
         run: pnpm build:all
 
       - name: Validate Firefox package
-        run: pnpm exec web-ext lint --source-dir ./build/firefox-mv3-prod
+        run: pnpm lint:extension
+
+      - name: Validate release version and dependencies
+        run: pnpm check:release-version && pnpm audit --prod && pnpm audit
+
+      - name: Check reproducible ZIP
+        run: pnpm check:reproducible-zip
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/*-prod.zip
+          files: |
+            build/*-prod.zip
+            build/firefox-mv3-source-*.zip
 
       - name: Upload release packages
         uses: actions/upload-artifact@v4
         with:
           name: fontara-release-packages
-          path: build/*-prod.zip
+          path: |
+            build/*-prod.zip
+            build/firefox-mv3-source-*.zip
           retention-days: 30

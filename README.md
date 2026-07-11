@@ -16,10 +16,11 @@ FontARA is a cross-browser WebExtension for applying your preferred fonts across
 the web. It supports multilingual pages through built-in, Google, custom, and
 Chromium system fonts, with special support for RTL-first workflows: smart RTL
 text detection, editable-field auto-direction, and curated per-site RTL handling.
-Version 5.0.0 adds a multilingual extension UI, per-site profiles, richer font
-sources, compact popup defaults, and broader release tooling across MV3 targets.
+Version 5.1.0 adds private multi-face custom-font families, reliable opt-in
+Chromium system fonts, revisioned settings writes, stronger privacy and
+accessibility, and production release gates for Chrome and Firefox.
 
-![FontARA screenshot](docs/images/demo/screens/Version4.jpg)
+![FontARA 5.1 popup](docs/images/store/5.1.0/fa/fontara-5.1-popup.png)
 
 ## Contents
 
@@ -89,7 +90,8 @@ are mainly for testers, reviewers, and contributors.
 - Smart RTL support for right-to-left scripts, editable text surfaces, and
   curated site adapters.
 - Multilingual extension UI for English, Persian, and Arabic.
-- Custom font uploads with local-only storage.
+- Multi-file custom-font families with local-only binary storage and no base64
+  exposure in page DOM.
 - Backup, import, export, reset, sync settings, and cross-browser MV3 builds for
   Chrome, Firefox, Edge, Brave, Opera, and Safari-style packages.
 
@@ -101,21 +103,23 @@ are mainly for testers, reviewers, and contributors.
 - Manual and nightly browser matrix for Chrome stable/beta and Firefox
   latest/beta/ESR.
 - Firefox review packaging and extension lint support.
+- Deterministic artifacts, permission/bundle budgets, and exact bundled-font
+  provenance checks.
 
 ## Preview
 
 The screenshots below show the popup, options page, site controls, and browser
 integration.
 
-![FontARA popup and page preview](docs/images/demo/screens/Banner1.jpg)
+![FontARA popup and page preview](docs/images/store/5.1.0/fa/fontara-5.1-popup.png)
 
-![FontARA built-in site optimizations preview](docs/images/demo/screens/Banner2.jpg)
+![FontARA settings overview](docs/images/store/5.1.0/fa/fontara-5.1-general.png)
 
-![FontARA settings preview](docs/images/demo/screens/Banner3.jpg)
+![FontARA custom-font library](docs/images/store/5.1.0/fa/fontara-5.1-custom-fonts.png)
 
-![FontARA site profiles preview](docs/images/demo/screens/Banner4.jpg)
+![FontARA site profiles preview](docs/images/store/5.1.0/fa/fontara-5.1-site-profiles.png)
 
-![FontARA browser preview](docs/images/demo/screens/Banner5.jpg)
+![FontARA smart RTL settings](docs/images/store/5.1.0/fa/fontara-5.1-smart-rtl.png)
 
 ## Built-in Site Optimizations
 
@@ -212,23 +216,24 @@ custom font records, site lists, backup/import data, and syncable preferences.
 
 | Permission or capability | Why FontARA needs it | Privacy note |
 | --- | --- | --- |
-| `<all_urls>` content script and host access | Apply fonts and site CSS on pages where the user enables FontARA. | Activation still respects global, include, exclude, and per-site settings. |
+| `*://*/*` content script and host access | Apply fonts and site CSS on HTTP(S) pages where the user enables FontARA. | File and unsupported schemes are excluded; activation still respects global, include, exclude, and per-site settings. |
 | `storage` | Save settings, site lists, profiles, backup/import state, and syncable preferences. | Settings are stored in browser extension storage. |
-| `unlimitedStorage` | Store custom font records and larger local settings safely. | Custom font files stay local and are excluded from sync storage. |
-| `tabs` | Read the current tab URL for popup state, current-site toggles, and tab notifications. | FontARA does not collect browsing history. |
+| `unlimitedStorage` | Store custom-font face blobs within FontARA's own 50 MiB library quota. | Font binaries stay local and are excluded from settings messages and sync storage. |
 | `fontSettings` | List installed system fonts on Chromium-based browsers. | Firefox builds omit this permission and keep system fonts disabled. |
-| `contextMenus` | Provide quick extension actions from the browser context menu. | Optional on Chromium builds and required by Firefox packaging. |
+| `contextMenus` | Provide quick extension actions from the browser context menu. | Optional on both Chromium and Firefox; requested and revoked with the user's toggle. |
 | Web accessible font assets | Let pages load bundled extension font files through injected CSS. | Only bundled font assets are exposed. |
 | Google Fonts network access | Request the selected Google Font CSS and font file when Google Fonts are enabled. | No Google API key is needed at runtime; requests happen for the selected font only. |
 
-- Custom font files and system font choices are local-only and are excluded from
-  sync storage.
+- Custom font binaries and system-font choices are local-only and are excluded
+  from sync storage. Custom binaries are registered with `FontFace` and are not
+  placed in the page DOM.
 - Runtime font loading requests only the selected Google Font CSS when Google
   fonts are enabled.
 - Site-specific CSS is bundled with the extension and mapped through the
   configuration layer.
 - Extension pages use a locked-down content security policy and expose only font
   assets to web pages.
+- The complete policy is published at [docs/privacy.html](docs/privacy.html).
 
 ## Troubleshooting
 
@@ -332,9 +337,11 @@ release work.
 
 ## Google Fonts Catalog
 
-The extension ships a generated Google Fonts catalog, so normal builds do not
-need a Google API key. To refresh that catalog from Google Fonts Developer API
-v1, provide the key through your shell, a CI secret, or a local gitignored
+The extension ships one generated JSON catalog and fetches it from its own
+package only when Google Fonts is enabled and a selector opens. It is not
+bundled into background, inject, popup, or options JavaScript. Normal builds do
+not need a Google API key. To refresh that catalog from Google Fonts Developer
+API v1, provide the key through your shell, a CI secret, or a local gitignored
 `.env.local` file:
 
 ```sh

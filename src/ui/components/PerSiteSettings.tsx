@@ -1,4 +1,4 @@
-import { Settings2, Trash2 } from "lucide-react"
+import { Globe2, Settings2, Trash2 } from "lucide-react"
 import * as React from "react"
 
 import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
@@ -30,11 +30,14 @@ import {
   TEXT_STROKE_MIN,
   TEXT_STROKE_STEP
 } from "../../config/text-stroke"
-import type { FontData, SiteProfile } from "../../definitions"
+import type { CustomFontFamily } from "../../custom-font-types"
+import type { SiteProfile } from "../../definitions"
 import { cn } from "../../utils/cn"
 import {
+  decodeGoogleFontValue,
+  type GoogleFontData,
   getGoogleFontByValue,
-  getGoogleFontList
+  loadGoogleFontList
 } from "../../utils/google-fonts"
 import { openOptionsPageSafely } from "../../utils/options-page"
 import {
@@ -43,7 +46,7 @@ import {
   type SystemFontData
 } from "../../utils/system-fonts"
 import { useExtensionData } from "../hooks/use-extension-data"
-import { useStorageValue } from "../hooks/use-storage"
+import { useDebouncedStorageValue, useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
   EMPTY_CUSTOM_FONT_LIST,
@@ -113,6 +116,7 @@ export default function PerSiteSettings() {
   const { direction, formatNumber, language, t } = useI18n()
   const currentTab = useExtensionData()?.activeTab ?? null
   const [drawerOpen, setDrawerOpen] = React.useState(false)
+  const [googleFonts, setGoogleFonts] = React.useState<GoogleFontData[]>([])
   const [systemFonts, setSystemFonts] = React.useState<SystemFontData[]>([])
 
   const [selectedFont] = useStorageValue<string>(
@@ -123,14 +127,15 @@ export default function PerSiteSettings() {
     STORAGE_KEYS.TEXT_STROKE,
     getTextStrokeInitialValue
   )
-  const [customFontList] = useStorageValue<FontData[]>(
+  const [customFontList] = useStorageValue<CustomFontFamily[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
-  const [siteProfiles, setSiteProfiles] = useStorageValue<SiteProfile[]>(
-    STORAGE_KEYS.SITE_PROFILES,
-    getSiteProfilesInitialValue
-  )
+  const [siteProfiles, setSiteProfiles, flushSiteProfiles] =
+    useDebouncedStorageValue<SiteProfile[]>(
+      STORAGE_KEYS.SITE_PROFILES,
+      getSiteProfilesInitialValue
+    )
   const [enabledByDefault] = useStorageValue<boolean>(
     STORAGE_KEYS.ENABLED_BY_DEFAULT,
     getEnabledByDefaultInitialValue
@@ -155,6 +160,36 @@ export default function PerSiteSettings() {
   React.useEffect(() => {
     let cancelled = false
 
+    if (!googleFontsEnabled) {
+      setGoogleFonts([])
+      return () => {
+        cancelled = true
+      }
+    }
+    if (!drawerOpen) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void loadGoogleFontList()
+      .then((fonts) => {
+        if (!cancelled) setGoogleFonts(fonts)
+      })
+      .catch((error) => {
+        if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+          console.warn("Failed to load the Google Fonts catalog.", error)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [drawerOpen, googleFontsEnabled])
+
+  React.useEffect(() => {
+    let cancelled = false
+
     if (!systemFontsEnabled) {
       setSystemFonts([])
       return () => {
@@ -162,7 +197,7 @@ export default function PerSiteSettings() {
       }
     }
 
-    getSystemFontList()
+    getSystemFontList({ retry: true })
       .then((fonts) => {
         if (!cancelled) {
           setSystemFonts(fonts)
@@ -255,14 +290,14 @@ export default function PerSiteSettings() {
     {
       label: t("fontSelector.customGroup"),
       options: customFontList.map((font) => ({
-        label: font.name,
+        label: font.displayName,
         value: font.value
       }))
     },
     {
       label: t("fontSelector.googleGroup"),
       options: googleFontsEnabled
-        ? getGoogleFontList().map((font) => ({
+        ? googleFonts.map((font) => ({
             label: font.name,
             value: font.value
           }))
@@ -290,10 +325,16 @@ export default function PerSiteSettings() {
     const googleFont = getGoogleFontByValue(fontValue)
     if (googleFont) return googleFont.family
 
+    const googleFontFamily = decodeGoogleFontValue(fontValue)
+    if (googleFontFamily) return googleFontFamily
+
     return fontValue
   }
 
-  const saveProfilePatch = async (patch: SiteProfilePatch) => {
+  const saveProfilePatch = async (
+    patch: SiteProfilePatch,
+    options: { flush?: boolean } = { flush: true }
+  ) => {
     if (!profilePattern) return
 
     const nextPattern = profilePattern
@@ -336,6 +377,9 @@ export default function PerSiteSettings() {
 
     try {
       await setSiteProfiles(nextProfiles)
+      if (options.flush !== false) {
+        await flushSiteProfiles()
+      }
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to save per-site settings.", error)
@@ -351,6 +395,7 @@ export default function PerSiteSettings() {
       await setSiteProfiles(
         removeSiteProfile(normalizedSiteProfiles, profileToRemove.pattern)
       )
+      await flushSiteProfiles()
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to reset per-site settings.", error)
@@ -395,10 +440,13 @@ export default function PerSiteSettings() {
   const handleTextStrokeChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    await saveProfilePatch({
-      enabled: true,
-      textStroke: Number(event.currentTarget.value)
-    })
+    await saveProfilePatch(
+      {
+        enabled: true,
+        textStroke: Number(event.currentTarget.value)
+      },
+      { flush: false }
+    )
   }
 
   return (
@@ -406,6 +454,8 @@ export default function PerSiteSettings() {
       <button
         type="button"
         data-testid="fontara-per-site-settings-open"
+        aria-controls="fontara-per-site-settings-drawer"
+        aria-expanded={drawerOpen}
         className={cn(
           "flex w-full items-center gap-2 rounded-md border p-2 text-start transition",
           currentProfileEnabled
@@ -449,7 +499,10 @@ export default function PerSiteSettings() {
       </button>
 
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="bottom">
-        <DrawerContent dir={direction} className="max-h-[85vh] overflow-y-auto">
+        <DrawerContent
+          id="fontara-per-site-settings-drawer"
+          dir={direction}
+          className="max-h-[85vh] overflow-y-auto">
           <DrawerHeader>
             <DrawerTitle className="text-center">
               {t("popup.perSite.drawerTitle")}
@@ -461,13 +514,7 @@ export default function PerSiteSettings() {
 
           <div className="space-y-3 px-4 pb-2">
             <div className="flex items-center gap-3 rounded-md border border-[#e5e7eb] bg-[#f8fafc] p-3">
-              {currentTab.favIconUrl && (
-                <img
-                  alt=""
-                  src={currentTab.favIconUrl}
-                  className="size-6 shrink-0 rounded object-contain"
-                />
-              )}
+              <Globe2 aria-hidden="true" className="size-6 shrink-0" />
               <div className="min-w-0 flex-1">
                 <span className="block text-xs font-semibold text-[#64748b]">
                   {t("popup.perSite.currentSite")}
@@ -626,10 +673,12 @@ export default function PerSiteSettings() {
                   value={profileTextStrokeValue}
                   disabled={!customStrokeEnabled}
                   onChange={(event) => void handleTextStrokeChange(event)}
+                  onBlur={() => void flushSiteProfiles()}
+                  onPointerUp={() => void flushSiteProfiles()}
                   aria-label={t("popup.perSite.textStrokeLabel")}
                   className="h-2 w-full cursor-pointer accent-[#2374ff] disabled:cursor-not-allowed"
                 />
-                <div className="flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-[#64748b]">
                   <span>
                     {formatNumber(TEXT_STROKE_MIN, {
                       maximumFractionDigits: 1,

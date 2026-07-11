@@ -10,15 +10,25 @@ import {
 import { FONTARA_TEXT_UNICODE_RANGE } from "../../src/config/font-unicode-range"
 import { getActiveWebsiteSitePatterns } from "../../src/config/site-list"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
-import type { FontData, WebsiteItem } from "../../src/definitions"
+import type { LegacyCustomFontData } from "../../src/custom-font-types"
+import type { WebsiteItem } from "../../src/definitions"
+import {
+  CUSTOM_FONT_FACE_STORAGE_PREFIX,
+  CUSTOM_FONT_STORAGE_SCHEMA_VERSION,
+  CUSTOM_FONT_STORAGE_SCHEMA_VERSION_KEY
+} from "../../src/utils/custom-font-storage"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { FONTARA_SETTINGS_UPDATED_AT_KEY } from "../../src/utils/settings-sync"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
+const originalChromium = Reflect.get(globalThis, "__CHROMIUM_MV3__") as unknown
+const originalFirefox = Reflect.get(globalThis, "__FIREFOX_MV3__") as unknown
 
 afterEach(() => {
   Reflect.set(globalThis, "chrome", originalChrome)
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", originalChromium)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", originalFirefox)
 })
 
 function mockLocalStorage(
@@ -898,11 +908,11 @@ test("normalizeCustomFontList backfills missing file hashes", async () => {
     }
   ])
 
-  assert.equal(font.fileHash.length, 64)
-  assert.equal(font.originalFileName, "legacy.woff2")
+  assert.equal(font.faces[0].fileHash.length, 64)
+  assert.equal(font.faces[0].fileName, "legacy.woff2")
 })
 
-test("normalizeCustomFontList normalizes generic font data URL MIME types", async () => {
+test("normalizeCustomFontList migrates generic data URL metadata", async () => {
   const [font] = await normalizeCustomFontList([
     {
       value: "GenericMimeCustom-Fontara",
@@ -913,9 +923,9 @@ test("normalizeCustomFontList normalizes generic font data URL MIME types", asyn
     }
   ])
 
-  assert.equal(font.data.startsWith("data:font/ttf;base64,"), true)
-  assert.equal(font.type, "ttf")
-  assert.equal(font.fileHash.length, 64)
+  assert.equal(font.faces[0].format, "ttf")
+  assert.equal(font.faces[0].fileHash.length, 64)
+  assert.equal("data" in font, false)
 })
 
 test("normalizeCustomFontList normalizes custom font unicode ranges", async () => {
@@ -950,7 +960,7 @@ test("normalizeCustomFontList normalizes custom font unicode ranges", async () =
   assert.equal(fonts[2].unicodeRange, null)
 })
 
-test("normalizeCustomFontList rejects unsafe custom font records", async () => {
+test("normalizeCustomFontList rejects unsafe aliases but retains failed files", async () => {
   const fonts = await normalizeCustomFontList([
     {
       value: 'Bad"-Fontara',
@@ -966,10 +976,13 @@ test("normalizeCustomFontList rejects unsafe custom font records", async () => {
     }
   ])
 
-  assert.deepEqual(fonts, [])
+  assert.equal(fonts.length, 1)
+  assert.equal(fonts[0].value, "InvalidData-Fontara")
+  assert.equal(fonts[0].faces[0].validation, "failed")
+  assert.equal("data" in fonts[0], false)
 })
 
-test("ensureStorageValues resets selection when normalization removes the selected custom font", async () => {
+test("ensureStorageValues keeps failed metadata and its dormant selection", async () => {
   const values: Record<string, unknown> = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
       {
@@ -987,15 +1000,62 @@ test("ensureStorageValues resets selection when normalization removes the select
 
   await ensureStorageValues()
 
-  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
-  assert.deepEqual(values[STORAGE_KEYS.CUSTOM_FONT_LIST], [])
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], "RemovedCustom-Fontara")
+  const families = values[STORAGE_KEYS.CUSTOM_FONT_LIST] as Array<{
+    faces: Array<{ fileHash: string; validation: string }>
+  }>
+  assert.equal(families.length, 1)
+  assert.equal(families[0].faces[0].validation, "failed")
+  const failedBlob = values[
+    `customFontFace:${families[0].faces[0].fileHash}`
+  ] as { data?: string }
+  assert.equal(typeof failedBlob?.data, "string")
+  assert.equal(Buffer.from(failedBlob.data ?? "", "base64").toString(), "font")
+})
+
+test("legacy migration quarantines undecodable font data without losing selection", async () => {
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
+      {
+        value: "RecoveryCustom-Fontara",
+        name: "Recovery Custom",
+        data: "not-a-data-url",
+        type: "unknown-font-format"
+      }
+    ],
+    [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+    [STORAGE_KEYS.SELECTED_FONT]: "RecoveryCustom-Fontara",
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      { font: "RecoveryCustom-Fontara", pattern: "example.com" }
+    ],
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], "RecoveryCustom-Fontara")
+  assert.deepEqual(values[STORAGE_KEYS.SITE_PROFILES], [
+    { font: "RecoveryCustom-Fontara", pattern: "example.com" }
+  ])
+  const [family] = values[STORAGE_KEYS.CUSTOM_FONT_LIST] as Array<{
+    faces: Array<{ fileHash: string; validation: string }>
+  }>
+  assert.equal(family.faces[0].validation, "failed")
+  const recoveryBlob = values[`customFontFace:${family.faces[0].fileHash}`] as {
+    data: string
+  }
+  assert.match(
+    Buffer.from(recoveryBlob.data, "base64").toString(),
+    /not-a-data-url/
+  )
 })
 
 test("ensureStorageValues seeds empty sync storage without custom font files", async () => {
-  const localCustomFont: FontData = {
+  const localCustomFont: LegacyCustomFontData = {
     value: "LocalCustom-Fontara",
     name: "Local Custom",
-    data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+    data: `data:font/woff2;base64,${Buffer.from("wOF2font").toString("base64")}`,
     type: "woff2",
     fileHash: "b".repeat(64),
     originalFileName: "LocalCustom.woff2"
@@ -1019,6 +1079,20 @@ test("ensureStorageValues seeds empty sync storage without custom font files", a
   await ensureStorageValues()
 
   assert.equal(localValues[STORAGE_KEYS.SELECTED_FONT], localCustomFont.value)
+  const [migratedFamily] = localValues[STORAGE_KEYS.CUSTOM_FONT_LIST] as Array<{
+    faces: Array<{ fileHash: string; validation: string }>
+  }>
+  assert.equal("data" in migratedFamily, false)
+  assert.equal(migratedFamily.faces[0].validation, "legacy-unverified")
+  assert.equal(
+    `${CUSTOM_FONT_FACE_STORAGE_PREFIX}${migratedFamily.faces[0].fileHash}` in
+      localValues,
+    true
+  )
+  assert.equal(
+    localValues[CUSTOM_FONT_STORAGE_SCHEMA_VERSION_KEY],
+    CUSTOM_FONT_STORAGE_SCHEMA_VERSION
+  )
   assert.equal(STORAGE_KEYS.CUSTOM_FONT_LIST in syncValues, false)
   assert.equal(STORAGE_KEYS.SELECTED_FONT in syncValues, false)
   assert.deepEqual(syncValues[STORAGE_KEYS.SITE_PROFILES], [
@@ -1031,10 +1105,10 @@ test("ensureStorageValues seeds empty sync storage without custom font files", a
 })
 
 test("ensureStorageValues mirrors synced settings and preserves local custom fonts", async () => {
-  const localCustomFont: FontData = {
+  const localCustomFont: LegacyCustomFontData = {
     value: "LocalCustom-Fontara",
     name: "Local Custom",
-    data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
+    data: `data:font/woff2;base64,${Buffer.from("wOF2font").toString("base64")}`,
     type: "woff2",
     fileHash: "c".repeat(64),
     originalFileName: "LocalCustom.woff2"
@@ -1276,6 +1350,10 @@ test("ensureStorageValues normalizes per-site profile overrides", async () => {
       enabled: false,
       pattern: "custom.example.com",
       textStroke: 0.4
+    },
+    {
+      font: selectedSystemFont,
+      pattern: "system.example.com"
     }
   ])
 })
@@ -1310,7 +1388,7 @@ test("ensureStorageValues migrates legacy boolean text stroke settings", async (
   assert.equal(values[STORAGE_KEYS.TEXT_STROKE], 0.3)
 })
 
-test("ensureStorageValues preserves selected system fonts only when enabled", async () => {
+test("ensureStorageValues preserves dormant selected system fonts when disabled", async () => {
   const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
   assert.ok(selectedSystemFont)
   const values: Record<string, unknown> = {
@@ -1329,10 +1407,12 @@ test("ensureStorageValues preserves selected system fonts only when enabled", as
   values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] = false
   await ensureStorageValues()
 
-  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], selectedSystemFont)
 })
 
-test("ensureStorageValues disables stored system fonts in Firefox", async () => {
+test("ensureStorageValues disables the Firefox capability without deleting dormant choices", async () => {
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", false)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", true)
   const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
   assert.ok(selectedSystemFont)
   const values: Record<string, unknown> = {
@@ -1353,8 +1433,13 @@ test("ensureStorageValues disables stored system fonts in Firefox", async () => 
   await ensureStorageValues()
 
   assert.equal(values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED], false)
-  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
-  assert.deepEqual(values[STORAGE_KEYS.SITE_PROFILES], [])
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], selectedSystemFont)
+  assert.deepEqual(values[STORAGE_KEYS.SITE_PROFILES], [
+    {
+      font: selectedSystemFont,
+      pattern: "system.example.com"
+    }
+  ])
 })
 
 test("ensureStorageValues preserves selected Google fonts only when enabled", async () => {
@@ -1378,7 +1463,7 @@ test("ensureStorageValues preserves selected Google fonts only when enabled", as
   assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
 })
 
-test("ensureStorageValues resets unknown selected Google font values", async () => {
+test("ensureStorageValues preserves safe Google families without loading the catalog", async () => {
   const unknownGoogleFont = createGoogleFontValue("Missing Font")
   const values: Record<string, unknown> = {
     [STORAGE_KEYS.EXTENSION_ENABLED]: true,
@@ -1391,7 +1476,7 @@ test("ensureStorageValues resets unknown selected Google font values", async () 
 
   await ensureStorageValues()
 
-  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], DEFAULT_VALUES.SELECTED_FONT)
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], unknownGoogleFont)
 })
 
 test("ensureStorageValues resets non-text Google font selections", async () => {

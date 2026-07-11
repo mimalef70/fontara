@@ -2,26 +2,40 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
-import type { FontData } from "../../src/definitions"
+import type { CustomFontFamily } from "../../src/custom-font-types"
 import { createCustomFontDeletionUpdate } from "../../src/utils/custom-fonts"
 
-const customFonts: FontData[] = [
-  {
-    value: "SelectedCustom-Fontara",
-    name: "Selected Custom",
-    data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
-    type: "woff2",
-    fileHash: "a".repeat(64),
-    originalFileName: "selected.woff2"
-  },
-  {
-    value: "OtherCustom-Fontara",
-    name: "Other Custom",
-    data: `data:font/woff2;base64,${Buffer.from("other").toString("base64")}`,
-    type: "woff2",
-    fileHash: "b".repeat(64),
-    originalFileName: "other.woff2"
+function createFamily(
+  value: string,
+  displayName: string,
+  hashCharacter: string
+): CustomFontFamily {
+  return {
+    value,
+    displayName,
+    sourceFamilyKey: displayName.toLowerCase(),
+    unicodeRange: null,
+    revision: 1,
+    faces: [
+      {
+        id: `${hashCharacter}-face`,
+        fileHash: hashCharacter.repeat(64),
+        fileName: `${displayName}.woff2`,
+        format: "woff2",
+        byteLength: 4,
+        weight: { min: 400, max: 400 },
+        style: "normal",
+        stretch: { min: 100, max: 100 },
+        axes: [],
+        validation: "verified"
+      }
+    ]
   }
+}
+
+const customFonts = [
+  createFamily("SelectedCustom-Fontara", "Selected Custom", "a"),
+  createFamily("OtherCustom-Fontara", "Other Custom", "b")
 ]
 
 test("deleting the selected custom font resets selection to the default font", () => {

@@ -381,6 +381,29 @@ export function getURLHostOrProtocol(url: string): string {
   }
 }
 
+export function createStoredSiteURL(
+  url: string,
+  scope: Extract<SitePatternScope, "domain" | "path"> = "domain"
+): string | null {
+  try {
+    const parsed = new URL(
+      PROTOCOL_PATTERN.test(url) ? url : `https://${url.trim()}`
+    )
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null
+    }
+
+    const host = parsed.host.toLowerCase()
+    if (!host) return null
+    if (scope !== "path") return host
+
+    const pathname = parsed.pathname.replace(/\/{2,}/g, "/").replace(/\/+$/, "")
+    return pathname && pathname !== "/" ? `${host}${pathname}` : host
+  } catch {
+    return null
+  }
+}
+
 export function getDisplaySitePattern(pattern: string): string {
   const homepagePathHost = getHomepagePathPatternHost(pattern)
   if (homepagePathHost) {

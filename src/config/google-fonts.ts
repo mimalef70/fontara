@@ -1,5 +1,3 @@
-import { GENERATED_GOOGLE_FONTS } from "./generated/google-fonts"
-
 export type GoogleFontCategory =
   | "display"
   | "handwriting"
@@ -22,5 +20,3 @@ export type GoogleFontMetadata = {
   variants: string[]
   axes?: GoogleFontAxis[]
 }
-
-export const GOOGLE_FONTS = GENERATED_GOOGLE_FONTS

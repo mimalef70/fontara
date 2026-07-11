@@ -9,7 +9,6 @@ import { removeStyle, upsertStyle } from "./style-utils"
 
 const FONT_STYLES_ID = "fontara-font-styles"
 const CUSTOM_CSS_ID = "fontara-custom-css-style"
-const CUSTOM_FONT_STYLES_ID = "fontara-custom-font-styles"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
 const GOOGLE_FONT_STYLES_ID = "fontara-google-font-styles"
 
@@ -43,12 +42,6 @@ export function injectResolvedFontStyles(
     removeStyle(GOOGLE_FONT_STYLES_ID)
   }
 
-  if (data.customFontCSS) {
-    upsertStyle(CUSTOM_FONT_STYLES_ID, data.customFontCSS)
-  } else {
-    removeStyle(CUSTOM_FONT_STYLES_ID)
-  }
-
   if (data.customCSS) {
     removeEditableFontStyles()
     removeInlineFontStyles()
@@ -65,7 +58,6 @@ export function removeFontStyles(): void {
   removeStyle(FONT_STYLES_ID)
   removeStyle(DYNAMIC_FONT_ID)
   removeEditableFontStyles()
-  removeStyle(CUSTOM_FONT_STYLES_ID)
   removeStyle(GOOGLE_FONT_STYLES_ID)
   removeStyle(CUSTOM_CSS_ID)
   removeInlineFontStyles()

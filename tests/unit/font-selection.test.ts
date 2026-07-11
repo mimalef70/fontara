@@ -2,18 +2,34 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { DEFAULT_VALUES } from "../../src/config/storage"
-import type { FontData } from "../../src/definitions"
+import type { CustomFontFamily } from "../../src/custom-font-types"
 import { resolveFontSelection } from "../../src/generators/font-selection"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
-function createCustomFont(value: string, name = "Runtime Custom"): FontData {
+function createCustomFont(
+  value: string,
+  name = "Runtime Custom"
+): CustomFontFamily {
   return {
-    data: `data:font/woff2;base64,${Buffer.from(value).toString("base64")}`,
-    fileHash: "a".repeat(64),
-    name,
-    originalFileName: `${name}.woff2`,
-    type: "woff2",
-    value
+    value,
+    displayName: name,
+    sourceFamilyKey: name.toLowerCase(),
+    unicodeRange: null,
+    revision: 3,
+    faces: [
+      {
+        id: `${value}-face`,
+        fileHash: "a".repeat(64),
+        fileName: `${name}.woff2`,
+        format: "woff2",
+        byteLength: 4,
+        weight: { min: 400, max: 400 },
+        style: "normal",
+        stretch: { min: 100, max: 100 },
+        axes: [],
+        validation: "verified"
+      }
+    ]
   }
 }
 
@@ -21,13 +37,14 @@ test("font selection resolver keeps bundled fonts without extra assets", async (
   const font = await resolveFontSelection("Estedad-Fontara")
 
   assert.deepEqual(font, {
-    customFontCSS: "",
+    customFontFamilyRevision: null,
+    customFontFamilyValue: null,
     fontName: "Estedad-Fontara",
     googleFontCSS: null
   })
 })
 
-test("font selection resolver emits only the selected custom font", async () => {
+test("font selection resolver emits only selected custom family metadata", async () => {
   const selectedFont = createCustomFont("Selected-Fontara", "Selected")
   const ignoredFont = createCustomFont("Ignored-Fontara", "Ignored")
   const font = await resolveFontSelection(selectedFont.value, {
@@ -35,8 +52,8 @@ test("font selection resolver emits only the selected custom font", async () => 
   })
 
   assert.equal(font.fontName, selectedFont.value)
-  assert.match(font.customFontCSS, /font-family: "Selected-Fontara"/)
-  assert.doesNotMatch(font.customFontCSS, /Ignored-Fontara/)
+  assert.equal(font.customFontFamilyValue, selectedFont.value)
+  assert.equal(font.customFontFamilyRevision, selectedFont.revision)
   assert.equal(font.googleFontCSS, null)
 })
 
@@ -49,7 +66,8 @@ test("font selection resolver falls back when optional font sources are disabled
   })
 
   assert.deepEqual(font, {
-    customFontCSS: "",
+    customFontFamilyRevision: null,
+    customFontFamilyValue: null,
     fontName: DEFAULT_VALUES.SELECTED_FONT,
     googleFontCSS: null
   })

@@ -150,6 +150,7 @@ test("storage changes schedule the active injection pipeline", () => {
   assert.match(schedulerSource, /localApplyQueuedMode/)
   assert.match(schedulerSource, /let localFallbackActive = false/)
   assert.match(schedulerSource, /options\.onLocalFallbackActivated/)
+  assert.match(schedulerSource, /options\.onBackgroundCommandsEnabled/)
   assert.match(runtimeSource, /from "\.\/content-theme-scheduler"/)
   assert.match(runtimeSource, /from "\.\/content-storage"/)
   assert.match(runtimeSource, /function ensureStorageFallbackWatcher/)
@@ -161,9 +162,13 @@ test("storage changes schedule the active injection pipeline", () => {
     runtimeSource,
     /watchContentThemeStorageChanges\(themeScheduler\)/
   )
+  assert.doesNotMatch(
+    runtimeSource,
+    /themeScheduler = createContentThemeScheduler[\s\S]*?\n\s*ensureStorageFallbackWatcher\(\)\n[\s\S]*?stopWaitingForBody = runWhenBodyIsReady/
+  )
   assert.match(
     runtimeSource,
-    /themeScheduler = createContentThemeScheduler[\s\S]*?ensureStorageFallbackWatcher\(\)[\s\S]*?stopWaitingForBody = runWhenBodyIsReady/
+    /onBackgroundCommandsEnabled:[\s\S]*?stopWatchingStorage = null/
   )
   assert.match(runtimeSource, /stopWatchingUrlChanges/)
   assert.match(storageSource, /watchLocalStorage/)
@@ -282,17 +287,20 @@ test("content runtime command routing is separated from runtime wiring", () => {
   assert.doesNotMatch(runtimeSource, /cleanUpThemeCommand\(\)/)
 })
 
-test("debug browser test bridge is isolated from production runtime", () => {
+test("browser test bridge is isolated behind the dedicated test build", () => {
   const runtimeSource = readSource("src/inject/content-runtime.ts")
   const bridgeSource = readSource("src/inject/content-test-bridge.ts")
   const messengerSource = readSource("src/background/messenger.ts")
 
   assert.match(runtimeSource, /startContentTestBridge\(\)/)
-  assert.match(bridgeSource, /__DEBUG__/)
+  assert.match(runtimeSource, /__TEST__/)
+  assert.match(bridgeSource, /__TEST__/)
+  assert.match(bridgeSource, /isLocalTestPage/)
   assert.match(bridgeSource, /window\.addEventListener\("message"/)
   assert.match(bridgeSource, /isFontaraBrowserTestPagePing/)
   assert.match(bridgeSource, /createFontaraBrowserTestRelayMessage/)
-  assert.match(messengerSource, /isDebugBuild\(\)/)
+  assert.match(messengerSource, /__TEST__/)
+  assert.match(messengerSource, /127\.0\.0\.1/)
   assert.match(messengerSource, /isContentScriptSender/)
   assert.match(messengerSource, /isFontaraBrowserTestRelayMessage/)
 })
@@ -359,19 +367,14 @@ test("hot selector lookups use Sets", () => {
 test("custom font injection only emits the selected custom font", () => {
   const fontSelectionSource = readSource("src/generators/font-selection.ts")
 
-  assert.match(fontSelectionSource, /function getSelectedCustomFonts/)
+  assert.match(fontSelectionSource, /function getSelectedCustomFont/)
   assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES/)
   assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES\.has\(value\)/)
   assert.match(fontSelectionSource, /font\.value === selectedFont/)
   assert.match(fontSelectionSource, /resolveFontSelection/)
-  assert.match(
-    fontSelectionSource,
-    /createCustomFontFaces\(selectedCustomFonts\)/
-  )
-  assert.doesNotMatch(
-    fontSelectionSource,
-    /createCustomFontFaces\(customFontList\)/
-  )
+  assert.match(fontSelectionSource, /selectedCustomFont\.revision/)
+  assert.match(fontSelectionSource, /selectedCustomFont\.value/)
+  assert.doesNotMatch(fontSelectionSource, /createCustomFontFaces/)
 })
 
 test("bundled font face CSS is memoized after URL rewriting", () => {
@@ -385,14 +388,10 @@ test("bundled font face CSS is memoized after URL rewriting", () => {
   assert.match(fontFaceSource, /return cachedFontFaceCSS/)
 })
 
-test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
+test("bundled font faces avoid FOIT and use valid redistributed assets", () => {
   const fontsCSS = readSource("src/fonts.css")
   const fontFaceBlocks = fontsCSS.match(/@font-face \{[\s\S]*?\n\}/g) ?? []
-  const azarmehrPath = path.resolve(
-    "assets/fonts/azarmehr/AzarMehr[wght].woff2"
-  )
   const aradPath = path.resolve("assets/fonts/arad/Arad-VF.woff2")
-  const azarmehrFont = fs.readFileSync(azarmehrPath)
   const aradFont = fs.readFileSync(aradPath)
 
   assert.ok(fontFaceBlocks.length > 0)
@@ -416,8 +415,7 @@ test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
   assert.match(fontsCSS, /U\+0870-089F/)
   assert.match(fontsCSS, /U\+08A0-08FF/)
   assert.doesNotMatch(fontsCSS, /data:font/)
-  assert.match(fontsCSS, /assets\/fonts\/azarmehr\/AzarMehr\[wght\]\.woff2/)
+  assert.doesNotMatch(fontsCSS, /assets\/fonts\/azarmehr\//)
   assert.match(fontsCSS, /assets\/fonts\/arad\/Arad-VF\.woff2/)
-  assert.equal(azarmehrFont.subarray(0, 4).toString("ascii"), "wOF2")
   assert.equal(aradFont.subarray(0, 4).toString("ascii"), "wOF2")
 })

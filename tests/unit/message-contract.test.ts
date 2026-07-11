@@ -26,7 +26,6 @@ import {
 
 const extensionData: FontaraExtensionData = {
   activeTab: {
-    favIconUrl: null,
     id: 1,
     isActive: true,
     isSupported: true,
@@ -36,6 +35,7 @@ const extensionData: FontaraExtensionData = {
   settings: {
     selectedFont: "Vazirmatn-Fontara"
   },
+  settingsRevision: 1,
   shortcuts: {
     toggle: "Alt+Shift+F"
   }
@@ -48,10 +48,41 @@ test("runtime message contract validates UI requests", () => {
   )
   assert.equal(
     isFontaraUIMessage({
-      data: { selectedFont: "Estedad-Fontara" },
+      data: {
+        clientMutationId: "mutation-1",
+        settings: { selectedFont: "Estedad-Fontara" }
+      },
       type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
     }),
     true
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      data: {
+        clientMutationId: "mutation-font-begin",
+        family: {}
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
+    }),
+    true
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      data: {
+        clientMutationId: "mutation-font-batch",
+        settings: { customFontList: [] },
+        transactionIds: []
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_IMPORT_BATCH
+    }),
+    true
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      data: { family: {} },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
+    }),
+    false
   )
   assert.equal(
     isFontaraUIMessage({
@@ -99,10 +130,6 @@ test("runtime message contract validates UI requests", () => {
 test("runtime message contract validates content lifecycle requests", () => {
   assert.equal(
     isFontaraContentScriptMessage({
-      data: {
-        isTopFrame: true,
-        url: "https://example.com/"
-      },
       scriptId: "script-1",
       type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
     }),
@@ -114,24 +141,16 @@ test("runtime message contract validates content lifecycle requests", () => {
       scriptId: "script-1",
       type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
     }),
-    false
+    true
   )
   assert.equal(
     isFontaraContentScriptMessage({
-      data: {
-        isTopFrame: true,
-        url: "https://example.com/"
-      },
       type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
     }),
     false
   )
   assert.equal(
     isFontaraContentScriptMessage({
-      data: {
-        isTopFrame: true,
-        url: "https://example.com/"
-      },
       scriptId: "script-1",
       type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
     }),
@@ -153,7 +172,10 @@ test("runtime message contract creates background responses", () => {
 
 test("browser test bridge validates wrapped UI messages", () => {
   const uiMessage = {
-    data: { selectedFont: "Samim-Fontara" },
+    data: {
+      clientMutationId: "mutation-2",
+      settings: { selectedFont: "Samim-Fontara" }
+    },
     type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
   } as const
   const relayMessage = createFontaraBrowserTestRelayMessage(uiMessage)

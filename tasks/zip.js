@@ -5,6 +5,8 @@ const yazl = require("yazl")
 
 const { getDestDir, getZipPath } = require("./paths")
 
+const MAX_EXTENSION_ZIP_BYTES = 2.5 * 1024 * 1024
+
 async function collectFiles(directory, prefix = "") {
   const entries = await fs.promises.readdir(directory, { withFileTypes: true })
   const files = []
@@ -30,7 +32,17 @@ async function getLastCommitTime() {
     exec("git log -1 --format=%ct", (_error, stdout) => {
       const timestamp = Number(stdout)
       const seconds = Number.isFinite(timestamp) ? timestamp : 0
-      resolve(new Date(Math.max(0, seconds) * 1000))
+      const commitDate = new Date(Math.max(0, seconds) * 1000)
+      resolve(
+        new Date(
+          commitDate.getUTCFullYear(),
+          commitDate.getUTCMonth(),
+          commitDate.getUTCDate(),
+          commitDate.getUTCHours(),
+          commitDate.getUTCMinutes(),
+          commitDate.getUTCSeconds()
+        )
+      )
     })
   })
 }
@@ -53,19 +65,37 @@ async function zipBuild({ platform }) {
   const zipPath = getZipPath({ platform })
   await fs.promises.mkdir(path.dirname(zipPath), { recursive: true })
 
-  await new Promise((resolve, reject) => {
-    const zipFile = new yazl.ZipFile()
-    const output = fs.createWriteStream(zipPath)
+  const originalTimezone = process.env.TZ
+  process.env.TZ = "UTC"
 
-    output.on("close", resolve)
-    output.on("error", reject)
-    zipFile.outputStream.on("error", reject)
-    zipFile.outputStream.pipe(output)
+  try {
+    await new Promise((resolve, reject) => {
+      const zipFile = new yazl.ZipFile()
+      const output = fs.createWriteStream(zipPath)
 
-    addDirectory(zipFile, sourceDir)
-      .then(() => zipFile.end())
-      .catch(reject)
-  })
+      output.on("close", resolve)
+      output.on("error", reject)
+      zipFile.outputStream.on("error", reject)
+      zipFile.outputStream.pipe(output)
+
+      addDirectory(zipFile, sourceDir)
+        .then(() => zipFile.end())
+        .catch(reject)
+    })
+  } finally {
+    if (originalTimezone === undefined) {
+      delete process.env.TZ
+    } else {
+      process.env.TZ = originalTimezone
+    }
+  }
+
+  const { size } = await fs.promises.stat(zipPath)
+  if (size > MAX_EXTENSION_ZIP_BYTES) {
+    throw new Error(
+      `${path.basename(zipPath)} exceeds the ${MAX_EXTENSION_ZIP_BYTES} byte release budget (${size} bytes).`
+    )
+  }
 }
 
 module.exports = zipBuild

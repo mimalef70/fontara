@@ -16,10 +16,11 @@ import {
 import { normalizePinnedWebsiteUrls } from "../config/sites"
 import { DEFAULT_VALUES } from "../config/storage"
 import { normalizeTextStrokeValue } from "../config/text-stroke"
-import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
+import type { CustomFontFamily } from "../custom-font-types"
+import type { SiteProfile, WebsiteItem } from "../definitions"
 import { isSystemFontAccessSupported } from "../utils/system-fonts"
 
-export const EMPTY_CUSTOM_FONT_LIST: FontData[] = []
+export const EMPTY_CUSTOM_FONT_LIST: CustomFontFamily[] = []
 export const EMPTY_SITE_PROFILE_LIST: SiteProfile[] = EMPTY_SITE_PROFILES
 export const EMPTY_WEBSITE_LIST: WebsiteItem[] = []
 

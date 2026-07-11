@@ -1,5 +1,6 @@
 import {
   AlignRight,
+  ArrowUpRight,
   Check,
   ChevronsUpDown,
   Cloud,
@@ -12,7 +13,9 @@ import {
   Info,
   Keyboard,
   Languages,
+  LibraryBig,
   ListChecks,
+  LockKeyhole,
   Menu,
   Pin,
   Plus,
@@ -20,6 +23,7 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   Type,
   Upload
@@ -85,29 +89,47 @@ import {
   TEXT_STROKE_MIN,
   TEXT_STROKE_STEP
 } from "../../config/text-stroke"
-import type { FontData, SiteProfile, WebsiteItem } from "../../definitions"
+import type {
+  CustomFontFaceMeta,
+  CustomFontFamily
+} from "../../custom-font-types"
+import type { SiteProfile, WebsiteItem } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
-import { createCustomFontDeletionUpdate } from "../../utils/custom-fonts"
 import {
-  getFontDataURLFormat,
+  base64ToBytes,
+  bytesToBase64,
+  createCustomFontFaceId,
+  createCustomFontFileHash,
+  normalizeCustomFontFormat
+} from "../../utils/custom-font-format"
+import {
+  createCustomFontFaceBackupMap,
+  MAX_CUSTOM_FONT_BATCH_FILES,
+  MAX_CUSTOM_FONT_FAMILY_SIZE_BYTES,
+  MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
+  MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES
+} from "../../utils/custom-font-storage"
+import {
   getFontFileExtension,
   isFontFileSignatureSupported,
-  isSupportedFontExtension,
-  MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
-  normalizeFontDataURL
+  isSupportedFontExtension
 } from "../../utils/font-data"
 import {
+  decodeGoogleFontValue,
+  type GoogleFontData,
   getGoogleFontByValue,
-  getGoogleFontList,
-  isGoogleFontValue
+  isGoogleFontValue,
+  loadGoogleFontList
 } from "../../utils/google-fonts"
 import {
   createSettingsBackup,
   createSettingsBackupFileName,
   FONTARA_SETTINGS_STORAGE_KEYS,
   getSettingsBackupDefaults,
-  parseSettingsBackupText
+  MAX_SETTINGS_BACKUP_FILE_SIZE_BYTES,
+  parseSettingsBackupText,
+  prepareSettingsBackupImport
 } from "../../utils/settings-backup"
 import { getLocalValues } from "../../utils/storage"
 import { normalizeStorageValues } from "../../utils/storage-normalization"
@@ -115,10 +137,11 @@ import {
   decodeSystemFontValue,
   getSystemFontList,
   isSystemFontAccessSupported,
-  isSystemFontValue,
+  loadSystemFonts,
   type SystemFontData
 } from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
+import FontSelector from "../components/FontSelector"
 import { HotkeysSettings } from "../components/HotkeysSettings"
 import { SiteModeBadge } from "../components/SiteModeBadge"
 import { SiteScopeBadge } from "../components/SiteScopeBadge"
@@ -135,6 +158,13 @@ import {
 } from "../components/ui/alert-dialog"
 import { Button } from "../components/ui/button"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "../components/ui/card"
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -147,11 +177,14 @@ import {
   PopoverContent,
   PopoverTrigger
 } from "../components/ui/popover"
+import { Progress } from "../components/ui/progress"
 import { Switch } from "../components/ui/Switch"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue
 } from "../components/ui/select"
@@ -169,8 +202,10 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
-  SidebarTrigger
+  SidebarTrigger,
+  useSidebar
 } from "../components/ui/sidebar"
+import { Skeleton } from "../components/ui/skeleton"
 import { ToastProvider } from "../components/ui/Toast"
 import {
   Table,
@@ -180,6 +215,7 @@ import {
   TableHeader,
   TableRow
 } from "../components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Toaster } from "../components/ui/toaster"
 import { fontaraConnector } from "../connect/connector"
 import {
@@ -187,7 +223,7 @@ import {
   useExtensionData
 } from "../hooks/use-extension-data"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
-import { useStorageValue } from "../hooks/use-storage"
+import { useDebouncedStorageValue, useStorageValue } from "../hooks/use-storage"
 import { useToast } from "../hooks/use-toast"
 import { I18nProvider, useI18n, waitForI18nBootstrap } from "../i18n"
 import type { MessageKey } from "../i18n/messages"
@@ -207,6 +243,10 @@ import {
   getSystemFontsEnabledInitialValue,
   getTextStrokeInitialValue
 } from "../storage-defaults"
+import {
+  extractCustomFontMetadata,
+  validateCustomFontWithNativeFontFace
+} from "./custom-font-metadata-client"
 
 type SettingsSection =
   | "general"
@@ -215,6 +255,10 @@ type SettingsSection =
   | "rtl"
   | "hotkeys"
   | "advanced"
+
+type SiteSettingsTab = "access" | "profiles" | "optimized"
+
+const GLOBAL_SITE_PROFILE_FONT_VALUE = "__fontara_global_font__"
 
 const settingsNavigation: Array<{
   id: SettingsSection
@@ -236,6 +280,49 @@ const sectionDescriptionKeys: Record<SettingsSection, MessageKey> = {
   rtl: "options.section.rtl.description",
   hotkeys: "options.section.hotkeys.description",
   advanced: "options.section.advanced.description"
+}
+
+const OPTIONS_LOADING_CARD_IDS = ["fonts", "sites", "styles", "rtl"]
+
+function OverviewMetric({
+  icon: Icon,
+  label,
+  tone,
+  value
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  tone: "blue" | "cyan" | "indigo" | "violet"
+  value: string
+}) {
+  const tones = {
+    blue: "bg-blue-50 text-blue-700 ring-blue-100",
+    cyan: "bg-cyan-50 text-cyan-700 ring-cyan-100",
+    indigo: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+    violet: "bg-violet-50 text-violet-700 ring-violet-100"
+  } as const
+
+  return (
+    <Card className="fontara-metric-card border-0 shadow-none">
+      <CardContent className="flex items-center gap-3 p-0">
+        <span
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset",
+            tones[tone]
+          )}>
+          <Icon aria-hidden="true" className="size-[1.125rem]" />
+        </span>
+        <span className="min-w-0">
+          <strong className="block text-xl font-extrabold leading-none tracking-tight text-slate-950">
+            {value}
+          </strong>
+          <span className="mt-1 block truncate text-xs font-medium text-slate-500">
+            {label}
+          </span>
+        </span>
+      </CardContent>
+    </Card>
+  )
 }
 
 function getSettingsSectionFromHash(): SettingsSection {
@@ -311,6 +398,35 @@ type CustomFontUnicodeRangeSelectValue =
   | CustomFontUnicodeRangePresetId
   | typeof CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
 
+type PreparedCustomFontFile = {
+  bytes: ArrayBuffer
+  face: CustomFontFaceMeta
+  familyGroupName: string
+  hasCombinedItalAxis: boolean
+  sourceFamilyKey: string
+}
+
+type CustomFontSelectionFeedback = {
+  title: string
+}
+
+class CustomFontSelectionError extends Error {
+  constructor(title: string) {
+    super(title)
+    this.name = "CustomFontSelectionError"
+  }
+}
+
+function getCustomFontFaceSlot(face: CustomFontFaceMeta): string {
+  return [
+    face.style,
+    face.weight.min,
+    face.weight.max,
+    face.stretch.min,
+    face.stretch.max
+  ].join(":")
+}
+
 const unicodeRangeLabelKeys = {
   all: "options.addFont.unicodeRangePreset.all",
   "arabic-persian": "options.addFont.unicodeRangePreset.arabicPersian",
@@ -365,12 +481,8 @@ function getDefaultFontLabel(
 
 const CONTEXT_MENU_PERMISSION = "contextMenus"
 
-function isFirefoxBrowser(): boolean {
-  return navigator.userAgent.toLowerCase().includes("firefox")
-}
-
 function requestContextMenusPermission(): Promise<boolean> {
-  if (isFirefoxBrowser() || !chrome.permissions?.request) {
+  if (!chrome.permissions?.request) {
     return Promise.resolve(true)
   }
 
@@ -385,6 +497,25 @@ function requestContextMenusPermission(): Promise<boolean> {
         }
 
         resolve(hasPermission)
+      }
+    )
+  })
+}
+
+function removeContextMenusPermission(): Promise<boolean> {
+  if (!chrome.permissions?.remove) return Promise.resolve(true)
+
+  return new Promise((resolve, reject) => {
+    chrome.permissions.remove(
+      { permissions: [CONTEXT_MENU_PERMISSION] },
+      (removed) => {
+        const error = chrome.runtime?.lastError
+        if (error) {
+          reject(new Error(error.message))
+          return
+        }
+
+        resolve(removed)
       }
     )
   })
@@ -437,6 +568,123 @@ function createCustomCssProbeUrl(
   }
 }
 
+function OptionsLoadingState({ label }: { label: string }) {
+  return (
+    <div role="status" aria-live="polite" className="space-y-5">
+      <span className="sr-only">{label}</span>
+      <div className="grid gap-4 md:grid-cols-4">
+        {OPTIONS_LOADING_CARD_IDS.map((id) => (
+          <Skeleton key={id} className="h-24 w-full" />
+        ))}
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    </div>
+  )
+}
+
+function SettingsNavigation({
+  activeSection,
+  onSectionChange
+}: {
+  activeSection: SettingsSection
+  onSectionChange: (section: SettingsSection) => void
+}) {
+  const { t } = useI18n()
+  const { isMobile, setOpenMobile } = useSidebar()
+  const buttonRefs = React.useRef(new Map<SettingsSection, HTMLButtonElement>())
+
+  const selectSection = (section: SettingsSection, closeMobile: boolean) => {
+    onSectionChange(section)
+    if (closeMobile && isMobile) {
+      setOpenMobile(false)
+    }
+  }
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) => {
+    let nextIndex: number | null = null
+
+    if (event.key === "ArrowDown") {
+      nextIndex = (index + 1) % settingsNavigation.length
+    } else if (event.key === "ArrowUp") {
+      nextIndex =
+        (index - 1 + settingsNavigation.length) % settingsNavigation.length
+    } else if (event.key === "Home") {
+      nextIndex = 0
+    } else if (event.key === "End") {
+      nextIndex = settingsNavigation.length - 1
+    }
+
+    if (nextIndex === null) return
+
+    event.preventDefault()
+    const nextSection = settingsNavigation[nextIndex].id
+    selectSection(nextSection, true)
+    buttonRefs.current.get(nextSection)?.focus()
+  }
+
+  return (
+    <SidebarContent
+      role="navigation"
+      aria-label={t("options.sidebar.navigation")}
+      className="px-3 py-4">
+      <SidebarGroup className="p-0">
+        <SidebarGroupLabel className="mb-2 px-3 text-[0.6875rem] font-bold tracking-wide text-slate-400">
+          {t("options.sidebar.sections")}
+        </SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu
+            role="tablist"
+            aria-orientation="vertical"
+            className="gap-1.5">
+            {settingsNavigation.map((item, index) => {
+              const Icon = item.icon
+              const active = activeSection === item.id
+
+              return (
+                <SidebarMenuItem key={item.id} role="presentation">
+                  <SidebarMenuButton
+                    ref={(node) => {
+                      if (node) {
+                        buttonRefs.current.set(item.id, node)
+                      } else {
+                        buttonRefs.current.delete(item.id)
+                      }
+                    }}
+                    role="tab"
+                    id={`fontara-options-tab-${item.id}`}
+                    aria-controls="fontara-options-panel"
+                    aria-current={active ? "page" : undefined}
+                    aria-selected={active}
+                    tabIndex={active ? 0 : -1}
+                    isActive={active}
+                    className="fontara-nav-button"
+                    data-testid={`fontara-options-nav-${item.id}`}
+                    tooltip={t(item.labelKey)}
+                    onKeyDown={(event) => handleKeyDown(event, index)}
+                    onClick={() => selectSection(item.id, true)}>
+                    <span className="fontara-nav-icon">
+                      <Icon aria-hidden="true" className="size-4 shrink-0" />
+                    </span>
+                    <span className="truncate group-data-[collapsible=icon]:hidden">
+                      {t(item.labelKey)}
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </SidebarContent>
+  )
+}
+
 function OptionsPage() {
   useSelectedUIFont()
   const {
@@ -448,9 +696,15 @@ function OptionsPage() {
     setPreference,
     t
   } = useI18n()
-  const currentTab = useExtensionData()?.activeTab ?? null
+  const extensionData = useExtensionData()
+  const currentTab = extensionData?.activeTab ?? null
+  const [uiReady, setUiReady] = useState(false)
 
-  const [customFontList, setCustomFontList] = useStorageValue<FontData[]>(
+  const [extensionEnabled, setExtensionEnabled] = useStorageValue<boolean>(
+    STORAGE_KEYS.EXTENSION_ENABLED,
+    DEFAULT_VALUES.EXTENSION_ENABLED
+  )
+  const [customFontList] = useStorageValue<CustomFontFamily[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
@@ -466,10 +720,11 @@ function OptionsPage() {
     STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
     getGoogleFontsEnabledInitialValue
   )
-  const [textStroke, setTextStroke] = useStorageValue<number>(
-    STORAGE_KEYS.TEXT_STROKE,
-    getTextStrokeInitialValue
-  )
+  const [textStroke, setTextStroke, flushTextStroke] =
+    useDebouncedStorageValue<number>(
+      STORAGE_KEYS.TEXT_STROKE,
+      getTextStrokeInitialValue
+    )
   const [websiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
     EMPTY_WEBSITE_LIST
@@ -515,11 +770,14 @@ function OptionsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(
     getSettingsSectionFromHash
   )
+  const [siteSettingsTab, setSiteSettingsTab] =
+    useState<SiteSettingsTab>("access")
   const activeNavigation = settingsNavigation.find(
     (item) => item.id === activeSection
   )
   const ActiveSectionIcon = activeNavigation?.icon ?? Settings
   const sidebarSide = direction === "rtl" ? "right" : "left"
+  const [googleFontList, setGoogleFontList] = useState<GoogleFontData[]>([])
 
   React.useEffect(() => {
     const handleHashChange = () => {
@@ -538,43 +796,17 @@ function OptionsPage() {
     }
   }
 
-  const fontUtils = {
-    generateFileHash: async (fileBytes: Uint8Array) => {
-      const buffer = new ArrayBuffer(fileBytes.byteLength)
-      new Uint8Array(buffer).set(fileBytes)
-      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
-      const hashArray = Array.from(new Uint8Array(hashBuffer))
-      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
-    },
-    isFileContentDuplicate: (fileHash: string) => {
-      return customFontList.some(
-        (customFont) => customFont.fileHash === fileHash
-      )
-    },
-    convertToBase64: (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          if (reader.result && typeof reader.result === "string") {
-            resolve(reader.result)
-          } else {
-            reject(new Error(t("options.toast.fontProcessingError")))
-          }
-        }
-        reader.onerror = () => reject(reader.error)
-        reader.readAsDataURL(file)
-      })
-    }
-  }
-
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const settingsImportInputRef = React.useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isBackupBusy, setIsBackupBusy] = useState(false)
   const [isImportWarningVisible, setIsImportWarningVisible] = useState(false)
   const [isResetWarningVisible, setIsResetWarningVisible] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [selectedFileHash, setSelectedFileHash] = useState("")
+  const [preparedFontFiles, setPreparedFontFiles] = useState<
+    PreparedCustomFontFile[]
+  >([])
+  const [customFontSelectionFeedback, setCustomFontSelectionFeedback] =
+    useState<CustomFontSelectionFeedback | null>(null)
   const [fontName, setFontName] = useState("")
   const [fontUnicodeRangePreset, setFontUnicodeRangePreset] =
     useState<CustomFontUnicodeRangeSelectValue>(
@@ -588,6 +820,8 @@ function OptionsPage() {
   const [siteProfileTargetSearch, setSiteProfileTargetSearch] = useState("")
   const [siteProfileTargetOpen, setSiteProfileTargetOpen] = useState(false)
   const [siteProfileFontInput, setSiteProfileFontInput] = useState("")
+  const [siteProfileFontPickerOpen, setSiteProfileFontPickerOpen] =
+    useState(false)
   const [siteProfileTextStroke, setSiteProfileTextStroke] = useState(
     DEFAULT_VALUES.TEXT_STROKE
   )
@@ -602,6 +836,16 @@ function OptionsPage() {
   }, [t])
 
   React.useEffect(() => {
+    if (!extensionData) {
+      setUiReady(false)
+      return
+    }
+
+    const frame = requestAnimationFrame(() => setUiReady(true))
+    return () => cancelAnimationFrame(frame)
+  }, [extensionData])
+
+  React.useEffect(() => {
     let cancelled = false
 
     if (!systemFontsSupported || !systemFontsEnabled) {
@@ -611,7 +855,17 @@ function OptionsPage() {
       }
     }
 
-    getSystemFontList()
+    if (
+      activeSection !== "sites" ||
+      siteSettingsTab !== "profiles" ||
+      !siteProfileFontPickerOpen
+    ) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    getSystemFontList({ retry: true })
       .then((fonts) => {
         if (!cancelled) {
           setSystemFontList(fonts)
@@ -629,18 +883,70 @@ function OptionsPage() {
     return () => {
       cancelled = true
     }
-  }, [systemFontsEnabled, systemFontsSupported])
+  }, [
+    activeSection,
+    siteProfileFontPickerOpen,
+    siteSettingsTab,
+    systemFontsEnabled,
+    systemFontsSupported
+  ])
 
-  const resetSelectedFile = () => {
-    setSelectedFile(null)
-    setSelectedFileHash("")
+  React.useEffect(() => {
+    let cancelled = false
+    if (!googleFontsEnabled) {
+      setGoogleFontList([])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    if (
+      activeSection !== "sites" ||
+      siteSettingsTab !== "profiles" ||
+      !siteProfileFontPickerOpen
+    ) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void loadGoogleFontList()
+      .then((fonts) => {
+        if (!cancelled) setGoogleFontList(fonts)
+      })
+      .catch((error) => {
+        if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+          console.warn("Failed to load the Google Fonts catalog.", error)
+        }
+        if (!cancelled) setGoogleFontList([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeSection,
+    googleFontsEnabled,
+    siteProfileFontPickerOpen,
+    siteSettingsTab
+  ])
+
+  React.useEffect(() => {
+    if (activeSection !== "sites" || siteSettingsTab !== "profiles") {
+      setSiteProfileFontPickerOpen(false)
+    }
+  }, [activeSection, siteSettingsTab])
+
+  const resetSelectedFiles = (options: { keepFeedback?: boolean } = {}) => {
+    setPreparedFontFiles([])
+    if (!options.keepFeedback) setCustomFontSelectionFeedback(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
   }
 
   const resetCustomFontForm = () => {
-    resetSelectedFile()
+    resetSelectedFiles()
     setFontName("")
     setFontUnicodeRangePreset(DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET)
     setCustomFontUnicodeRange("")
@@ -661,50 +967,132 @@ function OptionsPage() {
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const files = Array.from(event.target.files ?? [])
+    if (files.length === 0) return
+    setCustomFontSelectionFeedback(null)
+    setIsLoading(true)
 
-    const extension = getFontFileExtension(file.name)
+    try {
+      if (files.length > MAX_CUSTOM_FONT_BATCH_FILES) {
+        throw new Error(t("options.toast.tooManyFontFiles"))
+      }
+      if (
+        files.reduce((total, file) => total + file.size, 0) >
+        MAX_CUSTOM_FONT_FAMILY_SIZE_BYTES
+      ) {
+        throw new Error(t("options.toast.fontFamilyTooLarge"))
+      }
 
-    if (!isSupportedFontExtension(extension)) {
+      const storedHashes = new Set(
+        customFontList.flatMap((family) =>
+          family.faces.map((face) => face.fileHash)
+        )
+      )
+      const batchHashes = new Set<string>()
+      const prepared: PreparedCustomFontFile[] = []
+
+      for (const file of files) {
+        if (/\.(?:ttc|otc)$/i.test(file.name)) {
+          throw new Error(t("options.toast.fontCollectionUnsupported"))
+        }
+        const extension = getFontFileExtension(file.name)
+        const format = normalizeCustomFontFormat(extension)
+        if (!format || !isSupportedFontExtension(extension)) {
+          throw new Error(t("options.toast.invalidExtension"))
+        }
+        if (file.size > MAX_CUSTOM_FONT_FILE_SIZE_BYTES) {
+          throw new Error(t("options.toast.fileTooLarge"))
+        }
+
+        const bytes = await file.arrayBuffer()
+        const byteView = new Uint8Array(bytes)
+        if (!isFontFileSignatureSupported(extension, byteView)) {
+          throw new Error(t("options.toast.invalidSignature"))
+        }
+        const fileHash = await createCustomFontFileHash(byteView)
+        if (storedHashes.has(fileHash) || batchHashes.has(fileHash)) {
+          throw new Error(t("options.toast.duplicateFile"))
+        }
+
+        await validateCustomFontWithNativeFontFace(bytes.slice(0), format)
+        const metadata = await extractCustomFontMetadata(
+          file.name,
+          bytes.slice(0)
+        )
+        batchHashes.add(fileHash)
+        prepared.push({
+          bytes,
+          familyGroupName: metadata.familyGroupName,
+          hasCombinedItalAxis: metadata.hasCombinedItalAxis,
+          sourceFamilyKey: metadata.sourceFamilyKey,
+          face: {
+            id: createCustomFontFaceId(fileHash),
+            fileHash,
+            fileName: file.name,
+            format,
+            byteLength: bytes.byteLength,
+            weight: metadata.weight,
+            style: metadata.style,
+            stretch: metadata.stretch,
+            axes: metadata.axes,
+            validation: "verified"
+          }
+        })
+      }
+
+      const detectedFamilies = new Map<string, string>()
+      for (const file of prepared) {
+        detectedFamilies.set(file.sourceFamilyKey, file.familyGroupName)
+      }
+      if (detectedFamilies.size > 1) {
+        throw new CustomFontSelectionError(
+          t("options.toast.mixedFontFamilies", {
+            families: Array.from(detectedFamilies.values()).join(" · ")
+          })
+        )
+      }
+
+      const faceBySlot = new Map<string, PreparedCustomFontFile>()
+      for (const file of prepared) {
+        const slot = getCustomFontFaceSlot(file.face)
+        const conflictingFile = faceBySlot.get(slot)
+        if (conflictingFile) {
+          throw new CustomFontSelectionError(
+            t("options.toast.duplicateFontFaces", {
+              files: `${conflictingFile.face.fileName} · ${file.face.fileName}`
+            })
+          )
+        }
+        faceBySlot.set(slot, file)
+      }
+
+      setPreparedFontFiles(prepared)
+      setFontName(prepared[0]?.familyGroupName || "")
+    } catch (error) {
+      const feedback =
+        error instanceof CustomFontSelectionError
+          ? { title: error.message }
+          : {
+              title:
+                error instanceof Error
+                  ? error.message
+                  : t("options.toast.fontProcessingError")
+            }
+      resetSelectedFiles({ keepFeedback: true })
+      setCustomFontSelectionFeedback(feedback)
       toast({
-        title: t("options.toast.invalidExtension")
+        title: feedback.title
       })
-      resetSelectedFile()
-      return
+    } finally {
+      setIsLoading(false)
     }
-
-    if (file.size > MAX_CUSTOM_FONT_FILE_SIZE_BYTES) {
-      toast({ title: t("options.toast.fileTooLarge") })
-      resetSelectedFile()
-      return
-    }
-
-    const fileBytes = new Uint8Array(await file.arrayBuffer())
-    if (!isFontFileSignatureSupported(extension, fileBytes)) {
-      toast({ title: t("options.toast.invalidSignature") })
-      resetSelectedFile()
-      return
-    }
-
-    const fileHash = await fontUtils.generateFileHash(fileBytes)
-    const isDuplicate = fontUtils.isFileContentDuplicate(fileHash)
-
-    if (isDuplicate) {
-      toast({ title: t("options.toast.duplicateFile") })
-      resetSelectedFile()
-      return
-    }
-
-    setSelectedFile(file)
-    setSelectedFileHash(fileHash)
   }
 
   const handleSaveFont = async () => {
     const normalizedFontName = fontName.trim()
     const unicodeRange = resolveSelectedFontUnicodeRange()
 
-    if (!selectedFile || !normalizedFontName) {
+    if (preparedFontFiles.length === 0 || !normalizedFontName) {
       toast({ title: t("options.toast.emptyFields") })
       return
     }
@@ -717,60 +1105,54 @@ function OptionsPage() {
     setIsLoading(true)
 
     try {
-      const isDuplicateName = customFontList.some((font) => {
-        return (
-          (font.name.toLowerCase().trim() || "") ===
-          normalizedFontName.toLowerCase()
-        )
-      })
+      const isDuplicateName = customFontList.some(
+        (font) =>
+          font.displayName.toLocaleLowerCase() ===
+          normalizedFontName.toLocaleLowerCase()
+      )
 
       if (isDuplicateName) {
         throw new Error(t("options.toast.duplicateFontName"))
       }
 
-      const fileHash =
-        selectedFileHash ||
-        (await fontUtils.generateFileHash(
-          new Uint8Array(await selectedFile.arrayBuffer())
-        ))
-      if (fontUtils.isFileContentDuplicate(fileHash)) {
-        throw new Error(t("options.toast.duplicateFile"))
+      let value = `${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}-Fontara`
+      while (customFontList.some((font) => font.value === value)) {
+        value = `${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}-Fontara`
+      }
+      const family = {
+        value,
+        displayName: normalizedFontName,
+        sourceFamilyKey: preparedFontFiles[0].sourceFamilyKey,
+        unicodeRange,
+        faces: preparedFontFiles.map((file) => file.face)
       }
 
-      const base64Data = await fontUtils.convertToBase64(selectedFile)
-      const extension = getFontFileExtension(selectedFile.name)
-      const normalizedDataURL = normalizeFontDataURL(base64Data, extension)
-      if (!normalizedDataURL || !getFontDataURLFormat(normalizedDataURL)) {
-        throw new Error(t("options.toast.invalidFontFile"))
-      }
-
-      const suffix = "-Fontara"
-      let value: string
-
-      do {
-        const chars =
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        let prefix = ""
-        for (let i = 0; i < 6; i++) {
-          prefix += chars[Math.floor(Math.random() * chars.length)]
+      let transactionId: string | null = null
+      try {
+        const transaction =
+          await fontaraConnector.beginCustomFontTransaction(family)
+        transactionId = transaction.transactionId
+        for (const file of preparedFontFiles) {
+          await fontaraConnector.putCustomFontFace(
+            transactionId,
+            file.face.id,
+            bytesToBase64(new Uint8Array(file.bytes))
+          )
         }
-        value = prefix + suffix
-      } while (customFontList.some((font) => font.value === value))
-
-      const fontData: FontData = {
-        value: value,
-        name: normalizedFontName,
-        data: normalizedDataURL,
-        fileHash: fileHash,
-        type: extension,
-        originalFileName: selectedFile.name,
-        unicodeRange
+        await fontaraConnector.commitCustomFontTransaction(transactionId)
+      } catch (error) {
+        if (transactionId) {
+          await fontaraConnector
+            .abortCustomFontTransaction(transactionId)
+            .catch(() => {})
+        }
+        throw error
       }
 
-      const updatedFonts = [...customFontList, fontData]
-      await setCustomFontList(updatedFonts)
-
-      toast({ title: t("options.toast.fontAdded") })
+      toast({
+        title: t("options.toast.fontAdded"),
+        description: t("options.toast.fontAddedSelectFromPopup")
+      })
 
       resetCustomFontForm()
     } catch (error) {
@@ -787,13 +1169,7 @@ function OptionsPage() {
 
   const handleDeleteFont = async (fontValue: string) => {
     try {
-      const storageUpdate = createCustomFontDeletionUpdate(
-        customFontList,
-        fontValue,
-        selectedFont,
-        siteProfiles
-      )
-      await fontaraConnector.changeSettings(storageUpdate)
+      await fontaraConnector.deleteCustomFont(fontValue)
       toast({ title: t("options.toast.fontDeleted") })
     } catch (error) {
       toast({
@@ -812,8 +1188,12 @@ function OptionsPage() {
       const settings = await normalizeStorageValues(
         await getLocalValues(getSettingsBackupDefaults())
       )
+      const customFontFaces = await createCustomFontFaceBackupMap(
+        settings[STORAGE_KEYS.CUSTOM_FONT_LIST] as CustomFontFamily[]
+      )
       const backup = createSettingsBackup(settings, {
-        extensionVersion: version
+        extensionVersion: version,
+        customFontFaces
       })
       downloadTextFile(
         createSettingsBackupFileName(),
@@ -845,21 +1225,68 @@ function OptionsPage() {
     const input = event.currentTarget
     const file = input.files?.[0]
     if (!file) return
+    if (file.size > MAX_SETTINGS_BACKUP_FILE_SIZE_BYTES) {
+      input.value = ""
+      toast({
+        title: t("options.toast.settingsImportError"),
+        description: t("options.toast.settingsImportInvalid")
+      })
+      return
+    }
 
     setIsBackupBusy(true)
 
     try {
       const parsedBackup = parseSettingsBackupText(await readTextFile(file))
-      const importedSettings = await fontaraConnector.importSettings(
-        parsedBackup.settings
-      )
-      setIsImportWarningVisible(false)
-      toast({
-        title: t("options.toast.settingsImported"),
-        description: t("options.toast.settingsImportedDescription", {
-          count: formatNumber(importedSettings.importedKeyCount)
+      const preparedImport = await prepareSettingsBackupImport(parsedBackup)
+      const transactionIds: string[] = []
+      try {
+        for (const preparedFamily of preparedImport.customFontFamilies) {
+          const transaction = await fontaraConnector.beginCustomFontTransaction(
+            preparedFamily.family
+          )
+          transactionIds.push(transaction.transactionId)
+          for (const face of preparedFamily.family.faces) {
+            const bytes = base64ToBytes(preparedFamily.faceData[face.id])
+            if (!bytes) throw new Error("invalid-custom-font-backup-face")
+            if (face.validation !== "failed") {
+              await validateCustomFontWithNativeFontFace(
+                bytes.buffer.slice(
+                  bytes.byteOffset,
+                  bytes.byteOffset + bytes.byteLength
+                ) as ArrayBuffer,
+                face.format
+              )
+            }
+            await fontaraConnector.putCustomFontFace(
+              transaction.transactionId,
+              face.id,
+              preparedFamily.faceData[face.id]
+            )
+          }
+        }
+
+        const importedSettings = await fontaraConnector.importCustomFontBatch(
+          transactionIds,
+          preparedImport.settings
+        )
+        setIsImportWarningVisible(false)
+        toast({
+          title: t("options.toast.settingsImported"),
+          description: t("options.toast.settingsImportedDescription", {
+            count: formatNumber(importedSettings.importedKeyCount)
+          })
         })
-      })
+      } catch (error) {
+        await Promise.all(
+          transactionIds.map((transactionId) =>
+            fontaraConnector
+              .abortCustomFontTransaction(transactionId)
+              .catch(() => {})
+          )
+        )
+        throw error
+      }
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to import FontAra settings.", error)
@@ -916,6 +1343,9 @@ function OptionsPage() {
       }
 
       await setContextMenusEnabled(checked)
+      if (!checked) {
+        await removeContextMenusPermission()
+      }
       toast({
         title: checked
           ? t("options.toast.contextMenusEnabled")
@@ -1067,12 +1497,14 @@ function OptionsPage() {
           isRtlSiteEnabled(normalizedRtlSiteSettings, site.id)
         ).length
 
-  const fontStorageBytes = customFontList.reduce((total, font) => {
-    return total + new Blob([font.data]).size
-  }, 0)
-  const googleFontList = React.useMemo(
-    () => (googleFontsEnabled ? getGoogleFontList() : []),
-    [googleFontsEnabled]
+  const fontStorageBytes = new Map(
+    customFontList.flatMap((family) =>
+      family.faces.map((face) => [face.fileHash, face.byteLength] as const)
+    )
+  )
+  const customFontStorageBytes = Array.from(fontStorageBytes.values()).reduce(
+    (total, bytes) => total + bytes,
+    0
   )
   const siteFontOptionGroups = React.useMemo<SiteFontOptionGroup[]>(
     () => [
@@ -1086,7 +1518,7 @@ function OptionsPage() {
       {
         label: t("fontSelector.customGroup"),
         options: customFontList.map((font) => ({
-          label: font.name,
+          label: font.displayName,
           value: font.value
         }))
       },
@@ -1125,9 +1557,23 @@ function OptionsPage() {
       const googleFont = getGoogleFontByValue(fontValue)
       if (googleFont) return googleFont.family
 
+      const googleFontFamily = decodeGoogleFontValue(fontValue)
+      if (googleFontFamily) return googleFontFamily
+
       return fontValue
     },
     [siteFontOptions, t]
+  )
+  const activeFontLabel = getSiteProfileFontLabel(selectedFont)
+  const customFontStoragePercent = Math.min(
+    100,
+    (customFontStorageBytes / MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES) * 100
+  )
+  const customFontStorageLimit = formatBytes(
+    MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES,
+    formatNumber,
+    t("unit.kb"),
+    t("unit.mb")
   )
   const getCustomFontUnicodeRangeLabel = React.useCallback(
     (unicodeRange: string | null | undefined): string => {
@@ -1143,6 +1589,42 @@ function OptionsPage() {
       return t("options.savedFonts.unicodeRangeCustom")
     },
     [t]
+  )
+  const getCustomFontFaceSummary = React.useCallback(
+    (faces: CustomFontFaceMeta[]): string => {
+      const staticNormalWeights = Array.from(
+        new Set(
+          faces
+            .filter(
+              (face) =>
+                face.style === "normal" && face.weight.min === face.weight.max
+            )
+            .map((face) => face.weight.min)
+        )
+      ).sort((a, b) => a - b)
+      if (staticNormalWeights.length > 2) {
+        return `${formatNumber(staticNormalWeights[0])}–${formatNumber(
+          staticNormalWeights[staticNormalWeights.length - 1]
+        )}`
+      }
+
+      const roles = new Set<string>()
+      for (const face of faces) {
+        if (face.style === "italic") {
+          roles.add(t("options.customFonts.face.italic"))
+        } else if (face.style === "oblique") {
+          roles.add(t("options.customFonts.face.oblique"))
+        } else if (face.weight.min !== face.weight.max) {
+          roles.add(t("options.customFonts.face.variable"))
+        } else if (face.weight.min >= 600) {
+          roles.add(t("options.customFonts.face.bold"))
+        } else {
+          roles.add(t("options.customFonts.face.regular"))
+        }
+      }
+      return Array.from(roles).join(" / ")
+    },
+    [formatNumber, t]
   )
 
   const handleWebsiteToggle = async (website: WebsiteItem) => {
@@ -1490,19 +1972,23 @@ function OptionsPage() {
     }
   }
 
+  const handleExtensionToggle = async (checked: boolean) => {
+    try {
+      await setExtensionEnabled(checked)
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : t("options.toast.extensionError")
+      })
+    }
+  }
+
   const handleSystemFontsToggle = async (checked: boolean) => {
     try {
       if (!checked) {
-        await fontaraConnector.changeSettings({
-          [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
-          [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(
-            normalizedSiteProfiles,
-            isSystemFontValue
-          ),
-          ...(isSystemFontValue(selectedFont)
-            ? { [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT }
-            : {})
-        })
+        await setSystemFontsEnabled(false)
         return
       }
 
@@ -1511,13 +1997,11 @@ function OptionsPage() {
         return
       }
 
-      const fonts = await getSystemFontList()
-      if (fonts.length === 0) {
-        toast({ title: t("options.toast.systemFontsUnsupported") })
-        return
-      }
-
       await setSystemFontsEnabled(true)
+      const state = await loadSystemFonts({ retry: true })
+      if (state.status === "error") {
+        toast({ title: t("options.toast.systemFontsError") })
+      }
     } catch (error) {
       toast({
         title:
@@ -1648,1053 +2132,461 @@ function OptionsPage() {
         className="font-estedad fontara-options-page"
         dir={direction}
         lang={language}>
-        <SidebarProvider>
-          <Sidebar collapsible="icon" dir={direction} side={sidebarSide}>
-            <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
-              <div className="flex min-h-11 items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white shadow-[inset_0_0_0_1px_#e6edf5] group-data-[collapsible=icon]:size-8">
+        <SidebarProvider
+          style={
+            {
+              "--sidebar-width": "17.25rem",
+              "--sidebar-width-icon": "4.25rem"
+            } as React.CSSProperties
+          }>
+          <Sidebar
+            collapsible="icon"
+            dir={direction}
+            side={sidebarSide}
+            mobileTitle={t("options.sidebar.mobileTitle")}
+            mobileDescription={t("options.sidebar.mobileDescription")}>
+            <SidebarHeader className="border-b border-slate-200/80 px-4 py-5 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+              <div className="flex min-h-12 items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-[0_10px_24px_rgb(37_99_235_/_24%)] group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:rounded-xl">
                   <img
                     alt=""
-                    src={getExtensionAssetURL("assets/icon-active-32.png")}
-                    className="size-7 shrink-0"
+                    src={getExtensionAssetURL("assets/icon-128.png")}
+                    className="size-8 shrink-0 group-data-[collapsible=icon]:size-7"
                   />
                 </span>
                 <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-                  <h1 className="truncate text-base font-bold text-[#111827]">
+                  <h1 className="truncate text-lg font-extrabold tracking-tight text-slate-950">
                     {t("common.appName")}
                   </h1>
-                  <p className="text-xs text-[#64748b]">
-                    {t("common.settings")}
-                  </p>
+                  <div className="mt-1 flex items-center gap-1.5 text-[0.6875rem] font-semibold text-slate-500">
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        extensionEnabled ? "bg-emerald-500" : "bg-slate-400"
+                      )}
+                    />
+                    {extensionEnabled
+                      ? t("options.overview.extensionOn")
+                      : t("options.overview.extensionOff")}
+                  </div>
                 </div>
               </div>
             </SidebarHeader>
 
-            <SidebarContent className="px-2 py-3">
-              <SidebarGroup className="p-0">
-                <SidebarGroupLabel className="px-3">
-                  {t("options.sidebar.sections")}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {settingsNavigation.map((item) => {
-                      const Icon = item.icon
+            <SettingsNavigation
+              activeSection={activeSection}
+              onSectionChange={handleSectionChange}
+            />
 
-                      return (
-                        <SidebarMenuItem key={item.id}>
-                          <SidebarMenuButton
-                            isActive={activeSection === item.id}
-                            data-testid={`fontara-options-nav-${item.id}`}
-                            tooltip={t(item.labelKey)}
-                            onClick={() => handleSectionChange(item.id)}>
-                            <Icon className="size-4 shrink-0" />
-                            <span className="truncate group-data-[collapsible=icon]:hidden">
-                              {t(item.labelKey)}
-                            </span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      )
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-
-            <SidebarFooter className="px-4 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
-              <div className="flex h-8 items-center gap-3 rounded-md bg-white px-3 text-xs text-[#667085] shadow-[inset_0_0_0_1px_#e6edf5] group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
-                <Info className="size-4 shrink-0" />
-                <span className="truncate group-data-[collapsible=icon]:hidden">
-                  {t("common.version", { version: formatVersion(version) })}
+            <SidebarFooter className="border-t border-slate-200/80 px-4 py-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+              <div className="flex min-h-11 items-center gap-3 rounded-xl bg-slate-100/80 px-3 text-xs text-slate-600 ring-1 ring-inset ring-slate-200/70 group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
+                <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
+                <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+                  <span className="block truncate font-semibold text-slate-700">
+                    {t("options.overview.privacyTitle")}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[0.625rem] text-slate-500">
+                    {t("common.version", { version: formatVersion(version) })}
+                  </span>
                 </span>
               </div>
             </SidebarFooter>
-            <SidebarRail />
+            <SidebarRail
+              aria-label={t("options.sidebar.toggle")}
+              title={t("options.sidebar.toggle")}
+            />
           </Sidebar>
 
           <SidebarInset>
-            <header className="fontara-options-header sticky top-0 z-10 flex h-[4.5rem] items-center gap-3 px-5 backdrop-blur sm:px-7">
-              <SidebarTrigger className="size-9 shrink-0 rounded-md text-[#475467] hover:bg-[#eef4ff] hover:text-[#2374ff]" />
-              <div className="fontara-icon-tile hidden sm:flex">
-                <ActiveSectionIcon className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-bold text-[#111827]">
-                  {activeNavigation
-                    ? t(activeNavigation.labelKey)
-                    : t("common.settings")}
-                </h2>
-                <p className="truncate text-xs text-[#667085]">
-                  {t(sectionDescriptionKeys[activeSection])}
-                </p>
+            <header className="fontara-options-header sticky top-0 z-20 flex min-h-20 items-center gap-3 px-4 sm:px-6 lg:px-8">
+              <div className="mx-auto flex w-full max-w-7xl items-center gap-3">
+                <SidebarTrigger
+                  type="button"
+                  label={t("options.sidebar.toggle")}
+                  className="size-10 shrink-0 rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-blue-700"
+                />
+                <div className="fontara-icon-tile hidden sm:flex">
+                  <ActiveSectionIcon className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-extrabold tracking-tight text-slate-950 sm:text-xl">
+                    {activeNavigation
+                      ? t(activeNavigation.labelKey)
+                      : t("common.settings")}
+                  </h2>
+                  <p className="hidden truncate text-xs text-slate-500 sm:block">
+                    {t(sectionDescriptionKeys[activeSection])}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 ps-3 pe-2 shadow-sm">
+                  <span className="hidden text-xs font-bold text-slate-700 sm:inline">
+                    {extensionEnabled
+                      ? t("options.overview.extensionOn")
+                      : t("options.overview.extensionOff")}
+                  </span>
+                  <Switch
+                    dir="ltr"
+                    checked={extensionEnabled}
+                    disabled={!uiReady}
+                    onCheckedChange={(checked) =>
+                      void handleExtensionToggle(checked)
+                    }
+                    aria-label={t("options.extension.toggleLabel")}
+                  />
+                </div>
               </div>
             </header>
 
-            <div className="fontara-options-content mx-auto w-full max-w-6xl space-y-5 p-5 sm:p-6 lg:p-7">
-              {activeSection === "general" && (
-                <div className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-4">
-                    <section className="fontara-panel flex items-center gap-3 p-4">
-                      <div className="fontara-icon-tile">
-                        <Type className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-2xl font-bold leading-none text-[#111827]">
-                          {formatNumber(customFontList.length)}
-                        </div>
-                        <div className="mt-1 truncate text-sm text-[#667085]">
-                          {t("options.status.customFonts")}
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="fontara-panel flex items-center gap-3 p-4">
-                      <div className="fontara-icon-tile">
-                        <Globe2 className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-2xl font-bold leading-none text-[#111827]">
-                          {formatNumber(activeWebsiteCount)}
-                        </div>
-                        <div className="mt-1 truncate text-sm text-[#667085]">
-                          {t("options.status.activeSites")}
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="fontara-panel flex items-center gap-3 p-4">
-                      <div className="fontara-icon-tile">
-                        <ListChecks className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-2xl font-bold leading-none text-[#111827]">
-                          {formatNumber(cssOnlyWebsiteCount)}
-                        </div>
-                        <div className="mt-1 truncate text-sm text-[#667085]">
-                          {t("options.status.cssOnly")}
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="fontara-panel flex items-center gap-3 p-4">
-                      <div className="fontara-icon-tile">
-                        <AlignRight className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-2xl font-bold leading-none text-[#111827]">
-                          {formatNumber(activeRtlSiteCount)}
-                        </div>
-                        <div className="mt-1 truncate text-sm text-[#667085]">
-                          {t("options.status.rtlSites")}
-                        </div>
-                      </div>
-                    </section>
-                  </div>
-
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("language.title")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {t("language.subtitle")}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <Languages className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {languageOptions.map((option) => {
-                        const active = preference === option.value
-                        const description =
-                          option.value === UI_LANGUAGE_AUTO
-                            ? `${t(option.descriptionKey)} ${t(
-                                "language.resolved",
-                                {
-                                  language: t(getLanguageLabelKey(language))
-                                }
-                              )}`
-                            : t(option.descriptionKey)
-
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            dir={direction}
-                            aria-pressed={active}
-                            onClick={() => void setPreference(option.value)}
+            <div
+              id="fontara-options-panel"
+              role="tabpanel"
+              aria-busy={!uiReady}
+              aria-labelledby={`fontara-options-tab-${activeSection}`}
+              className="fontara-options-content mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
+              {!uiReady && <OptionsLoadingState label={t("common.loading")} />}
+              <div aria-hidden={!uiReady} className={cn(!uiReady && "hidden")}>
+                {activeSection === "general" && (
+                  <div className="space-y-5">
+                    <Card className="fontara-hero-card overflow-hidden border-0">
+                      <CardContent className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:items-center lg:p-8">
+                        <div className="relative z-10 max-w-2xl">
+                          <span
                             className={cn(
-                              "fontara-choice flex min-h-20 items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
-                              active && "border-[#b9d4ff]"
+                              "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold",
+                              extensionEnabled
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : "border-slate-200 bg-slate-100 text-slate-600"
                             )}>
-                            <div className="min-w-0">
-                              <div className="text-sm font-bold text-[#111827]">
-                                {t(option.labelKey)}
-                              </div>
-                              <p className="mt-2 text-xs leading-5 text-[#64748b]">
-                                {description}
-                              </p>
-                            </div>
                             <span
                               className={cn(
-                                "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                                active
-                                  ? "border-[#2374ff] bg-[#2374ff] text-white"
-                                  : "border-[#dbe3ef] text-transparent"
-                              )}>
-                              <Check className="size-4" />
+                                "size-2 rounded-full",
+                                extensionEnabled
+                                  ? "bg-emerald-500"
+                                  : "bg-slate-400"
+                              )}
+                            />
+                            {extensionEnabled
+                              ? t("options.overview.extensionOn")
+                              : t("options.overview.extensionOff")}
+                          </span>
+                          <h3 className="mt-4 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-3xl">
+                            {t("options.overview.heroTitle")}
+                          </h3>
+                          <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
+                            {t("options.overview.heroDescription")}
+                          </p>
+                          <div className="mt-6 flex flex-wrap gap-2.5">
+                            <Button
+                              type="button"
+                              onClick={() => handleSectionChange("fonts")}
+                              className="h-10 rounded-xl bg-blue-600 px-4 text-white shadow-[0_8px_20px_rgb(37_99_235_/_20%)] hover:bg-blue-700">
+                              <Type className="size-4" />
+                              {t("options.overview.manageFonts")}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => handleSectionChange("sites")}
+                              className="h-10 rounded-xl border-slate-200 bg-white/80 px-4 text-slate-700 hover:bg-white hover:text-blue-700">
+                              <Globe2 className="size-4" />
+                              {t("options.overview.manageSites")}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="relative z-10 rounded-2xl border border-white/80 bg-white/88 p-4 shadow-[0_20px_50px_rgb(15_23_42_/_10%)] backdrop-blur">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-slate-500">
+                                {t("options.overview.activeFont")}
+                              </p>
+                              <p className="mt-1 truncate text-base font-extrabold text-slate-950">
+                                {activeFontLabel}
+                              </p>
+                            </div>
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-100">
+                              <Sparkles className="size-[1.125rem]" />
                             </span>
-                          </button>
-                        )
-                      })}
+                          </div>
+                          <FontSelector />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="fontara-metrics-shell border-0">
+                      <CardContent className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4 sm:p-5">
+                        <OverviewMetric
+                          icon={Type}
+                          label={t("options.status.customFonts")}
+                          tone="blue"
+                          value={formatNumber(customFontList.length)}
+                        />
+                        <OverviewMetric
+                          icon={Globe2}
+                          label={t("options.status.activeSites")}
+                          tone="cyan"
+                          value={formatNumber(activeWebsiteCount)}
+                        />
+                        <OverviewMetric
+                          icon={ListChecks}
+                          label={t("options.status.cssOnly")}
+                          tone="indigo"
+                          value={formatNumber(cssOnlyWebsiteCount)}
+                        />
+                        <OverviewMetric
+                          icon={AlignRight}
+                          label={t("options.status.rtlSites")}
+                          tone="violet"
+                          value={formatNumber(activeRtlSiteCount)}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+                      <Card className="fontara-settings-card border-0">
+                        <CardHeader className="flex-row items-start justify-between gap-4 space-y-0 pb-4">
+                          <div>
+                            <CardTitle>{t("language.title")}</CardTitle>
+                            <CardDescription className="mt-1.5">
+                              {t("language.subtitle")}
+                            </CardDescription>
+                          </div>
+                          <span className="fontara-icon-tile">
+                            <Languages className="size-5" />
+                          </span>
+                        </CardHeader>
+                        <CardContent className="grid gap-3 pt-0 sm:grid-cols-2">
+                          {languageOptions.map((option) => {
+                            const active = preference === option.value
+                            const description =
+                              option.value === UI_LANGUAGE_AUTO
+                                ? `${t(option.descriptionKey)} ${t(
+                                    "language.resolved",
+                                    {
+                                      language: t(getLanguageLabelKey(language))
+                                    }
+                                  )}`
+                                : t(option.descriptionKey)
+
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                dir={direction}
+                                aria-pressed={active}
+                                onClick={() => void setPreference(option.value)}
+                                className={cn(
+                                  "fontara-choice flex min-h-24 items-start justify-between gap-3 rounded-xl border p-4 text-start transition",
+                                  active && "border-blue-300 bg-blue-50/40"
+                                )}>
+                                <div className="min-w-0">
+                                  <div className="text-sm font-extrabold text-slate-900">
+                                    {t(option.labelKey)}
+                                  </div>
+                                  <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                                    {description}
+                                  </p>
+                                </div>
+                                <span
+                                  className={cn(
+                                    "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                                    active
+                                      ? "border-blue-600 bg-blue-600 text-white"
+                                      : "border-slate-300 bg-white text-transparent"
+                                  )}>
+                                  <Check className="size-4" />
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </CardContent>
+                      </Card>
+
+                      <Card className="fontara-privacy-card overflow-hidden border-0">
+                        <CardHeader>
+                          <span className="mb-2 flex size-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                            <LockKeyhole className="size-5" />
+                          </span>
+                          <CardTitle>
+                            {t("options.overview.privacyTitle")}
+                          </CardTitle>
+                          <CardDescription className="mt-2 leading-6">
+                            {t("options.overview.privacyDescription")}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => handleSectionChange("advanced")}
+                            className="h-9 rounded-lg px-0 text-blue-700 hover:bg-transparent hover:text-blue-800">
+                            {t("options.nav.advanced")}
+                            <ArrowUpRight className="size-4" />
+                          </Button>
+                        </CardContent>
+                      </Card>
                     </div>
-                  </section>
-                </div>
-              )}
+                  </div>
+                )}
 
-              {activeSection === "fonts" && (
-                <div className="space-y-6">
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="grid gap-3 lg:grid-cols-3">
-                      <div
-                        data-active={systemFontsSupported && systemFontsEnabled}
-                        className={cn(
-                          "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-md border p-4 transition",
-                          !systemFontsSupported && "opacity-75"
-                        )}>
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div className="fontara-icon-tile">
-                            <HardDrive className="size-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-bold text-[#111827]">
-                              {t("options.systemFonts.title")}
+                {activeSection === "fonts" && (
+                  <div className="space-y-5">
+                    <Card className="fontara-settings-card border-0">
+                      <CardContent className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.7fr)] lg:items-center">
+                        <div className="flex items-start gap-3">
+                          <span className="fontara-icon-tile">
+                            <Sparkles className="size-5" />
+                          </span>
+                          <div>
+                            <h3 className="text-base font-extrabold text-slate-950">
+                              {t("options.fonts.globalTitle")}
                             </h3>
-                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                              {t("options.systemFonts.description")}
+                            <p className="mt-1.5 text-xs leading-6 text-slate-500">
+                              {t("options.fonts.globalDescription")}
                             </p>
-                            <p className="mt-2 text-xs text-[#64748b]">
-                              {!systemFontsSupported
-                                ? t("options.systemFonts.unsupported")
-                                : systemFontsEnabled
-                                  ? t("options.systemFonts.enabled")
-                                  : t("options.systemFonts.disabled")}
+                            <p className="mt-2 text-sm font-bold text-blue-700">
+                              {activeFontLabel}
                             </p>
                           </div>
                         </div>
-                        <Switch
-                          dir="ltr"
-                          checked={systemFontsSupported && systemFontsEnabled}
-                          disabled={!systemFontsSupported}
-                          onCheckedChange={(checked) =>
-                            void handleSystemFontsToggle(checked)
-                          }
-                          aria-label={t("options.systemFonts.title")}
-                        />
-                      </div>
+                        <FontSelector />
+                      </CardContent>
+                    </Card>
 
-                      <div
-                        data-active={googleFontsEnabled}
-                        className={cn(
-                          "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-md border p-4 transition"
-                        )}>
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div className="fontara-icon-tile">
-                            <Cloud className="size-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-bold text-[#111827]">
-                              {t("options.googleFonts.title")}
-                            </h3>
-                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                              {t("options.googleFonts.description")}
-                            </p>
-                            <p className="mt-2 text-xs text-[#64748b]">
-                              {googleFontsEnabled
-                                ? t("options.googleFonts.enabled")
-                                : t("options.googleFonts.disabled")}
-                            </p>
-                          </div>
+                    <section className="fontara-panel p-4 sm:p-5">
+                      <div className="mb-5 flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-base font-extrabold text-slate-950">
+                            {t("options.fonts.sourcesTitle")}
+                          </h3>
+                          <p className="mt-1.5 max-w-2xl text-xs leading-6 text-slate-500">
+                            {t("options.fonts.sourcesDescription")}
+                          </p>
                         </div>
-                        <Switch
-                          dir="ltr"
-                          checked={googleFontsEnabled}
-                          onCheckedChange={(checked) =>
-                            void handleGoogleFontsToggle(checked)
-                          }
-                          aria-label={t("options.googleFonts.title")}
-                        />
+                        <span className="fontara-icon-tile">
+                          <LibraryBig className="size-5" />
+                        </span>
                       </div>
-
-                      <div
-                        data-active={textStroke > 0}
-                        className={cn(
-                          "fontara-choice flex min-h-36 flex-col gap-4 rounded-md border p-4 transition"
-                        )}>
-                        <div className="flex items-start justify-between gap-4">
+                      <div className="grid gap-3 lg:grid-cols-3">
+                        <div
+                          data-active={
+                            systemFontsSupported && systemFontsEnabled
+                          }
+                          className={cn(
+                            "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-xl border p-4 transition",
+                            !systemFontsSupported && "opacity-75"
+                          )}>
                           <div className="flex min-w-0 items-start gap-3">
                             <div className="fontara-icon-tile">
-                              <Type className="size-5" />
+                              <HardDrive className="size-5" />
                             </div>
                             <div className="min-w-0">
                               <h3 className="text-sm font-bold text-[#111827]">
-                                {t("options.textStroke.title")}
+                                {t("options.systemFonts.title")}
                               </h3>
                               <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                                {t("options.textStroke.description")}
+                                {t("options.systemFonts.description")}
                               </p>
                               <p className="mt-2 text-xs text-[#64748b]">
-                                {textStroke > 0
-                                  ? t("options.textStroke.enabled")
-                                  : t("options.textStroke.disabled")}
+                                {!systemFontsSupported
+                                  ? t("options.systemFonts.unsupported")
+                                  : systemFontsEnabled
+                                    ? t("options.systemFonts.enabled")
+                                    : t("options.systemFonts.disabled")}
                               </p>
                             </div>
                           </div>
-                          <bdi className="shrink-0 rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#2374ff]">
-                            {formattedTextStroke}
-                          </bdi>
-                        </div>
-
-                        <div dir="ltr" className="space-y-2">
-                          <input
-                            type="range"
-                            min={TEXT_STROKE_MIN}
-                            max={TEXT_STROKE_MAX}
-                            step={TEXT_STROKE_STEP}
-                            value={textStroke}
-                            onChange={(event) =>
-                              void handleTextStrokeChange(
-                                Number(event.currentTarget.value)
-                              )
-                            }
-                            aria-label={t("options.textStroke.title")}
-                            className="h-2 w-full cursor-pointer accent-[#2374ff]"
-                          />
-                          <div className="flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
-                            <span>
-                              {formatNumber(TEXT_STROKE_MIN, {
-                                maximumFractionDigits: 1,
-                                minimumFractionDigits: 1,
-                                useGrouping: false
-                              })}
-                            </span>
-                            <span>
-                              {formatNumber(TEXT_STROKE_MAX, {
-                                maximumFractionDigits: 1,
-                                minimumFractionDigits: 1,
-                                useGrouping: false
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-xs text-[#64748b]">
-                            {t("options.textStroke.value", {
-                              value: formattedTextStroke
-                            })}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void handleTextStrokeChange(0)}
-                          className="h-9 rounded-md border border-[#dbe3ef] bg-white px-3 text-xs font-semibold text-[#64748b] transition hover:border-[#bfdbfe] hover:text-[#2374ff]"
-                          disabled={textStroke <= TEXT_STROKE_MIN}>
-                          {t("options.textStroke.reset")}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
-                      <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
-                      <p className="text-xs leading-5 text-amber-800">
-                        {t("options.googleFonts.privacyNotice")}
-                      </p>
-                    </div>
-                  </section>
-
-                  <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                    <section className="fontara-panel p-4 sm:p-5">
-                      <div className="mb-5 flex items-center justify-between gap-3">
-                        <div>
-                          <h3 className="text-base font-bold text-[#111827]">
-                            {t("options.addFont.title")}
-                          </h3>
-                          <p className="mt-1 text-xs text-[#64748b]">
-                            {t("options.addFont.subtitle")}
-                          </p>
-                        </div>
-                        <div className="fontara-icon-tile">
-                          <Upload className="size-5" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label
-                            htmlFor="custom-font-file"
-                            className="mb-2 block text-sm font-medium text-[#334155]">
-                            {t("options.addFont.fileLabel")}
-                          </label>
-                          <input
-                            id="custom-font-file"
-                            ref={fileInputRef}
-                            type="file"
-                            onChange={handleFileChange}
-                            accept=".ttf,.woff,.woff2,.otf"
-                            className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 py-2 text-sm text-[#334155] file:ms-3 file:rounded-md file:border-0 file:bg-[#edf3fd] file:px-3 file:py-1.5 file:text-[#2374ff]"
-                            disabled={isLoading}
-                          />
-                        </div>
-
-                        <div>
-                          <label
-                            htmlFor="custom-font-name"
-                            className="mb-2 block text-sm font-medium text-[#334155]">
-                            {t("options.addFont.nameLabel")}
-                          </label>
-                          <input
-                            id="custom-font-name"
-                            type="text"
-                            value={fontName}
-                            onChange={(event) =>
-                              setFontName(event.target.value)
-                            }
-                            placeholder={t("options.addFont.namePlaceholder")}
-                            className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-                            disabled={isLoading}
-                            dir="auto"
-                          />
-                        </div>
-
-                        <div>
-                          <label
-                            htmlFor="custom-font-unicode-range"
-                            className="mb-2 block text-sm font-medium text-[#334155]">
-                            {t("options.addFont.unicodeRangeLabel")}
-                          </label>
-                          <Select
-                            dir={direction}
-                            disabled={isLoading}
-                            value={fontUnicodeRangePreset}
-                            onValueChange={(value) =>
-                              setFontUnicodeRangePreset(
-                                value as CustomFontUnicodeRangeSelectValue
-                              )
-                            }>
-                            <SelectTrigger
-                              id="custom-font-unicode-range"
-                              className="h-11 border-[#dbe3ef] bg-white text-sm text-[#111827] focus:ring-2 focus:ring-[#2374ff]/15">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent dir={direction}>
-                              {CUSTOM_FONT_UNICODE_RANGE_PRESETS.map(
-                                (preset) => (
-                                  <SelectItem key={preset.id} value={preset.id}>
-                                    {t(unicodeRangeLabelKeys[preset.id])}
-                                  </SelectItem>
-                                )
-                              )}
-                              <SelectItem
-                                value={CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE}>
-                                {t(
-                                  unicodeRangeLabelKeys[
-                                    CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
-                                  ]
-                                )}
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {fontUnicodeRangePreset ===
-                          CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE && (
-                          <div>
-                            <label
-                              htmlFor="custom-font-unicode-range-value"
-                              className="mb-2 block text-sm font-medium text-[#334155]">
-                              {t("options.addFont.unicodeRangeCustomLabel")}
-                            </label>
-                            <input
-                              id="custom-font-unicode-range-value"
-                              type="text"
-                              value={customFontUnicodeRange}
-                              onChange={(event) =>
-                                setCustomFontUnicodeRange(event.target.value)
-                              }
-                              placeholder={t(
-                                "options.addFont.unicodeRangeCustomPlaceholder"
-                              )}
-                              className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-                              disabled={isLoading}
-                              dir="ltr"
-                            />
-                          </div>
-                        )}
-
-                        <Button
-                          type="button"
-                          onClick={handleSaveFont}
-                          className="h-11 w-full bg-[#2374ff] text-white hover:bg-[#1f66df]"
-                          disabled={isLoading}>
-                          <Upload className="size-4" />
-                          {isLoading
-                            ? t("options.addFont.loading")
-                            : t("options.addFont.button")}
-                        </Button>
-                      </div>
-                    </section>
-
-                    <section className="fontara-panel p-4 sm:p-5">
-                      <div className="mb-5 flex items-center justify-between gap-3">
-                        <div>
-                          <h3 className="text-base font-bold text-[#111827]">
-                            {t("options.savedFonts.title")}
-                          </h3>
-                          <p className="mt-1 text-xs text-[#64748b]">
-                            {t("options.customFonts.count", {
-                              count: formatNumber(customFontList.length),
-                              size: formatBytes(
-                                fontStorageBytes,
-                                formatNumber,
-                                t("unit.kb"),
-                                t("unit.mb")
-                              )
-                            })}
-                          </p>
-                        </div>
-                        <div className="flex size-10 items-center justify-center rounded-md bg-[#f8fafc] text-[#64748b]">
-                          <FileText className="size-5" />
-                        </div>
-                      </div>
-
-                      {customFontList.length > 0 ? (
-                        <div className="space-y-3">
-                          {customFontList.map((font: FontData) => (
-                            <div
-                              key={font.value}
-                              className="flex items-center justify-between gap-3 rounded-md border border-[#e5e7eb] px-3 py-3">
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-[#111827]">
-                                  {font.name}
-                                </div>
-                                {font.originalFileName && (
-                                  <div
-                                    className="mt-1 truncate text-xs text-[#64748b]"
-                                    dir="ltr">
-                                    {font.originalFileName}
-                                  </div>
-                                )}
-                                <div className="mt-1 truncate text-xs text-[#64748b]">
-                                  {t("options.savedFonts.unicodeRange", {
-                                    range: getCustomFontUnicodeRangeLabel(
-                                      font.unicodeRange
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="shrink-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                onClick={() => handleDeleteFont(font.value)}
-                                disabled={isLoading}>
-                                <Trash2 className="size-4" />
-                                {t("common.delete")}
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-[#dbe3ef] text-sm text-[#64748b]">
-                          {t("options.emptyFonts")}
-                        </div>
-                      )}
-                    </section>
-                  </div>
-                </div>
-              )}
-
-              {activeSection === "sites" && (
-                <div className="space-y-6">
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.siteList.title")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {normalizedEnabledByDefault
-                            ? t("options.siteList.excludeDescription")
-                            : t("options.siteList.includeDescription")}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <ListChecks className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                      <div className="space-y-3">
-                        <button
-                          type="button"
-                          aria-pressed={!normalizedEnabledByDefault}
-                          data-testid="fontara-site-list-include-mode"
-                          onClick={() => void handleSiteListModeChange(false)}
-                          className={cn(
-                            "fontara-choice flex w-full items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
-                            !normalizedEnabledByDefault && "border-[#b9d4ff]"
-                          )}>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-[#111827]">
-                              {t("options.siteList.includeMode")}
-                            </div>
-                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                              {t("options.siteList.includeModeDescription")}
-                            </p>
-                          </div>
-                          <span
-                            className={cn(
-                              "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                              !normalizedEnabledByDefault
-                                ? "border-[#2374ff] bg-[#2374ff] text-white"
-                                : "border-[#dbe3ef] text-transparent"
-                            )}>
-                            <Check className="size-4" />
-                          </span>
-                        </button>
-
-                        <button
-                          type="button"
-                          aria-pressed={normalizedEnabledByDefault}
-                          data-testid="fontara-site-list-exclude-mode"
-                          onClick={() => void handleSiteListModeChange(true)}
-                          className={cn(
-                            "fontara-choice flex w-full items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
-                            normalizedEnabledByDefault && "border-[#b9d4ff]"
-                          )}>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-[#111827]">
-                              {t("options.siteList.excludeMode")}
-                            </div>
-                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                              {t("options.siteList.excludeModeDescription")}
-                            </p>
-                          </div>
-                          <span
-                            className={cn(
-                              "flex size-6 shrink-0 items-center justify-center rounded-full border",
-                              normalizedEnabledByDefault
-                                ? "border-[#2374ff] bg-[#2374ff] text-white"
-                                : "border-[#dbe3ef] text-transparent"
-                            )}>
-                            <Check className="size-4" />
-                          </span>
-                        </button>
-                      </div>
-
-                      <div className="fontara-soft-panel p-4">
-                        <div className="mb-3">
-                          <h4 className="text-sm font-bold text-[#111827]">
-                            {normalizedEnabledByDefault
-                              ? t("options.siteList.disabledListTitle")
-                              : t("options.siteList.enabledListTitle")}
-                          </h4>
-                          <p className="mt-1 text-xs text-[#64748b]">
-                            {t("options.siteList.patternHelp")}
-                          </p>
-                        </div>
-
-                        <form
-                          className="mb-4"
-                          onSubmit={handleSitePatternSubmit}>
-                          <div className="grid gap-2 sm:grid-cols-[10rem_minmax(0,1fr)_2.5rem]">
-                            <Select
-                              value={sitePatternScope}
-                              onValueChange={(value) =>
-                                setSitePatternScope(value as SitePatternScope)
-                              }>
-                              <SelectTrigger
-                                className="h-10 rounded-md border-[#dbe3ef] text-sm"
-                                aria-label={t("options.siteList.scopeLabel")}
-                                data-testid="fontara-site-list-scope">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {sitePatternScopeOptions.map((option) => (
-                                  <SelectItem
-                                    key={option.value}
-                                    value={option.value}>
-                                    {t(option.labelKey)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <input
-                              type="text"
-                              value={sitePatternInput}
-                              data-testid="fontara-site-list-pattern-input"
-                              onChange={handleSitePatternInputChange}
-                              placeholder={t(
-                                sitePatternPlaceholderKeys[sitePatternScope]
-                              )}
-                              dir="ltr"
-                              className="h-10 min-w-0 rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-                            />
-                            <Button
-                              type="submit"
-                              size="icon"
-                              className="h-10 w-10 shrink-0 bg-[#2374ff] text-white hover:bg-[#1f66df]"
-                              data-testid="fontara-site-list-add"
-                              aria-label={t("options.siteList.add")}>
-                              <Plus className="size-4" />
-                            </Button>
-                          </div>
-                          {currentTab?.isSupported && currentTab.url && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {currentTabDomainPattern && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 border-[#dbe3ef] text-xs"
-                                  onClick={() =>
-                                    fillSitePatternFromCurrentTab("domain")
-                                  }>
-                                  {t("options.siteList.useCurrentDomain")}
-                                </Button>
-                              )}
-                              {currentTabHasPathPattern && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 border-[#dbe3ef] text-xs"
-                                  onClick={() =>
-                                    fillSitePatternFromCurrentTab("path")
-                                  }>
-                                  {t("options.siteList.useCurrentPath")}
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </form>
-                        {hasSitePatternInput && (
-                          <div
-                            className={cn(
-                              "mb-4 rounded-md border px-3 py-2 text-xs",
-                              normalizedSitePatternInput
-                                ? "border-[#bfdbfe] bg-[#f8fbff] text-[#1e3a8a]"
-                                : "border-red-200 bg-red-50 text-red-700"
-                            )}
-                            aria-live="polite">
-                            {normalizedSitePatternInput ? (
-                              <div className="flex min-w-0 items-center gap-2">
-                                <span className="shrink-0">
-                                  {normalizedEnabledByDefault
-                                    ? t("options.siteList.previewExclude")
-                                    : t("options.siteList.previewInclude")}
-                                </span>
-                                <bdi
-                                  className="min-w-0 truncate font-semibold"
-                                  dir="ltr">
-                                  {getDisplaySitePattern(
-                                    normalizedSitePatternInput
-                                  )}
-                                </bdi>
-                                <SiteScopeBadge
-                                  scope={getSitePatternScope(
-                                    normalizedSitePatternInput
-                                  )}
-                                />
-                                {hasCustomCssForSitePattern(
-                                  normalizedSitePatternInput
-                                ) && <SiteModeBadge customCss />}
-                              </div>
-                            ) : (
-                              t("options.siteList.previewInvalid")
-                            )}
-                          </div>
-                        )}
-
-                        {managedSiteList.length > 0 ? (
-                          <div className="max-h-64 space-y-2 overflow-y-auto pe-1">
-                            {managedSiteList.map((pattern) => {
-                              const hasCustomCss =
-                                hasCustomCssForSitePattern(pattern)
-
-                              return (
-                                <div
-                                  key={pattern}
-                                  data-testid={`fontara-site-list-row-${pattern}`}
-                                  className="flex items-center justify-between gap-2 rounded-md border border-[#e8eef6] bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_70%)]">
-                                  <div className="flex min-w-0 items-center gap-2">
-                                    <bdi className="min-w-0 truncate text-sm font-semibold text-[#111827]">
-                                      {getDisplaySitePattern(pattern)}
-                                    </bdi>
-                                    <SiteScopeBadge
-                                      scope={getSitePatternScope(pattern)}
-                                    />
-                                    {hasCustomCss && (
-                                      <SiteModeBadge customCss />
-                                    )}
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 shrink-0 text-[#64748b] hover:bg-red-50 hover:text-red-600"
-                                    data-testid={`fontara-site-list-remove-${pattern}`}
-                                    aria-label={t("options.siteList.remove", {
-                                      site: pattern
-                                    })}
-                                    onClick={() =>
-                                      void handleRemoveSitePattern(pattern)
-                                    }>
-                                    <Trash2 className="size-4" />
-                                  </Button>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
-                            {normalizedEnabledByDefault
-                              ? t("options.siteList.emptyDisabled")
-                              : t("options.siteList.emptyEnabled")}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.siteProfiles.title")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {t("options.siteProfiles.description")}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <Settings className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                      <form
-                        className="fontara-soft-panel space-y-4 p-4"
-                        onSubmit={handleSiteProfileSubmit}>
-                        <div className="space-y-2">
-                          <label
-                            htmlFor="site-profile-target"
-                            className="block text-sm font-medium text-[#334155]">
-                            {t("options.siteProfiles.targetLabel")}
-                          </label>
-                          <Popover
-                            open={siteProfileTargetOpen}
-                            onOpenChange={setSiteProfileTargetOpen}>
-                            <PopoverTrigger asChild>
-                              <Button
-                                id="site-profile-target"
-                                type="button"
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={siteProfileTargetOpen}
-                                data-testid="fontara-site-profile-target-trigger"
-                                className="h-auto min-h-11 w-full justify-between border-[#dbe3ef] bg-white px-3 py-2 text-start hover:bg-white">
-                                <span className="flex min-w-0 flex-1 items-center gap-2">
-                                  {selectedSiteProfileTarget?.iconUrl && (
-                                    <img
-                                      alt=""
-                                      src={selectedSiteProfileTarget.iconUrl}
-                                      className="size-6 shrink-0 rounded object-contain"
-                                    />
-                                  )}
-                                  <span className="min-w-0 flex-1">
-                                    <bdi
-                                      className={cn(
-                                        "block truncate text-sm font-bold",
-                                        selectedSiteProfilePattern
-                                          ? "text-[#111827]"
-                                          : "text-[#94a3b8]"
-                                      )}
-                                      dir="ltr">
-                                      {selectedSiteProfilePattern
-                                        ? getDisplaySitePattern(
-                                            selectedSiteProfilePattern
-                                          )
-                                        : t(
-                                            "options.siteProfiles.targetPlaceholder"
-                                          )}
-                                    </bdi>
-                                    {selectedSiteProfileTarget?.title &&
-                                      selectedSiteProfileTarget.title !==
-                                        getDisplaySitePattern(
-                                          selectedSiteProfilePattern ?? ""
-                                        ) && (
-                                        <span className="mt-0.5 block truncate text-xs text-[#64748b]">
-                                          {selectedSiteProfileTarget.title}
-                                        </span>
-                                      )}
-                                  </span>
-                                  {selectedSiteProfileScope && (
-                                    <SiteScopeBadge
-                                      scope={selectedSiteProfileScope}
-                                    />
-                                  )}
-                                </span>
-                                <ChevronsUpDown className="ms-2 size-4 shrink-0 text-[#94a3b8]" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="start"
-                              className="w-(--radix-popover-trigger-width) p-0">
-                              <Command>
-                                <CommandInput
-                                  value={siteProfileTargetSearch}
-                                  data-testid="fontara-site-profile-target-search"
-                                  onValueChange={setSiteProfileTargetSearch}
-                                  placeholder={t(
-                                    "options.siteProfiles.targetSearchPlaceholder"
-                                  )}
-                                />
-                                <CommandList>
-                                  <CommandEmpty>
-                                    {t("options.siteProfiles.noTargets")}
-                                  </CommandEmpty>
-                                  {canAddSiteProfileTarget &&
-                                    siteProfileAddTargetPattern && (
-                                      <CommandGroup>
-                                        <CommandItem
-                                          value={siteProfileAddTargetPattern}
-                                          data-testid="fontara-site-profile-target-add"
-                                          className="min-h-11 cursor-pointer gap-3 px-2"
-                                          onSelect={handleAddSiteProfileTarget}>
-                                          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
-                                            <Plus className="size-4" />
-                                          </span>
-                                          <span className="min-w-0 flex-1">
-                                            <span className="block text-sm font-bold text-[#111827]">
-                                              {t(
-                                                "options.siteProfiles.addTarget",
-                                                {
-                                                  site: getDisplaySitePattern(
-                                                    siteProfileAddTargetPattern
-                                                  )
-                                                }
-                                              )}
-                                            </span>
-                                            <bdi
-                                              className="mt-0.5 block truncate text-xs text-[#64748b]"
-                                              dir="ltr">
-                                              {siteProfileAddTargetPattern}
-                                            </bdi>
-                                          </span>
-                                          <SiteScopeBadge
-                                            scope={getSitePatternScope(
-                                              siteProfileAddTargetPattern
-                                            )}
-                                          />
-                                        </CommandItem>
-                                      </CommandGroup>
-                                    )}
-                                  <CommandGroup>
-                                    {siteProfileTargetOptions.map(
-                                      renderSiteProfileTargetItem
-                                    )}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-
-                        <div>
-                          <label
-                            htmlFor="site-profile-font"
-                            className="mb-2 block text-sm font-medium text-[#334155]">
-                            {t("options.siteProfiles.fontLabel")}
-                          </label>
-                          <select
-                            id="site-profile-font"
-                            value={siteProfileFontInput}
-                            data-testid="fontara-site-profile-font-select"
-                            onChange={(event) =>
-                              setSiteProfileFontInput(event.target.value)
-                            }
-                            className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15">
-                            <option value="">
-                              {t("options.siteProfiles.globalFont")}
-                            </option>
-                            {siteFontOptionGroups.map((group) =>
-                              group.options.length > 0 ? (
-                                <optgroup key={group.label} label={group.label}>
-                                  {group.options.map((font) => (
-                                    <option key={font.value} value={font.value}>
-                                      {font.label}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ) : null
-                            )}
-                          </select>
-                        </div>
-
-                        <div className="space-y-3 rounded-md border border-[#eef2f7] bg-[#f8fafc] p-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <label
-                                htmlFor="site-profile-stroke-toggle"
-                                className="text-sm font-medium text-[#334155]">
-                                {t("options.siteProfiles.strokeLabel")}
-                              </label>
-                              <p className="mt-1 text-xs text-[#64748b]">
-                                {siteProfileUsesGlobalStroke
-                                  ? t("options.siteProfiles.globalStroke")
-                                  : t("options.siteProfiles.customStroke", {
-                                      value: formattedSiteProfileTextStroke
-                                    })}
-                              </p>
-                            </div>
-                            <Switch
-                              id="site-profile-stroke-toggle"
-                              dir="ltr"
-                              checked={!siteProfileUsesGlobalStroke}
-                              data-testid="fontara-site-profile-stroke-toggle"
-                              onCheckedChange={(checked) =>
-                                setSiteProfileUsesGlobalStroke(!checked)
-                              }
-                              aria-label={t("options.siteProfiles.strokeLabel")}
-                            />
-                          </div>
-
-                          <div
+                          <Switch
                             dir="ltr"
-                            className={cn(
-                              "space-y-2 transition",
-                              siteProfileUsesGlobalStroke && "opacity-50"
-                            )}>
+                            checked={systemFontsSupported && systemFontsEnabled}
+                            disabled={!systemFontsSupported}
+                            onCheckedChange={(checked) =>
+                              void handleSystemFontsToggle(checked)
+                            }
+                            aria-label={t("options.systemFonts.title")}
+                          />
+                        </div>
+
+                        <div
+                          data-active={googleFontsEnabled}
+                          className={cn(
+                            "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-xl border p-4 transition"
+                          )}>
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div className="fontara-icon-tile">
+                              <Cloud className="size-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-sm font-bold text-[#111827]">
+                                {t("options.googleFonts.title")}
+                              </h3>
+                              <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                                {t("options.googleFonts.description")}
+                              </p>
+                              <p className="mt-2 text-xs text-[#64748b]">
+                                {googleFontsEnabled
+                                  ? t("options.googleFonts.enabled")
+                                  : t("options.googleFonts.disabled")}
+                              </p>
+                            </div>
+                          </div>
+                          <Switch
+                            dir="ltr"
+                            checked={googleFontsEnabled}
+                            onCheckedChange={(checked) =>
+                              void handleGoogleFontsToggle(checked)
+                            }
+                            aria-label={t("options.googleFonts.title")}
+                          />
+                        </div>
+
+                        <div
+                          data-active={textStroke > 0}
+                          className={cn(
+                            "fontara-choice flex min-h-36 flex-col gap-4 rounded-xl border p-4 transition"
+                          )}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex min-w-0 items-start gap-3">
+                              <div className="fontara-icon-tile">
+                                <Type className="size-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-sm font-bold text-[#111827]">
+                                  {t("options.textStroke.title")}
+                                </h3>
+                                <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                                  {t("options.textStroke.description")}
+                                </p>
+                                <p className="mt-2 text-xs text-[#64748b]">
+                                  {textStroke > 0
+                                    ? t("options.textStroke.enabled")
+                                    : t("options.textStroke.disabled")}
+                                </p>
+                              </div>
+                            </div>
+                            <bdi className="shrink-0 rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#175cd3]">
+                              {formattedTextStroke}
+                            </bdi>
+                          </div>
+
+                          <div dir="ltr" className="space-y-2">
                             <input
                               type="range"
                               min={TEXT_STROKE_MIN}
                               max={TEXT_STROKE_MAX}
                               step={TEXT_STROKE_STEP}
-                              value={siteProfileTextStroke}
-                              data-testid="fontara-site-profile-stroke-range"
-                              disabled={siteProfileUsesGlobalStroke}
+                              value={textStroke}
                               onChange={(event) =>
-                                setSiteProfileTextStroke(
-                                  normalizeTextStrokeValue(
-                                    Number(event.currentTarget.value)
-                                  )
+                                void handleTextStrokeChange(
+                                  Number(event.currentTarget.value)
                                 )
                               }
-                              aria-label={t("options.siteProfiles.strokeLabel")}
-                              className="h-2 w-full cursor-pointer accent-[#2374ff] disabled:cursor-not-allowed"
+                              onBlur={() => void flushTextStroke()}
+                              onPointerUp={() => void flushTextStroke()}
+                              aria-label={t("options.textStroke.title")}
+                              className="h-2 w-full cursor-pointer accent-[#2374ff]"
                             />
-                            <div className="flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
+                            <div className="flex items-center justify-between text-[10px] font-semibold text-[#64748b]">
                               <span>
                                 {formatNumber(TEXT_STROKE_MIN, {
                                   maximumFractionDigits: 1,
@@ -2710,709 +2602,1657 @@ function OptionsPage() {
                                 })}
                               </span>
                             </div>
+                            <p className="text-xs text-[#64748b]">
+                              {t("options.textStroke.value", {
+                                value: formattedTextStroke
+                              })}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleTextStrokeChange(0)}
+                            className="h-9 rounded-md border border-[#dbe3ef] bg-white px-3 text-xs font-semibold text-[#64748b] transition hover:border-[#bfdbfe] hover:text-[#175cd3]"
+                            disabled={textStroke <= TEXT_STROKE_MIN}>
+                            {t("options.textStroke.reset")}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
+                        <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                        <p className="text-xs leading-5 text-amber-800">
+                          {t("options.googleFonts.privacyNotice")}
+                        </p>
+                      </div>
+                    </section>
+
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                      <section className="fontara-panel p-4 sm:p-5">
+                        <div className="mb-5 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-bold text-[#111827]">
+                              {t("options.addFont.title")}
+                            </h3>
+                            <p className="mt-1 text-xs text-[#64748b]">
+                              {t("options.addFont.subtitle")}
+                            </p>
+                          </div>
+                          <div className="fontara-icon-tile">
+                            <Upload className="size-5" />
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="submit"
-                            data-testid="fontara-site-profile-save"
-                            className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
-                            <Check className="size-4" />
-                            {t("options.siteProfiles.save")}
-                          </Button>
+                        <div className="space-y-4">
+                          <div>
+                            <label
+                              htmlFor="custom-font-file"
+                              className={cn(
+                                "group flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-gradient-to-b from-blue-50 to-white px-5 py-6 text-center transition hover:border-blue-400 hover:bg-blue-50",
+                                isLoading &&
+                                  "cursor-not-allowed opacity-60 hover:border-blue-200"
+                              )}>
+                              <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm ring-1 ring-inset ring-blue-100 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
+                                <Upload className="size-5" />
+                              </span>
+                              <span className="mt-3 text-sm font-extrabold text-slate-900">
+                                {isLoading
+                                  ? t("options.addFont.loading")
+                                  : t("options.addFont.fileLabel")}
+                              </span>
+                              <span className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500">
+                                {t("options.addFont.subtitle")}
+                              </span>
+                              {preparedFontFiles.length > 0 && (
+                                <span
+                                  data-testid="fontara-custom-font-selection-ready"
+                                  role="status"
+                                  className="mt-3 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                                  <bdi dir="auto">
+                                    {preparedFontFiles[0].familyGroupName}
+                                  </bdi>{" "}
+                                  ·{" "}
+                                  {t("options.customFonts.familySummary", {
+                                    count: formatNumber(
+                                      preparedFontFiles.length
+                                    ),
+                                    styles: getCustomFontFaceSummary(
+                                      preparedFontFiles.map((file) => file.face)
+                                    )
+                                  })}
+                                </span>
+                              )}
+                              <input
+                                id="custom-font-file"
+                                data-testid="fontara-custom-font-file"
+                                ref={fileInputRef}
+                                type="file"
+                                multiple
+                                onChange={handleFileChange}
+                                accept=".ttf,.woff,.woff2,.otf"
+                                className="sr-only"
+                                disabled={isLoading}
+                              />
+                            </label>
+                            {customFontSelectionFeedback && (
+                              <div
+                                role="alert"
+                                className="mt-3 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-start">
+                                <Info className="mt-0.5 size-4 shrink-0 text-red-600" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-red-900">
+                                    {customFontSelectionFeedback.title}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {preparedFontFiles.some(
+                              (file) => file.hasCombinedItalAxis
+                            ) && (
+                              <p className="mt-2 text-xs leading-5 text-amber-800">
+                                {t("options.customFonts.italAxisWarning")}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor="custom-font-name"
+                              className="mb-2 block text-sm font-medium text-[#334155]">
+                              {t("options.addFont.nameLabel")}
+                            </label>
+                            <input
+                              id="custom-font-name"
+                              data-testid="fontara-custom-font-name"
+                              type="text"
+                              value={fontName}
+                              onChange={(event) =>
+                                setFontName(event.target.value)
+                              }
+                              placeholder={t("options.addFont.namePlaceholder")}
+                              className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                              disabled={isLoading}
+                              dir="auto"
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor="custom-font-unicode-range"
+                              className="mb-2 block text-sm font-medium text-[#334155]">
+                              {t("options.addFont.unicodeRangeLabel")}
+                            </label>
+                            <Select
+                              dir={direction}
+                              disabled={isLoading}
+                              value={fontUnicodeRangePreset}
+                              onValueChange={(value) =>
+                                setFontUnicodeRangePreset(
+                                  value as CustomFontUnicodeRangeSelectValue
+                                )
+                              }>
+                              <SelectTrigger
+                                id="custom-font-unicode-range"
+                                className="h-11 border-[#dbe3ef] bg-white text-sm text-[#111827] focus:ring-2 focus:ring-[#2374ff]/15">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {CUSTOM_FONT_UNICODE_RANGE_PRESETS.map(
+                                  (preset) => (
+                                    <SelectItem
+                                      key={preset.id}
+                                      value={preset.id}>
+                                      {t(unicodeRangeLabelKeys[preset.id])}
+                                    </SelectItem>
+                                  )
+                                )}
+                                <SelectItem
+                                  value={
+                                    CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
+                                  }>
+                                  {t(
+                                    unicodeRangeLabelKeys[
+                                      CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
+                                    ]
+                                  )}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {fontUnicodeRangePreset ===
+                            CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE && (
+                            <div>
+                              <label
+                                htmlFor="custom-font-unicode-range-value"
+                                className="mb-2 block text-sm font-medium text-[#334155]">
+                                {t("options.addFont.unicodeRangeCustomLabel")}
+                              </label>
+                              <input
+                                id="custom-font-unicode-range-value"
+                                type="text"
+                                value={customFontUnicodeRange}
+                                onChange={(event) =>
+                                  setCustomFontUnicodeRange(event.target.value)
+                                }
+                                placeholder={t(
+                                  "options.addFont.unicodeRangeCustomPlaceholder"
+                                )}
+                                className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                                disabled={isLoading}
+                                dir="ltr"
+                              />
+                            </div>
+                          )}
+
                           <Button
                             type="button"
-                            variant="outline"
-                            className="h-10"
-                            onClick={resetSiteProfileForm}>
-                            {t("options.siteProfiles.reset")}
+                            data-testid="fontara-custom-font-add"
+                            onClick={handleSaveFont}
+                            className="h-11 w-full bg-[#2374ff] text-white hover:bg-[#1f66df]"
+                            disabled={
+                              isLoading || preparedFontFiles.length === 0
+                            }>
+                            <Upload className="size-4" />
+                            {isLoading
+                              ? t("options.addFont.loading")
+                              : t("options.addFont.button")}
                           </Button>
                         </div>
-                      </form>
+                      </section>
 
-                      <div className="fontara-soft-panel p-4">
-                        <div className="mb-3">
-                          <h4 className="text-sm font-bold text-[#111827]">
-                            {t("options.siteProfiles.savedTitle")}
-                          </h4>
-                          <p className="mt-1 text-xs text-[#64748b]">
-                            {t("options.siteProfiles.savedDescription", {
-                              count: formatNumber(normalizedSiteProfiles.length)
-                            })}
-                          </p>
+                      <section className="fontara-panel p-4 sm:p-5">
+                        <div className="mb-5 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-bold text-[#111827]">
+                              {t("options.savedFonts.title")}
+                            </h3>
+                            <p className="mt-1 text-xs text-[#64748b]">
+                              {t("options.customFonts.count", {
+                                count: formatNumber(customFontList.length),
+                                size: formatBytes(
+                                  customFontStorageBytes,
+                                  formatNumber,
+                                  t("unit.kb"),
+                                  t("unit.mb")
+                                )
+                              })}
+                            </p>
+                          </div>
+                          <div className="flex size-10 items-center justify-center rounded-md bg-[#f8fafc] text-[#64748b]">
+                            <FileText className="size-5" />
+                          </div>
                         </div>
 
-                        {normalizedSiteProfiles.length > 0 ? (
-                          <div className="max-h-80 space-y-2 overflow-y-auto pe-1">
-                            {normalizedSiteProfiles.map((profile) => {
-                              const hasCustomCss = hasCustomCssForSitePattern(
-                                profile.pattern
-                              )
-                              const profileEnabled =
-                                isSiteProfileEnabled(profile)
+                        <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+                          <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-600">
+                            <span className="font-semibold">
+                              {t("options.customFonts.storageUsage", {
+                                used: formatBytes(
+                                  customFontStorageBytes,
+                                  formatNumber,
+                                  t("unit.kb"),
+                                  t("unit.mb")
+                                ),
+                                limit: customFontStorageLimit
+                              })}
+                            </span>
+                            <span className="shrink-0 font-bold text-slate-800">
+                              {formatNumber(customFontStoragePercent / 100, {
+                                style: "percent",
+                                maximumFractionDigits: 0
+                              })}
+                            </span>
+                          </div>
+                          <Progress
+                            dir={direction}
+                            value={customFontStoragePercent}
+                            className="h-1.5 bg-slate-200"
+                          />
+                        </div>
 
-                              return (
-                                <div
-                                  key={profile.pattern}
-                                  data-testid={`fontara-site-profile-row-${profile.pattern}`}
-                                  className={cn(
-                                    "rounded-md border px-3 py-3 transition",
-                                    profileEnabled
-                                      ? "border-[#eef2f7] bg-[#f8fafc]"
-                                      : "border-slate-200 bg-slate-50 opacity-75"
-                                  )}>
-                                  <div className="mb-3 flex items-start justify-between gap-3">
-                                    <div className="flex min-w-0 items-center gap-2">
-                                      <bdi
-                                        className={cn(
-                                          "min-w-0 truncate text-sm font-bold",
-                                          profileEnabled
-                                            ? "text-[#111827]"
-                                            : "text-[#64748b]"
-                                        )}>
-                                        {getDisplaySitePattern(profile.pattern)}
-                                      </bdi>
-                                      <span
-                                        className={cn(
-                                          "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                                          profileEnabled
-                                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                            : "border-slate-200 bg-white text-slate-500"
-                                        )}>
-                                        {profileEnabled
-                                          ? t("options.siteProfiles.active")
-                                          : t("options.siteProfiles.inactive")}
-                                      </span>
-                                      {hasCustomCss && (
-                                        <SiteModeBadge customCss />
-                                      )}
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-2">
-                                      <Switch
-                                        dir="ltr"
-                                        checked={profileEnabled}
-                                        data-testid={`fontara-site-profile-enabled-${profile.pattern}`}
-                                        onCheckedChange={(checked) =>
-                                          void handleSiteProfileEnabledToggle(
-                                            profile,
-                                            checked
-                                          )
-                                        }
-                                        aria-label={t(
-                                          "options.siteProfiles.applyProfile",
+                        {customFontList.length > 0 ? (
+                          <div className="space-y-3">
+                            {customFontList.map((font) => (
+                              <div
+                                key={font.value}
+                                data-testid={`fontara-custom-font-family-${font.value}`}
+                                className="flex items-center justify-between gap-3 rounded-md border border-[#e5e7eb] px-3 py-3">
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold text-[#111827]">
+                                    {font.displayName}
+                                  </div>
+                                  <div className="mt-1 truncate text-xs text-[#64748b]">
+                                    {t("options.customFonts.familySummary", {
+                                      count: formatNumber(font.faces.length),
+                                      styles: getCustomFontFaceSummary(
+                                        font.faces
+                                      )
+                                    })}
+                                  </div>
+                                  <div className="mt-1 truncate text-xs text-[#64748b]">
+                                    {t("options.savedFonts.unicodeRange", {
+                                      range: getCustomFontUnicodeRangeLabel(
+                                        font.unicodeRange
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      data-testid={`fontara-custom-font-delete-${font.value}`}
+                                      className="shrink-0 border-red-100 text-red-700 hover:bg-red-50 hover:text-red-800"
+                                      disabled={isLoading}>
+                                      <Trash2 className="size-4" />
+                                      {t("common.delete")}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent dir={direction}>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        {t("options.customFonts.deleteTitle")}
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        {t(
+                                          "options.customFonts.deleteDescription",
                                           {
-                                            site: profile.pattern
+                                            font: font.displayName
                                           }
                                         )}
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-[#64748b] hover:bg-[#eaf2ff] hover:text-[#2374ff]"
-                                        aria-label={t(
-                                          "options.siteProfiles.edit",
-                                          {
-                                            site: profile.pattern
-                                          }
-                                        )}
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>
+                                        {t("options.backup.cancelButton")}
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        data-testid={`fontara-custom-font-delete-confirm-${font.value}`}
                                         onClick={() =>
-                                          handleEditSiteProfile(profile)
+                                          void handleDeleteFont(font.value)
                                         }>
-                                        <Settings className="size-4" />
-                                      </Button>
+                                        {t("common.delete")}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-[#dbe3ef] text-sm text-[#64748b]">
+                            {t("options.emptyFonts")}
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  </div>
+                )}
+
+                {activeSection === "sites" && (
+                  <Tabs
+                    dir={direction}
+                    value={siteSettingsTab}
+                    onValueChange={(value) =>
+                      setSiteSettingsTab(value as SiteSettingsTab)
+                    }
+                    className="space-y-5">
+                    <TabsList className="fontara-subnav grid h-auto w-full grid-cols-3 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+                      <TabsTrigger
+                        value="access"
+                        data-testid="fontara-sites-tab-access"
+                        className="min-h-10 gap-2 rounded-xl px-3 text-xs font-bold sm:text-sm">
+                        <ListChecks className="size-4" />
+                        {t("options.sites.accessTab")}
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="profiles"
+                        data-testid="fontara-sites-tab-profiles"
+                        className="min-h-10 gap-2 rounded-xl px-3 text-xs font-bold sm:text-sm">
+                        <Settings className="size-4" />
+                        {t("options.sites.profilesTab")}
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="optimized"
+                        data-testid="fontara-sites-tab-optimized"
+                        className="min-h-10 gap-2 rounded-xl px-3 text-xs font-bold sm:text-sm">
+                        <Sparkles className="size-4" />
+                        {t("options.sites.optimizedTab")}
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="access" className="mt-0">
+                      <section className="fontara-panel p-4 sm:p-5">
+                        <div className="mb-5 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-bold text-[#111827]">
+                              {t("options.siteList.title")}
+                            </h3>
+                            <p className="mt-1 text-xs text-[#64748b]">
+                              {normalizedEnabledByDefault
+                                ? t("options.siteList.excludeDescription")
+                                : t("options.siteList.includeDescription")}
+                            </p>
+                          </div>
+                          <div className="fontara-icon-tile">
+                            <ListChecks className="size-5" />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                          <div className="space-y-3">
+                            <button
+                              type="button"
+                              aria-pressed={!normalizedEnabledByDefault}
+                              data-testid="fontara-site-list-include-mode"
+                              onClick={() =>
+                                void handleSiteListModeChange(false)
+                              }
+                              className={cn(
+                                "fontara-choice flex w-full items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
+                                !normalizedEnabledByDefault &&
+                                  "border-[#b9d4ff]"
+                              )}>
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-[#111827]">
+                                  {t("options.siteList.includeMode")}
+                                </div>
+                                <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                                  {t("options.siteList.includeModeDescription")}
+                                </p>
+                              </div>
+                              <span
+                                className={cn(
+                                  "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                                  !normalizedEnabledByDefault
+                                    ? "border-[#2374ff] bg-[#2374ff] text-white"
+                                    : "border-[#dbe3ef] text-transparent"
+                                )}>
+                                <Check className="size-4" />
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              aria-pressed={normalizedEnabledByDefault}
+                              data-testid="fontara-site-list-exclude-mode"
+                              onClick={() =>
+                                void handleSiteListModeChange(true)
+                              }
+                              className={cn(
+                                "fontara-choice flex w-full items-start justify-between gap-3 rounded-md border p-3.5 text-start transition",
+                                normalizedEnabledByDefault && "border-[#b9d4ff]"
+                              )}>
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-[#111827]">
+                                  {t("options.siteList.excludeMode")}
+                                </div>
+                                <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                                  {t("options.siteList.excludeModeDescription")}
+                                </p>
+                              </div>
+                              <span
+                                className={cn(
+                                  "flex size-6 shrink-0 items-center justify-center rounded-full border",
+                                  normalizedEnabledByDefault
+                                    ? "border-[#2374ff] bg-[#2374ff] text-white"
+                                    : "border-[#dbe3ef] text-transparent"
+                                )}>
+                                <Check className="size-4" />
+                              </span>
+                            </button>
+                          </div>
+
+                          <div className="fontara-soft-panel p-4">
+                            <div className="mb-3">
+                              <h4 className="text-sm font-bold text-[#111827]">
+                                {normalizedEnabledByDefault
+                                  ? t("options.siteList.disabledListTitle")
+                                  : t("options.siteList.enabledListTitle")}
+                              </h4>
+                              <p className="mt-1 text-xs text-[#64748b]">
+                                {t("options.siteList.patternHelp")}
+                              </p>
+                            </div>
+
+                            <form
+                              className="mb-4"
+                              onSubmit={handleSitePatternSubmit}>
+                              <div className="grid gap-2 sm:grid-cols-[10rem_minmax(0,1fr)_2.5rem]">
+                                <Select
+                                  value={sitePatternScope}
+                                  onValueChange={(value) =>
+                                    setSitePatternScope(
+                                      value as SitePatternScope
+                                    )
+                                  }>
+                                  <SelectTrigger
+                                    className="h-10 rounded-md border-[#dbe3ef] text-sm"
+                                    aria-label={t(
+                                      "options.siteList.scopeLabel"
+                                    )}
+                                    data-testid="fontara-site-list-scope">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent dir={direction}>
+                                    {sitePatternScopeOptions.map((option) => (
+                                      <SelectItem
+                                        key={option.value}
+                                        value={option.value}>
+                                        {t(option.labelKey)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <input
+                                  type="text"
+                                  value={sitePatternInput}
+                                  data-testid="fontara-site-list-pattern-input"
+                                  onChange={handleSitePatternInputChange}
+                                  placeholder={t(
+                                    sitePatternPlaceholderKeys[sitePatternScope]
+                                  )}
+                                  dir="ltr"
+                                  className="h-10 min-w-0 rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                                />
+                                <Button
+                                  type="submit"
+                                  size="icon"
+                                  className="h-10 w-10 shrink-0 bg-[#2374ff] text-white hover:bg-[#1f66df]"
+                                  data-testid="fontara-site-list-add"
+                                  aria-label={t("options.siteList.add")}>
+                                  <Plus className="size-4" />
+                                </Button>
+                              </div>
+                              {currentTab?.isSupported && currentTab.url && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {currentTabDomainPattern && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 border-[#dbe3ef] text-xs"
+                                      onClick={() =>
+                                        fillSitePatternFromCurrentTab("domain")
+                                      }>
+                                      {t("options.siteList.useCurrentDomain")}
+                                    </Button>
+                                  )}
+                                  {currentTabHasPathPattern && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 border-[#dbe3ef] text-xs"
+                                      onClick={() =>
+                                        fillSitePatternFromCurrentTab("path")
+                                      }>
+                                      {t("options.siteList.useCurrentPath")}
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </form>
+                            {hasSitePatternInput && (
+                              <div
+                                className={cn(
+                                  "mb-4 rounded-md border px-3 py-2 text-xs",
+                                  normalizedSitePatternInput
+                                    ? "border-[#bfdbfe] bg-[#f8fbff] text-[#1e3a8a]"
+                                    : "border-red-200 bg-red-50 text-red-700"
+                                )}
+                                aria-live="polite">
+                                {normalizedSitePatternInput ? (
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="shrink-0">
+                                      {normalizedEnabledByDefault
+                                        ? t("options.siteList.previewExclude")
+                                        : t("options.siteList.previewInclude")}
+                                    </span>
+                                    <bdi
+                                      className="min-w-0 truncate font-semibold"
+                                      dir="ltr">
+                                      {getDisplaySitePattern(
+                                        normalizedSitePatternInput
+                                      )}
+                                    </bdi>
+                                    <SiteScopeBadge
+                                      scope={getSitePatternScope(
+                                        normalizedSitePatternInput
+                                      )}
+                                    />
+                                    {hasCustomCssForSitePattern(
+                                      normalizedSitePatternInput
+                                    ) && <SiteModeBadge customCss />}
+                                  </div>
+                                ) : (
+                                  t("options.siteList.previewInvalid")
+                                )}
+                              </div>
+                            )}
+
+                            {managedSiteList.length > 0 ? (
+                              <div className="space-y-2">
+                                {managedSiteList.map((pattern) => {
+                                  const hasCustomCss =
+                                    hasCustomCssForSitePattern(pattern)
+
+                                  return (
+                                    <div
+                                      key={pattern}
+                                      data-testid={`fontara-site-list-row-${pattern}`}
+                                      className="flex items-center justify-between gap-2 rounded-md border border-[#e8eef6] bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_70%)]">
+                                      <div className="flex min-w-0 items-center gap-2">
+                                        <bdi className="min-w-0 truncate text-sm font-semibold text-[#111827]">
+                                          {getDisplaySitePattern(pattern)}
+                                        </bdi>
+                                        <SiteScopeBadge
+                                          scope={getSitePatternScope(pattern)}
+                                        />
+                                        {hasCustomCss && (
+                                          <SiteModeBadge customCss />
+                                        )}
+                                      </div>
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-[#64748b] hover:bg-red-50 hover:text-red-600"
-                                        data-testid={`fontara-site-profile-remove-${profile.pattern}`}
+                                        className="h-8 w-8 shrink-0 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                        data-testid={`fontara-site-list-remove-${pattern}`}
                                         aria-label={t(
-                                          "options.siteProfiles.remove",
+                                          "options.siteList.remove",
                                           {
-                                            site: profile.pattern
+                                            site: pattern
                                           }
                                         )}
                                         onClick={() =>
-                                          void handleRemoveSiteProfile(
-                                            profile.pattern
-                                          )
+                                          void handleRemoveSitePattern(pattern)
                                         }>
                                         <Trash2 className="size-4" />
                                       </Button>
                                     </div>
-                                  </div>
-                                  <div className="grid gap-2 text-xs text-[#64748b] sm:grid-cols-2">
-                                    <div className="rounded-md bg-white px-3 py-2">
-                                      <span className="font-semibold text-[#334155]">
-                                        {t("options.siteProfiles.fontValue")}
-                                      </span>{" "}
-                                      <span dir="auto">
-                                        {getSiteProfileFontLabel(profile.font)}
-                                      </span>
-                                    </div>
-                                    <div className="rounded-md bg-white px-3 py-2">
-                                      <span className="font-semibold text-[#334155]">
-                                        {t("options.siteProfiles.strokeValue")}
-                                      </span>{" "}
-                                      <bdi>
-                                        {profile.textStroke === undefined
-                                          ? t(
-                                              "options.siteProfiles.globalStroke"
-                                            )
-                                          : formatTextStrokeDisplay(
-                                              profile.textStroke
-                                            )}
-                                      </bdi>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })}
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
+                                {normalizedEnabledByDefault
+                                  ? t("options.siteList.emptyDisabled")
+                                  : t("options.siteList.emptyEnabled")}
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex min-h-48 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
-                            {t("options.siteProfiles.empty")}
+                        </div>
+                      </section>
+                    </TabsContent>
+
+                    <TabsContent value="profiles" className="mt-0">
+                      <section className="fontara-panel p-4 sm:p-5">
+                        <div className="mb-5 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-bold text-[#111827]">
+                              {t("options.siteProfiles.title")}
+                            </h3>
+                            <p className="mt-1 text-xs text-[#64748b]">
+                              {t("options.siteProfiles.description")}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </section>
+                          <div className="fontara-icon-tile">
+                            <Settings className="size-5" />
+                          </div>
+                        </div>
 
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.sites.title")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {t("options.sites.count", {
-                            active: formatNumber(activeWebsiteCount),
-                            total: formatNumber(defaultWebsiteList.length)
-                          })}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <Globe2 className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="overflow-hidden rounded-md border border-[#e5edf6] bg-white">
-                      <Table className="min-w-[760px]">
-                        <TableHeader className="bg-[#f8fbff]">
-                          <TableRow className="hover:bg-[#f8fbff]">
-                            <TableHead className="w-[28%] ps-4 text-start text-xs font-bold text-[#64748b]">
-                              {t("options.sites.column.site")}
-                            </TableHead>
-                            <TableHead className="w-[28%] text-start text-xs font-bold text-[#64748b]">
-                              {t("options.sites.column.pattern")}
-                            </TableHead>
-                            <TableHead className="w-[22%] text-start text-xs font-bold text-[#64748b]">
-                              {t("options.sites.column.mode")}
-                            </TableHead>
-                            <TableHead className="w-[11%] text-center text-xs font-bold text-[#64748b]">
-                              {t("options.sites.column.popup")}
-                            </TableHead>
-                            <TableHead className="w-[11%] pe-4 text-end text-xs font-bold text-[#64748b]">
-                              {t("options.sites.column.enabled")}
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {defaultWebsiteList.map((website) => {
-                            const active = isWebsiteActive(website)
-                            const pinned = isWebsitePinned(website)
-                            const websitePattern =
-                              getWebsiteCardPattern(website)
-                            const websitePatternLabel = websitePattern
-                              ? getDisplaySitePattern(websitePattern)
-                              : null
-                            const websiteTitle = getWebsiteCardTitle(
-                              website,
-                              websitePattern
-                            )
-
-                            return (
-                              <TableRow
-                                key={website.url}
-                                className={cn(
-                                  "h-[4.25rem] hover:bg-[#f8fbff]",
-                                  !active && "bg-[#fbfdff] opacity-75"
-                                )}>
-                                <TableCell className="ps-4">
-                                  <div className="flex min-w-0 items-center gap-3">
-                                    {website.icon && (
-                                      <img
-                                        alt=""
-                                        src={getExtensionAssetURL(website.icon)}
-                                        className={cn(
-                                          "size-8 rounded-md object-contain",
-                                          !active && "grayscale"
-                                        )}
-                                      />
-                                    )}
-                                    <div
-                                      className="min-w-0 truncate text-sm font-semibold text-[#111827]"
-                                      title={websiteTitle}>
-                                      {websiteTitle}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  {websitePatternLabel ? (
-                                    <bdi
-                                      className="block max-w-[13rem] truncate text-xs text-[#64748b]"
-                                      dir="ltr"
-                                      title={websitePatternLabel}>
-                                      {websitePatternLabel}
-                                    </bdi>
-                                  ) : (
-                                    <span className="text-xs text-[#94a3b8]">
-                                      -
-                                    </span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                    <SiteModeBadge
-                                      customCss={website.customCss === true}
-                                    />
-                                    {websitePattern && (
-                                      <SiteScopeBadge
-                                        scope={getSitePatternScope(
-                                          websitePattern
-                                        )}
-                                      />
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
+                        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                          <form
+                            className="fontara-soft-panel space-y-4 p-4"
+                            onSubmit={handleSiteProfileSubmit}>
+                            <div className="space-y-2">
+                              <label
+                                htmlFor="site-profile-target"
+                                className="block text-sm font-medium text-[#334155]">
+                                {t("options.siteProfiles.targetLabel")}
+                              </label>
+                              <Popover
+                                open={siteProfileTargetOpen}
+                                onOpenChange={setSiteProfileTargetOpen}>
+                                <PopoverTrigger asChild>
                                   <Button
+                                    id="site-profile-target"
                                     type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                      "mx-auto h-8 w-8 text-[#94a3b8] hover:bg-[#eaf2ff] hover:text-[#2374ff]",
-                                      pinned &&
-                                        "bg-[#eaf2ff] text-[#2374ff] hover:bg-[#dbeafe]"
-                                    )}
-                                    aria-pressed={pinned}
-                                    aria-label={t(
-                                      pinned
-                                        ? "options.sites.unpinFromPopup"
-                                        : "options.sites.pinToPopup",
-                                      {
-                                        site: websiteTitle
-                                      }
-                                    )}
-                                    onClick={() =>
-                                      void handleWebsitePinToggle(website)
-                                    }>
-                                    <Pin
-                                      className={cn(
-                                        "size-4",
-                                        pinned && "fill-current"
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={siteProfileTargetOpen}
+                                    data-testid="fontara-site-profile-target-trigger"
+                                    className="h-auto min-h-11 w-full justify-between border-[#dbe3ef] bg-white px-3 py-2 text-start hover:bg-white">
+                                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                                      {selectedSiteProfileTarget?.iconUrl && (
+                                        <img
+                                          alt=""
+                                          src={
+                                            selectedSiteProfileTarget.iconUrl
+                                          }
+                                          className="size-6 shrink-0 rounded object-contain"
+                                        />
+                                      )}
+                                      <span className="min-w-0 flex-1">
+                                        <bdi
+                                          className={cn(
+                                            "block truncate text-sm font-bold",
+                                            selectedSiteProfilePattern
+                                              ? "text-[#111827]"
+                                              : "text-[#64748b]"
+                                          )}
+                                          dir="ltr">
+                                          {selectedSiteProfilePattern
+                                            ? getDisplaySitePattern(
+                                                selectedSiteProfilePattern
+                                              )
+                                            : t(
+                                                "options.siteProfiles.targetPlaceholder"
+                                              )}
+                                        </bdi>
+                                        {selectedSiteProfileTarget?.title &&
+                                          selectedSiteProfileTarget.title !==
+                                            getDisplaySitePattern(
+                                              selectedSiteProfilePattern ?? ""
+                                            ) && (
+                                            <span className="mt-0.5 block truncate text-xs text-[#64748b]">
+                                              {selectedSiteProfileTarget.title}
+                                            </span>
+                                          )}
+                                      </span>
+                                      {selectedSiteProfileScope && (
+                                        <SiteScopeBadge
+                                          scope={selectedSiteProfileScope}
+                                        />
+                                      )}
+                                    </span>
+                                    <ChevronsUpDown className="ms-2 size-4 shrink-0 text-[#64748b]" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="start"
+                                  className="w-(--radix-popover-trigger-width) p-0">
+                                  <Command>
+                                    <CommandInput
+                                      value={siteProfileTargetSearch}
+                                      data-testid="fontara-site-profile-target-search"
+                                      onValueChange={setSiteProfileTargetSearch}
+                                      placeholder={t(
+                                        "options.siteProfiles.targetSearchPlaceholder"
                                       )}
                                     />
-                                  </Button>
-                                </TableCell>
-                                <TableCell className="pe-4 text-end">
-                                  <Switch
-                                    checked={active}
-                                    onCheckedChange={() =>
-                                      void handleWebsiteToggle(website)
-                                    }
-                                    aria-label={t("options.siteToggleAria", {
-                                      site: websiteTitle
-                                    })}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </section>
-                </div>
-              )}
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        {t("options.siteProfiles.noTargets")}
+                                      </CommandEmpty>
+                                      {canAddSiteProfileTarget &&
+                                        siteProfileAddTargetPattern && (
+                                          <CommandGroup>
+                                            <CommandItem
+                                              value={
+                                                siteProfileAddTargetPattern
+                                              }
+                                              data-testid="fontara-site-profile-target-add"
+                                              className="min-h-11 cursor-pointer gap-3 px-2"
+                                              onSelect={
+                                                handleAddSiteProfileTarget
+                                              }>
+                                              <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
+                                                <Plus className="size-4" />
+                                              </span>
+                                              <span className="min-w-0 flex-1">
+                                                <span className="block text-sm font-bold text-[#111827]">
+                                                  {t(
+                                                    "options.siteProfiles.addTarget",
+                                                    {
+                                                      site: getDisplaySitePattern(
+                                                        siteProfileAddTargetPattern
+                                                      )
+                                                    }
+                                                  )}
+                                                </span>
+                                                <bdi
+                                                  className="mt-0.5 block truncate text-xs text-[#64748b]"
+                                                  dir="ltr">
+                                                  {siteProfileAddTargetPattern}
+                                                </bdi>
+                                              </span>
+                                              <SiteScopeBadge
+                                                scope={getSitePatternScope(
+                                                  siteProfileAddTargetPattern
+                                                )}
+                                              />
+                                            </CommandItem>
+                                          </CommandGroup>
+                                        )}
+                                      <CommandGroup>
+                                        {siteProfileTargetOptions.map(
+                                          renderSiteProfileTargetItem
+                                        )}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
 
-              {activeSection === "rtl" && (
-                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.rtl.title")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {t("options.rtl.subtitle")}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <AlignRight className="size-5" />
-                      </div>
-                    </div>
+                            <div>
+                              <label
+                                htmlFor="site-profile-font"
+                                className="mb-2 block text-sm font-medium text-[#334155]">
+                                {t("options.siteProfiles.fontLabel")}
+                              </label>
+                              <Select
+                                dir={direction}
+                                open={siteProfileFontPickerOpen}
+                                value={
+                                  siteProfileFontInput ||
+                                  GLOBAL_SITE_PROFILE_FONT_VALUE
+                                }
+                                onOpenChange={setSiteProfileFontPickerOpen}
+                                onValueChange={(value) =>
+                                  setSiteProfileFontInput(
+                                    value === GLOBAL_SITE_PROFILE_FONT_VALUE
+                                      ? ""
+                                      : value
+                                  )
+                                }>
+                                <SelectTrigger
+                                  id="site-profile-font"
+                                  data-testid="fontara-site-profile-font-select"
+                                  className="h-10 border-[#dbe3ef] bg-white text-[#111827] shadow-none focus:ring-[#2374ff]/20">
+                                  <SelectValue>
+                                    {getSiteProfileFontLabel(
+                                      siteProfileFontInput
+                                    )}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent
+                                  dir={direction}
+                                  className="max-h-80 border-[#dbe3ef] shadow-xl">
+                                  <SelectItem
+                                    value={GLOBAL_SITE_PROFILE_FONT_VALUE}
+                                    data-testid="fontara-site-profile-font-option-global">
+                                    {t("options.siteProfiles.globalFont")}
+                                  </SelectItem>
+                                  {siteFontOptionGroups.map((group) =>
+                                    group.options.length > 0 ? (
+                                      <SelectGroup key={group.label}>
+                                        <SelectLabel className="text-xs text-slate-500">
+                                          {group.label}
+                                        </SelectLabel>
+                                        {group.options.map((font) => (
+                                          <SelectItem
+                                            key={font.value}
+                                            value={font.value}
+                                            data-testid={`fontara-site-profile-font-option-${font.value}`}>
+                                            {font.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectGroup>
+                                    ) : null
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                    <div
-                      data-active={rtlEnabled}
-                      className={cn(
-                        "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
-                      )}>
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-[#111827]">
-                          {t("options.rtl.globalTitle")}
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {t("options.rtl.globalDescription")}
-                        </p>
-                      </div>
-                      <Switch
-                        dir="ltr"
-                        checked={rtlEnabled}
-                        onCheckedChange={(checked) =>
-                          void handleRtlGlobalToggle(checked)
-                        }
-                        aria-label={t("options.rtl.globalTitle")}
-                      />
-                    </div>
-                  </section>
-
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.rtl.supportedSitesTitle")}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#64748b]">
-                          {t("options.rtl.supportedSitesDescription", {
-                            active: formatNumber(activeRtlSiteCount),
-                            total: formatNumber(RTL_SUPPORTED_SITES.length)
-                          })}
-                        </p>
-                      </div>
-                      {!rtlEnabled && (
-                        <span className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs text-[#64748b]">
-                          {t("options.rtl.globallyDisabled")}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2.5 sm:grid-cols-2">
-                      {RTL_SUPPORTED_SITES.map((site) => {
-                        const siteEnabled = isRtlSiteEnabled(
-                          normalizedRtlSiteSettings,
-                          site.id
-                        )
-                        const active = rtlEnabled !== false && siteEnabled
-
-                        return (
-                          <div
-                            key={site.id}
-                            className={cn(
-                              "flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition",
-                              active
-                                ? "border-[#d7e7ff] bg-white shadow-[inset_0_0_0_1px_rgb(35_116_255_/_8%)]"
-                                : "border-[#e8eef6] bg-[#fbfdff] opacity-80"
-                            )}>
-                            <div className="flex min-w-0 items-center gap-3">
-                              <img
-                                alt=""
-                                src={getExtensionAssetURL(site.icon)}
-                                className={cn(
-                                  "size-7 rounded-md object-contain",
-                                  !active && "grayscale"
-                                )}
-                              />
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-[#111827]">
-                                  {site.siteName}
+                            <div className="space-y-3 rounded-md border border-[#eef2f7] bg-[#f8fafc] p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <label
+                                    htmlFor="site-profile-stroke-toggle"
+                                    className="text-sm font-medium text-[#334155]">
+                                    {t("options.siteProfiles.strokeLabel")}
+                                  </label>
+                                  <p className="mt-1 text-xs text-[#64748b]">
+                                    {siteProfileUsesGlobalStroke
+                                      ? t("options.siteProfiles.globalStroke")
+                                      : t("options.siteProfiles.customStroke", {
+                                          value: formattedSiteProfileTextStroke
+                                        })}
+                                  </p>
                                 </div>
-                                <div className="truncate text-xs text-[#64748b]">
-                                  {rtlEnabled === false
-                                    ? t("options.rtl.globallyDisabled")
-                                    : siteEnabled
-                                      ? t("options.rtl.siteEnabled")
-                                      : t("options.rtl.siteDisabled")}
+                                <Switch
+                                  id="site-profile-stroke-toggle"
+                                  dir="ltr"
+                                  checked={!siteProfileUsesGlobalStroke}
+                                  data-testid="fontara-site-profile-stroke-toggle"
+                                  onCheckedChange={(checked) =>
+                                    setSiteProfileUsesGlobalStroke(!checked)
+                                  }
+                                  aria-label={t(
+                                    "options.siteProfiles.strokeLabel"
+                                  )}
+                                />
+                              </div>
+
+                              <div
+                                dir="ltr"
+                                className={cn(
+                                  "space-y-2 transition",
+                                  siteProfileUsesGlobalStroke && "opacity-50"
+                                )}>
+                                <input
+                                  type="range"
+                                  min={TEXT_STROKE_MIN}
+                                  max={TEXT_STROKE_MAX}
+                                  step={TEXT_STROKE_STEP}
+                                  value={siteProfileTextStroke}
+                                  data-testid="fontara-site-profile-stroke-range"
+                                  disabled={siteProfileUsesGlobalStroke}
+                                  onChange={(event) =>
+                                    setSiteProfileTextStroke(
+                                      normalizeTextStrokeValue(
+                                        Number(event.currentTarget.value)
+                                      )
+                                    )
+                                  }
+                                  aria-label={t(
+                                    "options.siteProfiles.strokeLabel"
+                                  )}
+                                  className="h-2 w-full cursor-pointer accent-[#2374ff] disabled:cursor-not-allowed"
+                                />
+                                <div className="flex items-center justify-between text-[10px] font-semibold text-[#64748b]">
+                                  <span>
+                                    {formatNumber(TEXT_STROKE_MIN, {
+                                      maximumFractionDigits: 1,
+                                      minimumFractionDigits: 1,
+                                      useGrouping: false
+                                    })}
+                                  </span>
+                                  <span>
+                                    {formatNumber(TEXT_STROKE_MAX, {
+                                      maximumFractionDigits: 1,
+                                      minimumFractionDigits: 1,
+                                      useGrouping: false
+                                    })}
+                                  </span>
                                 </div>
                               </div>
                             </div>
-                            <Switch
-                              dir="ltr"
-                              checked={siteEnabled}
-                              disabled={rtlEnabled === false}
-                              onCheckedChange={(checked) =>
-                                void handleRtlSiteToggle(site, checked)
-                              }
-                              aria-label={t("options.rtl.siteToggleAria", {
-                                site: site.siteName
-                              })}
-                            />
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="submit"
+                                data-testid="fontara-site-profile-save"
+                                className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
+                                <Check className="size-4" />
+                                {t("options.siteProfiles.save")}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-10"
+                                onClick={resetSiteProfileForm}>
+                                {t("options.siteProfiles.reset")}
+                              </Button>
+                            </div>
+                          </form>
+
+                          <div className="fontara-soft-panel p-4">
+                            <div className="mb-3">
+                              <h4 className="text-sm font-bold text-[#111827]">
+                                {t("options.siteProfiles.savedTitle")}
+                              </h4>
+                              <p className="mt-1 text-xs text-[#64748b]">
+                                {t("options.siteProfiles.savedDescription", {
+                                  count: formatNumber(
+                                    normalizedSiteProfiles.length
+                                  )
+                                })}
+                              </p>
+                            </div>
+
+                            {normalizedSiteProfiles.length > 0 ? (
+                              <div className="space-y-2">
+                                {normalizedSiteProfiles.map((profile) => {
+                                  const hasCustomCss =
+                                    hasCustomCssForSitePattern(profile.pattern)
+                                  const profileEnabled =
+                                    isSiteProfileEnabled(profile)
+
+                                  return (
+                                    <div
+                                      key={profile.pattern}
+                                      data-testid={`fontara-site-profile-row-${profile.pattern}`}
+                                      className={cn(
+                                        "rounded-md border px-3 py-3 transition",
+                                        profileEnabled
+                                          ? "border-[#eef2f7] bg-[#f8fafc]"
+                                          : "border-slate-200 bg-slate-50 opacity-75"
+                                      )}>
+                                      <div className="mb-3 flex items-start justify-between gap-3">
+                                        <div className="flex min-w-0 items-center gap-2">
+                                          <bdi
+                                            className={cn(
+                                              "min-w-0 truncate text-sm font-bold",
+                                              profileEnabled
+                                                ? "text-[#111827]"
+                                                : "text-[#64748b]"
+                                            )}>
+                                            {getDisplaySitePattern(
+                                              profile.pattern
+                                            )}
+                                          </bdi>
+                                          <span
+                                            className={cn(
+                                              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                                              profileEnabled
+                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                : "border-slate-200 bg-white text-slate-500"
+                                            )}>
+                                            {profileEnabled
+                                              ? t("options.siteProfiles.active")
+                                              : t(
+                                                  "options.siteProfiles.inactive"
+                                                )}
+                                          </span>
+                                          {hasCustomCss && (
+                                            <SiteModeBadge customCss />
+                                          )}
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                          <Switch
+                                            dir="ltr"
+                                            checked={profileEnabled}
+                                            data-testid={`fontara-site-profile-enabled-${profile.pattern}`}
+                                            onCheckedChange={(checked) =>
+                                              void handleSiteProfileEnabledToggle(
+                                                profile,
+                                                checked
+                                              )
+                                            }
+                                            aria-label={t(
+                                              "options.siteProfiles.applyProfile",
+                                              {
+                                                site: profile.pattern
+                                              }
+                                            )}
+                                          />
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-[#64748b] hover:bg-[#eaf2ff] hover:text-[#2374ff]"
+                                            aria-label={t(
+                                              "options.siteProfiles.edit",
+                                              {
+                                                site: profile.pattern
+                                              }
+                                            )}
+                                            onClick={() =>
+                                              handleEditSiteProfile(profile)
+                                            }>
+                                            <Settings className="size-4" />
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-[#64748b] hover:bg-red-50 hover:text-red-600"
+                                            data-testid={`fontara-site-profile-remove-${profile.pattern}`}
+                                            aria-label={t(
+                                              "options.siteProfiles.remove",
+                                              {
+                                                site: profile.pattern
+                                              }
+                                            )}
+                                            onClick={() =>
+                                              void handleRemoveSiteProfile(
+                                                profile.pattern
+                                              )
+                                            }>
+                                            <Trash2 className="size-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      <div className="grid gap-2 text-xs text-[#64748b] sm:grid-cols-2">
+                                        <div className="rounded-md bg-white px-3 py-2">
+                                          <span className="font-semibold text-[#334155]">
+                                            {t(
+                                              "options.siteProfiles.fontValue"
+                                            )}
+                                          </span>{" "}
+                                          <span dir="auto">
+                                            {getSiteProfileFontLabel(
+                                              profile.font
+                                            )}
+                                          </span>
+                                        </div>
+                                        <div className="rounded-md bg-white px-3 py-2">
+                                          <span className="font-semibold text-[#334155]">
+                                            {t(
+                                              "options.siteProfiles.strokeValue"
+                                            )}
+                                          </span>{" "}
+                                          <bdi>
+                                            {profile.textStroke === undefined
+                                              ? t(
+                                                  "options.siteProfiles.globalStroke"
+                                                )
+                                              : formatTextStrokeDisplay(
+                                                  profile.textStroke
+                                                )}
+                                          </bdi>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <div className="flex min-h-48 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
+                                {t("options.siteProfiles.empty")}
+                              </div>
+                            )}
                           </div>
-                        )
-                      })}
-                    </div>
-                  </section>
-                </div>
-              )}
+                        </div>
+                      </section>
+                    </TabsContent>
 
-              {activeSection === "hotkeys" && <HotkeysSettings />}
+                    <TabsContent value="optimized" className="mt-0">
+                      <section className="fontara-panel p-4 sm:p-5">
+                        <div className="mb-5 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-base font-bold text-[#111827]">
+                              {t("options.sites.title")}
+                            </h3>
+                            <p className="mt-1 text-xs text-[#64748b]">
+                              {t("options.sites.count", {
+                                active: formatNumber(activeWebsiteCount),
+                                total: formatNumber(defaultWebsiteList.length)
+                              })}
+                            </p>
+                          </div>
+                          <div className="fontara-icon-tile">
+                            <Globe2 className="size-5" />
+                          </div>
+                        </div>
 
-              {activeSection === "advanced" && (
-                <div className="mx-auto grid max-w-5xl items-start gap-5 lg:grid-cols-2">
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.sync.title")}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {syncSettings
-                            ? t("options.sync.enabledDescription")
-                            : t("options.sync.disabledDescription")}
-                        </p>
+                        <div className="overflow-hidden rounded-md border border-[#e5edf6] bg-white">
+                          <Table className="min-w-[760px]">
+                            <TableHeader className="bg-[#f8fbff]">
+                              <TableRow className="hover:bg-[#f8fbff]">
+                                <TableHead className="w-[28%] ps-4 text-start text-xs font-bold text-[#64748b]">
+                                  {t("options.sites.column.site")}
+                                </TableHead>
+                                <TableHead className="w-[28%] text-start text-xs font-bold text-[#64748b]">
+                                  {t("options.sites.column.pattern")}
+                                </TableHead>
+                                <TableHead className="w-[22%] text-start text-xs font-bold text-[#64748b]">
+                                  {t("options.sites.column.mode")}
+                                </TableHead>
+                                <TableHead className="w-[11%] text-center text-xs font-bold text-[#64748b]">
+                                  {t("options.sites.column.popup")}
+                                </TableHead>
+                                <TableHead className="w-[11%] pe-4 text-end text-xs font-bold text-[#64748b]">
+                                  {t("options.sites.column.enabled")}
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {defaultWebsiteList.map((website) => {
+                                const active = isWebsiteActive(website)
+                                const pinned = isWebsitePinned(website)
+                                const websitePattern =
+                                  getWebsiteCardPattern(website)
+                                const websitePatternLabel = websitePattern
+                                  ? getDisplaySitePattern(websitePattern)
+                                  : null
+                                const websiteTitle = getWebsiteCardTitle(
+                                  website,
+                                  websitePattern
+                                )
+
+                                return (
+                                  <TableRow
+                                    key={website.url}
+                                    className={cn(
+                                      "h-[4.25rem] hover:bg-[#f8fbff]",
+                                      !active && "bg-[#fbfdff] opacity-75"
+                                    )}>
+                                    <TableCell className="ps-4">
+                                      <div className="flex min-w-0 items-center gap-3">
+                                        {website.icon && (
+                                          <img
+                                            alt=""
+                                            src={getExtensionAssetURL(
+                                              website.icon
+                                            )}
+                                            className={cn(
+                                              "size-8 rounded-md object-contain",
+                                              !active && "grayscale"
+                                            )}
+                                          />
+                                        )}
+                                        <div
+                                          className="min-w-0 truncate text-sm font-semibold text-[#111827]"
+                                          title={websiteTitle}>
+                                          {websiteTitle}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {websitePatternLabel ? (
+                                        <bdi
+                                          className="block max-w-[13rem] truncate text-xs text-[#64748b]"
+                                          dir="ltr"
+                                          title={websitePatternLabel}>
+                                          {websitePatternLabel}
+                                        </bdi>
+                                      ) : (
+                                        <span className="text-xs text-[#64748b]">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                        <SiteModeBadge
+                                          customCss={website.customCss === true}
+                                        />
+                                        {websitePattern && (
+                                          <SiteScopeBadge
+                                            scope={getSitePatternScope(
+                                              websitePattern
+                                            )}
+                                          />
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                          "mx-auto h-8 w-8 text-[#64748b] hover:bg-[#eaf2ff] hover:text-[#175cd3]",
+                                          pinned &&
+                                            "bg-[#eaf2ff] text-[#2374ff] hover:bg-[#dbeafe]"
+                                        )}
+                                        aria-pressed={pinned}
+                                        aria-label={t(
+                                          pinned
+                                            ? "options.sites.unpinFromPopup"
+                                            : "options.sites.pinToPopup",
+                                          {
+                                            site: websiteTitle
+                                          }
+                                        )}
+                                        onClick={() =>
+                                          void handleWebsitePinToggle(website)
+                                        }>
+                                        <Pin
+                                          className={cn(
+                                            "size-4",
+                                            pinned && "fill-current"
+                                          )}
+                                        />
+                                      </Button>
+                                    </TableCell>
+                                    <TableCell className="pe-4 text-end">
+                                      <Switch
+                                        checked={active}
+                                        onCheckedChange={() =>
+                                          void handleWebsiteToggle(website)
+                                        }
+                                        aria-label={t(
+                                          "options.siteToggleAria",
+                                          {
+                                            site: websiteTitle
+                                          }
+                                        )}
+                                      />
+                                    </TableCell>
+                                  </TableRow>
+                                )
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </section>
+                    </TabsContent>
+                  </Tabs>
+                )}
+
+                {activeSection === "rtl" && (
+                  <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                    <section className="fontara-panel p-4 sm:p-5">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.rtl.title")}
+                          </h3>
+                          <p className="mt-1 text-xs text-[#64748b]">
+                            {t("options.rtl.subtitle")}
+                          </p>
+                        </div>
+                        <div className="fontara-icon-tile">
+                          <AlignRight className="size-5" />
+                        </div>
                       </div>
-                      <div className="fontara-icon-tile">
-                        <Cloud className="size-5" />
-                      </div>
-                    </div>
 
-                    <div className="space-y-4">
                       <div
-                        data-active={syncSettings}
+                        data-active={rtlEnabled}
                         className={cn(
                           "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
                         )}>
                         <div className="min-w-0">
                           <div className="text-sm font-bold text-[#111827]">
-                            {t("options.sync.toggleLabel")}
+                            {t("options.rtl.globalTitle")}
                           </div>
                           <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                            {t("options.sync.toggleDescription")}
+                            {t("options.rtl.globalDescription")}
                           </p>
                         </div>
                         <Switch
                           dir="ltr"
-                          checked={syncSettings}
+                          checked={rtlEnabled}
                           onCheckedChange={(checked) =>
-                            void handleSyncSettingsToggle(checked)
+                            void handleRtlGlobalToggle(checked)
                           }
-                          aria-label={t("options.sync.toggleAria")}
-                          data-testid="fontara-sync-settings-toggle"
+                          aria-label={t("options.rtl.globalTitle")}
                         />
                       </div>
+                    </section>
 
-                      <div className="flex items-start gap-3 rounded-md border border-[#e1ecff] bg-[#fbfdff] px-4 py-3">
-                        <Info className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
-                        <p className="text-xs leading-5 text-[#334155]">
-                          {t("options.sync.customFontsExcluded")}
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.contextMenus.title")}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {contextMenusEnabled
-                            ? t("options.contextMenus.enabledDescription")
-                            : t("options.contextMenus.disabledDescription")}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <Menu className="size-5" />
-                      </div>
-                    </div>
-
-                    <div
-                      data-active={contextMenusEnabled}
-                      className={cn(
-                        "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
-                      )}>
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-[#111827]">
-                          {t("options.contextMenus.toggleLabel")}
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {t("options.contextMenus.toggleDescription")}
-                        </p>
-                      </div>
-                      <Switch
-                        dir="ltr"
-                        checked={contextMenusEnabled}
-                        onCheckedChange={(checked) =>
-                          void handleContextMenusToggle(checked)
-                        }
-                        aria-label={t("options.contextMenus.toggleAria")}
-                        data-testid="fontara-context-menus-toggle"
-                      />
-                    </div>
-                  </section>
-
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <input
-                      ref={settingsImportInputRef}
-                      type="file"
-                      accept="application/json,.json"
-                      className="hidden"
-                      data-testid="fontara-settings-import-input"
-                      onChange={handleSettingsImportFileChange}
-                    />
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.backup.importTitle")}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {t("options.backup.importDescription")}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <FileUp className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsImportWarningVisible(true)}
-                        disabled={isBackupBusy}
-                        data-testid="fontara-settings-import-open"
-                        className="h-11">
-                        <FileUp className="size-4" />
-                        {t("options.backup.importButton")}
-                      </Button>
-
-                      {isImportWarningVisible && (
-                        <div className="rounded-md border border-[#fde68a] bg-[#fffbeb] p-4">
-                          <h4 className="text-sm font-bold text-[#92400e]">
-                            {t("options.backup.importWarningTitle")}
-                          </h4>
-                          <p className="mt-2 text-xs leading-5 text-[#92400e]">
-                            {t("options.backup.importWarningDescription")}
+                    <section className="fontara-panel p-4 sm:p-5">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.rtl.supportedSitesTitle")}
+                          </h3>
+                          <p className="mt-1 text-xs text-[#64748b]">
+                            {t("options.rtl.supportedSitesDescription", {
+                              active: formatNumber(activeRtlSiteCount),
+                              total: formatNumber(RTL_SUPPORTED_SITES.length)
+                            })}
                           </p>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              onClick={handleChooseSettingsImportFile}
-                              disabled={isBackupBusy}
-                              data-testid="fontara-settings-import-choose"
-                              className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
-                              <Upload className="size-4" />
-                              {t("options.backup.chooseFileButton")}
-                            </Button>
+                        </div>
+                        {!rtlEnabled && (
+                          <span className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs text-[#64748b]">
+                            {t("options.rtl.globallyDisabled")}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid gap-2.5 sm:grid-cols-2">
+                        {RTL_SUPPORTED_SITES.map((site) => {
+                          const siteEnabled = isRtlSiteEnabled(
+                            normalizedRtlSiteSettings,
+                            site.id
+                          )
+                          const active = rtlEnabled !== false && siteEnabled
+
+                          return (
+                            <div
+                              key={site.id}
+                              className={cn(
+                                "flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-2.5 transition",
+                                active
+                                  ? "border-[#d7e7ff] bg-white shadow-[inset_0_0_0_1px_rgb(35_116_255_/_8%)]"
+                                  : "border-[#e8eef6] bg-[#fbfdff] opacity-80"
+                              )}>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <img
+                                  alt=""
+                                  src={getExtensionAssetURL(site.icon)}
+                                  className={cn(
+                                    "size-7 rounded-md object-contain",
+                                    !active && "grayscale"
+                                  )}
+                                />
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold text-[#111827]">
+                                    {site.siteName}
+                                  </div>
+                                  <div className="truncate text-xs text-[#64748b]">
+                                    {rtlEnabled === false
+                                      ? t("options.rtl.globallyDisabled")
+                                      : siteEnabled
+                                        ? t("options.rtl.siteEnabled")
+                                        : t("options.rtl.siteDisabled")}
+                                  </div>
+                                </div>
+                              </div>
+                              <Switch
+                                dir="ltr"
+                                checked={siteEnabled}
+                                disabled={rtlEnabled === false}
+                                onCheckedChange={(checked) =>
+                                  void handleRtlSiteToggle(site, checked)
+                                }
+                                aria-label={t("options.rtl.siteToggleAria", {
+                                  site: site.siteName
+                                })}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  </div>
+                )}
+
+                {activeSection === "hotkeys" && <HotkeysSettings />}
+
+                {activeSection === "advanced" && (
+                  <div className="mx-auto grid max-w-5xl items-start gap-5 lg:grid-cols-2">
+                    <section className="fontara-panel p-4 sm:p-5">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.sync.title")}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {syncSettings
+                              ? t("options.sync.enabledDescription")
+                              : t("options.sync.disabledDescription")}
+                          </p>
+                        </div>
+                        <div className="fontara-icon-tile">
+                          <Cloud className="size-5" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div
+                          data-active={syncSettings}
+                          className={cn(
+                            "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
+                          )}>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-[#111827]">
+                              {t("options.sync.toggleLabel")}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                              {t("options.sync.toggleDescription")}
+                            </p>
+                          </div>
+                          <Switch
+                            dir="ltr"
+                            checked={syncSettings}
+                            onCheckedChange={(checked) =>
+                              void handleSyncSettingsToggle(checked)
+                            }
+                            aria-label={t("options.sync.toggleAria")}
+                            data-testid="fontara-sync-settings-toggle"
+                          />
+                        </div>
+
+                        <div className="flex items-start gap-3 rounded-md border border-[#e1ecff] bg-[#fbfdff] px-4 py-3">
+                          <Info className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
+                          <p className="text-xs leading-5 text-[#334155]">
+                            {t("options.sync.customFontsExcluded")}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="fontara-panel p-4 sm:p-5">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.contextMenus.title")}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {contextMenusEnabled
+                              ? t("options.contextMenus.enabledDescription")
+                              : t("options.contextMenus.disabledDescription")}
+                          </p>
+                        </div>
+                        <div className="fontara-icon-tile">
+                          <Menu className="size-5" />
+                        </div>
+                      </div>
+
+                      <div
+                        data-active={contextMenusEnabled}
+                        className={cn(
+                          "fontara-choice flex items-center justify-between gap-4 rounded-md border p-4 transition"
+                        )}>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-[#111827]">
+                            {t("options.contextMenus.toggleLabel")}
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {t("options.contextMenus.toggleDescription")}
+                          </p>
+                        </div>
+                        <Switch
+                          dir="ltr"
+                          checked={contextMenusEnabled}
+                          onCheckedChange={(checked) =>
+                            void handleContextMenusToggle(checked)
+                          }
+                          aria-label={t("options.contextMenus.toggleAria")}
+                          data-testid="fontara-context-menus-toggle"
+                        />
+                      </div>
+                    </section>
+
+                    <section className="fontara-panel p-4 sm:p-5">
+                      <input
+                        ref={settingsImportInputRef}
+                        type="file"
+                        accept="application/json,.json"
+                        className="hidden"
+                        data-testid="fontara-settings-import-input"
+                        onChange={handleSettingsImportFileChange}
+                      />
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.backup.importTitle")}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {t("options.backup.importDescription")}
+                          </p>
+                        </div>
+                        <div className="fontara-icon-tile">
+                          <FileUp className="size-5" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsImportWarningVisible(true)}
+                          disabled={isBackupBusy}
+                          data-testid="fontara-settings-import-open"
+                          className="h-11">
+                          <FileUp className="size-4" />
+                          {t("options.backup.importButton")}
+                        </Button>
+
+                        {isImportWarningVisible && (
+                          <div className="rounded-md border border-[#fde68a] bg-[#fffbeb] p-4">
+                            <h4 className="text-sm font-bold text-[#92400e]">
+                              {t("options.backup.importWarningTitle")}
+                            </h4>
+                            <p className="mt-2 text-xs leading-5 text-[#92400e]">
+                              {t("options.backup.importWarningDescription")}
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                onClick={handleChooseSettingsImportFile}
+                                disabled={isBackupBusy}
+                                data-testid="fontara-settings-import-choose"
+                                className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
+                                <Upload className="size-4" />
+                                {t("options.backup.chooseFileButton")}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsImportWarningVisible(false)}
+                                disabled={isBackupBusy}
+                                className="h-10">
+                                {t("options.backup.cancelButton")}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+
+                    <section className="fontara-panel p-4 sm:p-5">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">
+                            {t("options.backup.exportTitle")}
+                          </h3>
+                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                            {t("options.backup.exportDescription")}
+                          </p>
+                        </div>
+                        <div className="fontara-icon-tile">
+                          <FileDown className="size-5" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3 rounded-md border border-[#e1ecff] bg-[#fbfdff] px-4 py-3">
+                          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
+                          <p className="text-xs leading-5 text-[#334155]">
+                            {t("options.backup.exportNote")}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => void handleExportSettings()}
+                          disabled={isBackupBusy}
+                          data-testid="fontara-settings-export"
+                          className="h-11 bg-[#2374ff] text-white hover:bg-[#1f66df]">
+                          <Download className="size-4" />
+                          {t("options.backup.exportButton")}
+                        </Button>
+                      </div>
+                    </section>
+
+                    <section className="fontara-panel p-4 sm:p-5 lg:col-span-2">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600">
+                            <RotateCcw className="size-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-base font-bold text-[#111827]">
+                              {t("options.backup.resetTitle")}
+                            </h3>
+                            <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                              {t("options.backup.resetDescription")}
+                            </p>
+                          </div>
+                        </div>
+
+                        <AlertDialog
+                          open={isResetWarningVisible}
+                          onOpenChange={setIsResetWarningVisible}>
+                          <AlertDialogTrigger asChild>
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => setIsImportWarningVisible(false)}
                               disabled={isBackupBusy}
-                              className="h-10">
-                              {t("options.backup.cancelButton")}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </section>
-
-                  <section className="fontara-panel p-4 sm:p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#111827]">
-                          {t("options.backup.exportTitle")}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                          {t("options.backup.exportDescription")}
-                        </p>
-                      </div>
-                      <div className="fontara-icon-tile">
-                        <FileDown className="size-5" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3 rounded-md border border-[#e1ecff] bg-[#fbfdff] px-4 py-3">
-                        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#2374ff]" />
-                        <p className="text-xs leading-5 text-[#334155]">
-                          {t("options.backup.exportNote")}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => void handleExportSettings()}
-                        disabled={isBackupBusy}
-                        data-testid="fontara-settings-export"
-                        className="h-11 bg-[#2374ff] text-white hover:bg-[#1f66df]">
-                        <Download className="size-4" />
-                        {t("options.backup.exportButton")}
-                      </Button>
-                    </div>
-                  </section>
-
-                  <section className="fontara-panel p-4 sm:p-5 lg:col-span-2">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600">
-                          <RotateCcw className="size-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-base font-bold text-[#111827]">
-                            {t("options.backup.resetTitle")}
-                          </h3>
-                          <p className="mt-1 text-xs leading-5 text-[#64748b]">
-                            {t("options.backup.resetDescription")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <AlertDialog
-                        open={isResetWarningVisible}
-                        onOpenChange={setIsResetWarningVisible}>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={isBackupBusy}
-                            data-testid="fontara-settings-reset-open"
-                            className="h-11 shrink-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">
-                            <RotateCcw className="size-4" />
-                            {t("options.backup.resetButton")}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent dir={direction}>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {t("options.backup.resetWarningTitle")}
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t("options.backup.resetWarningDescription")}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isBackupBusy}>
-                              {t("options.backup.cancelButton")}
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => void handleResetSettings()}
-                              disabled={isBackupBusy}
-                              data-testid="fontara-settings-reset-confirm"
-                              className="bg-red-600 text-white hover:bg-red-700">
+                              data-testid="fontara-settings-reset-open"
+                              className="h-11 shrink-0 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">
                               <RotateCcw className="size-4" />
-                              {t("options.backup.resetConfirmButton")}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </section>
-                </div>
-              )}
+                              {t("options.backup.resetButton")}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent dir={direction}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {t("options.backup.resetWarningTitle")}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t("options.backup.resetWarningDescription")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel disabled={isBackupBusy}>
+                                {t("options.backup.cancelButton")}
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => void handleResetSettings()}
+                                disabled={isBackupBusy}
+                                data-testid="fontara-settings-reset-confirm"
+                                className="bg-red-600 text-white hover:bg-red-700">
+                                <RotateCcw className="size-4" />
+                                {t("options.backup.resetConfirmButton")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </section>
+                  </div>
+                )}
+              </div>
             </div>
           </SidebarInset>
         </SidebarProvider>

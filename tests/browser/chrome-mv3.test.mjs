@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -15,6 +16,7 @@ import {
   delay,
   evaluate,
   expectPageStyles,
+  getExtensionLocalValues,
   getExtensionPageLayoutState,
   getExtensionSyncRawValues,
   installDownloadCapture,
@@ -24,6 +26,8 @@ import {
   sendSettingsFromOptions,
   setExtensionLocalValues,
   setValueByTestId,
+  stopChromeExtensionServiceWorkers,
+  uploadFilesByTestId,
   waitFor,
   waitForCapturedDownload,
   waitForContentBridge,
@@ -33,6 +37,763 @@ import {
   waitForSwitchChecked,
   withChromeMv3ExtensionHarness
 } from "../support/browser/extension-harness.mjs"
+
+const CUSTOM_FONT_SAMPLE_TEXT = "سلام فارسی آزمایش فونت سفارشی پندار گسترش قلم"
+let customFontMutationSequence = 0
+
+async function getCustomFontRuntimeState(
+  page,
+  familyValue,
+  binaryMarkers = []
+) {
+  return evaluate(
+    page,
+    async (family, sampleText, markers) => {
+      const escapeFamily = (value) =>
+        value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')
+      const quotedFamily = `"${escapeFamily(family)}"`
+      const query = `400 32px ${quotedFamily}`
+      const boldQuery = `700 32px ${quotedFamily}`
+      const loadedFaces = Array.from(
+        new Set([
+          ...(await document.fonts.load(query, sampleText)),
+          ...(await document.fonts.load(boldQuery, sampleText))
+        ])
+      )
+      await document.fonts.ready
+      const normalizeFamily = (value) => value.replace(/^["']|["']$/g, "")
+      const familyFaces = Array.from(
+        new Set(
+          [...Array.from(document.fonts), ...loadedFaces].filter(
+            (fontFace) => normalizeFamily(fontFace.family) === family
+          )
+        )
+      )
+      const canvas = document.createElement("canvas")
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("Canvas 2D context is unavailable.")
+      const measure = (font) => {
+        context.font = font
+        return context.measureText(sampleText).width
+      }
+      const html = document.documentElement.outerHTML
+      const target = document.getElementById("fontara-text")
+
+      return {
+        checked: document.fonts.check(query, sampleText),
+        computedFamily: target ? getComputedStyle(target).fontFamily : "",
+        customWidth: measure(query),
+        dynamicStyleText:
+          document.getElementById("fontara-dynamic-font")?.textContent ?? "",
+        exposedMarkers: markers.filter(
+          (marker) => marker.length > 0 && html.includes(marker)
+        ),
+        faceCount: familyFaces.length,
+        faces: familyFaces.map((fontFace) => ({
+          status: fontFace.status,
+          stretch: fontFace.stretch,
+          style: fontFace.style,
+          weight: fontFace.weight
+        })),
+        hasDataFont: /data:font/i.test(html),
+        loadedCount: loadedFaces.length,
+        monospaceWidth: measure("400 32px monospace"),
+        serifWidth: measure("400 32px serif")
+      }
+    },
+    familyValue,
+    CUSTOM_FONT_SAMPLE_TEXT,
+    binaryMarkers
+  )
+}
+
+function assertNoCustomFontBinary(serializedValue, binaryMarkers, label) {
+  assert.doesNotMatch(
+    serializedValue,
+    /data:font/i,
+    `${label} exposed data:font.`
+  )
+  for (const marker of binaryMarkers) {
+    assert.equal(
+      serializedValue.includes(marker),
+      false,
+      `${label} exposed a custom-font binary marker.`
+    )
+  }
+}
+
+async function sendCustomFontMessage(extensionPage, message) {
+  customFontMutationSequence += 1
+  const request = {
+    ...message,
+    data: {
+      ...message.data,
+      clientMutationId: `browser-custom-font-${customFontMutationSequence}`
+    }
+  }
+  const response = await extensionPage.evaluate(
+    (request) =>
+      new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(request, (messageResponse) => {
+          const error = chrome.runtime.lastError
+          if (error) {
+            reject(new Error(error.message))
+            return
+          }
+          resolve(messageResponse)
+        })
+      }),
+    request
+  )
+
+  assert.ok(response, "FontARA did not acknowledge the custom-font message.")
+  if (response.error) throw new Error(response.error)
+  return response.data
+}
+
+test("Chrome MV3 applies a real installed system font across reload and service-worker restart", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const optionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const testPage = await harness.createFixturePage()
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    await waitForContentBridge(testPage)
+
+    const installedFont = await optionsPage.evaluate(
+      () =>
+        new Promise((resolve, reject) => {
+          if (typeof chrome.fontSettings?.getFontList !== "function") {
+            reject(new Error("chrome.fontSettings.getFontList is unavailable"))
+            return
+          }
+
+          chrome.fontSettings.getFontList((fonts) => {
+            const error = chrome.runtime.lastError
+            if (error) {
+              reject(new Error(error.message))
+              return
+            }
+
+            const safeFonts = (fonts ?? []).filter(
+              (font) =>
+                typeof font.fontId === "string" &&
+                font.fontId.length > 0 &&
+                font.fontId.length <= 160 &&
+                /^[\p{L}\p{N} ._+-]+$/u.test(font.fontId)
+            )
+            const preferredFamilies = [
+              "Arial",
+              "Helvetica",
+              "Noto Sans",
+              "DejaVu Sans",
+              "Times New Roman"
+            ]
+            const selected =
+              preferredFamilies
+                .map((family) =>
+                  safeFonts.find(
+                    (font) => font.fontId.toLowerCase() === family.toLowerCase()
+                  )
+                )
+                .find(Boolean) ?? safeFonts[0]
+
+            resolve(selected ?? null)
+          })
+        })
+    )
+    assert.ok(installedFont?.fontId, "Chrome returned no safe installed font.")
+
+    const systemFontValue = `system-font:${encodeURIComponent(installedFont.fontId)}`
+    const initialLoadId = await evaluate(testPage, () => window.__fontaraLoadId)
+
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: systemFontValue,
+      [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: true,
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    })
+    const appliedWithoutReload = await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: installedFont.fontId,
+        loadId: initialLoadId
+      })
+    )
+    assert.equal(appliedWithoutReload.loadId, initialLoadId)
+    assert.equal(
+      await evaluate(
+        testPage,
+        (fontFamily) => {
+          const quotedFamily = `"${fontFamily
+            .replaceAll("\\", "\\\\")
+            .replaceAll('"', '\\"')}"`
+          return document.fonts.check(`16px ${quotedFamily}`, "FontARA")
+        },
+        installedFont.fontId
+      ),
+      true
+    )
+
+    await testPage.reload({ waitUntil: "load" })
+    await waitForContentBridge(testPage)
+    const reloadLoadId = await evaluate(testPage, () => window.__fontaraLoadId)
+    assert.notEqual(reloadLoadId, initialLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: installedFont.fontId,
+        loadId: reloadLoadId
+      })
+    )
+
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false
+    })
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: reloadLoadId
+      })
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      systemFontValue
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SYNC_SETTINGS,
+      false
+    )
+
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: true
+    })
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: installedFont.fontId,
+        loadId: reloadLoadId
+      })
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
+      true
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      systemFontValue
+    )
+    await delay(500)
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      systemFontValue
+    )
+
+    await stopChromeExtensionServiceWorkers(optionsPage)
+    await testPage.reload({ waitUntil: "load" })
+    const restartedResponse = await waitForContentBridge(testPage)
+    const restartedData = restartedResponse.data ?? restartedResponse
+    const restartedOptionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const restartedLocalValues = await getExtensionLocalValues(
+      restartedOptionsPage,
+      [
+        STORAGE_KEYS.SELECTED_FONT,
+        STORAGE_KEYS.SYNC_SETTINGS,
+        STORAGE_KEYS.SYSTEM_FONTS_ENABLED
+      ]
+    )
+    assert.deepEqual(
+      {
+        backgroundSelectedFont:
+          restartedData.settings[STORAGE_KEYS.SELECTED_FONT],
+        backgroundSystemFontsEnabled:
+          restartedData.settings[STORAGE_KEYS.SYSTEM_FONTS_ENABLED],
+        localSelectedFont: restartedLocalValues[STORAGE_KEYS.SELECTED_FONT],
+        localSyncSettings: restartedLocalValues[STORAGE_KEYS.SYNC_SETTINGS],
+        localSystemFontsEnabled:
+          restartedLocalValues[STORAGE_KEYS.SYSTEM_FONTS_ENABLED]
+      },
+      {
+        backgroundSelectedFont: systemFontValue,
+        backgroundSystemFontsEnabled: true,
+        localSelectedFont: systemFontValue,
+        localSyncSettings: false,
+        localSystemFontsEnabled: true
+      }
+    )
+    assert.ok(
+      restartedData.settings[STORAGE_KEYS.ENABLED_FOR].includes(sitePattern)
+    )
+    const restartedLoadId = await evaluate(
+      testPage,
+      () => window.__fontaraLoadId
+    )
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: installedFont.fontId,
+        loadId: restartedLoadId
+      })
+    )
+  })
+})
+
+test("Chrome MV3 uploads, applies, reloads, partially recovers, and deletes a real custom-font family without binary exposure", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const regularFontPath = path.resolve("assets/fonts/shabnam/Shabnam.woff2")
+    const boldFontPath = path.resolve("assets/fonts/shabnam/Shabnam-Bold.woff2")
+    await Promise.all([fs.access(regularFontPath), fs.access(boldFontPath)])
+
+    const optionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const testPage = await harness.createFixturePage()
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    await waitForContentBridge(testPage)
+
+    await sendSettingsFromContentBridge(testPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    })
+    await clickByTestId(optionsPage, "fontara-options-nav-fonts")
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-file", [
+      regularFontPath,
+      boldFontPath
+    ])
+    await waitFor(
+      () =>
+        optionsPage.$eval(
+          '[data-testid="fontara-custom-font-add"]',
+          (element) => element instanceof HTMLButtonElement && !element.disabled
+        ),
+      {
+        message:
+          "The real Shabnam files were not validated by the metadata worker."
+      }
+    )
+    await setValueByTestId(
+      optionsPage,
+      "fontara-custom-font-name",
+      "E2E Shabnam Family"
+    )
+    await clickByTestId(optionsPage, "fontara-custom-font-add")
+
+    const family = await waitFor(
+      async () => {
+        const values = await getExtensionLocalValues(optionsPage, [
+          STORAGE_KEYS.CUSTOM_FONT_LIST
+        ])
+        const families = values[STORAGE_KEYS.CUSTOM_FONT_LIST]
+        const candidate = Array.isArray(families) ? families[0] : null
+        return families?.length === 1 && candidate?.faces?.length === 2
+          ? candidate
+          : false
+      },
+      {
+        message: "The custom-font family was not committed to the library.",
+        timeout: 20_000
+      }
+    )
+    assert.equal(family.displayName, "E2E Shabnam Family")
+    assert.equal(family.sourceFamilyKey, "shabnam")
+    assert.match(family.value, /^[A-Za-z0-9_-]+-Fontara$/)
+    assert.ok(family.unicodeRange?.includes("U+0600-06FF"))
+    assert.equal(family.revision, 1)
+    assert.deepEqual(
+      family.faces.map((face) => ({
+        style: face.style,
+        validation: face.validation,
+        weight: face.weight
+      })),
+      [
+        {
+          style: "normal",
+          validation: "verified",
+          weight: { min: 400, max: 400 }
+        },
+        {
+          style: "normal",
+          validation: "verified",
+          weight: { min: 700, max: 700 }
+        }
+      ]
+    )
+
+    const selectionAfterAdd = await getExtensionLocalValues(optionsPage, [
+      STORAGE_KEYS.SELECTED_FONT
+    ])
+    assert.equal(
+      selectionAfterAdd[STORAGE_KEYS.SELECTED_FONT],
+      "Vazirmatn-Fontara",
+      "Adding a family must not auto-select it."
+    )
+
+    const allLocalValues = await getExtensionLocalValues(optionsPage, null)
+    const blobKeys = family.faces.map(
+      (face) => `customFontFace:${face.fileHash}`
+    )
+    const binaryMarkers = []
+    for (const [index, face] of family.faces.entries()) {
+      const blob = allLocalValues[blobKeys[index]]
+      assert.equal(blob?.encoding, "base64")
+      assert.equal(blob?.hash, face.fileHash)
+      assert.equal(blob?.byteLength, face.byteLength)
+      assert.equal(blob?.format, face.format)
+      assert.ok(blob.data.length > 256)
+      const markerOffset = Math.max(0, Math.floor(blob.data.length / 2) - 48)
+      binaryMarkers.push(blob.data.slice(markerOffset, markerOffset + 96))
+      assert.equal(Object.hasOwn(face, "data"), false)
+      assert.equal(Object.hasOwn(face, "base64"), false)
+    }
+    assert.equal(
+      Object.keys(allLocalValues).some((key) =>
+        key.startsWith("customFontStaging:")
+      ),
+      false,
+      "Committed uploads must not leave staging blobs behind."
+    )
+
+    const extensionDataResponse = await waitForContentBridge(testPage)
+    const extensionData = extensionDataResponse.data ?? extensionDataResponse
+    assert.equal(
+      extensionData.settings[STORAGE_KEYS.CUSTOM_FONT_LIST][0].faces.length,
+      2
+    )
+    assertNoCustomFontBinary(
+      JSON.stringify(extensionData),
+      binaryMarkers,
+      "Background GET_DATA response"
+    )
+    const initialSyncValues = await getExtensionSyncRawValues(optionsPage)
+    assertNoCustomFontBinary(
+      JSON.stringify(initialSyncValues),
+      binaryMarkers,
+      "Sync storage"
+    )
+    assertNoCustomFontBinary(
+      await evaluate(optionsPage, () => document.documentElement.outerHTML),
+      binaryMarkers,
+      "Options DOM"
+    )
+
+    const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      viewport: { height: 650, width: 360 }
+    })
+    await clickByTestId(popupPage, "fontara-font-selector-trigger")
+    await setValueByTestId(
+      popupPage,
+      "fontara-font-selector-search",
+      family.displayName
+    )
+    await clickByTestId(popupPage, `fontara-font-option-${family.value}`)
+    await waitForExtensionLocalValue(
+      popupPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      family.value
+    )
+
+    const appliedState = await waitFor(
+      async () => {
+        const state = await getCustomFontRuntimeState(
+          testPage,
+          family.value,
+          binaryMarkers
+        )
+        return state.checked &&
+          state.loadedCount >= 1 &&
+          state.faceCount === 2 &&
+          state.faces.every((face) => face.status === "loaded") &&
+          state.computedFamily.includes(family.value)
+          ? state
+          : false
+      },
+      {
+        message:
+          "The uploaded Regular/Bold family was not registered with FontFace and applied.",
+        timeout: 20_000
+      }
+    )
+    assert.equal(
+      appliedState.faces.some((face) => face.weight === "400"),
+      true
+    )
+    assert.equal(
+      appliedState.faces.some((face) => face.weight === "700"),
+      true
+    )
+    assert.ok(appliedState.dynamicStyleText.includes(family.value))
+    assert.ok(
+      Math.max(
+        Math.abs(appliedState.customWidth - appliedState.serifWidth),
+        Math.abs(appliedState.customWidth - appliedState.monospaceWidth)
+      ) > 0.5,
+      "Canvas metrics did not distinguish the custom font from fallbacks."
+    )
+    assert.equal(appliedState.hasDataFont, false)
+    assert.deepEqual(appliedState.exposedMarkers, [])
+    assertNoCustomFontBinary(
+      await evaluate(popupPage, () => document.documentElement.outerHTML),
+      binaryMarkers,
+      "Popup DOM"
+    )
+
+    const failedFaceBytes = Buffer.from(
+      "not-a-valid-font-face-binary-for-partial-failure-e2e-".repeat(8)
+    )
+    const failedFaceHash = createHash("sha256")
+      .update(failedFaceBytes)
+      .digest("hex")
+    const failedFaceBase64 = failedFaceBytes.toString("base64")
+    const failedFace = {
+      id: `${failedFaceHash.slice(0, 16)}-failed-face`,
+      fileHash: failedFaceHash,
+      fileName: "Corrupt-Italic.woff2",
+      format: "woff2",
+      byteLength: failedFaceBytes.byteLength,
+      weight: { min: 900, max: 900 },
+      style: "italic",
+      stretch: { min: 100, max: 100 },
+      axes: [],
+      validation: "failed"
+    }
+    const partiallyBrokenFamilyDraft = {
+      ...family,
+      faces: [...family.faces, failedFace]
+    }
+    delete partiallyBrokenFamilyDraft.revision
+    const transaction = await sendCustomFontMessage(optionsPage, {
+      data: { family: partiallyBrokenFamilyDraft },
+      type: "fontara-ui-bg-custom-font-begin"
+    })
+    for (const face of family.faces) {
+      await sendCustomFontMessage(optionsPage, {
+        data: {
+          base64: allLocalValues[`customFontFace:${face.fileHash}`].data,
+          faceId: face.id,
+          transactionId: transaction.transactionId
+        },
+        type: "fontara-ui-bg-custom-font-put-face"
+      })
+    }
+    await sendCustomFontMessage(optionsPage, {
+      data: {
+        base64: failedFaceBase64,
+        faceId: failedFace.id,
+        transactionId: transaction.transactionId
+      },
+      type: "fontara-ui-bg-custom-font-put-face"
+    })
+    const committedPartialTransaction = await sendCustomFontMessage(
+      optionsPage,
+      {
+        data: { transactionId: transaction.transactionId },
+        type: "fontara-ui-bg-custom-font-commit"
+      }
+    )
+    const partiallyBrokenFamily = committedPartialTransaction.family
+    assert.equal(partiallyBrokenFamily.revision, family.revision + 1)
+    const failedBlobKey = `customFontFace:${failedFaceHash}`
+    blobKeys.push(failedBlobKey)
+    const failedMarkerOffset = Math.max(
+      0,
+      Math.floor(failedFaceBase64.length / 2) - 48
+    )
+    binaryMarkers.push(
+      failedFaceBase64.slice(failedMarkerOffset, failedMarkerOffset + 96)
+    )
+    await waitFor(
+      async () => {
+        const values = await getExtensionLocalValues(optionsPage, [
+          STORAGE_KEYS.CUSTOM_FONT_LIST
+        ])
+        const storedFamily = values[STORAGE_KEYS.CUSTOM_FONT_LIST]?.[0]
+        return storedFamily?.revision === partiallyBrokenFamily.revision &&
+          storedFamily.faces?.length === 3
+          ? storedFamily
+          : false
+      },
+      {
+        message: "The partial-failure fixture metadata was not persisted."
+      }
+    )
+
+    const partialState = await waitFor(
+      async () => {
+        const state = await getCustomFontRuntimeState(
+          testPage,
+          family.value,
+          binaryMarkers
+        )
+        return state.faceCount === 2 &&
+          state.faces.every((face) => face.status === "loaded") &&
+          state.computedFamily.includes(family.value)
+          ? state
+          : false
+      },
+      {
+        message:
+          "A missing secondary face prevented the valid family faces from applying.",
+        timeout: 20_000
+      }
+    )
+    assert.equal(partialState.checked, true)
+    assert.equal(partialState.loadedCount >= 1, true)
+    assert.deepEqual(partialState.exposedMarkers, [])
+
+    await stopChromeExtensionServiceWorkers(optionsPage)
+    const previousLoadId = await evaluate(
+      testPage,
+      () => window.__fontaraLoadId
+    )
+    await testPage.reload({ waitUntil: "load" })
+    const reloadedExtensionDataResponse = await waitForContentBridge(testPage)
+    const reloadedExtensionData =
+      reloadedExtensionDataResponse.data ?? reloadedExtensionDataResponse
+    assert.notEqual(
+      await evaluate(testPage, () => window.__fontaraLoadId),
+      previousLoadId
+    )
+    assert.equal(
+      reloadedExtensionData.settings[STORAGE_KEYS.SELECTED_FONT],
+      family.value
+    )
+    assertNoCustomFontBinary(
+      JSON.stringify(reloadedExtensionData),
+      binaryMarkers,
+      "Reloaded background GET_DATA response"
+    )
+
+    const reloadedLocalValues = await getExtensionLocalValues(optionsPage, null)
+    assert.equal(
+      reloadedLocalValues[STORAGE_KEYS.CUSTOM_FONT_LIST]?.[0]?.revision,
+      partiallyBrokenFamily.revision
+    )
+    assert.equal(
+      reloadedLocalValues[STORAGE_KEYS.CUSTOM_FONT_LIST]?.[0]?.faces?.length,
+      3
+    )
+    for (const blobKey of blobKeys) {
+      assert.ok(reloadedLocalValues[blobKey], `${blobKey} was lost on restart.`)
+    }
+
+    let lastReloadedState = null
+    let reloadedState
+    try {
+      reloadedState = await waitFor(
+        async () => {
+          const state = await getCustomFontRuntimeState(
+            testPage,
+            family.value,
+            binaryMarkers
+          )
+          lastReloadedState = state
+          return state.faceCount === 2 &&
+            state.faces.every((face) => face.status === "loaded") &&
+            state.computedFamily.includes(family.value)
+            ? state
+            : false
+        },
+        {
+          message:
+            "The valid custom-font faces did not survive page reload and service-worker restart.",
+          timeout: 20_000
+        }
+      )
+    } catch (error) {
+      if (error instanceof Error) {
+        error.message += `\n\nLast custom-font runtime state:\n${JSON.stringify(lastReloadedState, null, 2)}`
+      }
+      throw error
+    }
+    assert.equal(reloadedState.checked, true)
+    assert.equal(reloadedState.hasDataFont, false)
+    assert.deepEqual(reloadedState.exposedMarkers, [])
+
+    await clickByTestId(
+      optionsPage,
+      `fontara-custom-font-delete-${family.value}`
+    )
+    await clickByTestId(
+      optionsPage,
+      `fontara-custom-font-delete-confirm-${family.value}`
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.CUSTOM_FONT_LIST,
+      []
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      "Vazirmatn-Fontara"
+    )
+    await waitFor(
+      async () => {
+        const values = await getExtensionLocalValues(optionsPage, null)
+        return blobKeys.every((key) => !(key in values))
+      },
+      {
+        message: "Deleting the family did not garbage-collect its face blobs."
+      }
+    )
+
+    const deletedState = await waitFor(
+      async () => {
+        const state = await getCustomFontRuntimeState(
+          testPage,
+          family.value,
+          binaryMarkers
+        )
+        return state.faceCount === 0 &&
+          !state.computedFamily.includes(family.value) &&
+          state.dynamicStyleText.includes("Vazirmatn-Fontara")
+          ? state
+          : false
+      },
+      {
+        message:
+          "Deleting the selected custom family did not remove FontFace objects and restore the default.",
+        timeout: 20_000
+      }
+    )
+    assert.equal(deletedState.hasDataFont, false)
+    assert.deepEqual(deletedState.exposedMarkers, [])
+
+    const finalSyncValues = await getExtensionSyncRawValues(optionsPage)
+    assertNoCustomFontBinary(
+      JSON.stringify(finalSyncValues),
+      binaryMarkers,
+      "Final sync storage"
+    )
+    const finalExtensionDataResponse = await waitForContentBridge(testPage)
+    const finalExtensionData =
+      finalExtensionDataResponse.data ?? finalExtensionDataResponse
+    assert.deepEqual(
+      finalExtensionData.settings[STORAGE_KEYS.CUSTOM_FONT_LIST],
+      []
+    )
+    assertNoCustomFontBinary(
+      JSON.stringify(finalExtensionData),
+      binaryMarkers,
+      "Final background GET_DATA response"
+    )
+  })
+})
 
 test("Chrome MV3 applies font, updates font, and excludes site without page reload", async (t) => {
   await withChromeMv3ExtensionHarness(t, async (harness) => {
@@ -408,6 +1169,7 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
       "ui/options/index.html"
     )
     await clickByTestId(optionsPage, "fontara-options-nav-sites")
+    await clickByTestId(optionsPage, "fontara-sites-tab-profiles")
     await clickByTestId(optionsPage, "fontara-site-profile-target-trigger")
     await setValueByTestId(
       optionsPage,
@@ -415,10 +1177,10 @@ test("Chrome MV3 options UI creates site profiles and applies them without page 
       sitePattern
     )
     await clickByTestId(optionsPage, "fontara-site-profile-target-add")
-    await setValueByTestId(
+    await clickByTestId(optionsPage, "fontara-site-profile-font-select")
+    await clickByTestId(
       optionsPage,
-      "fontara-site-profile-font-select",
-      "Samim-Fontara"
+      "fontara-site-profile-font-option-Samim-Fontara"
     )
     await clickByTestId(optionsPage, "fontara-site-profile-stroke-toggle")
     await setValueByTestId(
@@ -1009,6 +1771,44 @@ test("Chrome MV3 options UI persists advanced switches through real clicks", asy
     await waitForSwitchChecked(
       optionsPage,
       "fontara-context-menus-toggle",
+      false
+    )
+
+    await clickByTestId(optionsPage, "fontara-context-menus-toggle")
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.CONTEXT_MENUS_ENABLED,
+      true
+    )
+    assert.equal(
+      await optionsPage.evaluate(
+        () =>
+          new Promise((resolve) => {
+            chrome.permissions.contains(
+              { permissions: ["contextMenus"] },
+              resolve
+            )
+          })
+      ),
+      true
+    )
+
+    await clickByTestId(optionsPage, "fontara-context-menus-toggle")
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.CONTEXT_MENUS_ENABLED,
+      false
+    )
+    assert.equal(
+      await optionsPage.evaluate(
+        () =>
+          new Promise((resolve) => {
+            chrome.permissions.contains(
+              { permissions: ["contextMenus"] },
+              resolve
+            )
+          })
+      ),
       false
     )
   })

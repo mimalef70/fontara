@@ -2,13 +2,11 @@ import assert from "node:assert/strict"
 import test, { afterEach } from "node:test"
 
 import {
+  type FontaraTrackedDocument,
   getTrackedDocumentCountForTesting,
   initTabManager,
   notifyContentScriptsAboutSettingsChange,
-  resetTabManagerStateForTesting,
-  TAB_MANAGER_RUNTIME_STATE_KEY,
-  TAB_MANAGER_RUNTIME_STATE_MAX_AGE_MS,
-  TAB_MANAGER_RUNTIME_STATE_VERSION
+  resetTabManagerStateForTesting
 } from "../../src/background/tab-manager"
 import {
   MESSAGE_TYPES_BG_TO_CS,
@@ -22,989 +20,304 @@ afterEach(() => {
   Reflect.set(globalThis, "chrome", originalChrome)
 })
 
-test("tab manager tracks content documents and notifies them about settings changes", async () => {
-  const runtimeMessageListeners: Array<
-    (message: unknown, sender: chrome.runtime.MessageSender) => boolean
-  > = []
-  const removedTabListeners: Array<(tabId: number) => void> = []
+type MessageListener = (
+  message: unknown,
+  sender: chrome.runtime.MessageSender
+) => boolean
+
+function createChromeMock(
+  openTabs: chrome.tabs.Tab[] = [],
+  options: {
+    queryThrows?: boolean
+    removeThrows?: boolean
+    sendFailures?: number
+    sendThrows?: number
+  } = {}
+) {
+  const messageListeners: MessageListener[] = []
+  const removedListeners: Array<(tabId: number) => void> = []
   const sentMessages: Array<{
     message: unknown
     options?: chrome.tabs.MessageSendOptions
     tabId: number
   }> = []
-  let runtimeLastError: { message?: string } | undefined
+  const removedStorageKeys: string[] = []
+  let runtimeError: { message: string } | undefined
+  let sendFailures = options.sendFailures ?? 0
+  let sendThrows = options.sendThrows ?? 0
 
   Reflect.set(globalThis, "chrome", {
     runtime: {
       get lastError() {
-        return runtimeLastError
+        return runtimeError
       },
       onMessage: {
-        addListener(listener: (typeof runtimeMessageListeners)[number]) {
-          runtimeMessageListeners.push(listener)
+        addListener(listener: MessageListener) {
+          messageListeners.push(listener)
+        }
+      }
+    },
+    storage: {
+      local: {
+        remove(key: string, callback?: () => void) {
+          if (options.removeThrows) throw new Error("storage unavailable")
+          removedStorageKeys.push(key)
+          callback?.()
         }
       }
     },
     tabs: {
       onRemoved: {
         addListener(listener: (tabId: number) => void) {
-          removedTabListeners.push(listener)
+          removedListeners.push(listener)
         }
       },
       query(
-        _queryInfo: chrome.tabs.QueryInfo,
-        callback?: (tabs: chrome.tabs.Tab[]) => void
+        _query: chrome.tabs.QueryInfo,
+        callback: (tabs: chrome.tabs.Tab[]) => void
       ) {
-        const tabs = [
-          { id: 9, url: "https://lost.example/" } as chrome.tabs.Tab,
-          { id: 10, url: "http://other.example/" } as chrome.tabs.Tab,
-          { id: 11, url: "chrome://extensions/" } as chrome.tabs.Tab,
-          { url: "https://missing-id.example/" } as chrome.tabs.Tab
-        ]
-        callback?.(tabs)
-        return Promise.resolve(tabs)
+        if (options.queryThrows) throw new Error("tabs unavailable")
+        callback(openTabs)
       },
       sendMessage(
         tabId: number,
         message: unknown,
-        optionsOrCallback?: chrome.tabs.MessageSendOptions | (() => void),
-        callback?: () => void
+        optionsOrCallback?:
+          | chrome.tabs.MessageSendOptions
+          | ((response?: unknown) => void),
+        maybeCallback?: (response?: unknown) => void
       ) {
+        if (sendThrows > 0) {
+          sendThrows -= 1
+          throw new Error("send unavailable")
+        }
         const options =
           typeof optionsOrCallback === "function"
             ? undefined
             : optionsOrCallback
-        const sendResponse =
-          typeof optionsOrCallback === "function" ? optionsOrCallback : callback
-
         sentMessages.push({ message, options, tabId })
-        if (options?.documentId === "doc-fallback" && !options.frameId) {
-          runtimeLastError = { message: "No receiving end" }
-          sendResponse?.()
-          runtimeLastError = undefined
-          return
-        }
-
-        runtimeLastError = undefined
-        sendResponse?.()
+        const callback =
+          typeof optionsOrCallback === "function"
+            ? optionsOrCallback
+            : maybeCallback
+        runtimeError =
+          sendFailures > 0
+            ? { message: "receiving end unavailable" }
+            : undefined
+        if (sendFailures > 0) sendFailures -= 1
+        callback?.()
+        runtimeError = undefined
       }
     }
   })
 
-  initTabManager()
-
-  assert.equal(runtimeMessageListeners.length, 1)
-
-  await notifyContentScriptsAboutSettingsChange()
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 9
+  return {
+    messageListeners,
+    removedListeners,
+    removedStorageKeys,
+    setSendFailures(count: number) {
+      sendFailures = count
     },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 10
+    sentMessages
+  }
+}
+
+test("tab manager derives frame identity and URL only from MessageSender", () => {
+  const runtime = createChromeMock()
+  const documents: FontaraTrackedDocument[] = []
+  initTabManager({
+    createDocumentMessage(document) {
+      documents.push(document)
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
     }
-  ])
+  })
 
-  sentMessages.length = 0
-
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: false,
-        url: "https://example.com/frame"
-      },
-      scriptId: "script-1",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
-    },
-    {
-      documentId: "doc-1",
-      frameId: 2,
-      tab: { id: 7 } as chrome.tabs.Tab
-    }
-  )
-
-  assert.equal(getTrackedDocumentCountForTesting(), 1)
-
-  await notifyContentScriptsAboutSettingsChange()
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        scriptId: "script-1",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { documentId: "doc-1" },
-      tabId: 7
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 7
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 9
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 10
-    }
-  ])
-
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: false,
-        url: "https://example.com/frame"
-      },
-      scriptId: "script-1",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET
-    },
-    {
-      documentId: "doc-1",
-      frameId: 2,
-      tab: { id: 7 } as chrome.tabs.Tab
-    }
-  )
-
-  assert.equal(getTrackedDocumentCountForTesting(), 0)
-
-  sentMessages.length = 0
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: false,
-        url: "https://example.com/fallback-frame"
-      },
-      scriptId: "script-fallback",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
-    },
-    {
-      documentId: "doc-fallback",
-      frameId: 3,
-      tab: { id: 7 } as chrome.tabs.Tab
-    }
-  )
-
-  await notifyContentScriptsAboutSettingsChange()
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        scriptId: "script-fallback",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { documentId: "doc-fallback" },
-      tabId: 7
-    },
-    {
-      message: {
-        scriptId: "script-fallback",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { documentId: "doc-fallback", frameId: 3 },
-      tabId: 7
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 7
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 9
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 10
-    }
-  ])
-
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: false,
-        url: "https://example.com/fallback-frame"
-      },
-      scriptId: "script-fallback",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET
-    },
-    {
-      documentId: "doc-fallback",
-      frameId: 3,
-      tab: { id: 7 } as chrome.tabs.Tab
-    }
-  )
-
-  assert.equal(getTrackedDocumentCountForTesting(), 0)
-
-  runtimeMessageListeners[0](
+  runtime.messageListeners[0]?.(
     {
       data: {
         isTopFrame: true,
-        url: "https://example.com"
+        url: "https://attacker.invalid/?secret=payload"
       },
-      scriptId: "script-2",
+      scriptId: "frame-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "document-2",
+      frameId: 7,
+      tab: { id: 42, url: "https://top.example/" } as chrome.tabs.Tab,
+      url: "https://user:password@TRUSTED.example/frame?token=secret#message"
+    }
+  )
+
+  assert.deepEqual(documents, [
+    {
+      documentId: "document-2",
+      frameId: 7,
+      isTopFrame: false,
+      scriptId: "frame-script",
+      url: "https://trusted.example/frame"
+    }
+  ])
+  assert.equal(getTrackedDocumentCountForTesting(), 1)
+  assert.deepEqual(runtime.sentMessages[0], {
+    message: {
+      scriptId: "frame-script",
+      type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+    },
+    options: { documentId: "document-2" },
+    tabId: 42
+  })
+
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "missing-frame",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      tab: { id: 43 } as chrome.tabs.Tab,
+      url: "https://untrusted.example/"
+    }
+  )
+  assert.equal(getTrackedDocumentCountForTesting(), 1)
+})
+
+test("tab manager keeps bookkeeping in memory and removes closed documents", () => {
+  const runtime = createChromeMock()
+  initTabManager()
+
+  assert.deepEqual(runtime.removedStorageKeys, [
+    "__fontara_tab_manager_state__"
+  ])
+
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "top-script",
       type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
     },
     {
       frameId: 0,
-      tab: { id: 7 } as chrome.tabs.Tab
+      tab: { id: 9 } as chrome.tabs.Tab,
+      url: "https://example.com/?credential=never-persisted"
     }
   )
-  removedTabListeners[0](7)
+  assert.equal(getTrackedDocumentCountForTesting(), 1)
 
+  runtime.removedListeners[0]?.(9)
   assert.equal(getTrackedDocumentCountForTesting(), 0)
+})
 
-  sentMessages.length = 0
+test("settings changes broadcast safely to untracked HTTP tabs after restart", async () => {
+  const runtime = createChromeMock([
+    { id: 10, url: "https://example.com/private?token=1" } as chrome.tabs.Tab,
+    { id: 11, url: "chrome://settings" } as chrome.tabs.Tab
+  ])
+  initTabManager()
+
+  await notifyContentScriptsAboutSettingsChange()
+
+  assert.deepEqual(runtime.sentMessages, [
+    {
+      message: { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED },
+      options: undefined,
+      tabId: 10
+    }
+  ])
+})
+
+test("tracked delivery retries document targets and falls back tab-wide", async () => {
+  const runtime = createChromeMock()
   initTabManager({
-    createDocumentMessage: (document) => ({
-      data: {
-        font: {
-          active: false,
-          applyMode: "full",
-          customCSS: null,
-          customFontCSS: "",
-          fontFaceCSS: "",
-          fontName: "Vazirmatn-Fontara",
-          googleFontCSS: null,
-          textStrokeCSS: ""
-        },
-        rtl: {
-          active: document.url.includes("chatgpt.com"),
-          siteId: document.url.includes("chatgpt.com") ? "chatgpt" : null
-        }
-      },
-      type: MESSAGE_TYPES_BG_TO_CS.APPLY_THEME
+    createDocumentMessage: async () => ({
+      type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
     })
   })
-
-  runtimeMessageListeners[0](
+  runtime.messageListeners[0]?.(
     {
-      data: {
-        isTopFrame: true,
-        url: "https://chatgpt.com/"
-      },
-      scriptId: "script-command",
+      scriptId: "retry-script",
       type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
     },
     {
-      frameId: 0,
-      tab: { id: 8 } as chrome.tabs.Tab
+      documentId: "retry-document",
+      frameId: 2,
+      tab: { id: 52 } as chrome.tabs.Tab,
+      url: "https://example.com/frame"
     }
   )
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        data: {
-          font: {
-            active: false,
-            applyMode: "full",
-            customCSS: null,
-            customFontCSS: "",
-            fontFaceCSS: "",
-            fontName: "Vazirmatn-Fontara",
-            googleFontCSS: null,
-            textStrokeCSS: ""
-          },
-          rtl: {
-            active: true,
-            siteId: "chatgpt"
-          }
-        },
-        scriptId: "script-command",
-        type: MESSAGE_TYPES_BG_TO_CS.APPLY_THEME
-      },
-      options: { frameId: 0 },
-      tabId: 8
-    }
-  ])
-
-  sentMessages.length = 0
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: true,
-        url: "https://example.com/inactive"
-      },
-      scriptId: "script-command",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE
-    },
-    {
-      frameId: 0,
-      tab: { id: 8 } as chrome.tabs.Tab
-    }
-  )
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        data: {
-          font: {
-            active: false,
-            applyMode: "full",
-            customCSS: null,
-            customFontCSS: "",
-            fontFaceCSS: "",
-            fontName: "Vazirmatn-Fontara",
-            googleFontCSS: null,
-            textStrokeCSS: ""
-          },
-          rtl: {
-            active: false,
-            siteId: null
-          }
-        },
-        scriptId: "script-command",
-        type: MESSAGE_TYPES_BG_TO_CS.APPLY_THEME
-      },
-      options: { frameId: 0 },
-      tabId: 8
-    }
-  ])
-
-  sentMessages.length = 0
-  await notifyContentScriptsAboutSettingsChange((document) => ({
-    scriptId: "ignored-script-id",
-    type: document.url.includes("chatgpt.com")
-      ? MESSAGE_TYPES_BG_TO_CS.CLEAN_UP
-      : MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-  }))
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        scriptId: "script-command",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { frameId: 0 },
-      tabId: 8
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 8
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 9
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 10
-    }
-  ])
-
-  removedTabListeners[0](8)
-  assert.equal(getTrackedDocumentCountForTesting(), 0)
-})
-
-test("tab manager restores tracked documents before notifying settings changes", async () => {
-  const sentMessages: Array<{
-    message: unknown
-    options?: chrome.tabs.MessageSendOptions
-    tabId: number
-  }> = []
-  const localValues: Record<string, unknown> = {
-    [TAB_MANAGER_RUNTIME_STATE_KEY]: {
-      documentsByTab: {
-        "21": [
-          {
-            documentId: "doc-restored",
-            frameId: 0,
-            isTopFrame: true,
-            scriptId: "script-restored",
-            url: "https://chatgpt.com/"
-          }
-        ],
-        "99": [
-          {
-            documentId: "doc-stale",
-            frameId: 0,
-            isTopFrame: true,
-            scriptId: "script-stale",
-            url: "https://stale.example/"
-          }
-        ]
-      },
-      savedAt: Date.now(),
-      version: TAB_MANAGER_RUNTIME_STATE_VERSION
-    }
-  }
-
-  Reflect.set(globalThis, "chrome", {
-    runtime: {
-      get lastError() {
-        return undefined
-      },
-      onMessage: {
-        addListener() {}
-      }
-    },
-    storage: {
-      local: {
-        get(
-          key: string | Record<string, unknown>,
-          callback: (items: Record<string, unknown>) => void
-        ) {
-          if (typeof key === "string") {
-            callback({ [key]: localValues[key] })
-            return
-          }
-
-          callback({ ...key, ...localValues })
-        },
-        set(items: Record<string, unknown>, callback: () => void) {
-          Object.assign(localValues, items)
-          callback()
-        }
-      }
-    },
-    tabs: {
-      onRemoved: {
-        addListener() {}
-      },
-      query(
-        _queryInfo: chrome.tabs.QueryInfo,
-        callback?: (tabs: chrome.tabs.Tab[]) => void
-      ) {
-        const tabs = [
-          { id: 21, url: "https://chatgpt.com/" } as chrome.tabs.Tab,
-          { id: 22, url: "https://other.example/" } as chrome.tabs.Tab
-        ]
-        callback?.(tabs)
-        return Promise.resolve(tabs)
-      },
-      sendMessage(
-        tabId: number,
-        message: unknown,
-        optionsOrCallback?: chrome.tabs.MessageSendOptions | (() => void),
-        callback?: () => void
-      ) {
-        const options =
-          typeof optionsOrCallback === "function"
-            ? undefined
-            : optionsOrCallback
-        const sendResponse =
-          typeof optionsOrCallback === "function" ? optionsOrCallback : callback
-
-        sentMessages.push({ message, options, tabId })
-        sendResponse?.()
-      }
-    }
-  })
-
-  initTabManager()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  runtime.sentMessages.length = 0
+  runtime.setSendFailures(3)
   await notifyContentScriptsAboutSettingsChange()
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        scriptId: "script-restored",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { documentId: "doc-restored" },
-      tabId: 21
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 21
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 22
-    }
-  ])
-  assert.equal(getTrackedDocumentCountForTesting(), 1)
-})
-
-test("tab manager ignores expired persisted runtime state", async () => {
-  const sentMessages: Array<{
-    message: unknown
-    options?: chrome.tabs.MessageSendOptions
-    tabId: number
-  }> = []
-  const localValues: Record<string, unknown> = {
-    [TAB_MANAGER_RUNTIME_STATE_KEY]: {
-      documentsByTab: {
-        "21": [
-          {
-            documentId: "doc-expired",
-            frameId: 0,
-            isTopFrame: true,
-            scriptId: "script-expired",
-            url: "https://chatgpt.com/"
-          }
-        ]
-      },
-      savedAt: Date.now() - TAB_MANAGER_RUNTIME_STATE_MAX_AGE_MS - 1,
-      version: TAB_MANAGER_RUNTIME_STATE_VERSION
-    }
-  }
-
-  Reflect.set(globalThis, "chrome", {
-    runtime: {
-      get lastError() {
-        return undefined
-      },
-      onMessage: {
-        addListener() {}
-      }
-    },
-    storage: {
-      local: {
-        get(
-          key: string | Record<string, unknown>,
-          callback: (items: Record<string, unknown>) => void
-        ) {
-          if (typeof key === "string") {
-            callback({ [key]: localValues[key] })
-            return
-          }
-
-          callback({ ...key, ...localValues })
-        },
-        set(items: Record<string, unknown>, callback: () => void) {
-          Object.assign(localValues, items)
-          callback()
-        }
-      }
-    },
-    tabs: {
-      onRemoved: {
-        addListener() {}
-      },
-      query(
-        _queryInfo: chrome.tabs.QueryInfo,
-        callback?: (tabs: chrome.tabs.Tab[]) => void
-      ) {
-        const tabs = [
-          { id: 21, url: "https://chatgpt.com/" } as chrome.tabs.Tab
-        ]
-        callback?.(tabs)
-        return Promise.resolve(tabs)
-      },
-      sendMessage(
-        tabId: number,
-        message: unknown,
-        optionsOrCallback?: chrome.tabs.MessageSendOptions | (() => void),
-        callback?: () => void
-      ) {
-        const options =
-          typeof optionsOrCallback === "function"
-            ? undefined
-            : optionsOrCallback
-        const sendResponse =
-          typeof optionsOrCallback === "function" ? optionsOrCallback : callback
-
-        sentMessages.push({ message, options, tabId })
-        sendResponse?.()
-      }
-    }
-  })
-
-  initTabManager()
-  await notifyContentScriptsAboutSettingsChange()
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 21
-    }
-  ])
-  assert.equal(getTrackedDocumentCountForTesting(), 0)
-})
-
-test("tab manager broadcasts to a tracked tab when targeted delivery fails", async () => {
-  const runtimeMessageListeners: Array<
-    (message: unknown, sender: chrome.runtime.MessageSender) => boolean
-  > = []
-  const sentMessages: Array<{
-    message: unknown
-    options?: chrome.tabs.MessageSendOptions
-    tabId: number
-  }> = []
-  let runtimeLastError: { message?: string } | undefined
-
-  Reflect.set(globalThis, "chrome", {
-    runtime: {
-      get lastError() {
-        return runtimeLastError
-      },
-      onMessage: {
-        addListener(listener: (typeof runtimeMessageListeners)[number]) {
-          runtimeMessageListeners.push(listener)
-        }
-      }
-    },
-    tabs: {
-      onRemoved: {
-        addListener() {}
-      },
-      query(
-        _queryInfo: chrome.tabs.QueryInfo,
-        callback?: (tabs: chrome.tabs.Tab[]) => void
-      ) {
-        const tabs = [
-          { id: 31, url: "https://chatgpt.com/" } as chrome.tabs.Tab
-        ]
-        callback?.(tabs)
-        return Promise.resolve(tabs)
-      },
-      sendMessage(
-        tabId: number,
-        message: unknown,
-        optionsOrCallback?: chrome.tabs.MessageSendOptions | (() => void),
-        callback?: () => void
-      ) {
-        const options =
-          typeof optionsOrCallback === "function"
-            ? undefined
-            : optionsOrCallback
-        const sendResponse =
-          typeof optionsOrCallback === "function" ? optionsOrCallback : callback
-
-        sentMessages.push({ message, options, tabId })
-        runtimeLastError = options ? { message: "No receiving end" } : undefined
-        sendResponse?.()
-        runtimeLastError = undefined
-      }
-    }
-  })
-
-  initTabManager()
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: true,
-        url: "https://chatgpt.com/"
-      },
-      scriptId: "script-stale",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
-    },
-    {
-      documentId: "doc-stale",
-      frameId: 0,
-      tab: { id: 31 } as chrome.tabs.Tab
-    }
-  )
-
-  await notifyContentScriptsAboutSettingsChange()
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        scriptId: "script-stale",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { documentId: "doc-stale" },
-      tabId: 31
-    },
-    {
-      message: {
-        scriptId: "script-stale",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { documentId: "doc-stale", frameId: 0 },
-      tabId: 31
-    },
-    {
-      message: {
-        scriptId: "script-stale",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { frameId: 0 },
-      tabId: 31
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 31
-    }
-  ])
-  assert.equal(getTrackedDocumentCountForTesting(), 0)
-})
-
-test("tab manager coalesces synchronous runtime state writes", async () => {
-  const runtimeMessageListeners: Array<
-    (message: unknown, sender: chrome.runtime.MessageSender) => boolean
-  > = []
-  const storageWrites: Record<string, unknown>[] = []
-  const localValues: Record<string, unknown> = {}
-
-  Reflect.set(globalThis, "chrome", {
-    runtime: {
-      get lastError() {
-        return undefined
-      },
-      onMessage: {
-        addListener(listener: (typeof runtimeMessageListeners)[number]) {
-          runtimeMessageListeners.push(listener)
-        }
-      }
-    },
-    storage: {
-      local: {
-        get(
-          key: string | Record<string, unknown>,
-          callback: (items: Record<string, unknown>) => void
-        ) {
-          if (typeof key === "string") {
-            callback({ [key]: localValues[key] })
-            return
-          }
-
-          callback({ ...key, ...localValues })
-        },
-        set(items: Record<string, unknown>, callback: () => void) {
-          storageWrites.push(items)
-          Object.assign(localValues, items)
-          callback()
-        }
-      }
-    },
-    tabs: {
-      onRemoved: {
-        addListener() {}
-      },
-      query(
-        _queryInfo: chrome.tabs.QueryInfo,
-        callback?: (tabs: chrome.tabs.Tab[]) => void
-      ) {
-        const tabs = [
-          { id: 41, url: "https://chatgpt.com/" } as chrome.tabs.Tab
-        ]
-        callback?.(tabs)
-        return Promise.resolve(tabs)
-      },
-      sendMessage(
-        _tabId: number,
-        _message: unknown,
-        optionsOrCallback?: chrome.tabs.MessageSendOptions | (() => void),
-        callback?: () => void
-      ) {
-        const sendResponse =
-          typeof optionsOrCallback === "function" ? optionsOrCallback : callback
-        sendResponse?.()
-      }
-    }
-  })
-
-  initTabManager()
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: true,
-        url: "https://chatgpt.com/"
-      },
-      scriptId: "script-1",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
-    },
-    {
-      documentId: "doc-1",
-      frameId: 0,
-      tab: { id: 41 } as chrome.tabs.Tab
-    }
-  )
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: false,
-        url: "https://chatgpt.com/frame"
-      },
-      scriptId: "script-2",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
-    },
-    {
-      documentId: "doc-2",
-      frameId: 1,
-      tab: { id: 41 } as chrome.tabs.Tab
-    }
-  )
-
   await new Promise((resolve) => setTimeout(resolve, 0))
 
-  assert.equal(storageWrites.length, 1)
   assert.deepEqual(
-    (
-      storageWrites[0][TAB_MANAGER_RUNTIME_STATE_KEY] as {
-        documentsByTab: Record<string, Array<{ documentId: string | null }>>
-        version: number
-      }
-    ).documentsByTab["41"].map((document) => document.documentId),
-    ["doc-1", "doc-2"]
+    runtime.sentMessages.map((item) => item.options),
+    [
+      { documentId: "retry-document" },
+      { documentId: "retry-document", frameId: 2 },
+      { frameId: 2 },
+      undefined
+    ]
   )
-  assert.equal(
-    (
-      storageWrites[0][TAB_MANAGER_RUNTIME_STATE_KEY] as {
-        version: number
-      }
-    ).version,
-    TAB_MANAGER_RUNTIME_STATE_VERSION
-  )
+  assert.equal(getTrackedDocumentCountForTesting(), 0)
 })
 
-test("tab manager survives a simulated MV3 service worker restart", async () => {
-  const runtimeMessageListeners: Array<
-    (message: unknown, sender: chrome.runtime.MessageSender) => boolean
-  > = []
-  const sentMessages: Array<{
-    message: unknown
-    options?: chrome.tabs.MessageSendOptions
-    tabId: number
-  }> = []
-  const localValues: Record<string, unknown> = {}
-
-  Reflect.set(globalThis, "chrome", {
-    runtime: {
-      get lastError() {
-        return undefined
-      },
-      onMessage: {
-        addListener(listener: (typeof runtimeMessageListeners)[number]) {
-          runtimeMessageListeners.push(listener)
-        }
+test("tab manager handles rejected factories, thrown sends, forgets, and invalid senders", async () => {
+  const runtime = createChromeMock([], { sendThrows: 1 })
+  initTabManager({
+    createDocumentMessage(document) {
+      if (document.scriptId === "reject-script") {
+        return Promise.reject(new Error("factory rejected"))
       }
-    },
-    storage: {
-      local: {
-        get(
-          key: string | Record<string, unknown>,
-          callback: (items: Record<string, unknown>) => void
-        ) {
-          if (typeof key === "string") {
-            callback({ [key]: localValues[key] })
-            return
-          }
-
-          callback({ ...key, ...localValues })
-        },
-        set(items: Record<string, unknown>, callback: () => void) {
-          Object.assign(localValues, items)
-          callback()
-        }
+      if (document.scriptId === "throw-script") {
+        throw new Error("factory threw")
       }
-    },
-    tabs: {
-      onRemoved: {
-        addListener() {}
-      },
-      query(
-        _queryInfo: chrome.tabs.QueryInfo,
-        callback?: (tabs: chrome.tabs.Tab[]) => void
-      ) {
-        const tabs = [
-          { id: 51, url: "https://chatgpt.com/" } as chrome.tabs.Tab
-        ]
-        callback?.(tabs)
-        return Promise.resolve(tabs)
-      },
-      sendMessage(
-        tabId: number,
-        message: unknown,
-        optionsOrCallback?: chrome.tabs.MessageSendOptions | (() => void),
-        callback?: () => void
-      ) {
-        const options =
-          typeof optionsOrCallback === "function"
-            ? undefined
-            : optionsOrCallback
-        const sendResponse =
-          typeof optionsOrCallback === "function" ? optionsOrCallback : callback
-
-        sentMessages.push({ message, options, tabId })
-        sendResponse?.()
-      }
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
     }
   })
 
-  initTabManager()
-  runtimeMessageListeners[0](
-    {
-      data: {
-        isTopFrame: true,
-        url: "https://chatgpt.com/"
+  assert.equal(runtime.messageListeners[0]?.({ type: "invalid" }, {}), false)
+  assert.equal(
+    runtime.messageListeners[0]?.(
+      {
+        scriptId: "missing-tab",
+        type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
       },
-      scriptId: "script-before-restart",
-      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
-    },
-    {
-      documentId: "doc-before-restart",
-      frameId: 0,
-      tab: { id: 51 } as chrome.tabs.Tab
-    }
+      { frameId: 0, url: "https://example.com/" }
+    ),
+    false
   )
 
+  for (const [index, scriptId] of ["reject-script", "throw-script"].entries()) {
+    runtime.messageListeners[0]?.(
+      { scriptId, type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT },
+      {
+        frameId: index,
+        tab: { id: 70 } as chrome.tabs.Tab,
+        url: `https://example.com/${index}`
+      }
+    )
+  }
   await new Promise((resolve) => setTimeout(resolve, 0))
-  assert.ok(localValues[TAB_MANAGER_RUNTIME_STATE_KEY])
-
-  resetTabManagerStateForTesting()
-  sentMessages.length = 0
-
-  initTabManager()
-  await notifyContentScriptsAboutSettingsChange()
-
-  assert.deepEqual(sentMessages, [
-    {
-      message: {
-        scriptId: "script-before-restart",
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: { documentId: "doc-before-restart" },
-      tabId: 51
-    },
-    {
-      message: {
-        type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
-      },
-      options: undefined,
-      tabId: 51
-    }
-  ])
   assert.equal(getTrackedDocumentCountForTesting(), 1)
+
+  runtime.messageListeners[0]?.(
+    { scriptId: "forget", type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET },
+    {
+      frameId: 0,
+      tab: { id: 70 } as chrome.tabs.Tab,
+      url: "https://example.com/"
+    }
+  )
+  assert.equal(getTrackedDocumentCountForTesting(), 0)
+})
+
+test("tab manager tolerates unavailable storage and tabs APIs", async () => {
+  const runtime = createChromeMock([], {
+    queryThrows: true,
+    removeThrows: true
+  })
+  assert.doesNotThrow(() => initTabManager())
+  await assert.doesNotReject(notifyContentScriptsAboutSettingsChange())
+  assert.deepEqual(runtime.removedStorageKeys, [])
+  assert.deepEqual(runtime.sentMessages, [])
 })

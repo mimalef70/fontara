@@ -1,8 +1,31 @@
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
+import type {
+  CustomFontFamily,
+  CustomFontFamilyDraft,
+  LegacyCustomFontData
+} from "../custom-font-types"
+import { bytesToBase64, dataURLToCustomFontBytes } from "./custom-font-format"
+import {
+  isLegacyCustomFontData,
+  normalizeCustomFontFamilies,
+  normalizeLegacyCustomFontFamily
+} from "./custom-font-normalization"
+import {
+  MAX_CUSTOM_FONT_FACES_PER_FAMILY,
+  MAX_CUSTOM_FONT_FAMILIES,
+  MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
+  MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES
+} from "./custom-font-storage"
 import { normalizeStorageValues } from "./storage-normalization"
 
 export const FONTARA_SETTINGS_EXPORT_FORMAT = "fontara-settings"
-export const FONTARA_SETTINGS_EXPORT_VERSION = 1
+export const FONTARA_SETTINGS_EXPORT_VERSION = 2
+const MAX_BACKUP_FACE_COUNT =
+  MAX_CUSTOM_FONT_FAMILIES * MAX_CUSTOM_FONT_FACES_PER_FAMILY
+const MAX_BACKUP_FACE_BASE64_LENGTH =
+  Math.ceil(MAX_CUSTOM_FONT_FILE_SIZE_BYTES / 3) * 4 + 4
+export const MAX_SETTINGS_BACKUP_FILE_SIZE_BYTES =
+  Math.ceil(MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES / 3) * 4 + 2 * 1024 * 1024
 
 export const FONTARA_SETTINGS_STORAGE_KEYS = [
   STORAGE_KEYS.EXTENSION_ENABLED,
@@ -34,12 +57,24 @@ export type FontaraSettingsBackup = {
   extensionVersion?: string
   format: typeof FONTARA_SETTINGS_EXPORT_FORMAT
   settings: Record<string, unknown>
+  customFontFaces: Record<string, string>
   version: typeof FONTARA_SETTINGS_EXPORT_VERSION
 }
 
 export type ParsedSettingsBackup = {
+  customFontFaces: Record<string, string>
   settings: Record<string, unknown>
   version: number | null
+}
+
+export type PreparedCustomFontBackupFamily = {
+  family: CustomFontFamilyDraft
+  faceData: Record<string, string>
+}
+
+export type PreparedSettingsBackupImport = {
+  customFontFamilies: PreparedCustomFontBackupFamily[]
+  settings: Record<string, unknown>
 }
 
 export type NormalizedSettingsBackup = {
@@ -55,6 +90,39 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
     (Object.getPrototypeOf(value) === Object.prototype ||
       Object.getPrototypeOf(value) === null)
   )
+}
+
+function normalizeCustomFontFaceBackupMap(
+  value: unknown
+): Record<string, string> {
+  if (!isPlainRecord(value)) return {}
+  const entries = Object.entries(value)
+  if (entries.length > MAX_BACKUP_FACE_COUNT) {
+    throw new Error("custom-font-backup-face-limit")
+  }
+  const result: Record<string, string> = {}
+  let decodedBytes = 0
+  for (const [key, data] of entries) {
+    if (
+      key.length === 0 ||
+      key.length > 128 ||
+      typeof data !== "string" ||
+      data.length === 0 ||
+      data.length > MAX_BACKUP_FACE_BASE64_LENGTH ||
+      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+        data
+      )
+    ) {
+      throw new Error("invalid-custom-font-backup-face")
+    }
+    const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0
+    decodedBytes += (data.length / 4) * 3 - padding
+    if (decodedBytes > MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES) {
+      throw new Error("custom-font-backup-library-size-limit")
+    }
+    result[key] = data
+  }
+  return result
 }
 
 function hasOwn(value: Record<string, unknown>, key: string): boolean {
@@ -119,7 +187,11 @@ function pickExportedSettings(
 
 export function createSettingsBackup(
   values: Record<string, unknown>,
-  metadata: { exportedAt?: Date; extensionVersion?: string } = {}
+  metadata: {
+    customFontFaces?: Record<string, string>
+    exportedAt?: Date
+    extensionVersion?: string
+  } = {}
 ): FontaraSettingsBackup {
   const exportedAt = metadata.exportedAt ?? new Date()
 
@@ -131,7 +203,8 @@ export function createSettingsBackup(
     ...(metadata.extensionVersion
       ? { extensionVersion: metadata.extensionVersion }
       : {}),
-    settings: pickExportedSettings(values)
+    settings: pickExportedSettings(values),
+    customFontFaces: metadata.customFontFaces ?? {}
   }
 }
 
@@ -140,6 +213,9 @@ export function createSettingsBackupFileName(date = new Date()): string {
 }
 
 export function parseSettingsBackupText(text: string): ParsedSettingsBackup {
+  if (text.length > MAX_SETTINGS_BACKUP_FILE_SIZE_BYTES) {
+    throw new Error("settings-backup-file-size-limit")
+  }
   let parsed: unknown
 
   try {
@@ -167,6 +243,7 @@ export function parseSettingsBackupText(text: string): ParsedSettingsBackup {
     }
 
     return {
+      customFontFaces: normalizeCustomFontFaceBackupMap(parsed.customFontFaces),
       settings: parsed.settings,
       version: parsed.version
     }
@@ -174,12 +251,84 @@ export function parseSettingsBackupText(text: string): ParsedSettingsBackup {
 
   if (Object.keys(parsed).some(isAcceptedImportStorageKey)) {
     return {
+      customFontFaces: {},
       settings: parsed,
       version: null
     }
   }
 
   throw new Error("invalid-settings-backup")
+}
+
+function toFamilyDraft(family: CustomFontFamily): CustomFontFamilyDraft {
+  const { revision: _revision, ...draft } = family
+  return draft
+}
+
+export async function prepareSettingsBackupImport(
+  parsed: ParsedSettingsBackup
+): Promise<PreparedSettingsBackupImport> {
+  const rawFonts = parsed.settings[STORAGE_KEYS.CUSTOM_FONT_LIST]
+  if (!Array.isArray(rawFonts) || rawFonts.length === 0) {
+    return { customFontFamilies: [], settings: parsed.settings }
+  }
+  if (rawFonts.length > MAX_CUSTOM_FONT_FAMILIES) {
+    throw new Error("custom-font-library-family-limit")
+  }
+
+  const customFontFamilies: PreparedCustomFontBackupFamily[] = []
+  const normalizedFamilies: CustomFontFamily[] = []
+  for (const candidate of rawFonts) {
+    if (isLegacyCustomFontData(candidate)) {
+      const legacy = candidate as LegacyCustomFontData
+      if (legacy.data.length > MAX_BACKUP_FACE_BASE64_LENGTH + 256) {
+        throw new Error("custom-font-face-size-limit")
+      }
+      const family = await normalizeLegacyCustomFontFamily(legacy)
+      const bytes = dataURLToCustomFontBytes(legacy.data)
+      if (!family || !bytes || family.faces[0].validation === "failed") {
+        throw new Error("invalid-custom-font-backup")
+      }
+      normalizedFamilies.push(family)
+      customFontFamilies.push({
+        family: toFamilyDraft(family),
+        faceData: { [family.faces[0].id]: bytesToBase64(bytes) }
+      })
+      continue
+    }
+
+    const candidateFaces =
+      candidate && typeof candidate === "object"
+        ? (candidate as Partial<CustomFontFamily>).faces
+        : null
+    if (
+      !Array.isArray(candidateFaces) ||
+      candidateFaces.length === 0 ||
+      candidateFaces.length > MAX_CUSTOM_FONT_FACES_PER_FAMILY
+    ) {
+      throw new Error("custom-font-family-face-limit")
+    }
+    const [family] = await normalizeCustomFontFamilies([candidate])
+    if (!family) throw new Error("invalid-custom-font-backup")
+    const faceData: Record<string, string> = {}
+    for (const face of family.faces) {
+      const data = parsed.customFontFaces[face.id]
+      if (typeof data !== "string" || data.length === 0) {
+        throw new Error("missing-custom-font-backup-face")
+      }
+      faceData[face.id] = data
+    }
+    normalizedFamilies.push(family)
+    customFontFamilies.push({ family: toFamilyDraft(family), faceData })
+  }
+
+  return {
+    customFontFamilies,
+    settings: {
+      ...parsed.settings,
+      [STORAGE_KEYS.CUSTOM_FONT_LIST]: normalizedFamilies
+    }
+  }
 }
 
 export async function normalizeSettingsBackup(

@@ -3,7 +3,6 @@ import type {
   FontaraContentScriptMessage
 } from "../definitions"
 import type { MESSAGE_TYPES_CS_TO_BG } from "../utils/message"
-import { isTopFrame } from "./content-lifecycle"
 
 export type RuntimeMessageEvent = typeof chrome.runtime.onMessage
 export type RuntimeControlMessage = Partial<FontaraContentCommandMessage> & {
@@ -75,10 +74,6 @@ export function sendDocumentLifecycleMessage(
   if (options.isDisposed()) return false
 
   const message: FontaraContentScriptMessage = {
-    data: {
-      isTopFrame: isTopFrame(),
-      url: window.location.href
-    },
     scriptId: options.scriptId,
     type
   }

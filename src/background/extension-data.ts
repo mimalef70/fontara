@@ -1,5 +1,6 @@
 import { getFontaraSiteActivationState } from "../config/site-manager"
 import type { FontaraShortcuts, FontaraTabInfo } from "../definitions"
+import { sanitizeRuntimePageURL } from "../utils/runtime-url"
 
 export type CommandURLDetails = {
   tab?: chrome.tabs.Tab | null
@@ -39,11 +40,13 @@ function getCommands(): Promise<chrome.commands.Command[]> {
 export async function getCommandURL(
   details: CommandURLDetails
 ): Promise<string | null> {
-  if (isSupportedPageURL(details.url)) return details.url
-  if (isSupportedPageURL(details.tab?.url)) return details.tab.url
+  const explicitURL = sanitizeRuntimePageURL(details.url)
+  if (explicitURL) return explicitURL
+  const providedTabURL = sanitizeRuntimePageURL(details.tab?.url)
+  if (providedTabURL) return providedTabURL
 
   const activeTab = await getActiveTab()
-  return isSupportedPageURL(activeTab?.url) ? activeTab.url : null
+  return sanitizeRuntimePageURL(activeTab?.url)
 }
 
 export async function collectShortcuts(): Promise<FontaraShortcuts> {
@@ -62,14 +65,13 @@ export async function collectActiveTabInfo(
   settings: Record<string, unknown>
 ): Promise<FontaraTabInfo> {
   const tab = await getActiveTab()
-  const url = tab?.url ?? null
-  const isSupported = isSupportedPageURL(url)
-  const active = isSupported
+  const url = sanitizeRuntimePageURL(tab?.url)
+  const isSupported = url !== null
+  const active = url
     ? getFontaraSiteActivationState(url, settings).active
     : false
 
   return {
-    favIconUrl: tab?.favIconUrl ?? null,
     id: typeof tab?.id === "number" ? tab.id : null,
     isActive: active,
     isSupported,

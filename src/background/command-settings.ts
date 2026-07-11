@@ -1,5 +1,6 @@
 import {
   createSiteListToggleUpdate,
+  createStoredSiteURL,
   isSiteListUrlEnabled
 } from "../config/site-list"
 import {
@@ -38,18 +39,26 @@ export function createToggleCurrentSiteSettings(
     siteListSettings,
     checked
   )
+  const storedSiteURL = createStoredSiteURL(url)
   const updatedWebsiteList =
-    existingWebsiteIndex === -1 && checked
+    existingWebsiteIndex === -1 && checked && storedSiteURL
       ? [
           ...snapshot.websiteList,
           {
-            url,
+            url: storedSiteURL,
             regex: createRegexFromUrl(url),
             isActive: true
           }
         ]
       : snapshot.websiteList.map((item, index) =>
-          index === existingWebsiteIndex ? { ...item, isActive: checked } : item
+          index === existingWebsiteIndex
+            ? {
+                ...item,
+                ...(storedSiteURL ? { url: storedSiteURL } : {}),
+                regex: createRegexFromUrl(url),
+                isActive: checked
+              }
+            : item
         )
 
   return {

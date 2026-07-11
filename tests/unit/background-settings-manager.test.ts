@@ -8,7 +8,10 @@ import {
   writeBackgroundSettings
 } from "../../src/background/settings-manager"
 import { STORAGE_KEYS } from "../../src/config/storage"
-import { FONTARA_SETTINGS_UPDATED_AT_KEY } from "../../src/utils/settings-sync"
+import {
+  FONTARA_SETTINGS_REVISION_KEY,
+  FONTARA_SETTINGS_UPDATED_AT_KEY
+} from "../../src/utils/settings-sync"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 
@@ -179,7 +182,8 @@ test("background settings manager writes normalized local storage changes", asyn
   assert.deepEqual(cachedSettings?.[STORAGE_KEYS.ENABLED_FOR], ["example.com"])
   assert.deepEqual(storage.getSetCalls(), [
     {
-      [STORAGE_KEYS.ENABLED_FOR]: ["example.com"]
+      [STORAGE_KEYS.ENABLED_FOR]: ["example.com"],
+      [FONTARA_SETTINGS_REVISION_KEY]: 1
     }
   ])
 })

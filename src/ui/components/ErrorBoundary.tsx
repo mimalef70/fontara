@@ -45,7 +45,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           <p className="text-sm leading-6">{this.props.description}</p>
           <button
             type="button"
-            className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-[#2374ff] shadow-sm transition-colors hover:bg-gray-50"
+            className="rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-[#175cd3] shadow-sm transition-colors hover:bg-gray-50"
             onClick={this.handleReload}>
             {this.props.reloadLabel}
           </button>

@@ -21,26 +21,26 @@ const watchRoots = [
   "package.json"
 ]
 
-async function buildPlatform({ platform, debug, zip }) {
-  const outDir = getDestDir({ platform, debug })
+async function buildPlatform({ platform, debug, test, zip }) {
+  const outDir = getDestDir({ platform, debug, test })
   await emptyDirectory(outDir)
 
-  await bundleHTML({ platform, debug })
-  await bundleJS({ platform, debug })
-  await bundleCSS({ platform, debug })
-  await bundleManifest({ platform, debug })
-  await bundleLocales({ platform, debug })
-  await copyAssets({ platform, debug })
-  await validateBuild({ platform, debug })
+  await bundleHTML({ platform, debug, test })
+  await bundleJS({ platform, debug, test })
+  await bundleCSS({ platform, debug, test })
+  await bundleManifest({ platform, debug, test })
+  await bundleLocales({ platform, debug, test })
+  await copyAssets({ platform, debug, test })
+  await validateBuild({ platform, debug, test })
 
   if (zip && !debug) {
     await zipBuild({ platform })
   }
 }
 
-async function build({ platforms, debug, zip }) {
+async function build({ platforms, debug, test = false, zip }) {
   for (const platform of platforms) {
-    await buildPlatform({ platform, debug, zip })
+    await buildPlatform({ platform, debug, test, zip })
   }
 
   if (zip && !debug && platforms.includes(PLATFORM.FIREFOX_MV3)) {
@@ -49,7 +49,7 @@ async function build({ platforms, debug, zip }) {
   }
 }
 
-function watch({ platforms, debug, zip }) {
+function watch({ platforms, debug, test = false, zip }) {
   let timer = null
   let building = false
   let pending = false
@@ -64,7 +64,7 @@ function watch({ platforms, debug, zip }) {
     console.log("Rebuilding FontAra extension...")
 
     try {
-      await build({ platforms, debug, zip })
+      await build({ platforms, debug, test, zip })
       console.log("Build finished.")
     } catch (error) {
       console.error(error)

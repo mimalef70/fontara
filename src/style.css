@@ -5,12 +5,13 @@
 
 @layer base {
   :root {
-    --sb-track-color: #232e33;
-    --sb-thumb-color: #286396;
-    --sb-size: 9px;
+    --sb-track-color: #eef2f7;
+    --sb-thumb-color: #64748b;
+    --sb-thumb-hover-color: #475569;
+    --sb-size: 8px;
     /* ------------------- */
-    --background: 0 0% 100%;
-    --foreground: 222.2 47.4% 11.2%;
+    --background: 216 33% 97%;
+    --foreground: 222 47% 11%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --popover: 0 0% 100%;
@@ -19,24 +20,24 @@
     --input: 214.3 31.8% 91.4%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 47.4% 11.2%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 210 40% 98%;
-    --ring: 215 20.2% 65.1%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+    --sidebar-background: 216 33% 98%;
+    --sidebar-foreground: 222 47% 18%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 214 100% 97%;
+    --sidebar-accent-foreground: 221 83% 43%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
   }
 
   /* Reserved for the planned dark mode toggle; keep these tokens until the UI is wired. */
@@ -72,39 +73,34 @@
 
   * {
     @apply border-border;
+    scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+    scrollbar-width: thin;
   }
 
   body {
-    @apply font-estedad antialiased bg-background text-foreground text-[75%];
+    @apply font-estedad antialiased bg-background text-foreground;
     font-family: var(--fontara-ui-font, "Vazirmatn-Fontara"),
       "Vazirmatn-Fontara", sans-serif;
-    scrollbar-width: thin;
-    scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
-  }
-
-  body::-webkit-scrollbar {
-    width: var(--sb-size) !important;
-  }
-
-  body::-webkit-scrollbar-track {
-    background: var(--sb-track-color);
-    border-radius: 2px;
-  }
-
-  body::-webkit-scrollbar-thumb {
-    background: var(--sb-thumb-color);
-    border-radius: 2px;
-  }
-
-  * {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* Internet Explorer 10+ */
   }
 
   *::-webkit-scrollbar {
-    /* WebKit */
-    width: 0;
-    height: 0;
+    width: var(--sb-size);
+    height: var(--sb-size);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--sb-track-color);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border: 2px solid var(--sb-track-color);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--sb-thumb-hover-color);
   }
 }
 
@@ -126,17 +122,20 @@ html.fontara-popup-page #root {
 
 .fontara-options-page {
   min-height: 100svh;
-  background: #f7f9fc;
-  color: #111827;
+  background:
+    radial-gradient(circle at 12% 0%, rgb(219 234 254 / 45%), transparent 28rem),
+    radial-gradient(circle at 88% 100%, rgb(224 231 255 / 40%), transparent 32rem),
+    #f5f7fb;
+  color: #0f172a;
 }
 
 .fontara-options-page [data-sidebar="sidebar"] {
-  background: #f8fafc;
-  border-color: #e6edf5;
+  background: linear-gradient(180deg, #fbfdff 0%, #f7f9fc 100%);
+  border-color: #e2e8f0;
 }
 
 .fontara-options-page main {
-  background: #f7f9fc;
+  background: transparent;
 }
 
 .fontara-options-page [data-sidebar="header"] {
@@ -148,14 +147,15 @@ html.fontara-popup-page #root {
 }
 
 .fontara-options-page [data-sidebar="group-label"] {
-  color: #667085;
+  color: #94a3b8;
   font-weight: 600;
 }
 
 .fontara-options-page [data-sidebar="menu-button"] {
-  height: 2.375rem;
-  border-radius: 8px;
-  color: #344054;
+  height: 2.75rem;
+  border-radius: 12px;
+  color: #475569;
+  font-weight: 650;
 }
 
 .fontara-options-page [data-sidebar="menu-button"]:hover {
@@ -165,48 +165,67 @@ html.fontara-popup-page #root {
 
 .fontara-options-page [data-sidebar="menu-button"][data-active="true"] {
   background: #ffffff;
-  color: #175cd3;
+  color: #1d4ed8;
   box-shadow:
-    0 1px 2px rgb(16 24 40 / 6%),
-    inset 0 0 0 1px #d6e7ff;
+    0 8px 20px rgb(37 99 235 / 8%),
+    inset 0 0 0 1px #bfdbfe;
+}
+
+.fontara-nav-icon {
+  display: flex;
+  width: 1.875rem;
+  height: 1.875rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #f1f5f9;
+  color: #64748b;
+  transition: 160ms ease;
+}
+
+[data-sidebar="menu-button"][data-active="true"] .fontara-nav-icon {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .fontara-options-header {
-  border-bottom: 1px solid #e6edf5;
-  background: rgb(255 255 255 / 86%);
-  box-shadow: 0 1px 2px rgb(16 24 40 / 3%);
+  border-bottom: 1px solid rgb(226 232 240 / 85%);
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 3%);
 }
 
 .fontara-options-content {
-  min-height: calc(100svh - 4.5rem);
-  background: #f7f9fc;
+  min-height: calc(100svh - 5rem);
+  background: transparent;
 }
 
 .fontara-panel {
-  border: 1px solid #e4ebf5;
-  border-radius: 8px;
-  background: rgb(255 255 255 / 96%);
+  border: 1px solid rgb(226 232 240 / 90%);
+  border-radius: 16px;
+  background: #ffffff;
   box-shadow:
-    0 1px 2px rgb(16 24 40 / 4%),
-    0 10px 24px rgb(16 24 40 / 3.5%);
+    0 1px 2px rgb(15 23 42 / 3%),
+    0 16px 40px rgb(15 23 42 / 4%);
 }
 
 .fontara-soft-panel {
-  border: 1px solid #e8eef6;
-  border-radius: 8px;
-  background: #fbfdff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
 }
 
 .fontara-icon-tile {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   flex-shrink: 0;
-  border-radius: 8px;
-  background: #eef5ff;
-  color: #2374ff;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #eff6ff, #eef2ff);
+  color: #2563eb;
+  box-shadow: inset 0 0 0 1px rgb(191 219 254 / 55%);
 }
 
 .fontara-choice {
@@ -215,15 +234,53 @@ html.fontara-popup-page #root {
 }
 
 .fontara-choice:hover {
-  border-color: #c9d8ee;
-  background: #fbfdff;
+  border-color: #bfdbfe;
+  background: #f8fbff;
 }
 
 .fontara-choice[aria-pressed="true"],
 .fontara-choice[data-active="true"] {
-  border-color: #b9d4ff;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px rgb(35 116 255 / 10%);
+  border-color: #93c5fd;
+  background: #f8fbff;
+  box-shadow:
+    inset 0 0 0 1px rgb(37 99 235 / 8%),
+    0 8px 20px rgb(37 99 235 / 5%);
+}
+
+.fontara-hero-card {
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 12% 10%, rgb(255 255 255 / 95%), transparent 18rem),
+    linear-gradient(135deg, #eff6ff 0%, #f8fafc 48%, #eef2ff 100%);
+  box-shadow:
+    inset 0 0 0 1px rgb(191 219 254 / 65%),
+    0 24px 60px rgb(37 99 235 / 9%);
+}
+
+.fontara-settings-card,
+.fontara-metrics-shell,
+.fontara-privacy-card {
+  border-radius: 18px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow:
+    inset 0 0 0 1px rgb(226 232 240 / 90%),
+    0 16px 38px rgb(15 23 42 / 4%);
+}
+
+.fontara-privacy-card {
+  background:
+    linear-gradient(160deg, rgb(236 253 245 / 80%), rgb(255 255 255 / 96%) 65%);
+}
+
+.fontara-metric-card {
+  padding: 0.25rem;
+  background: transparent;
+}
+
+.fontara-subnav [data-state="active"] {
+  color: #1d4ed8;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px #bfdbfe;
 }
 
 #root .fontara-font-preview {

@@ -1,9 +1,10 @@
-import { normalizeCustomFontUnicodeRange } from "../config/font-unicode-range"
 import { DEFAULT_FONTS } from "../config/fonts"
 import { normalizeUILanguagePreference } from "../config/i18n"
 import { normalizeRtlSiteSettings } from "../config/rtl-sites"
 import {
+  createStoredSiteURL,
   getActiveWebsiteSitePatterns,
+  getSitePatternScope,
   normalizeEnabledByDefault,
   normalizeEnabledSiteList,
   normalizeSiteList
@@ -18,14 +19,13 @@ import {
   DEFAULT_ACTIVE_TEXT_STROKE,
   normalizeTextStrokeValue
 } from "../config/text-stroke"
-import type { FontData, SiteProfile, WebsiteItem } from "../definitions"
+import type { CustomFontFamily } from "../custom-font-types"
+import type { SiteProfile, WebsiteItem } from "../definitions"
+import { normalizeCustomFontFamilies } from "./custom-font-normalization"
 import {
-  getFontDataURLFormat,
-  isSafeCustomFontValue,
-  isSupportedFontExtension,
-  normalizeFontDataURL
-} from "./font-data"
-import { getGoogleFontByValue } from "./google-fonts"
+  decodeGoogleFontValue,
+  isSelectableGoogleFontFamily
+} from "./google-font-runtime"
 import { isSystemFontFeatureSupported, isSystemFontValue } from "./system-fonts"
 
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
@@ -89,12 +89,13 @@ export function mergeWebsiteLists(
 
 function createRegexFromUrl(url: string): string {
   try {
-    const parsedURL = new URL(url)
-    const escapedHostname = parsedURL.hostname.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&"
+    const parsedURL = new URL(
+      /^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `https://${url}`
     )
-    return `^https?://${escapedHostname}/?.*$`
+    const escapedHost = parsedURL.host
+      .toLowerCase()
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    return `^https?://${escapedHost}/?.*$`
   } catch {
     return url
   }
@@ -108,11 +109,24 @@ function normalizeWebsiteItem(value: unknown): WebsiteItem | null {
   if (typeof value !== "object" || value === null) return null
 
   const website = value as Partial<WebsiteItem>
-  const url = normalizeOptionalString(website.url)
+  const sourceURL = normalizeOptionalString(website.url)
+  if (!sourceURL) return null
+
+  const defaultWebsite = DEFAULT_VALUES.WEBSITE_LIST.find(
+    (item) => item.url.replace(/\/+$/, "") === sourceURL.replace(/\/+$/, "")
+  )
+  const sourcePattern = normalizeOptionalString(website.pattern)
+  const url =
+    defaultWebsite?.url ??
+    createStoredSiteURL(
+      sourceURL,
+      sourcePattern && getSitePatternScope(sourcePattern) === "path"
+        ? "path"
+        : "domain"
+    )
   if (!url) return null
 
-  const regex =
-    normalizeOptionalString(website.regex) ?? createRegexFromUrl(url)
+  const regex = defaultWebsite?.regex ?? createRegexFromUrl(url)
   try {
     new RegExp(regex)
   } catch {
@@ -126,9 +140,7 @@ function normalizeWebsiteItem(value: unknown): WebsiteItem | null {
     ...(normalizeOptionalString(website.icon)
       ? { icon: normalizeOptionalString(website.icon) }
       : {}),
-    ...(normalizeOptionalString(website.pattern)
-      ? { pattern: normalizeOptionalString(website.pattern) }
-      : {}),
+    ...(sourcePattern ? { pattern: sourcePattern } : {}),
     ...(normalizeOptionalString(website.siteName)
       ? { siteName: normalizeOptionalString(website.siteName) }
       : {}),
@@ -166,104 +178,31 @@ export function normalizeWebsiteListForStorage(value: unknown): WebsiteItem[] {
   return mergeWebsiteLists(normalizedSites, DEFAULT_VALUES.WEBSITE_LIST)
 }
 
-function dataURLToBytes(dataURL: string): Uint8Array {
-  const [, base64Data] = dataURL.split(",", 2)
-  if (!base64Data) {
-    return new TextEncoder().encode(dataURL)
-  }
-
-  const binary = atob(base64Data)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-  return bytes
-}
-
-async function createSHA256Hash(data: Uint8Array): Promise<string> {
-  const buffer = new ArrayBuffer(data.byteLength)
-  new Uint8Array(buffer).set(data)
-
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("")
-}
-
 export async function normalizeCustomFontList(
   customFontList: unknown
-): Promise<FontData[]> {
-  if (!Array.isArray(customFontList)) {
-    return DEFAULT_VALUES.CUSTOM_FONT_LIST
-  }
-
-  const normalizedFonts = await Promise.all(
-    customFontList.map(async (font) => {
-      const customFont = font as Partial<FontData>
-      const value = customFont.value
-      const name =
-        typeof customFont.name === "string" ? customFont.name.trim() : ""
-      const data = typeof customFont.data === "string" ? customFont.data : ""
-      const type =
-        typeof customFont.type === "string" ? customFont.type.toLowerCase() : ""
-      const normalizedData = normalizeFontDataURL(data, type)
-
-      if (
-        !isSafeCustomFontValue(value) ||
-        !name ||
-        !normalizedData ||
-        !getFontDataURLFormat(normalizedData, type) ||
-        !isSupportedFontExtension(type)
-      ) {
-        return null
-      }
-
-      const fileHash =
-        typeof customFont.fileHash === "string" &&
-        /^[a-f0-9]{64}$/i.test(customFont.fileHash)
-          ? customFont.fileHash
-          : await createSHA256Hash(dataURLToBytes(data))
-      const originalFileName =
-        typeof customFont.originalFileName === "string" &&
-        customFont.originalFileName.trim()
-          ? customFont.originalFileName.trim()
-          : name
-
-      return {
-        value,
-        name,
-        data: normalizedData,
-        type,
-        fileHash,
-        originalFileName,
-        unicodeRange: normalizeCustomFontUnicodeRange(customFont.unicodeRange)
-      }
-    })
-  )
-
-  return normalizedFonts.filter(
-    (font): font is NonNullable<(typeof normalizedFonts)[number]> =>
-      font !== null
-  )
+): Promise<CustomFontFamily[]> {
+  return normalizeCustomFontFamilies(customFontList)
 }
 
 export function isSelectedFontAvailable(
   selectedFont: string | undefined,
-  customFontList: FontData[],
+  customFontList: CustomFontFamily[],
   googleFontsEnabled: boolean,
-  systemFontsEnabled: boolean
+  _systemFontsEnabled: boolean
 ): boolean {
   return (
     selectedFont === undefined ||
     BUNDLED_FONT_VALUES.has(selectedFont) ||
     customFontList.some((font) => font.value === selectedFont) ||
-    (googleFontsEnabled && getGoogleFontByValue(selectedFont) !== null) ||
-    (systemFontsEnabled && isSystemFontValue(selectedFont))
+    (googleFontsEnabled &&
+      isSelectableGoogleFontFamily(decodeGoogleFontValue(selectedFont))) ||
+    isSystemFontValue(selectedFont)
   )
 }
 
 export function normalizeSiteProfilesForStorage(
   siteProfiles: unknown,
-  customFontList: FontData[],
+  customFontList: CustomFontFamily[],
   googleFontsEnabled: boolean,
   systemFontsEnabled: boolean
 ): SiteProfile[] {

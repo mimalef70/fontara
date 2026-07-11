@@ -19,11 +19,13 @@ type Manifest = {
   content_scripts: Array<{
     all_frames?: boolean
     js: string[]
+    matches?: string[]
     match_about_blank?: boolean
     run_at?: string
   }>
   default_locale?: string
   description?: string
+  host_permissions?: string[]
   name?: string
   optional_permissions?: string[]
   permissions: string[]
@@ -51,12 +53,12 @@ test("manifest injects FontAra into all frames at document_start", () => {
   assert.equal(contentScript.match_about_blank, true)
 })
 
-test("manifest grants storage capacity for custom fonts without redundant activeTab", () => {
+test("manifest grants storage capacity without tabs or activeTab", () => {
   const manifest = readJSON<Manifest>("src/manifest.json")
 
   assert.ok(manifest.permissions.includes("storage"))
   assert.ok(manifest.permissions.includes("unlimitedStorage"))
-  assert.ok(manifest.permissions.includes("tabs"))
+  assert.equal(manifest.permissions.includes("tabs"), false)
   assert.equal(manifest.permissions.includes("activeTab"), false)
 })
 
@@ -66,11 +68,8 @@ test("manifest enables context menus for extension commands", () => {
 
   assert.equal(manifest.permissions.includes("contextMenus"), false)
   assert.ok(manifest.optional_permissions?.includes("contextMenus"))
-  assert.ok(firefoxManifest.permissions.includes("contextMenus"))
-  assert.equal(
-    firefoxManifest.optional_permissions?.includes("contextMenus"),
-    false
-  )
+  assert.equal(firefoxManifest.permissions.includes("contextMenus"), false)
+  assert.ok(firefoxManifest.optional_permissions?.includes("contextMenus"))
 })
 
 test("manifest defines browser hotkeys with FontAra-specific defaults", () => {
@@ -113,6 +112,16 @@ test("manifest exposes only font assets to web pages", () => {
   )
 })
 
+test("manifest limits page access to HTTP and HTTPS hosts", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+  const contentScript = manifest.content_scripts.find((script) =>
+    script.js.includes("inject/index.js")
+  )
+
+  assert.deepEqual(manifest.host_permissions, ["*://*/*"])
+  assert.deepEqual(contentScript?.matches, ["*://*/*"])
+})
+
 test("chromium manifest grants system font access while firefox omits it", () => {
   const manifest = readJSON<Manifest>("src/manifest.json")
   const chromeManifest = readJSON<Manifest>("src/manifest-chrome-mv3.json")
@@ -138,6 +147,9 @@ test("manifest keeps extension page CSP locked down", () => {
   assert.match(csp, /font-src 'self' data: https:\/\/fonts\.gstatic\.com/)
   assert.match(csp, /connect-src https:\/\/fonts\.googleapis\.com/)
   assert.match(csp, /style-src 'self' 'unsafe-inline'/)
+  assert.match(csp, /img-src 'self' data:/)
+  assert.match(csp, /worker-src 'self'/)
+  assert.doesNotMatch(csp, /img-src \*/)
   assert.doesNotMatch(csp, /object-src 'self'/)
   assert.doesNotMatch(csp, /connect-src 'none'/)
 })

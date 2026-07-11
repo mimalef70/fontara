@@ -7,10 +7,18 @@ import path from "node:path"
 import puppeteer from "puppeteer-core"
 
 export const ROOT_DIR = path.resolve(import.meta.dirname, "../../..")
-export const CHROME_EXTENSION_DIR = path.join(ROOT_DIR, "build/chrome-mv3-dev")
+export const CHROME_EXTENSION_DIR = path.join(ROOT_DIR, "build/chrome-mv3-test")
+export const CHROME_PRODUCTION_EXTENSION_DIR = path.join(
+  ROOT_DIR,
+  "build/chrome-mv3-prod"
+)
 export const FIREFOX_EXTENSION_DIR = path.join(
   ROOT_DIR,
-  "build/firefox-mv3-dev"
+  "build/firefox-mv3-test"
+)
+export const FIREFOX_PRODUCTION_EXTENSION_DIR = path.join(
+  ROOT_DIR,
+  "build/firefox-mv3-prod"
 )
 
 export const BROWSER_VIEWPORTS = {
@@ -34,6 +42,7 @@ export const STORAGE_KEYS = {
   EXTENSION_ENABLED: "isExtensionEnabled",
   SITE_PROFILES: "siteProfiles",
   SELECTED_FONT: "selectedFont",
+  SYSTEM_FONTS_ENABLED: "systemFontsEnabled",
   SYNC_SETTINGS: "syncSettings",
   TEXT_STROKE: "textStroke",
   WEBSITE_LIST: "websiteList"
@@ -51,6 +60,12 @@ const CROSS_ORIGIN_FRAME_PATH = "/cross-origin-frame.html"
 const CROSS_ORIGIN_FRAME_NAME = "fontara-cross-origin-frame"
 const FONTARA_INLINE_FONT_MARKER = "var(--fontara-font)"
 const FONTARA_FONT_FAMILY_PATTERN = /fontara/i
+let browserMutationSequence = 0
+
+function createBrowserMutationId() {
+  browserMutationSequence += 1
+  return `browser-${Date.now().toString(36)}-${browserMutationSequence.toString(36)}`
+}
 
 export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -544,17 +559,24 @@ function getChromeLaunchArgs() {
 
 async function createPage(browser, url, options = {}) {
   const page = await browser.newPage()
+  const isFirefoxExtensionPage = url.startsWith("moz-extension://")
+  if (options.onConsole) page.on("console", options.onConsole)
+  if (options.onPageError) page.on("pageerror", options.onPageError)
   if (options.viewport) {
     await page.setViewport(options.viewport)
   }
   try {
-    await page.goto(url, { waitUntil: "load" })
+    await page.goto(url, {
+      timeout: isFirefoxExtensionPage ? 5000 : 30_000,
+      waitUntil: isFirefoxExtensionPage ? "domcontentloaded" : "load"
+    })
     await page.bringToFront().catch(() => {})
   } catch (error) {
     const isExpectedFirefoxExtensionNavigationError =
-      url.startsWith("moz-extension://") &&
+      isFirefoxExtensionPage &&
       error instanceof Error &&
-      error.message.includes("NS_ERROR_NOT_AVAILABLE")
+      (error.message.includes("NS_ERROR_NOT_AVAILABLE") ||
+        error.name === "TimeoutError")
 
     if (!isExpectedFirefoxExtensionNavigationError) {
       throw error
@@ -562,11 +584,13 @@ async function createPage(browser, url, options = {}) {
 
     await waitFor(
       async () => {
-        const currentUrl = page.url()
-        if (!currentUrl.startsWith(url)) return false
-
         return page
-          .evaluate(() => document.readyState !== "loading")
+          .evaluate(
+            (expectedUrl) =>
+              window.location.href.startsWith(expectedUrl) &&
+              document.readyState !== "loading",
+            url
+          )
           .catch(() => false)
       },
       {
@@ -656,6 +680,10 @@ async function launchFirefoxWithExtension(extensionDir) {
   try {
     const extensionId = await browser.installExtension(extensionDir)
     const extensionBaseUrl =
+      (await findFirefoxExtensionBaseUrlFromProfile(
+        userDataDir,
+        extensionId
+      )) ??
       (await findExtensionBaseUrl(browser, "moz-extension://")) ??
       `moz-extension://${extensionId}`
     await delay(1000)
@@ -721,10 +749,32 @@ export async function withChromeMv3ExtensionHarness(testContext, callback) {
   )
 }
 
+export async function withChromeProductionExtensionHarness(
+  testContext,
+  callback
+) {
+  await withExtensionHarness(
+    testContext,
+    () => launchChromeWithExtension(CHROME_PRODUCTION_EXTENSION_DIR),
+    callback
+  )
+}
+
 export async function withFirefoxMv3ExtensionHarness(testContext, callback) {
   await withExtensionHarness(
     testContext,
     () => launchFirefoxWithExtension(FIREFOX_EXTENSION_DIR),
+    callback
+  )
+}
+
+export async function withFirefoxProductionExtensionHarness(
+  testContext,
+  callback
+) {
+  await withExtensionHarness(
+    testContext,
+    () => launchFirefoxWithExtension(FIREFOX_PRODUCTION_EXTENSION_DIR),
     callback
   )
 }
@@ -751,18 +801,53 @@ async function findExtensionBaseUrl(browser, protocol) {
   ).catch(() => null)
 }
 
+async function findFirefoxExtensionBaseUrlFromProfile(
+  userDataDir,
+  extensionId
+) {
+  return waitFor(
+    async () => {
+      const preferences = await fs
+        .readFile(path.join(userDataDir, "prefs.js"), "utf8")
+        .catch(() => "")
+      const match = preferences.match(
+        /^user_pref\("extensions\.webextensions\.uuids", (".*")\);$/m
+      )
+      if (!match) return false
+
+      try {
+        const extensionUUIDs = JSON.parse(JSON.parse(match[1]))
+        const extensionUUID = extensionUUIDs[extensionId]
+        return typeof extensionUUID === "string" && extensionUUID.length > 0
+          ? `moz-extension://${extensionUUID}`
+          : false
+      } catch {
+        return false
+      }
+    },
+    {
+      message: `Could not resolve the Firefox UUID for ${extensionId}.`,
+      timeout: 5000
+    }
+  ).catch(() => null)
+}
+
 export async function evaluate(page, pageFunction, ...args) {
   assert.equal(typeof pageFunction, "function")
   return page.evaluate(pageFunction, ...args)
 }
 
 export async function sendSettingsFromOptions(optionsPage, settings) {
+  const clientMutationId = createBrowserMutationId()
   const response = await optionsPage.evaluate(
-    (messageType, nextSettings) =>
+    (messageType, mutationId, nextSettings) =>
       new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
           {
-            data: nextSettings,
+            data: {
+              clientMutationId: mutationId,
+              settings: nextSettings
+            },
             type: messageType
           },
           (messageResponse) => {
@@ -776,6 +861,7 @@ export async function sendSettingsFromOptions(optionsPage, settings) {
         )
       }),
     MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS,
+    clientMutationId,
     settings
   )
 
@@ -902,9 +988,34 @@ export async function waitForContentBridge(page) {
 
 export async function sendSettingsFromContentBridge(page, settings) {
   return sendUIMessageFromContentBridge(page, {
-    data: settings,
+    data: {
+      clientMutationId: createBrowserMutationId(),
+      settings
+    },
     type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
   })
+}
+
+export async function stopChromeExtensionServiceWorkers(extensionPage) {
+  const browser = extensionPage.browser()
+  const extensionOrigin = new URL(extensionPage.url()).origin
+  const previousBackgroundTarget = browser.targets().find((target) => {
+    const url = target.url()
+    return url.startsWith(extensionOrigin) && url.includes("/background/")
+  })
+  const session = await extensionPage.target().createCDPSession()
+  try {
+    await session.send("ServiceWorker.enable")
+    await session.send("ServiceWorker.stopAllWorkers")
+  } finally {
+    await session.detach().catch(() => {})
+  }
+
+  if (previousBackgroundTarget) {
+    await waitFor(() => !browser.targets().includes(previousBackgroundTarget), {
+      message: "Chrome extension service worker did not stop."
+    })
+  }
 }
 
 export async function getPageFontState(page) {
@@ -1529,11 +1640,15 @@ export async function setValueByTestId(page, testId, value) {
 }
 
 export async function uploadFileByTestId(page, testId, filePath) {
+  return uploadFilesByTestId(page, testId, [filePath])
+}
+
+export async function uploadFilesByTestId(page, testId, filePaths) {
   const selector = testIdSelector(testId)
   await page.waitForSelector(selector)
   const input = await page.$(selector)
   assert.ok(input, `Input ${testId} was not found.`)
-  await input.uploadFile(filePath)
+  await input.uploadFile(...filePaths)
 }
 
 export async function chooseFileByTestId(page, testId, filePath) {

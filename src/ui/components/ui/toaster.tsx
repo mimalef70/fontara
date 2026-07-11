@@ -1,6 +1,7 @@
 "use client"
 
 import { useToast } from "../../hooks/use-toast"
+import { useI18n } from "../../i18n"
 import {
   Toast,
   ToastClose,
@@ -11,6 +12,7 @@ import {
 } from "./Toast"
 
 export function Toaster() {
+  const { t } = useI18n()
   const { toasts } = useToast()
 
   return (
@@ -22,7 +24,7 @@ export function Toaster() {
             {description && <ToastDescription>{description}</ToastDescription>}
           </div>
           {action}
-          <ToastClose />
+          <ToastClose aria-label={t("common.close")} />
         </Toast>
       ))}
       <ToastViewport />

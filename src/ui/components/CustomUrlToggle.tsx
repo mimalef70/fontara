@@ -1,9 +1,12 @@
+import { Globe2 } from "lucide-react"
+
 import {
   addSitePatternToList,
   createSiteListPatternToggleUpdate,
   createSiteListToggleUpdate,
   createSitePathPatternFromUrl,
   createSitePatternFromUrl,
+  createStoredSiteURL,
   getDisplaySitePattern,
   getMatchingSiteListPattern,
   getSitePatternScope,
@@ -36,9 +39,9 @@ import { SiteScopeBadge, type SiteScopeBadgeKind } from "./SiteScopeBadge"
 const activeCheckClasses = {
   custom: "border-slate-500 bg-slate-500",
   domain: "border-[#2474FF] bg-[#2474FF]",
-  global: "border-sky-500 bg-sky-500",
-  path: "border-emerald-500 bg-emerald-500",
-  regex: "border-amber-500 bg-amber-500"
+  global: "border-sky-600 bg-sky-600",
+  path: "border-emerald-600 bg-emerald-600",
+  regex: "border-amber-700 bg-amber-700"
 } satisfies Record<SiteScopeBadgeKind, string>
 
 function removeOptionalSitePattern(list: string[], pattern: string | null) {
@@ -98,22 +101,35 @@ const CustomUrlToggle = () => {
         ? "global"
         : null
     : null
-  const createUpdatedWebsiteList = (currentUrl: string, checked: boolean) => {
+  const createUpdatedWebsiteList = (
+    currentUrl: string,
+    checked: boolean,
+    scope: "domain" | "path" = "domain"
+  ) => {
     const existingWebsiteIndex = websiteList.findIndex(
       (item) => getMatchingWebsite(currentUrl, [item]) !== null
     )
 
-    return existingWebsiteIndex === -1 && checked
+    const storedSiteURL = createStoredSiteURL(currentUrl, scope)
+
+    return existingWebsiteIndex === -1 && checked && storedSiteURL
       ? [
           ...websiteList,
           {
-            url: currentUrl,
+            url: storedSiteURL,
             regex: createRegexFromUrl(currentUrl),
             isActive: true
           }
         ]
       : websiteList.map((item, index) =>
-          index === existingWebsiteIndex ? { ...item, isActive: checked } : item
+          index === existingWebsiteIndex
+            ? {
+                ...item,
+                ...(storedSiteURL ? { url: storedSiteURL } : {}),
+                regex: createRegexFromUrl(currentUrl),
+                isActive: checked
+              }
+            : item
         )
   }
 
@@ -137,7 +153,8 @@ const CustomUrlToggle = () => {
         [STORAGE_KEYS.ENABLED_FOR]: siteListUpdate.enabledFor,
         [STORAGE_KEYS.WEBSITE_LIST]: createUpdatedWebsiteList(
           currentUrl,
-          checked
+          checked,
+          getSitePatternScope(pattern) === "path" ? "path" : "domain"
         )
       })
     } catch (error) {
@@ -246,7 +263,7 @@ const CustomUrlToggle = () => {
   const displaySiteName = getDisplaySitePattern(displayPattern)
   const checkClassName = active
     ? activeCheckClasses[activeScope ?? "domain"]
-    : "border-gray-300 hover:border-[#2474FF]"
+    : "border-slate-500 hover:border-[#2474FF]"
   const checkboxControl = (
     <div className="relative shrink-0">
       <input
@@ -273,13 +290,7 @@ const CustomUrlToggle = () => {
     <span
       className="inline-flex min-w-0 max-w-[12rem] items-center gap-1 align-middle"
       dir="ltr">
-      {currentTab.favIconUrl && (
-        <img
-          src={currentTab.favIconUrl}
-          className="!size-4 shrink-0 object-contain"
-          alt="site icon"
-        />
-      )}
+      <Globe2 aria-hidden="true" className="size-4 shrink-0" />
       <bdi className="truncate" dir="ltr" title={displaySiteName}>
         {displaySiteName}
       </bdi>

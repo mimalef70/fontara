@@ -1,6 +1,10 @@
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
 import { openOptionsPageSafely } from "../utils/options-page"
-import { getLocalValues, watchLocalStorage } from "../utils/storage"
+import {
+  getLocalValues,
+  setLocalValue,
+  watchLocalStorage
+} from "../utils/storage"
 import { FONTARA_COMMANDS, runFontaraCommand } from "./command-manager"
 
 const CONTEXT_MENU_ROOT_ID = "fontara-top"
@@ -188,6 +192,11 @@ export function registerContextMenuListeners(): void {
   permissions?.onRemoved?.addListener((permissions) => {
     if (permissions?.permissions?.includes(CONTEXT_MENU_PERMISSION)) {
       void removeContextMenus()
+      void setLocalValue(STORAGE_KEYS.CONTEXT_MENUS_ENABLED, false).catch(
+        (error) => {
+          debugWarn("Failed to persist revoked context menu permission.", error)
+        }
+      )
     }
   })
 }

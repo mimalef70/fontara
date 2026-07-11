@@ -21,6 +21,7 @@ export type ResolvedPageThemeRequestType =
 
 type ThemeSchedulerOptions = {
   isDisposed: () => boolean
+  onBackgroundCommandsEnabled?: () => void
   onExtensionContextInvalidated: () => void
   onLocalFallbackActivated?: () => void
   sendDocumentLifecycleMessage: (type: ResolvedPageThemeRequestType) => boolean
@@ -79,6 +80,9 @@ export function createContentThemeScheduler(
   }
 
   function markBackgroundCommandsEnabled(): void {
+    if (!backgroundCommandsEnabled) {
+      options.onBackgroundCommandsEnabled?.()
+    }
     backgroundCommandsEnabled = true
   }
 

@@ -9,6 +9,22 @@ We removed the long list of website and brand names from the Chrome Web Store
 description. The updated listing describes FontAra's functionality in context
 and uses broad website categories instead of keyword lists.
 
+## Version 5.1 Screenshot Assets
+
+The five localized Persian screenshots under `docs/images/store/5.1.0/fa/`
+are generated from the unpacked Chrome production build with
+`pnpm capture:store-screenshots`. Every file is a full-bleed 1280×800 PNG:
+
+- `fontara-5.1-popup.png`
+- `fontara-5.1-general.png`
+- `fontara-5.1-custom-fonts.png`
+- `fontara-5.1-site-profiles.png`
+- `fontara-5.1-smart-rtl.png`
+
+Regenerate them after any user-visible UI change before updating the Store
+dashboard. Do not reuse the historical Version 4 marketing screenshots for a
+5.1 listing.
+
 ## English Short Description
 
 Apply readable fonts and smart RTL support across the web, with custom fonts and
@@ -41,8 +57,12 @@ Features:
 
 Privacy:
 
-FontAra processes page text locally in your browser. Your settings stay in
-browser extension storage. We do not collect, sell, or share browsing data.
+FontAra processes page text locally in your browser. Custom-font files remain in
+local extension storage and are never uploaded to a FontAra server. Optional
+settings sync is handled by your browser provider. Google Fonts is off by
+default; after opt-in, selected fonts are requested directly from Google. We do
+not collect, sell, or share browsing data. Full details are in
+`docs/privacy.html`.
 
 ## Persian Short Description
 
@@ -76,9 +96,11 @@ Fonts اختیاری، فونت‌های مرورگر/سیستم در مرورگ
 
 حریم خصوصی:
 
-FontAra پردازش متن صفحه را به‌صورت محلی در مرورگر شما انجام می‌دهد. تنظیمات شما
-در فضای ذخیره‌سازی افزونه داخل مرورگر می‌ماند. ما داده‌های مرور شما را جمع‌آوری،
-فروش یا به اشتراک نمی‌گذاریم.
+FontAra پردازش متن صفحه را به‌صورت محلی در مرورگر شما انجام می‌دهد. فایل‌های
+فونت دلخواه فقط در storage محلی افزونه می‌مانند و به سرور FontAra آپلود
+نمی‌شوند. همگام‌سازی اختیاری را ارائه‌دهندهٔ مرورگر انجام می‌دهد. Google Fonts
+در حالت پیش‌فرض خاموش است و پس از opt-in، فونت انتخابی مستقیماً از Google
+درخواست می‌شود. ما داده‌های مرور شما را جمع‌آوری، فروش یا به اشتراک نمی‌گذاریم.
 
 ## Arabic Short Description
 
@@ -111,5 +133,8 @@ FontAra إضافة تراعي الخصوصية لتغيير الخطوط على 
 
 الخصوصية:
 
-يعالج FontAra نصوص الصفحات محليًا داخل متصفحك. تبقى إعداداتك في مساحة تخزين
-الإضافة داخل المتصفح. نحن لا نجمع بيانات التصفح ولا نبيعها ولا نشاركها.
+يعالج FontAra نصوص الصفحات محليًا داخل متصفحك. تبقى ملفات الخطوط المخصصة في
+التخزين المحلي ولا تُرفع إلى خادم FontAra، وتتم المزامنة الاختيارية بواسطة
+مزود المتصفح. تكون Google Fonts معطلة افتراضيًا، وبعد الاشتراك الصريح تُطلب
+الخطوط المحددة مباشرة من Google. نحن لا نجمع بيانات التصفح ولا نبيعها ولا
+نشاركها.

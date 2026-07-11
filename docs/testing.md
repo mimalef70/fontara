@@ -54,7 +54,7 @@ Firefox:
 FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:firefox
 ```
 
-Browser tests build debug extensions, install them in real browsers, drive popup
+Browser tests build dedicated test extensions, install them in real browsers, drive popup
 and options UI, open fixture pages, and verify page styles without reloads.
 
 The Chrome suite covers:
@@ -65,11 +65,41 @@ The Chrome suite covers:
 - Backup export/import/reset.
 - Sync storage stress payloads.
 - Viewport coverage for extension pages.
+- Axe WCAG A/AA checks for popup and options in en/fa/ar on mobile and desktop.
+- Keyboard navigation and mobile navigation closure.
 - Shadow DOM, same-origin iframes, cross-origin iframes, SPA navigation, lazy
   DOM, virtualized lists, adoptedStyleSheets, CSS variables, and editable text.
 
 The Firefox suite covers the stabilized cross-browser runtime path and hard
 fixture behavior.
+
+### Local licensed font packages
+
+Keep proprietary font packages outside version control. To audit every
+TTF/OTF/WOFF/WOFF2 file in a local package, grouped by directory and format:
+
+```sh
+pnpm audit:font-family -- /path/to/font-package
+```
+
+Then validate the real Options upload flow, native `FontFace` loading, all
+detected weights, mixed-family guidance, and duplicate-face guidance:
+
+```sh
+FONTARA_LOCAL_FONT_FAMILY_DIR=/path/to/family pnpm test:browser:local-font-family
+FONTARA_LOCAL_FONT_FAMILY_DIR=/path/to/family FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:local-font-family:firefox
+```
+
+The browser import test expects the package root itself to contain one complete
+family. Nested directories are still audited as independent selections.
+
+Production package smoke tests install the unpacked release contents, open
+popup/options, reject test-bridge markers, and monitor page/console errors:
+
+```sh
+pnpm test:browser:production:chrome
+FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:production:firefox
+```
 
 ## Browser Matrix in CI
 
@@ -102,8 +132,11 @@ pnpm verify
 `pnpm verify` runs:
 
 1. `pnpm check`
-2. `pnpm build:all`
-3. `pnpm lint:extension`
+2. `pnpm test:coverage`
+3. `pnpm build:all`
+4. `pnpm lint:extension`
+5. Version consistency and production/full dependency audits.
+6. Reproducible ZIP checks for every target and the Firefox source archive.
 
 Use this before release or after broad runtime/build changes.
 

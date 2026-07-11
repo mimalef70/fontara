@@ -3,7 +3,9 @@ import {
   normalizeSiteProfiles
 } from "../config/site-profiles"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { FontData, SiteProfile } from "../definitions"
+import type { CustomFontFamily } from "../custom-font-types"
+import type { SiteProfile } from "../definitions"
+import { CUSTOM_FONT_STORAGE_SCHEMA_VERSION_KEY } from "./custom-font-storage"
 import {
   normalizeCustomFontList,
   normalizeStorageValues
@@ -34,6 +36,7 @@ export const FONTARA_SYNC_LOCAL_ONLY_STORAGE_KEYS = [
 
 export const FONTARA_SYNC_STORAGE_CHUNK_META_KEY = "__meta_split_count"
 export const FONTARA_SETTINGS_UPDATED_AT_KEY = "__fontara_settings_updated_at__"
+export const FONTARA_SETTINGS_REVISION_KEY = "__fontara_settings_revision__"
 
 function hasOwn(value: Record<string, unknown>, key: string): boolean {
   return Object.getOwnPropertyDescriptor(value, key) !== undefined
@@ -51,6 +54,14 @@ export function getSettingsUpdatedAt(values: Record<string, unknown>): number {
     : 0
 }
 
+export function getSettingsRevision(values: Record<string, unknown>): number {
+  const value = values[FONTARA_SETTINGS_REVISION_KEY]
+
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : 0
+}
+
 export function createSettingsUpdatedAtPatch(
   updatedAt = Date.now()
 ): Record<string, number> {
@@ -59,7 +70,9 @@ export function createSettingsUpdatedAtPatch(
   }
 }
 
-function getCustomFontValueSet(customFontList: FontData[]): Set<string> {
+function getCustomFontValueSet(
+  customFontList: CustomFontFamily[]
+): Set<string> {
   return new Set(customFontList.map((font) => font.value))
 }
 
@@ -134,14 +147,17 @@ export function getSettingsSyncReadDefaults(): Record<string, unknown> {
     ...Object.fromEntries(
       FONTARA_SYNCED_STORAGE_KEYS.map((key) => [key, undefined])
     ),
-    [FONTARA_SETTINGS_UPDATED_AT_KEY]: undefined
+    [FONTARA_SETTINGS_UPDATED_AT_KEY]: undefined,
+    [FONTARA_SETTINGS_REVISION_KEY]: undefined
   }
 }
 
 export function getLocalStorageReadDefaults(): Record<string, unknown> {
   return {
     ...getSettingsSyncReadDefaults(),
+    [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: undefined,
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: undefined,
+    [CUSTOM_FONT_STORAGE_SCHEMA_VERSION_KEY]: undefined,
     [STORAGE_KEYS.TEXT_STROKE_ENABLED]: undefined
   }
 }
@@ -197,11 +213,15 @@ export async function createSyncedSettings(
     await normalizeStorageValues(syncInput)
   )
   const updatedAt = getSettingsUpdatedAt(values)
+  const revision = getSettingsRevision(values)
   if (selectedFontIsLocalOnly) {
     delete syncedSettings[STORAGE_KEYS.SELECTED_FONT]
   }
   if (updatedAt > 0) {
     syncedSettings[FONTARA_SETTINGS_UPDATED_AT_KEY] = updatedAt
+  }
+  if (revision > 0) {
+    syncedSettings[FONTARA_SETTINGS_REVISION_KEY] = revision
   }
 
   return syncedSettings
@@ -233,8 +253,7 @@ export async function mergeSyncedSettingsWithLocalOnlyValues(
   const localSystemFontsEnabled =
     normalizedLocalValues[STORAGE_KEYS.SYSTEM_FONTS_ENABLED] === true
   const isLocalOnlyFont = (font: string): boolean =>
-    customFontValues.has(font) ||
-    (localSystemFontsEnabled && isSystemFontValue(font))
+    customFontValues.has(font) || isSystemFontValue(font)
   const mergedValues: Record<string, unknown> = {
     ...normalizedSyncedValues,
     [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: localSystemFontsEnabled,
@@ -256,6 +275,13 @@ export async function mergeSyncedSettingsWithLocalOnlyValues(
   )
   if (updatedAt > 0) {
     mergedValues[FONTARA_SETTINGS_UPDATED_AT_KEY] = updatedAt
+  }
+  const revision = Math.max(
+    getSettingsRevision(localValues),
+    getSettingsRevision(syncedValues)
+  )
+  if (revision > 0) {
+    mergedValues[FONTARA_SETTINGS_REVISION_KEY] = revision
   }
 
   return mergedValues

@@ -10,6 +10,6 @@
       }
     }
   },
-  "permissions": ["contextMenus", "storage", "unlimitedStorage", "tabs"],
-  "optional_permissions": []
+  "permissions": ["storage", "unlimitedStorage"],
+  "optional_permissions": ["contextMenus"]
 }

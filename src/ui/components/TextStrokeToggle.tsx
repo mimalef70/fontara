@@ -10,16 +10,17 @@ import {
   TEXT_STROKE_STEP
 } from "../../config/text-stroke"
 import { cn } from "../../utils/cn"
-import { useStorageValue } from "../hooks/use-storage"
+import { useDebouncedStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import { getTextStrokeInitialValue } from "../storage-defaults"
 
 const TextStrokeToggle = () => {
   const { formatNumber, t } = useI18n()
-  const [textStroke, setTextStroke] = useStorageValue<number>(
-    STORAGE_KEYS.TEXT_STROKE,
-    getTextStrokeInitialValue
-  )
+  const [textStroke, setTextStroke, flushTextStroke] =
+    useDebouncedStorageValue<number>(
+      STORAGE_KEYS.TEXT_STROKE,
+      getTextStrokeInitialValue
+    )
   const formattedValue = formatNumber(textStroke, {
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
@@ -63,7 +64,7 @@ const TextStrokeToggle = () => {
       <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] gap-2">
         <button
           type="button"
-          className="flex h-8 items-center justify-center rounded-[3px] bg-[#edf3fd] text-[#2374ff] transition hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
+          className="flex h-8 items-center justify-center rounded-[3px] bg-[#edf3fd] text-[#175cd3] transition hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
           disabled={textStroke <= TEXT_STROKE_MIN}
           aria-label={t("popup.textStroke.decrease")}
           onClick={() => void decreaseTextStroke()}>
@@ -78,7 +79,7 @@ const TextStrokeToggle = () => {
           <span className="absolute inset-y-0 left-0 w-px bg-[#2374ff]/60" />
           <span className="relative z-[1] truncate">
             {t("popup.textStroke.title")}
-            <bdi className="font-bold text-[#2374ff]"> ({valueText})</bdi>
+            <bdi className="font-bold text-[#175cd3]"> ({valueText})</bdi>
           </span>
           <input
             type="range"
@@ -89,12 +90,14 @@ const TextStrokeToggle = () => {
             aria-label={t("popup.textStroke.title")}
             className="absolute inset-0 z-[2] h-full w-full cursor-ew-resize opacity-0"
             onChange={handleRangeChange}
+            onBlur={() => void flushTextStroke()}
+            onPointerUp={() => void flushTextStroke()}
           />
         </div>
 
         <button
           type="button"
-          className="flex h-8 items-center justify-center rounded-[3px] bg-[#edf3fd] text-[#2374ff] transition hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
+          className="flex h-8 items-center justify-center rounded-[3px] bg-[#edf3fd] text-[#175cd3] transition hover:bg-[#e4efff] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
           disabled={textStroke >= TEXT_STROKE_MAX}
           aria-label={t("popup.textStroke.increase")}
           onClick={() => void increaseTextStroke()}>

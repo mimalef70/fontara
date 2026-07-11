@@ -23,6 +23,10 @@ const jsEntries = [
     dest: "ui/options/index.js"
   },
   {
+    src: "src/ui/options/custom-font-metadata-worker.ts",
+    dest: "ui/options/custom-font-metadata-worker.js"
+  },
+  {
     src: "src/ui/i18n/bootstrap.ts",
     dest: "ui/i18n/bootstrap.js"
   }
@@ -64,8 +68,8 @@ const textPlugin = {
   }
 }
 
-async function bundleJS({ platform, debug }) {
-  const outDir = getDestDir({ platform, debug })
+async function bundleJS({ platform, debug, test = false }) {
+  const outDir = getDestDir({ platform, debug, test })
 
   await Promise.all(
     jsEntries.map((entry) =>
@@ -82,6 +86,7 @@ async function bundleJS({ platform, debug }) {
         define: {
           "process.env.NODE_ENV": JSON.stringify("production"),
           __DEBUG__: JSON.stringify(debug),
+          __TEST__: JSON.stringify(test),
           __PLATFORM__: JSON.stringify(platform),
           __CHROMIUM_MV3__: JSON.stringify(platform !== PLATFORM.FIREFOX_MV3),
           __FIREFOX_MV3__: JSON.stringify(platform === PLATFORM.FIREFOX_MV3)

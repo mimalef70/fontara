@@ -5,12 +5,12 @@ import {
   resolveFontaraSiteConfig
 } from "../config/site-manager"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
+import type { CustomFontFamily } from "../custom-font-types"
 import type {
   FontaraApplyMode,
   FontaraFontThemeCommandData,
   FontaraPageThemeCommandData,
-  FontaraRtlThemeCommandData,
-  FontData
+  FontaraRtlThemeCommandData
 } from "../definitions"
 import { getFontFaceCSS } from "./font-face"
 import {
@@ -27,7 +27,8 @@ const INACTIVE_FONT_THEME: FontaraFontThemeCommandData = {
   active: false,
   applyMode: "full",
   customCSS: null,
-  customFontCSS: "",
+  customFontFamilyRevision: null,
+  customFontFamilyValue: null,
   fontFaceCSS: "",
   fontName: DEFAULT_VALUES.SELECTED_FONT,
   googleFontCSS: null,
@@ -43,10 +44,12 @@ function getSetting<T>(
   return value === undefined ? fallback : (value as T)
 }
 
-function getCustomFontList(settings: Record<string, unknown>): FontData[] {
+function getCustomFontList(
+  settings: Record<string, unknown>
+): CustomFontFamily[] {
   const value = settings[STORAGE_KEYS.CUSTOM_FONT_LIST]
   return Array.isArray(value)
-    ? (value as FontData[])
+    ? (value as CustomFontFamily[])
     : DEFAULT_VALUES.CUSTOM_FONT_LIST
 }
 
@@ -97,7 +100,8 @@ async function createFontThemeData(
     active: true,
     applyMode,
     customCSS,
-    customFontCSS: selectedFontState.customFontCSS,
+    customFontFamilyRevision: selectedFontState.customFontFamilyRevision,
+    customFontFamilyValue: selectedFontState.customFontFamilyValue,
     fontFaceCSS: getFontFaceCSS(),
     fontName: selectedFontState.fontName,
     googleFontCSS: selectedFontState.googleFontCSS,

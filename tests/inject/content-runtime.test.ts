@@ -1,9 +1,12 @@
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import { createRequire } from "node:module"
 import test, { afterEach } from "node:test"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
-import type { FontData, SiteProfile, WebsiteItem } from "../../src/definitions"
+import type { CustomFontFamily } from "../../src/custom-font-types"
+import type { SiteProfile, WebsiteItem } from "../../src/definitions"
+import { CUSTOM_FONT_FACE_STORAGE_PREFIX } from "../../src/utils/custom-font-storage"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { MESSAGE_TYPES_BG_TO_CS } from "../../src/utils/message"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
@@ -18,8 +21,8 @@ type RequireWithCssExtensions = {
   extensions: Record<string, CssModuleLoader | undefined>
 }
 
-type StoredValues = {
-  [STORAGE_KEYS.CUSTOM_FONT_LIST]: FontData[]
+type StoredValues = Record<string, unknown> & {
+  [STORAGE_KEYS.CUSTOM_FONT_LIST]: CustomFontFamily[]
   [STORAGE_KEYS.DISABLED_FOR]: string[]
   [STORAGE_KEYS.ENABLED_BY_DEFAULT]: boolean
   [STORAGE_KEYS.ENABLED_FOR]: string[]
@@ -36,6 +39,7 @@ const require = createRequire(import.meta.url)
 const requireWithCssExtensions = require as unknown as RequireWithCssExtensions
 const originalCSSExtension = requireWithCssExtensions.extensions[".css"]
 const originalGlobals = {
+  __CHROMIUM_MV3__: Reflect.get(globalThis, "__CHROMIUM_MV3__") as unknown,
   __DEBUG__: Reflect.get(globalThis, "__DEBUG__") as unknown,
   addEventListener: Reflect.get(globalThis, "addEventListener") as unknown,
   cancelAnimationFrame: Reflect.get(
@@ -45,6 +49,7 @@ const originalGlobals = {
   chrome: Reflect.get(globalThis, "chrome") as unknown,
   document: Reflect.get(globalThis, "document") as unknown,
   fetch: Reflect.get(globalThis, "fetch") as unknown,
+  FontFace: Reflect.get(globalThis, "FontFace") as unknown,
   HTMLElement: Reflect.get(globalThis, "HTMLElement") as unknown,
   MutationObserver: Reflect.get(globalThis, "MutationObserver") as unknown,
   Node: Reflect.get(globalThis, "Node") as unknown,
@@ -69,6 +74,47 @@ class FakeStyleDeclaration {
       this.fontFamily = value
       this.length = 1
     }
+  }
+}
+
+class FakeFontFace {
+  family: string
+  status: FontFaceLoadStatus = "unloaded"
+
+  constructor(
+    family: string,
+    readonly source: string | ArrayBuffer,
+    readonly descriptors?: FontFaceDescriptors
+  ) {
+    this.family = family
+  }
+
+  async load(): Promise<FakeFontFace> {
+    this.status = "loaded"
+    return this
+  }
+}
+
+class FakeFontFaceSet {
+  readonly faces = new Set<FakeFontFace>()
+
+  add(face: FakeFontFace): FakeFontFaceSet {
+    this.faces.add(face)
+    return this
+  }
+
+  check(font: string): boolean {
+    return Array.from(this.faces).some((face) => font.includes(face.family))
+  }
+
+  delete(face: FakeFontFace): boolean {
+    return this.faces.delete(face)
+  }
+
+  load(font: string): Promise<FakeFontFace[]> {
+    return Promise.resolve(
+      Array.from(this.faces).filter((face) => font.includes(face.family))
+    )
   }
 }
 
@@ -165,6 +211,7 @@ function createRuntimeMocks(): {
   dispatchWindowEvent: (type: string, event: { persisted?: boolean }) => void
   dispatchStorageChange: StorageListener
   getStorageGetCount: (key: string) => number
+  getRegisteredFontFamilies: () => string[]
   getStyleText: (id: string) => string
   getTreeWalkerCount: () => number
   dispatchRuntimeMessage: (message: unknown) => void
@@ -198,13 +245,30 @@ function createRuntimeMocks(): {
     regex: "^https?://example\\.com/?.*$",
     url: "https://example.com"
   }
-  const customFont: FontData = {
-    data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
-    fileHash: "a".repeat(64),
-    name: "Runtime Custom",
-    originalFileName: "runtime.woff2",
-    type: "woff2",
-    value: "RuntimeCustom-Fontara"
+  const customFontBytes = Buffer.from("wOF2runtime-custom-font")
+  const customFontHash = createHash("sha256")
+    .update(customFontBytes)
+    .digest("hex")
+  const customFont: CustomFontFamily = {
+    value: "RuntimeCustom-Fontara",
+    displayName: "Runtime Custom",
+    sourceFamilyKey: "runtime custom",
+    unicodeRange: null,
+    revision: 1,
+    faces: [
+      {
+        id: "runtime-custom-face",
+        fileHash: customFontHash,
+        fileName: "runtime.woff2",
+        format: "woff2",
+        byteLength: customFontBytes.byteLength,
+        weight: { min: 400, max: 400 },
+        style: "normal",
+        stretch: { min: 100, max: 100 },
+        axes: [],
+        validation: "verified"
+      }
+    ]
   }
   const values: StoredValues = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [customFont],
@@ -218,6 +282,13 @@ function createRuntimeMocks(): {
     [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
     [STORAGE_KEYS.TEXT_STROKE]: 0,
     [STORAGE_KEYS.WEBSITE_LIST]: [matchingWebsite]
+  }
+  values[`${CUSTOM_FONT_FACE_STORAGE_PREFIX}${customFontHash}`] = {
+    encoding: "base64",
+    byteLength: customFontBytes.byteLength,
+    format: "woff2",
+    hash: customFontHash,
+    data: customFontBytes.toString("base64")
   }
   const bodyElement = new FakeElement("body", elementsById)
   const editableElement = new FakeElement("div", elementsById)
@@ -243,8 +314,10 @@ function createRuntimeMocks(): {
   const linkedinParagraphElement = new FakeElement("p", elementsById)
   linkedinEditableElement.appendChild(linkedinParagraphElement)
   bodyElement.appendChild(linkedinEditableElement)
+  const fontFaceSet = new FakeFontFaceSet()
   const documentMock = {
     body: bodyElement,
+    fonts: fontFaceSet,
     createElement(tagName: string) {
       return new FakeElement(tagName, elementsById)
     },
@@ -300,6 +373,7 @@ function createRuntimeMocks(): {
   }
 
   Reflect.set(globalThis, "HTMLElement", FakeElement)
+  Reflect.set(globalThis, "FontFace", FakeFontFace)
   Reflect.set(globalThis, "Node", { TEXT_NODE: 3 })
   Reflect.set(globalThis, "NodeFilter", {
     FILTER_ACCEPT: 1,
@@ -387,6 +461,9 @@ function createRuntimeMocks(): {
     }
   )
   Reflect.set(globalThis, "chrome", {
+    fontSettings: {
+      getFontList() {}
+    },
     runtime: {
       get lastError() {
         return undefined
@@ -411,7 +488,7 @@ function createRuntimeMocks(): {
         ) {
           if (typeof keys === "string") {
             storageGetCounts.set(keys, (storageGetCounts.get(keys) ?? 0) + 1)
-            callback({ [keys]: values[keys as keyof StoredValues] })
+            callback({ [keys]: values[keys] })
             return
           }
 
@@ -438,6 +515,7 @@ function createRuntimeMocks(): {
       }
     }
   })
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", true)
   requireWithCssExtensions.extensions[".css"] = (module) => {
     module.exports = `
       @font-face {
@@ -467,6 +545,9 @@ function createRuntimeMocks(): {
     getStorageGetCount(key) {
       return storageGetCounts.get(key) ?? 0
     },
+    getRegisteredFontFamilies() {
+      return Array.from(fontFaceSet.faces, (face) => face.family)
+    },
     getStyleText(id) {
       return elementsById.get(id)?.textContent ?? ""
     },
@@ -492,7 +573,7 @@ async function waitFor(
   assert.ok(condition(), message)
 }
 
-test("selected custom font changes inject its font-face without a reload", async () => {
+test("selected custom font changes load its FontFace without a reload", async () => {
   const runtime = createRuntimeMocks()
   const originalWarn = console.warn
   let warnCalls = 0
@@ -634,14 +715,24 @@ test("selected custom font changes inject its font-face without a reload", async
 
     await waitFor(
       () =>
-        runtime
-          .getStyleText("fontara-custom-font-styles")
-          .includes('font-family: "RuntimeCustom-Fontara"'),
-      "expected selected custom font-face to be injected after storage change"
+        /--fontara-font: "RuntimeCustom-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) &&
+        runtime.getRegisteredFontFamilies().includes("RuntimeCustom-Fontara"),
+      "expected selected custom font face to load after storage change"
     )
     assert.match(
       runtime.getStyleText("fontara-dynamic-font"),
       /--fontara-font: "RuntimeCustom-Fontara"/
+    )
+    assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
+    assert.doesNotMatch(
+      [
+        runtime.getStyleText("fontara-font-styles"),
+        runtime.getStyleText("fontara-dynamic-font"),
+        runtime.getStyleText("fontara-editable-font-style")
+      ].join("\n"),
+      /data:font/
     )
     assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
     assert.ok(
@@ -668,6 +759,10 @@ test("selected custom font changes inject its font-face without a reload", async
           runtime.getStyleText("fontara-dynamic-font")
         ) && runtime.getStyleText("fontara-custom-font-styles") === "",
       "expected missing selected custom font to fall back to the default font"
+    )
+    assert.equal(
+      runtime.getRegisteredFontFamilies().includes("RuntimeCustom-Fontara"),
+      false
     )
     assert.ok(
       runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST) >
@@ -861,7 +956,8 @@ test("selected custom font changes inject its font-face without a reload", async
           active: true,
           applyMode: "font-styles",
           customCSS: null,
-          customFontCSS: "",
+          customFontFamilyRevision: null,
+          customFontFamilyValue: null,
           fontFaceCSS: "",
           fontName: "Resolved Font",
           googleFontCSS: null,
@@ -894,12 +990,27 @@ test("selected custom font changes inject its font-face without a reload", async
       "local"
     )
 
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    assert.match(
+      runtime.getStyleText("fontara-dynamic-font"),
+      /--fontara-font: "Resolved Font"/,
+      "normal background mode should not keep a high-fanout storage listener"
+    )
+    assert.equal(
+      runtime.getStorageGetCount(STORAGE_KEYS.SELECTED_FONT),
+      selectedFontReadCountBeforeResolvedCommand
+    )
+
+    runtime.dispatchRuntimeMessage({
+      type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+    })
+
     await waitFor(
       () =>
         /--fontara-font: "RuntimeCustom-Fontara"/.test(
           runtime.getStyleText("fontara-dynamic-font")
         ),
-      "expected storage fallback to keep applying changes when background does not answer"
+      "expected the explicit restart broadcast to reactivate local fallback"
     )
     assert.ok(
       runtime.getStorageGetCount(STORAGE_KEYS.SELECTED_FONT) >

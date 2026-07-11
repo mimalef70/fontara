@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
+import fs from "node:fs"
+import path from "node:path"
 import test, { afterEach } from "node:test"
 
-import { GOOGLE_FONTS_CATALOG_SOURCE } from "../../src/config/generated/google-fonts"
-import { GOOGLE_FONTS } from "../../src/config/google-fonts"
 import {
   buildGoogleFontsCSS2URL,
   createGoogleFontValue,
@@ -12,18 +12,46 @@ import {
   getGoogleFontList,
   isGoogleFontValue,
   loadGoogleFontFaceCSS,
+  loadGoogleFontList,
+  resetGoogleFontCatalogForTesting,
   sanitizeGoogleFontFaceCSS
 } from "../../src/utils/google-fonts"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 const originalFetch = Reflect.get(globalThis, "fetch") as unknown
+const catalog = JSON.parse(
+  fs.readFileSync(path.resolve("assets/data/google-fonts.json"), "utf8")
+) as { fonts: unknown[]; source: string }
+
+async function loadCatalog() {
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      getURL(assetPath: string) {
+        return `chrome-extension://fontara/${assetPath}`
+      }
+    }
+  })
+  Reflect.set(
+    globalThis,
+    "fetch",
+    async () =>
+      new Response(JSON.stringify(catalog), {
+        headers: { "content-type": "application/json" },
+        status: 200
+      })
+  )
+
+  return loadGoogleFontList()
+}
 
 afterEach(() => {
+  resetGoogleFontCatalogForTesting()
   Reflect.set(globalThis, "chrome", originalChrome)
   Reflect.set(globalThis, "fetch", originalFetch)
 })
 
-test("Google Font values encode only catalog families", () => {
+test("Google Font values encode safe catalog families", async () => {
+  await loadCatalog()
   const value = createGoogleFontValue("Noto Sans Arabic")
 
   assert.equal(value, "google-font:Noto%20Sans%20Arabic")
@@ -40,12 +68,13 @@ test("Google Font values encode only catalog families", () => {
   )
 })
 
-test("Google Font display list exposes safe selectable data", () => {
-  const fonts = getGoogleFontList()
+test("Google Font display list is lazy and exposes safe selectable data", async () => {
+  assert.deepEqual(getGoogleFontList(), [])
+  const fonts = await loadCatalog()
 
-  assert.equal(GOOGLE_FONTS_CATALOG_SOURCE, "google-fonts-developer-api-v1")
-  assert.ok(GOOGLE_FONTS.length > 1000)
-  assert.ok(fonts.length < GOOGLE_FONTS.length)
+  assert.equal(catalog.source, "google-fonts-developer-api-v1")
+  assert.ok(catalog.fonts.length > 1000)
+  assert.ok(fonts.length < catalog.fonts.length)
   assert.ok(fonts.some((font) => font.family === "Vazirmatn"))
   assert.ok(fonts.some((font) => font.family === "Inter"))
   assert.ok(fonts.some((font) => font.recommended))
@@ -79,7 +108,8 @@ test("Google Font display list exposes safe selectable data", () => {
   assert.equal(new Set(fonts.map((font) => font.family)).size, fonts.length)
 })
 
-test("Google Fonts CSS2 URLs request a single selected family with swap display", () => {
+test("Google Fonts CSS2 URLs request a single selected family with swap display", async () => {
+  await loadCatalog()
   const font = getGoogleFontByFamily("Noto Sans Arabic")
   assert.ok(font)
 

@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react"
 import { List } from "react-window"
@@ -25,7 +26,9 @@ import {
 } from "../../utils/google-fonts"
 import {
   decodeSystemFontValue,
-  getSystemFontList,
+  isSystemFontAccessSupported,
+  loadSystemFonts,
+  normalizeSystemFontFamilyKey,
   type SystemFontData
 } from "../../utils/system-fonts"
 import { useIsMobile } from "../hooks/use-mobile"
@@ -305,9 +308,11 @@ const FontSelector = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [googleFonts, setGoogleFonts] = useState<GoogleFontData[]>([])
+  const [googleFontsReady, setGoogleFontsReady] = useState(false)
   const [systemFonts, setSystemFonts] = useState<SystemFontData[]>([])
   const [systemFontsLoading, setSystemFontsLoading] = useState(false)
   const [systemFontsFailed, setSystemFontsFailed] = useState(false)
+  const systemFontLoadGeneration = useRef(0)
   const [selectedFont, setSelectedFont] = useStorageValue<string>(
     STORAGE_KEYS.SELECTED_FONT,
     DEFAULT_FONTS[0].value
@@ -330,6 +335,7 @@ const FontSelector = () => {
 
     if (!googleFontsEnabled) {
       setGoogleFonts([])
+      setGoogleFontsReady(false)
       return () => {
         cancelled = true
       }
@@ -342,7 +348,10 @@ const FontSelector = () => {
 
     void loadGoogleFontList()
       .then((fonts) => {
-        if (!cancelled) setGoogleFonts(fonts)
+        if (!cancelled) {
+          setGoogleFonts(fonts)
+          setGoogleFontsReady(true)
+        }
       })
       .catch((error) => {
         if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
@@ -355,46 +364,45 @@ const FontSelector = () => {
     }
   }, [googleFontsEnabled, isOpen])
 
-  useEffect(() => {
-    let cancelled = false
+  const refreshSystemFonts = useCallback(
+    async (forceRefresh: boolean) => {
+      if (!systemFontsEnabled) return
 
-    if (!systemFontsEnabled) {
-      setSystemFonts([])
+      const generation = systemFontLoadGeneration.current + 1
+      systemFontLoadGeneration.current = generation
+      setSystemFontsLoading(true)
       setSystemFontsFailed(false)
-      setSystemFontsLoading(false)
-      return () => {
-        cancelled = true
-      }
-    }
-
-    setSystemFontsLoading(true)
-    setSystemFontsFailed(false)
-
-    getSystemFontList({ retry: true })
-      .then((fonts) => {
-        if (cancelled) return
-        setSystemFonts(fonts)
-        setSystemFontsFailed(false)
-      })
-      .catch((error) => {
+      try {
+        const state = await loadSystemFonts({ forceRefresh })
+        if (generation !== systemFontLoadGeneration.current) return
+        setSystemFonts(state.fonts)
+        setSystemFontsFailed(state.status === "error")
+      } catch (error) {
+        if (generation !== systemFontLoadGeneration.current) return
         if (__DEBUG__) {
           console.warn("Failed to load system fonts.", error)
         }
-        if (!cancelled) {
-          setSystemFonts([])
-          setSystemFontsFailed(true)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
+        setSystemFontsFailed(true)
+      } finally {
+        if (generation === systemFontLoadGeneration.current) {
           setSystemFontsLoading(false)
         }
-      })
+      }
+    },
+    [systemFontsEnabled]
+  )
 
-    return () => {
-      cancelled = true
+  useEffect(() => {
+    if (!systemFontsEnabled) {
+      systemFontLoadGeneration.current += 1
+      setSystemFonts([])
+      setSystemFontsFailed(false)
+      setSystemFontsLoading(false)
+      return
     }
-  }, [systemFontsEnabled])
+
+    void refreshSystemFonts(isOpen)
+  }, [isOpen, refreshSystemFonts, systemFontsEnabled])
 
   const getFontDisplayName = useCallback(
     (font: DisplayFont) => font.localizedName?.[language] || font.name,
@@ -507,24 +515,64 @@ const FontSelector = () => {
   )
 
   const selectedFontItem = allFonts.find((font) => font.value === selectedFont)
+  const decodedSystemFontFamily = decodeSystemFontValue(selectedFont)
   const selectedSystemFontFamily = systemFontsEnabled
-    ? decodeSystemFontValue(selectedFont)
+    ? decodedSystemFontFamily
     : null
   const selectedGoogleFont = googleFontsEnabled
     ? getGoogleFontByValue(selectedFont)
     : null
+  const decodedGoogleFontFamily = decodeGoogleFontValue(selectedFont)
   const selectedGoogleFontFamily = googleFontsEnabled
-    ? decodeGoogleFontValue(selectedFont)
+    ? decodedGoogleFontFamily
     : null
+  const fallbackFontName = getFontDisplayName(DEFAULT_FONTS[0])
+  const selectedSystemFontMissing =
+    Boolean(decodedSystemFontFamily) &&
+    systemFontsEnabled &&
+    isSystemFontAccessSupported() &&
+    !systemFontsLoading &&
+    !systemFontsFailed &&
+    systemFonts.length > 0 &&
+    !systemFonts.some(
+      (font) =>
+        normalizeSystemFontFamilyKey(font.fontFamily) ===
+        normalizeSystemFontFamilyKey(decodedSystemFontFamily ?? "")
+    )
+  const selectedGoogleFontMissing =
+    Boolean(decodedGoogleFontFamily) &&
+    googleFontsEnabled &&
+    googleFontsReady &&
+    !selectedGoogleFont
   const currentFontName = selectedFontItem
     ? getFontDisplayName(selectedFontItem)
-    : selectedSystemFontFamily
-      ? selectedSystemFontFamily
-      : selectedGoogleFont
-        ? selectedGoogleFont.family
-        : selectedGoogleFontFamily
-          ? selectedGoogleFontFamily
-          : t("fontSelector.placeholder")
+    : decodedSystemFontFamily && !systemFontsEnabled
+      ? t("fontSelector.sourcePaused", {
+          fallback: fallbackFontName,
+          font: decodedSystemFontFamily
+        })
+      : decodedGoogleFontFamily && !googleFontsEnabled
+        ? t("fontSelector.sourcePaused", {
+            fallback: fallbackFontName,
+            font: decodedGoogleFontFamily
+          })
+        : selectedSystemFontMissing
+          ? t("fontSelector.sourceUnavailable", {
+              fallback: fallbackFontName,
+              font: decodedSystemFontFamily ?? ""
+            })
+          : selectedGoogleFontMissing
+            ? t("fontSelector.sourceUnavailable", {
+                fallback: fallbackFontName,
+                font: decodedGoogleFontFamily ?? ""
+              })
+            : selectedSystemFontFamily
+              ? selectedSystemFontFamily
+              : selectedGoogleFont
+                ? selectedGoogleFont.family
+                : selectedGoogleFontFamily
+                  ? selectedGoogleFontFamily
+                  : t("fontSelector.placeholder")
   const fontSampleText = t("fontSelector.previewText")
   const latinFontSampleText = t("fontSelector.previewTextLatin")
   const getFontSampleText = useCallback(
@@ -598,8 +646,17 @@ const FontSelector = () => {
           </div>
         )}
         {fontListRows.length > 0 && systemFontsStatusMessage && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white via-white/95 to-transparent px-3 pb-2 pt-8 text-center text-xs text-slate-500">
-            {systemFontsStatusMessage}
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-white via-white/95 to-transparent px-3 pb-2 pt-8 text-center text-xs text-slate-500">
+            <span>{systemFontsStatusMessage}</span>
+            {systemFontsFailed && !systemFontsLoading && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void refreshSystemFonts(true)}
+                className="h-7 rounded-md px-2 text-[11px]">
+                {t("fontSelector.systemRetry")}
+              </Button>
+            )}
           </div>
         )}
       </div>

@@ -42,7 +42,9 @@ import {
 import { openOptionsPageSafely } from "../../utils/options-page"
 import {
   decodeSystemFontValue,
-  getSystemFontList,
+  isSystemFontAccessSupported,
+  loadSystemFonts,
+  normalizeSystemFontFamilyKey,
   type SystemFontData
 } from "../../utils/system-fonts"
 import { useExtensionData } from "../hooks/use-extension-data"
@@ -117,7 +119,9 @@ export default function PerSiteSettings() {
   const currentTab = useExtensionData()?.activeTab ?? null
   const [drawerOpen, setDrawerOpen] = React.useState(false)
   const [googleFonts, setGoogleFonts] = React.useState<GoogleFontData[]>([])
+  const [googleFontsReady, setGoogleFontsReady] = React.useState(false)
   const [systemFonts, setSystemFonts] = React.useState<SystemFontData[]>([])
+  const [systemFontsReady, setSystemFontsReady] = React.useState(false)
 
   const [selectedFont] = useStorageValue<string>(
     STORAGE_KEYS.SELECTED_FONT,
@@ -162,6 +166,7 @@ export default function PerSiteSettings() {
 
     if (!googleFontsEnabled) {
       setGoogleFonts([])
+      setGoogleFontsReady(false)
       return () => {
         cancelled = true
       }
@@ -174,7 +179,10 @@ export default function PerSiteSettings() {
 
     void loadGoogleFontList()
       .then((fonts) => {
-        if (!cancelled) setGoogleFonts(fonts)
+        if (!cancelled) {
+          setGoogleFonts(fonts)
+          setGoogleFontsReady(true)
+        }
       })
       .catch((error) => {
         if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
@@ -190,17 +198,19 @@ export default function PerSiteSettings() {
   React.useEffect(() => {
     let cancelled = false
 
-    if (!systemFontsEnabled) {
+    if (!systemFontsEnabled || !drawerOpen) {
       setSystemFonts([])
+      setSystemFontsReady(false)
       return () => {
         cancelled = true
       }
     }
 
-    getSystemFontList({ retry: true })
-      .then((fonts) => {
+    loadSystemFonts({ forceRefresh: true })
+      .then((state) => {
         if (!cancelled) {
-          setSystemFonts(fonts)
+          setSystemFonts(state.fonts)
+          setSystemFontsReady(state.status === "ready")
         }
       })
       .catch((error) => {
@@ -209,13 +219,14 @@ export default function PerSiteSettings() {
         }
         if (!cancelled) {
           setSystemFonts([])
+          setSystemFontsReady(false)
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [systemFontsEnabled])
+  }, [drawerOpen, systemFontsEnabled])
 
   const currentUrl = currentTab?.url ?? null
   const domainPattern = currentUrl ? createSitePatternFromUrl(currentUrl) : null
@@ -312,21 +323,52 @@ export default function PerSiteSettings() {
     }
   ]
   const fontOptions = fontOptionGroups.flatMap((group) => group.options)
+  const fallbackFontLabel = getDefaultFontLabel(DEFAULT_FONTS[0], language)
 
   const getFontLabel = (fontValue: string | undefined): string => {
     if (!fontValue) return t("popup.perSite.globalFont")
 
-    const option = fontOptions.find((font) => font.value === fontValue)
-    if (option) return option.label
-
     const systemFont = decodeSystemFontValue(fontValue)
-    if (systemFont) return systemFont
-
-    const googleFont = getGoogleFontByValue(fontValue)
-    if (googleFont) return googleFont.family
+    if (systemFont) {
+      if (!systemFontsEnabled) {
+        return t("fontSelector.sourcePaused", {
+          fallback: fallbackFontLabel,
+          font: systemFont
+        })
+      }
+      const selectedFamilyKey = normalizeSystemFontFamilyKey(systemFont)
+      const available = systemFonts.some(
+        (font) =>
+          normalizeSystemFontFamilyKey(font.fontFamily) === selectedFamilyKey
+      )
+      return isSystemFontAccessSupported() && systemFontsReady && !available
+        ? t("fontSelector.sourceUnavailable", {
+            fallback: fallbackFontLabel,
+            font: systemFont
+          })
+        : systemFont
+    }
 
     const googleFontFamily = decodeGoogleFontValue(fontValue)
-    if (googleFontFamily) return googleFontFamily
+    if (googleFontFamily) {
+      const googleFont = getGoogleFontByValue(fontValue)
+      const label = googleFont?.family ?? googleFontFamily
+      if (!googleFontsEnabled) {
+        return t("fontSelector.sourcePaused", {
+          fallback: fallbackFontLabel,
+          font: label
+        })
+      }
+      return googleFontsReady && !googleFont
+        ? t("fontSelector.sourceUnavailable", {
+            fallback: fallbackFontLabel,
+            font: label
+          })
+        : label
+    }
+
+    const option = fontOptions.find((font) => font.value === fontValue)
+    if (option) return option.label
 
     return fontValue
   }
@@ -613,6 +655,14 @@ export default function PerSiteSettings() {
                     font: getFontLabel(selectedFont)
                   })}
                 </option>
+                {currentProfile?.font &&
+                  !fontOptions.some(
+                    (font) => font.value === currentProfile.font
+                  ) && (
+                    <option value={currentProfile.font} disabled>
+                      {getFontLabel(currentProfile.font)}
+                    </option>
+                  )}
                 {fontOptionGroups.map((group) =>
                   group.options.length > 0 ? (
                     <optgroup key={group.label} label={group.label}>

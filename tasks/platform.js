@@ -9,20 +9,26 @@ const PLATFORM = {
 
 const ALL_PLATFORMS = Object.values(PLATFORM)
 
-const CHROMIUM_PLATFORMS = new Set([
+const CHROMIUM_MV3_PLATFORMS = new Set([
   PLATFORM.CHROME_MV3,
   PLATFORM.EDGE_MV3,
   PLATFORM.BRAVE_MV3,
-  PLATFORM.OPERA_MV3,
-  PLATFORM.SAFARI_MV3
+  PLATFORM.OPERA_MV3
 ])
 
-function isChromiumPlatform(platform) {
-  return CHROMIUM_PLATFORMS.has(platform)
+const FONT_SETTINGS_PLATFORMS = new Set(CHROMIUM_MV3_PLATFORMS)
+
+function isChromiumMV3Platform(platform) {
+  return CHROMIUM_MV3_PLATFORMS.has(platform)
+}
+
+function supportsFontSettings(platform) {
+  return FONT_SETTINGS_PLATFORMS.has(platform)
 }
 
 module.exports = {
   PLATFORM,
   ALL_PLATFORMS,
-  isChromiumPlatform
+  isChromiumMV3Platform,
+  supportsFontSettings
 }

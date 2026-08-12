@@ -10,8 +10,13 @@ import { formatFontFamilyForCSS } from "../../utils/font-data"
 import {
   decodeGoogleFontValue,
   loadGoogleFontFaceCSS
-} from "../../utils/google-font-runtime"
-import { decodeSystemFontValue } from "../../utils/system-fonts"
+} from "../../utils/google-fonts"
+import {
+  decodeSystemFontValue,
+  isSystemFontAccessSupported,
+  loadSystemFonts,
+  normalizeSystemFontFamilyKey
+} from "../../utils/system-fonts"
 import {
   EMPTY_CUSTOM_FONT_LIST,
   getGoogleFontsEnabledInitialValue,
@@ -86,20 +91,39 @@ export function useSelectedUIFont(): void {
       }
 
       if (googleFontFamily && googleFontsEnabled) {
-        document.documentElement.style.setProperty(
-          "--fontara-ui-font",
-          formatFontFamilyForCSS(googleFontFamily)
-        )
-        activatePreparedCustomFontFamily(null)
-
         const css = await loadGoogleFontFaceCSS(selectedFont)
-        if (!cancelled) upsertGoogleFontStyles(css)
-        return
+        if (cancelled) return
+
+        if (css) {
+          upsertGoogleFontStyles(css)
+          document.documentElement.style.setProperty(
+            "--fontara-ui-font",
+            formatFontFamilyForCSS(googleFontFamily)
+          )
+          activatePreparedCustomFontFamily(null)
+          return
+        }
       }
 
       upsertGoogleFontStyles(null)
+      let systemFontAvailable = Boolean(systemFontFamily)
+      if (
+        systemFontsEnabled &&
+        systemFontFamily &&
+        isSystemFontAccessSupported()
+      ) {
+        const state = await loadSystemFonts()
+        if (cancelled) return
+        systemFontAvailable =
+          state.status !== "ready" ||
+          state.fonts.some(
+            (font) =>
+              normalizeSystemFontFamilyKey(font.fontFamily) ===
+              normalizeSystemFontFamilyKey(systemFontFamily)
+          )
+      }
       const fontName =
-        systemFontsEnabled && systemFontFamily
+        systemFontsEnabled && systemFontFamily && systemFontAvailable
           ? systemFontFamily
           : googleFontFamily || customFont
             ? DEFAULT_VALUES.SELECTED_FONT

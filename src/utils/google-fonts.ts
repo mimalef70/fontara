@@ -3,15 +3,19 @@ import {
   buildGoogleFontsCSS2URLFromFamily,
   createGoogleFontValue,
   decodeGoogleFontValue,
+  type GoogleFontFaceCSSLoadOptions,
+  isGoogleFontFeatureSupported,
   isSafeGoogleFontFamily,
-  isSelectableGoogleFontFamily
+  isSelectableGoogleFontFamily,
+  loadGoogleFontFaceCSS as loadGoogleFontFaceCSSFromRuntime,
+  resetGoogleFontRuntimeForTesting
 } from "./google-font-runtime"
 
 export {
   createGoogleFontValue,
   decodeGoogleFontValue,
+  isGoogleFontFeatureSupported,
   isGoogleFontValue,
-  loadGoogleFontFaceCSS,
   sanitizeGoogleFontFaceCSS
 } from "./google-font-runtime"
 
@@ -137,11 +141,46 @@ export function getGoogleFontList(): GoogleFontData[] {
   return cachedGoogleFonts ?? []
 }
 
+export async function loadGoogleFontFaceCSS(
+  selectedFont: unknown,
+  options: GoogleFontFaceCSSLoadOptions = {}
+): Promise<string | null> {
+  if (!isGoogleFontFeatureSupported()) return null
+
+  const fontFamily = decodeGoogleFontValue(selectedFont)
+  if (!fontFamily) return null
+  if (options.allowNetwork === false) {
+    return loadGoogleFontFaceCSSFromRuntime(selectedFont, options)
+  }
+
+  try {
+    const font =
+      getGoogleFontByFamily(fontFamily) ??
+      (await loadGoogleFontList()).find(
+        (candidate) =>
+          candidate.family.toLowerCase() === fontFamily.toLowerCase()
+      ) ??
+      null
+    if (!font) return null
+
+    return loadGoogleFontFaceCSSFromRuntime(selectedFont, {
+      ...options,
+      font
+    })
+  } catch {
+    return loadGoogleFontFaceCSSFromRuntime(selectedFont, {
+      ...options,
+      allowNetwork: false
+    })
+  }
+}
+
 export function resetGoogleFontCatalogForTesting(): void {
   cachedGoogleFonts = null
   googleFontsLoadPromise = null
+  resetGoogleFontRuntimeForTesting()
 }
 
 export function buildGoogleFontsCSS2URL(font: GoogleFontMetadata): string {
-  return buildGoogleFontsCSS2URLFromFamily(font.family)
+  return buildGoogleFontsCSS2URLFromFamily(font.family, font.variants)
 }

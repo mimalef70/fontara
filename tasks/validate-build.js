@@ -4,7 +4,7 @@ const path = require("node:path")
 
 const { absolutePath, getDestDir } = require("./paths")
 const { pathExists, readJSON } = require("./utils")
-const { PLATFORM } = require("./platform")
+const { supportsFontSettings } = require("./platform")
 
 const PRODUCTION_BUNDLE_BUDGETS = {
   "background/index.js": 150 * 1024,
@@ -18,7 +18,7 @@ function assertManifestPermissions(manifest, platform) {
   const permissions = new Set(manifest.permissions || [])
   const optionalPermissions = new Set(manifest.optional_permissions || [])
   const expectedPermissions = new Set(["storage", "unlimitedStorage"])
-  if (platform !== PLATFORM.FIREFOX_MV3) {
+  if (supportsFontSettings(platform)) {
     expectedPermissions.add("fontSettings")
   }
 

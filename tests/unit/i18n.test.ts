@@ -39,6 +39,28 @@ test("UI message catalogs cover the same keys for every supported language", () 
   assert.equal(UI_MESSAGES.fa["footer.sponsoredBy"], "با حمایت")
 })
 
+test("font source fallback messages keep interpolation placeholders in every language", () => {
+  const messageKeys = [
+    "fontSelector.sourcePaused",
+    "fontSelector.sourceUnavailable"
+  ] as const
+  const getPlaceholders = (message: string) =>
+    [...message.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]).sort()
+
+  for (const messageKey of messageKeys) {
+    const expectedPlaceholders = getPlaceholders(UI_MESSAGES.en[messageKey])
+    assert.deepEqual(expectedPlaceholders, ["fallback", "font"])
+    assert.deepEqual(
+      getPlaceholders(UI_MESSAGES.fa[messageKey]),
+      expectedPlaceholders
+    )
+    assert.deepEqual(
+      getPlaceholders(UI_MESSAGES.ar[messageKey]),
+      expectedPlaceholders
+    )
+  }
+})
+
 test("UI language preferences normalize and resolve safely", () => {
   assert.equal(normalizeUILanguagePreference("fa"), "fa")
   assert.equal(normalizeUILanguagePreference("en"), "en")

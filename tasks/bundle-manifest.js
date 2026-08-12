@@ -1,5 +1,9 @@
 const { absolutePath, getDestDir } = require("./paths")
-const { isChromiumPlatform, PLATFORM } = require("./platform")
+const {
+  isChromiumMV3Platform,
+  PLATFORM,
+  supportsFontSettings
+} = require("./platform")
 const { readJSON, writeJSON } = require("./utils")
 
 const DYNAMIC_WEB_ACCESSIBLE_RESOURCE_PLATFORMS = new Set([
@@ -10,7 +14,7 @@ const DYNAMIC_WEB_ACCESSIBLE_RESOURCE_PLATFORMS = new Set([
 ])
 
 async function readPatch(platform) {
-  if (isChromiumPlatform(platform)) {
+  if (isChromiumMV3Platform(platform)) {
     return readJSON(absolutePath("src/manifest-chrome-mv3.json"))
   }
 
@@ -19,6 +23,27 @@ async function readPatch(platform) {
   }
 
   return {}
+}
+
+function withPlatformCapabilities(manifest, platform) {
+  const patchedManifest = {
+    ...manifest,
+    permissions: (manifest.permissions || []).filter(
+      (permission) =>
+        permission !== "fontSettings" || supportsFontSettings(platform)
+    )
+  }
+
+  if (!isChromiumMV3Platform(platform)) {
+    delete patchedManifest.minimum_chrome_version
+    patchedManifest.content_security_policy = {
+      ...patchedManifest.content_security_policy,
+      extension_pages:
+        "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
+    }
+  }
+
+  return patchedManifest
 }
 
 function getMessageText(messages, key, fallback) {
@@ -104,6 +129,7 @@ async function bundleManifest({ platform, debug, test = false }) {
     ...patch,
     version: packageJSON.version
   }
+  patchedManifest = withPlatformCapabilities(patchedManifest, platform)
   patchedManifest = withDynamicWebAccessibleResourceURLs(
     patchedManifest,
     platform
@@ -141,3 +167,4 @@ async function bundleManifest({ platform, debug, test = false }) {
 }
 
 module.exports = bundleManifest
+module.exports.withPlatformCapabilities = withPlatformCapabilities

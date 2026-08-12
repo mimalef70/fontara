@@ -3,7 +3,7 @@ const path = require("node:path")
 const esbuild = require("esbuild")
 
 const { absolutePath, getDestDir } = require("./paths")
-const { PLATFORM } = require("./platform")
+const { isChromiumMV3Platform, PLATFORM } = require("./platform")
 
 const jsEntries = [
   {
@@ -89,7 +89,7 @@ async function bundleJS({ platform, debug, test = false }) {
           __DEBUG__: JSON.stringify(debug),
           __TEST__: JSON.stringify(test),
           __PLATFORM__: JSON.stringify(platform),
-          __CHROMIUM_MV3__: JSON.stringify(platform !== PLATFORM.FIREFOX_MV3),
+          __CHROMIUM_MV3__: JSON.stringify(isChromiumMV3Platform(platform)),
           __FIREFOX_MV3__: JSON.stringify(platform === PLATFORM.FIREFOX_MV3)
         },
         loader: {

@@ -123,6 +123,7 @@ import {
   decodeGoogleFontValue,
   type GoogleFontData,
   getGoogleFontByValue,
+  isGoogleFontFeatureSupported,
   isGoogleFontValue,
   loadGoogleFontList
 } from "../../utils/google-fonts"
@@ -139,9 +140,10 @@ import { getLocalValues } from "../../utils/storage"
 import { normalizeStorageValues } from "../../utils/storage-normalization"
 import {
   decodeSystemFontValue,
-  getSystemFontList,
   isSystemFontAccessSupported,
+  isSystemFontFeatureSupported,
   loadSystemFonts,
+  normalizeSystemFontFamilyKey,
   type SystemFontData
 } from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
@@ -953,6 +955,7 @@ function OptionsPage() {
   const ActiveSectionIcon = activeNavigation?.icon ?? Settings
   const sidebarSide = direction === "rtl" ? "right" : "left"
   const [googleFontList, setGoogleFontList] = useState<GoogleFontData[]>([])
+  const [googleFontListReady, setGoogleFontListReady] = useState(false)
 
   React.useEffect(() => {
     const handleHashChange = () => {
@@ -1021,7 +1024,9 @@ function OptionsPage() {
   const [siteProfileUsesGlobalStroke, setSiteProfileUsesGlobalStroke] =
     useState(true)
   const [systemFontList, setSystemFontList] = useState<SystemFontData[]>([])
-  const systemFontsSupported = isSystemFontAccessSupported()
+  const [systemFontListReady, setSystemFontListReady] = useState(false)
+  const systemFontsSupported = isSystemFontFeatureSupported()
+  const googleFontsSupported = isGoogleFontFeatureSupported()
   const { toast } = useToast()
 
   const getCustomFontUploadErrorMessage = (error: unknown): string => {
@@ -1050,25 +1055,28 @@ function OptionsPage() {
 
     if (!systemFontsSupported || !systemFontsEnabled) {
       setSystemFontList([])
+      setSystemFontListReady(false)
       return () => {
         cancelled = true
       }
     }
 
-    if (
-      activeSection !== "sites" ||
-      siteSettingsTab !== "profiles" ||
-      !siteProfileFontPickerOpen
-    ) {
+    const selectedSystemFont = decodeSystemFontValue(selectedFont)
+    const needsSiteProfileFonts =
+      activeSection === "sites" &&
+      siteSettingsTab === "profiles" &&
+      siteProfileFontPickerOpen
+    if (!selectedSystemFont && !needsSiteProfileFonts) {
       return () => {
         cancelled = true
       }
     }
 
-    getSystemFontList({ retry: true })
-      .then((fonts) => {
+    loadSystemFonts({ forceRefresh: needsSiteProfileFonts })
+      .then((state) => {
         if (!cancelled) {
-          setSystemFontList(fonts)
+          setSystemFontList(state.fonts)
+          setSystemFontListReady(state.status === "ready")
         }
       })
       .catch((error) => {
@@ -1077,6 +1085,7 @@ function OptionsPage() {
         }
         if (!cancelled) {
           setSystemFontList([])
+          setSystemFontListReady(false)
         }
       })
 
@@ -1087,24 +1096,27 @@ function OptionsPage() {
     activeSection,
     siteProfileFontPickerOpen,
     siteSettingsTab,
+    selectedFont,
     systemFontsEnabled,
     systemFontsSupported
   ])
 
   React.useEffect(() => {
     let cancelled = false
-    if (!googleFontsEnabled) {
+    if (!googleFontsSupported || !googleFontsEnabled) {
       setGoogleFontList([])
+      setGoogleFontListReady(false)
       return () => {
         cancelled = true
       }
     }
 
-    if (
-      activeSection !== "sites" ||
-      siteSettingsTab !== "profiles" ||
-      !siteProfileFontPickerOpen
-    ) {
+    const selectedGoogleFont = decodeGoogleFontValue(selectedFont)
+    const needsSiteProfileFonts =
+      activeSection === "sites" &&
+      siteSettingsTab === "profiles" &&
+      siteProfileFontPickerOpen
+    if (!selectedGoogleFont && !needsSiteProfileFonts) {
       return () => {
         cancelled = true
       }
@@ -1112,13 +1124,19 @@ function OptionsPage() {
 
     void loadGoogleFontList()
       .then((fonts) => {
-        if (!cancelled) setGoogleFontList(fonts)
+        if (!cancelled) {
+          setGoogleFontList(fonts)
+          setGoogleFontListReady(true)
+        }
       })
       .catch((error) => {
         if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
           console.warn("Failed to load the Google Fonts catalog.", error)
         }
-        if (!cancelled) setGoogleFontList([])
+        if (!cancelled) {
+          setGoogleFontList([])
+          setGoogleFontListReady(false)
+        }
       })
 
     return () => {
@@ -1127,8 +1145,10 @@ function OptionsPage() {
   }, [
     activeSection,
     googleFontsEnabled,
+    googleFontsSupported,
     siteProfileFontPickerOpen,
-    siteSettingsTab
+    siteSettingsTab,
+    selectedFont
   ])
 
   React.useEffect(() => {
@@ -1869,26 +1889,68 @@ function OptionsPage() {
     () => siteFontOptionGroups.flatMap((group) => group.options),
     [siteFontOptionGroups]
   )
+  const fallbackFontLabel = getDefaultFontLabel(DEFAULT_FONTS[0], language)
 
   const getSiteProfileFontLabel = React.useCallback(
     (fontValue: string | undefined): string => {
       if (!fontValue) return t("options.siteProfiles.globalFont")
 
+      const systemFont = decodeSystemFontValue(fontValue)
+      if (systemFont) {
+        if (!systemFontsEnabled) {
+          return t("fontSelector.sourcePaused", {
+            fallback: fallbackFontLabel,
+            font: systemFont
+          })
+        }
+        const selectedFamilyKey = normalizeSystemFontFamilyKey(systemFont)
+        const available = systemFontList.some(
+          (font) =>
+            normalizeSystemFontFamilyKey(font.fontFamily) === selectedFamilyKey
+        )
+        return isSystemFontAccessSupported() &&
+          systemFontListReady &&
+          !available
+          ? t("fontSelector.sourceUnavailable", {
+              fallback: fallbackFontLabel,
+              font: systemFont
+            })
+          : systemFont
+      }
+
+      const googleFontFamily = decodeGoogleFontValue(fontValue)
+      if (googleFontFamily) {
+        const googleFont = getGoogleFontByValue(fontValue)
+        const label = googleFont?.family ?? googleFontFamily
+        if (!googleFontsEnabled) {
+          return t("fontSelector.sourcePaused", {
+            fallback: fallbackFontLabel,
+            font: label
+          })
+        }
+        return googleFontListReady && !googleFont
+          ? t("fontSelector.sourceUnavailable", {
+              fallback: fallbackFontLabel,
+              font: label
+            })
+          : label
+      }
+
       const option = siteFontOptions.find((font) => font.value === fontValue)
       if (option) return option.label
 
-      const systemFont = decodeSystemFontValue(fontValue)
-      if (systemFont) return systemFont
-
-      const googleFont = getGoogleFontByValue(fontValue)
-      if (googleFont) return googleFont.family
-
-      const googleFontFamily = decodeGoogleFontValue(fontValue)
-      if (googleFontFamily) return googleFontFamily
-
       return fontValue
     },
-    [siteFontOptions, t]
+    [
+      fallbackFontLabel,
+      googleFontListReady,
+      googleFontsEnabled,
+      siteFontOptions,
+      systemFontList,
+      systemFontListReady,
+      systemFontsEnabled,
+      t
+    ]
   )
   const activeFontLabel = getSiteProfileFontLabel(selectedFont)
   const customFontStoragePercent = Math.min(
@@ -2318,13 +2380,13 @@ function OptionsPage() {
         return
       }
 
-      if (!isSystemFontAccessSupported()) {
+      if (!isSystemFontFeatureSupported()) {
         toast({ title: t("options.toast.systemFontsUnsupported") })
         return
       }
 
       await setSystemFontsEnabled(true)
-      const state = await loadSystemFonts({ retry: true })
+      const state = await loadSystemFonts({ forceRefresh: true })
       if (state.status === "error") {
         toast({ title: t("options.toast.systemFontsError") })
       }
@@ -2351,6 +2413,11 @@ function OptionsPage() {
             ? { [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT }
             : {})
         })
+        return
+      }
+
+      if (!isGoogleFontFeatureSupported()) {
+        toast({ title: t("options.toast.googleFontsUnsupported") })
         return
       }
 
@@ -2834,9 +2901,12 @@ function OptionsPage() {
                         </div>
 
                         <div
-                          data-active={googleFontsEnabled}
+                          data-active={
+                            googleFontsSupported && googleFontsEnabled
+                          }
                           className={cn(
-                            "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-xl border p-4 transition"
+                            "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-xl border p-4 transition",
+                            !googleFontsSupported && "opacity-75"
                           )}>
                           <div className="flex min-w-0 items-start gap-3">
                             <div className="fontara-icon-tile">
@@ -2850,15 +2920,18 @@ function OptionsPage() {
                                 {t("options.googleFonts.description")}
                               </p>
                               <p className="mt-2 text-xs text-[#64748b]">
-                                {googleFontsEnabled
-                                  ? t("options.googleFonts.enabled")
-                                  : t("options.googleFonts.disabled")}
+                                {!googleFontsSupported
+                                  ? t("options.googleFonts.unsupported")
+                                  : googleFontsEnabled
+                                    ? t("options.googleFonts.enabled")
+                                    : t("options.googleFonts.disabled")}
                               </p>
                             </div>
                           </div>
                           <Switch
                             dir="ltr"
-                            checked={googleFontsEnabled}
+                            checked={googleFontsSupported && googleFontsEnabled}
+                            disabled={!googleFontsSupported}
                             onCheckedChange={(checked) =>
                               void handleGoogleFontsToggle(checked)
                             }
@@ -2943,12 +3016,14 @@ function OptionsPage() {
                           </button>
                         </div>
                       </div>
-                      <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
-                        <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
-                        <p className="text-xs leading-5 text-amber-800">
-                          {t("options.googleFonts.privacyNotice")}
-                        </p>
-                      </div>
+                      {googleFontsSupported && (
+                        <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
+                          <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                          <p className="text-xs leading-5 text-amber-800">
+                            {t("options.googleFonts.privacyNotice")}
+                          </p>
+                        </div>
+                      )}
                     </section>
 
                     <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">

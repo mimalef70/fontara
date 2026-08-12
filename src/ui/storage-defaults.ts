@@ -18,7 +18,8 @@ import { DEFAULT_VALUES } from "../config/storage"
 import { normalizeTextStrokeValue } from "../config/text-stroke"
 import type { CustomFontFamily } from "../custom-font-types"
 import type { SiteProfile, WebsiteItem } from "../definitions"
-import { isSystemFontAccessSupported } from "../utils/system-fonts"
+import { isGoogleFontFeatureSupported } from "../utils/google-font-runtime"
+import { isSystemFontFeatureSupported } from "../utils/system-fonts"
 
 export const EMPTY_CUSTOM_FONT_LIST: CustomFontFamily[] = []
 export const EMPTY_SITE_PROFILE_LIST: SiteProfile[] = EMPTY_SITE_PROFILES
@@ -53,13 +54,13 @@ export function getContextMenusEnabledInitialValue(
 export function getSystemFontsEnabledInitialValue(
   value: boolean | undefined
 ): boolean {
-  return isSystemFontAccessSupported() && value === true
+  return isSystemFontFeatureSupported() && value === true
 }
 
 export function getGoogleFontsEnabledInitialValue(
   value: boolean | undefined
 ): boolean {
-  return value === true
+  return isGoogleFontFeatureSupported() && value === true
 }
 
 export function getTextStrokeInitialValue(value: unknown): number {

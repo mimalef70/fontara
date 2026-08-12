@@ -1,10 +1,31 @@
 import assert from "node:assert/strict"
-import test from "node:test"
+import test, { afterEach } from "node:test"
 
 import { DEFAULT_VALUES } from "../../src/config/storage"
 import type { CustomFontFamily } from "../../src/custom-font-types"
 import { resolveFontSelection } from "../../src/generators/font-selection"
-import { createSystemFontValue } from "../../src/utils/system-fonts"
+import {
+  createGoogleFontValue,
+  resetGoogleFontCatalogForTesting
+} from "../../src/utils/google-fonts"
+import {
+  createSystemFontValue,
+  resetSystemFontLoaderForTesting
+} from "../../src/utils/system-fonts"
+
+const originalChrome = Reflect.get(globalThis, "chrome") as unknown
+const originalChromium = Reflect.get(globalThis, "__CHROMIUM_MV3__") as unknown
+const originalFirefox = Reflect.get(globalThis, "__FIREFOX_MV3__") as unknown
+const originalFetch = Reflect.get(globalThis, "fetch") as unknown
+
+afterEach(() => {
+  resetGoogleFontCatalogForTesting()
+  resetSystemFontLoaderForTesting()
+  Reflect.set(globalThis, "chrome", originalChrome)
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", originalChromium)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", originalFirefox)
+  Reflect.set(globalThis, "fetch", originalFetch)
+})
 
 function createCustomFont(
   value: string,
@@ -64,6 +85,78 @@ test("font selection resolver falls back when optional font sources are disabled
   const font = await resolveFontSelection(systemFontValue, {
     systemFontsEnabled: false
   })
+
+  assert.deepEqual(font, {
+    customFontFamilyRevision: null,
+    customFontFamilyValue: null,
+    fontName: DEFAULT_VALUES.SELECTED_FONT,
+    googleFontCSS: null
+  })
+})
+
+test("font selection resolver falls back when an enumerated system font was removed", async () => {
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", true)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", false)
+  Reflect.set(globalThis, "chrome", {
+    fontSettings: {
+      getFontList(callback: (fonts: chrome.fontSettings.FontName[]) => void) {
+        callback([{ displayName: "Installed Font", fontId: "Installed Font" }])
+      }
+    },
+    runtime: { lastError: undefined }
+  })
+  const removedSystemFont = createSystemFontValue("Removed Font")
+  assert.ok(removedSystemFont)
+
+  const font = await resolveFontSelection(removedSystemFont, {
+    systemFontsEnabled: true
+  })
+
+  assert.deepEqual(font, {
+    customFontFamilyRevision: null,
+    customFontFamilyValue: null,
+    fontName: DEFAULT_VALUES.SELECTED_FONT,
+    googleFontCSS: null
+  })
+})
+
+test("font selection resolver falls back when a Google family is missing from the catalog", async () => {
+  Reflect.set(globalThis, "chrome", {
+    runtime: {
+      getURL(assetPath: string) {
+        return `chrome-extension://fontara/${assetPath}`
+      }
+    }
+  })
+  Reflect.set(
+    globalThis,
+    "fetch",
+    async () =>
+      new Response(
+        JSON.stringify({
+          fonts: [
+            {
+              category: "sans-serif",
+              fallback: "sans-serif",
+              family: "Inter",
+              recommended: true,
+              subsets: ["latin"],
+              variants: ["regular", "700"]
+            }
+          ],
+          source: "google-fonts-developer-api-v1"
+        }),
+        {
+          headers: { "content-type": "application/json" },
+          status: 200
+        }
+      )
+  )
+
+  const font = await resolveFontSelection(
+    createGoogleFontValue("Missing Catalog Font"),
+    { googleFontsEnabled: true }
+  )
 
   assert.deepEqual(font, {
     customFontFamilyRevision: null,

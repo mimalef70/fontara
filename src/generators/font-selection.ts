@@ -4,8 +4,13 @@ import type { CustomFontFamily } from "../custom-font-types"
 import {
   decodeGoogleFontValue,
   loadGoogleFontFaceCSS
-} from "../utils/google-font-runtime"
-import { decodeSystemFontValue } from "../utils/system-fonts"
+} from "../utils/google-fonts"
+import {
+  decodeSystemFontValue,
+  isSystemFontAccessSupported,
+  loadSystemFonts,
+  normalizeSystemFontFamilyKey
+} from "../utils/system-fonts"
 
 export type FontaraResolvedFontSelection = {
   customFontFamilyRevision: number | null
@@ -95,15 +100,17 @@ export async function resolveFontSelection(
       options.googleFontsEnabled,
       options.readGoogleFontsEnabled
     )
+    if (!googleFontsEnabled) return createDefaultFontSelection()
 
-    return googleFontsEnabled
+    const googleFontCSS = await loadGoogleFontFaceCSS(selectedFont, {
+      allowNetwork: options.googleFontCSSLoadMode !== "cache-only"
+    })
+    return googleFontCSS
       ? {
           customFontFamilyRevision: null,
           customFontFamilyValue: null,
           fontName: googleFontFamily,
-          googleFontCSS: await loadGoogleFontFaceCSS(selectedFont, {
-            allowNetwork: options.googleFontCSSLoadMode !== "cache-only"
-          })
+          googleFontCSS
         }
       : createDefaultFontSelection()
   }
@@ -115,14 +122,26 @@ export async function resolveFontSelection(
       options.readSystemFontsEnabled
     )
 
-    return systemFontsEnabled
-      ? {
-          customFontFamilyRevision: null,
-          customFontFamilyValue: null,
-          fontName: systemFontFamily,
-          googleFontCSS: null
-        }
-      : createDefaultFontSelection()
+    if (!systemFontsEnabled) return createDefaultFontSelection()
+
+    if (isSystemFontAccessSupported()) {
+      const state = await loadSystemFonts()
+      const selectedFamilyKey = normalizeSystemFontFamilyKey(systemFontFamily)
+      const installed = state.fonts.some(
+        (font) =>
+          normalizeSystemFontFamilyKey(font.fontFamily) === selectedFamilyKey
+      )
+      if (state.status === "ready" && !installed) {
+        return createDefaultFontSelection()
+      }
+    }
+
+    return {
+      customFontFamilyRevision: null,
+      customFontFamilyValue: null,
+      fontName: systemFontFamily,
+      googleFontCSS: null
+    }
   }
 
   const selectedCustomFont = getSelectedCustomFont(

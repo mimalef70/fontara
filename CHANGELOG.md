@@ -24,9 +24,10 @@ This project follows a practical release-note format:
   per-face/family/library quotas, resumable legacy migration, orphan cleanup,
   backup format v3, and WOFF/WOFF2/TTF/OTF metadata extraction in an isolated
   worker.
-- Fixed Chromium System Fonts detection and retry states. The feature remains
-  opt-in, preserves dormant global/per-site choices when disabled, and is
-  explicitly unsupported in Firefox.
+- Reworked System Fonts around the browser model used by Dark Reader: standard
+  CSS generic families are available everywhere, while Chromium additionally
+  enumerates installed fonts through `fontSettings`. Refresh failures keep the
+  last known list, and dormant or removed choices now show their real fallback.
 - Removed the unnecessary `tabs` permission, made context menus optional,
   narrowed web scope to HTTP(S), removed persisted full tab URLs and remote
   favicons, and isolated the browser-test bridge from debug/production builds.
@@ -34,7 +35,11 @@ This project follows a practical release-note format:
   UI rollback, revision-consistent sync snapshots, and 150 ms trailing slider
   persistence.
 - Lazy-loaded the Google Fonts catalog from one generated JSON asset, cutting
-  production runtime bundles below their release budgets.
+  production runtime bundles below their release budgets. Google font requests
+  now include useful regular, bold, and italic faces, use timeout-bounded and
+  serialized stale-while-revalidate caching, and fall back without switching
+  to an unavailable family. Remote Google Fonts are disabled on Firefox and
+  Safari until font files can be loaded locally without page-origin requests.
 - Improved keyboard navigation, disabled states, loading skeletons, mobile
   navigation, ARIA state, contrast, visible scrollbars, RTL layout, and deletion
   confirmation across popup and options.
@@ -96,7 +101,9 @@ Migration notes:
 
 Known issues and notes:
 
-- Google Fonts still requires network access to Google font endpoints.
+- On Chromium, Google Fonts still requires network access to Google font
+  endpoints for uncached font files; its CSS metadata cache does not yet store
+  the font binaries themselves.
 - Built-in site optimizations may need updates when target websites ship major UI
   changes.
 

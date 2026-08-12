@@ -66,7 +66,7 @@ test("UI follows the selected extension font", () => {
   assert.match(fontSelectorSource, /loadGoogleFontList\(\)/)
   assert.doesNotMatch(fontSelectorSource, /GOOGLE_FONT_SEARCH_RESULT_LIMIT/)
   assert.doesNotMatch(fontSelectorSource, /GOOGLE_FONT_RECOMMENDED_LIMIT/)
-  assert.match(fontSelectorSource, /getSystemFontList/)
+  assert.match(fontSelectorSource, /loadSystemFonts/)
   assert.match(fontSelectorSource, /decodeSystemFontValue/)
   assert.match(fontSelectorSource, /getFontFamily/)
   assert.match(
@@ -353,7 +353,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.siteList\.previewInclude/)
   assert.match(optionsSource, /options\.siteList\.previewInvalid/)
   assert.match(optionsSource, /loadGoogleFontList/)
-  assert.match(optionsSource, /getSystemFontList/)
+  assert.match(optionsSource, /loadSystemFonts/)
   assert.match(optionsSource, /TEXT_STROKE_MIN/)
   assert.match(optionsSource, /TEXT_STROKE_MAX/)
   assert.match(optionsSource, /TEXT_STROKE_STEP/)

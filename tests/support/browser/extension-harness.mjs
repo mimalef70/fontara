@@ -40,6 +40,7 @@ export const STORAGE_KEYS = {
   ENABLED_BY_DEFAULT: "enabledByDefault",
   ENABLED_FOR: "enabledFor",
   EXTENSION_ENABLED: "isExtensionEnabled",
+  GOOGLE_FONTS_ENABLED: "googleFontsEnabled",
   SITE_PROFILES: "siteProfiles",
   SELECTED_FONT: "selectedFont",
   SYSTEM_FONTS_ENABLED: "systemFontsEnabled",

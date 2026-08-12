@@ -461,9 +461,6 @@ function createRuntimeMocks(): {
     }
   )
   Reflect.set(globalThis, "chrome", {
-    fontSettings: {
-      getFontList() {}
-    },
     runtime: {
       get lastError() {
         return undefined
@@ -859,10 +856,10 @@ test("selected custom font changes load its FontFace without a reload", async ()
 
     await waitFor(
       () =>
-        /--fontara-font: "Noto Sans Arabic"/.test(
+        /--fontara-font: "Vazirmatn-Fontara"/.test(
           runtime.getStyleText("fontara-dynamic-font")
         ) && runtime.getStyleText("fontara-google-font-styles") === "",
-      "expected content fallback to apply the Google font family without a content-script network fetch"
+      "expected content fallback to keep the default until cached Google font CSS is available"
     )
     assert.equal(googleFontFetchCalls, 0)
 

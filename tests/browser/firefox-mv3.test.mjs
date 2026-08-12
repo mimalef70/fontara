@@ -245,6 +245,126 @@ test("Firefox MV3 applies and excludes FontARA through the content bridge", asyn
   })
 })
 
+test("Firefox MV3 applies a generic system font and keeps Google Fonts dormant without remote styles", async (t) => {
+  if (await skipUnlessFirefoxBrowserTestsAreEnabled(t)) return
+
+  await withFirefoxMv3ExtensionHarness(t, async (harness) => {
+    const optionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const fixturePage = await harness.createFixturePage()
+    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForContentBridge(fixturePage)
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    const systemFontValue = "system-font:system-ui"
+    const initialLoadId = await evaluate(
+      fixturePage,
+      () => window.__fontaraLoadId
+    )
+
+    await sendSettingsFromContentBridge(fixturePage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
+      [STORAGE_KEYS.SELECTED_FONT]: systemFontValue,
+      [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: true,
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    })
+    await expectPageStyles(
+      fixturePage,
+      createBasicPageStyleExpectation({
+        fontName: "system-ui",
+        loadId: initialLoadId
+      })
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      systemFontValue
+    )
+
+    await fixturePage.reload({ waitUntil: "load" })
+    await waitForContentBridge(fixturePage)
+    const systemReloadLoadId = await evaluate(
+      fixturePage,
+      () => window.__fontaraLoadId
+    )
+    assert.notEqual(systemReloadLoadId, initialLoadId)
+    await expectPageStyles(
+      fixturePage,
+      createBasicPageStyleExpectation({
+        fontName: "system-ui",
+        loadId: systemReloadLoadId
+      })
+    )
+
+    const googleFontValue = "google-font:Roboto"
+    await sendSettingsFromContentBridge(fixturePage, {
+      [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: googleFontValue
+    })
+    await expectPageStyles(
+      fixturePage,
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: systemReloadLoadId
+      })
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
+      true
+    )
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      googleFontValue
+    )
+
+    const dormantGoogleState = await evaluate(fixturePage, () => ({
+      googleFontStyleText:
+        document.getElementById("fontara-google-font-styles")?.textContent ??
+        "",
+      googleRequests: performance
+        .getEntriesByType("resource")
+        .map((entry) => entry.name)
+        .filter(
+          (url) =>
+            url.startsWith("https://fonts.googleapis.com/") ||
+            url.startsWith("https://fonts.gstatic.com/")
+        )
+    }))
+    assert.equal(dormantGoogleState.googleFontStyleText, "")
+    assert.deepEqual(dormantGoogleState.googleRequests, [])
+
+    await fixturePage.reload({ waitUntil: "load" })
+    await waitForContentBridge(fixturePage)
+    const googleReloadLoadId = await evaluate(
+      fixturePage,
+      () => window.__fontaraLoadId
+    )
+    assert.notEqual(googleReloadLoadId, systemReloadLoadId)
+    await expectPageStyles(
+      fixturePage,
+      createBasicPageStyleExpectation({
+        fontName: "Vazirmatn-Fontara",
+        loadId: googleReloadLoadId
+      })
+    )
+    assert.equal(
+      await evaluate(
+        fixturePage,
+        () =>
+          document.getElementById("fontara-google-font-styles")?.textContent ??
+          ""
+      ),
+      ""
+    )
+  })
+})
+
 test("Firefox MV3 uploads, applies, reloads, and deletes a real custom-font family without binary exposure", async (t) => {
   if (await skipUnlessFirefoxBrowserTestsAreEnabled(t)) return
 

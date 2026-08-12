@@ -1486,7 +1486,7 @@ test("ensureStorageValues preserves dormant selected system fonts when disabled"
   assert.equal(values[STORAGE_KEYS.SELECTED_FONT], selectedSystemFont)
 })
 
-test("ensureStorageValues disables the Firefox capability without deleting dormant choices", async () => {
+test("ensureStorageValues keeps Firefox CSS-generic system font capability and dormant choices", async () => {
   Reflect.set(globalThis, "__CHROMIUM_MV3__", false)
   Reflect.set(globalThis, "__FIREFOX_MV3__", true)
   const selectedSystemFont = createSystemFontValue("Noto Sans Arabic")
@@ -1508,7 +1508,7 @@ test("ensureStorageValues disables the Firefox capability without deleting dorma
 
   await ensureStorageValues()
 
-  assert.equal(values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED], false)
+  assert.equal(values[STORAGE_KEYS.SYSTEM_FONTS_ENABLED], true)
   assert.equal(values[STORAGE_KEYS.SELECTED_FONT], selectedSystemFont)
   assert.deepEqual(values[STORAGE_KEYS.SITE_PROFILES], [
     {

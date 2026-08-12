@@ -44,6 +44,17 @@ async function waitForSurfaceReady(page, surface) {
   await page.waitForSelector("[data-testid='fontara-font-selector-trigger']")
 }
 
+async function openOptionsSection(page, section, isMobile) {
+  if (isMobile) {
+    await page.evaluate((nextSection) => {
+      window.location.hash = `#${nextSection}`
+    }, section)
+    return
+  }
+
+  await clickByTestId(page, `fontara-options-nav-${section}`)
+}
+
 async function runAxe(page) {
   const hasAxe = await page.evaluate(() => Boolean(globalThis.axe))
   if (!hasAxe) await page.addScriptTag({ path: AXE_SOURCE_PATH })
@@ -96,15 +107,32 @@ test("Chrome MV3 popup and options pass axe in en/fa/ar on mobile and desktop", 
 
             const violations = await runAxe(page)
             assert.equal(violations.length, 0, formatViolations(violations))
-            if (surface === "options" && language === "fa") {
-              await clickByTestId(page, "fontara-font-selector-trigger")
-              await page.waitForSelector("#fontara-font-selector-dialog")
-              const openPickerViolations = await runAxe(page)
-              assert.equal(
-                openPickerViolations.length,
-                0,
-                formatViolations(openPickerViolations)
+            if (surface === "options") {
+              await openOptionsSection(page, "fonts", viewportName === "mobile")
+              await page.waitForSelector(
+                '[data-testid="fontara-custom-font-form"]'
               )
+              const fontSectionViolations = await runAxe(page)
+              assert.equal(
+                fontSectionViolations.length,
+                0,
+                formatViolations(fontSectionViolations)
+              )
+              if (language === "fa") {
+                await openOptionsSection(
+                  page,
+                  "general",
+                  viewportName === "mobile"
+                )
+                await clickByTestId(page, "fontara-font-selector-trigger")
+                await page.waitForSelector("#fontara-font-selector-dialog")
+                const openPickerViolations = await runAxe(page)
+                assert.equal(
+                  openPickerViolations.length,
+                  0,
+                  formatViolations(openPickerViolations)
+                )
+              }
             }
             await page.close()
           })
@@ -132,6 +160,15 @@ test("Chrome MV3 options navigation works by keyboard and closes on mobile", asy
       { message: "ArrowDown did not select the next settings section." }
     )
     assert.equal(new URL(desktopPage.url()).hash, "#fonts")
+    await desktopPage.focus('[data-testid="fontara-custom-font-regular-file"]')
+    assert.notEqual(
+      await desktopPage.$eval(
+        '[data-testid="fontara-custom-font-regular-slot"]',
+        (element) => getComputedStyle(element).boxShadow
+      ),
+      "none",
+      "The keyboard-focused upload field must have a visible focus ring."
+    )
 
     const mobilePage = await harness.createExtensionPage(
       "ui/options/index.html",

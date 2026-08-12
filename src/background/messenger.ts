@@ -1,7 +1,8 @@
 import type {
   CustomFontFamilyDraft,
   CustomFontTransactionBeginResult,
-  CustomFontTransactionCommitResult
+  CustomFontTransactionCommitResult,
+  CustomFontTransactionMode
 } from "../custom-font-types"
 import type {
   FontaraExtensionData,
@@ -23,7 +24,8 @@ import {
 export type FontaraMessengerAdapter = {
   abortCustomFontTransaction(transactionId: string): Promise<void>
   beginCustomFontTransaction(
-    family: CustomFontFamilyDraft
+    family: CustomFontFamilyDraft,
+    mode?: CustomFontTransactionMode
   ): Promise<CustomFontTransactionBeginResult>
   changeSettings(
     settings: FontaraSettings
@@ -59,6 +61,9 @@ const ALLOWED_UI_PAGE_PATHS = [
 let adapter: FontaraMessengerAdapter | null = null
 let initialized = false
 let subscriberCount = 0
+const pendingMutations = new Map<string, Promise<unknown>>()
+const completedMutations = new Map<string, unknown>()
+const MAX_COMPLETED_MUTATIONS = 128
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -137,7 +142,10 @@ async function handleMessage(message: FontaraUIMessage): Promise<unknown> {
       await adapter.runCommand(message.data.command, { url: message.data.url })
       return true
     case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN:
-      return adapter.beginCustomFontTransaction(message.data.family)
+      return adapter.beginCustomFontTransaction(
+        message.data.family,
+        message.data.mode
+      )
     case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_PUT_FACE:
       await adapter.putCustomFontFace(
         message.data.transactionId,
@@ -160,6 +168,76 @@ async function handleMessage(message: FontaraUIMessage): Promise<unknown> {
   }
 }
 
+function getClientMutationId(message: FontaraUIMessage): string | null {
+  if (!("data" in message) || !("clientMutationId" in message.data)) {
+    return null
+  }
+  return message.data.clientMutationId
+}
+
+function rememberCompletedMutation(id: string, result: unknown): void {
+  completedMutations.set(id, result)
+  if (completedMutations.size <= MAX_COMPLETED_MUTATIONS) return
+
+  const oldestId = completedMutations.keys().next().value
+  if (typeof oldestId === "string") completedMutations.delete(oldestId)
+}
+
+function getMutationCacheKey(
+  message: FontaraUIMessage,
+  sender: chrome.runtime.MessageSender
+): string | null {
+  const clientMutationId = getClientMutationId(message)
+  if (!clientMutationId) return null
+
+  // UI pages and the test bridge can have independent mutation-id generators.
+  // Scope the cache so an options page, popup, tab, or frame cannot consume an
+  // unrelated operation that happens to reuse the same id.
+  const senderScope = [
+    sender.id ?? "",
+    sender.url ?? "",
+    sender.tab?.id ?? "",
+    sender.frameId ?? "",
+    sender.documentId ?? ""
+  ].join("\u0000")
+  return `${senderScope}\u0000${message.type}\u0000${clientMutationId}`
+}
+
+/**
+ * Deduplicates UI retries while this service-worker instance is alive.
+ * Durable custom-font commits remain independently idempotent in storage, so
+ * this primarily protects begin/put/delete and ordinary settings mutations
+ * from a duplicated browser message or UI retry.
+ */
+function handleMessageIdempotently(
+  message: FontaraUIMessage,
+  sender: chrome.runtime.MessageSender
+): Promise<unknown> {
+  const mutationCacheKey = getMutationCacheKey(message, sender)
+  if (!mutationCacheKey) return handleMessage(message)
+  if (completedMutations.has(mutationCacheKey)) {
+    return Promise.resolve(completedMutations.get(mutationCacheKey))
+  }
+
+  const pending = pendingMutations.get(mutationCacheKey)
+  if (pending) return pending
+
+  const operation = handleMessage(message).then((result) => {
+    rememberCompletedMutation(mutationCacheKey, result)
+    return result
+  })
+  pendingMutations.set(mutationCacheKey, operation)
+  const cleanUpPendingOperation = () => {
+    if (pendingMutations.get(mutationCacheKey) === operation) {
+      pendingMutations.delete(mutationCacheKey)
+    }
+  }
+  // Promise.prototype.finally() would create a second rejected promise when
+  // the operation fails. A two-branch then keeps cleanup handled explicitly.
+  void operation.then(cleanUpPendingOperation, cleanUpPendingOperation)
+  return operation
+}
+
 function messageListener(
   message: unknown,
   sender: chrome.runtime.MessageSender,
@@ -171,7 +249,7 @@ function messageListener(
     isContentScriptSender(sender) &&
     isFontaraBrowserTestRelayMessage(message)
   ) {
-    void handleMessage(message.data.message)
+    void handleMessageIdempotently(message.data.message, sender)
       .then((data) => sendResponse(createFontaraMessageResponse(data)))
       .catch((error) =>
         sendResponse(createFontaraMessageErrorResponse(getErrorMessage(error)))
@@ -184,7 +262,7 @@ function messageListener(
     return false
   }
 
-  void handleMessage(message)
+  void handleMessageIdempotently(message, sender)
     .then((data) => sendResponse(createFontaraMessageResponse(data)))
     .catch((error) =>
       sendResponse(createFontaraMessageErrorResponse(getErrorMessage(error)))

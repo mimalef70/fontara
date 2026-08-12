@@ -82,16 +82,20 @@ TTF/OTF/WOFF/WOFF2 file in a local package, grouped by directory and format:
 pnpm audit:font-family -- /path/to/font-package
 ```
 
-Then validate the real Options upload flow, native `FontFace` loading, all
-detected weights, mixed-family guidance, and duplicate-face guidance:
+Then validate the real Options upload flow, native `FontFace` loading, and the
+Regular/Bold selection discovered in each nested directory and format. The
+test also confirms that the same file cannot fill both slots:
 
 ```sh
 FONTARA_LOCAL_FONT_FAMILY_DIR=/path/to/family pnpm test:browser:local-font-family
 FONTARA_LOCAL_FONT_FAMILY_DIR=/path/to/family FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:local-font-family:firefox
 ```
 
-The browser import test expects the package root itself to contain one complete
-family. Nested directories are still audited as independent selections.
+The browser import test expects the package root itself to contain files whose
+names include `Regular` and `Bold`. Nested directories are validated as
+independent Regular/Bold selections grouped by file format. Internal OpenType
+family names do not have to match because the user-provided display name and
+the selected slot are authoritative.
 
 Production package smoke tests install the unpacked release contents, open
 popup/options, reject test-bridge markers, and monitor page/console errors:

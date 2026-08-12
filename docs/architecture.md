@@ -114,7 +114,8 @@ Settings are normalized at startup and when imported. Important groups:
 - Site activation: enabled-by-default mode, enabled list, disabled list, legacy
   website list migration.
 - Per-site profiles: font, activation, and text-stroke overrides.
-- Custom fonts: local-only font records and safe data URLs.
+- Custom fonts: metadata-only family records plus content-addressed local face
+  blobs, loaded into pages with `FontFace(ArrayBuffer)`.
 - RTL settings: global enablement and curated site adapter preferences.
 - Runtime state: tab/content document tracking for update delivery.
 

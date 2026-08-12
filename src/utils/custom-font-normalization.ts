@@ -13,6 +13,7 @@ import {
   isValidCustomFontFaceMeta
 } from "./custom-font-format"
 import {
+  isCustomFontDisplayNameValid,
   normalizeCustomFontFamilyKey,
   normalizeCustomFontFileName,
   normalizeCustomFontText
@@ -50,7 +51,7 @@ export function normalizeCustomFontFamily(
   const sourceFamilyKey = normalizeCustomFontFamilyKey(family.sourceFamilyKey)
   if (
     !isSafeCustomFontValue(family.value) ||
-    !displayName ||
+    !isCustomFontDisplayNameValid(displayName) ||
     !sourceFamilyKey ||
     !Array.isArray(family.faces)
   ) {

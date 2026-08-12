@@ -3,7 +3,8 @@ import type {
   CustomFontFamily,
   CustomFontFamilyDraft,
   CustomFontLoadResult,
-  CustomFontTransactionBeginResult
+  CustomFontTransactionBeginResult,
+  CustomFontTransactionMode
 } from "../custom-font-types"
 import type { SiteProfile } from "../definitions"
 import {
@@ -13,6 +14,8 @@ import {
 import { normalizeCustomFontFamily } from "../utils/custom-font-normalization"
 import {
   CustomFontTransactionStore,
+  clearCustomFontTransactionRecovery,
+  deleteUnreferencedCustomFontFaceBlobs,
   deleteUnusedCustomFontFaceBlobs,
   readCustomFontFaceBytes,
   validateFamilyQuota
@@ -48,6 +51,83 @@ function hasDuplicateFamilyName(
   )
 }
 
+function isPublishedFamily(
+  family: CustomFontFamily,
+  families: CustomFontFamily[]
+): boolean {
+  const published = families.find(
+    (candidate) =>
+      candidate.value === family.value && candidate.revision === family.revision
+  )
+  if (!published || published.faces.length !== family.faces.length) return false
+  const publishedFaces = new Map(
+    published.faces.map((face) => [face.id, face.fileHash])
+  )
+  return family.faces.every(
+    (face) => publishedFaces.get(face.id) === face.fileHash
+  )
+}
+
+function isPublishedLibrary(
+  families: CustomFontFamily[],
+  publishedFamilies: CustomFontFamily[]
+): boolean {
+  return (
+    families.length === publishedFamilies.length &&
+    families.every((family) => isPublishedFamily(family, publishedFamilies))
+  )
+}
+
+function hasOwn(value: object, key: string): boolean {
+  return Object.getOwnPropertyDescriptor(value, key) !== undefined
+}
+
+function settingsValuesAreEqual(first: unknown, second: unknown): boolean {
+  if (Object.is(first, second)) return true
+  if (Array.isArray(first) || Array.isArray(second)) {
+    return (
+      Array.isArray(first) &&
+      Array.isArray(second) &&
+      first.length === second.length &&
+      first.every((value, index) =>
+        settingsValuesAreEqual(value, second[index])
+      )
+    )
+  }
+  if (
+    !first ||
+    !second ||
+    typeof first !== "object" ||
+    typeof second !== "object"
+  ) {
+    return false
+  }
+
+  const firstRecord = first as Record<string, unknown>
+  const secondRecord = second as Record<string, unknown>
+  const firstKeys = Object.keys(firstRecord)
+  const secondKeys = Object.keys(secondRecord)
+  return (
+    firstKeys.length === secondKeys.length &&
+    firstKeys.every(
+      (key) =>
+        hasOwn(secondRecord, key) &&
+        settingsValuesAreEqual(firstRecord[key], secondRecord[key])
+    )
+  )
+}
+
+function isPublishedSettingsPayload(
+  expectedSettings: Record<string, unknown>,
+  publishedSettings: Record<string, unknown>
+): boolean {
+  return Object.entries(expectedSettings).every(
+    ([key, value]) =>
+      hasOwn(publishedSettings, key) &&
+      settingsValuesAreEqual(value, publishedSettings[key])
+  )
+}
+
 export class BackgroundCustomFontManager {
   private readonly transactions = new CustomFontTransactionStore()
   private operationQueue: Promise<void> = Promise.resolve()
@@ -65,23 +145,43 @@ export class BackgroundCustomFontManager {
 
   initialize(): Promise<void> {
     return this.enqueue(async () => {
-      await this.transactions.collectGarbage()
-      await deleteUnusedCustomFontFaceBlobs(
-        getFamilies(await this.callbacks.readSettings())
-      )
+      const families = getFamilies(await this.callbacks.readSettings())
+      await this.transactions.finalizePublished(families)
+      // Do not scan the complete local storage area during every MV3 worker
+      // startup. A large base64 font library can otherwise be deserialized on
+      // the critical startup path merely to discover abandoned staging keys.
+      // Journal-backed expired transactions are still reclaimed here.
+      await this.transactions.collectGarbage(Date.now())
+    })
+  }
+
+  collectUnusedAfterCatalogReplacement(): Promise<void> {
+    return this.enqueue(async () => {
+      const families = getFamilies(await this.callbacks.readSettings())
+      await this.transactions.finalizePublished(families)
+      // Import/reset is an explicit whole-catalog replacement. Any quarantined
+      // transaction metadata belongs to the replaced catalog and no longer
+      // needs to keep otherwise unreferenced blobs alive.
+      await clearCustomFontTransactionRecovery()
+      await deleteUnusedCustomFontFaceBlobs(families)
     })
   }
 
   begin(
-    familyDraft: CustomFontFamilyDraft
+    familyDraft: CustomFontFamilyDraft,
+    mode: CustomFontTransactionMode = "append"
   ): Promise<CustomFontTransactionBeginResult> {
     return this.enqueue(async () => {
       const family = normalizeDraft(familyDraft)
       const families = getFamilies(await this.callbacks.readSettings())
-      if (hasDuplicateFamilyName(family, families)) {
+      const quotaFamilies = mode === "replace-library" ? [] : families
+      if (hasDuplicateFamilyName(family, quotaFamilies)) {
         throw new Error("custom-font-family-name-duplicate")
       }
-      return this.transactions.begin(family, families)
+      // Replacement imports ignore the outgoing catalog, while the
+      // transaction store still counts every live journal entry so a batch
+      // cannot overbook family or byte quotas before its atomic commit.
+      return this.transactions.begin(family, families, mode)
     })
   }
 
@@ -132,22 +232,51 @@ export class BackgroundCustomFontManager {
       const families = getFamilies(settings)
       const family = await this.transactions.commit(transactionId, families)
       if (hasDuplicateFamilyName(family, families)) {
-        await deleteUnusedCustomFontFaceBlobs(families)
+        await this.transactions.abort(transactionId)
+        await deleteUnreferencedCustomFontFaceBlobs(
+          family.faces.map((face) => face.fileHash),
+          families
+        )
         throw new Error("custom-font-family-name-duplicate")
       }
       const nextFamilies = families.some((item) => item.value === family.value)
         ? families.map((item) => (item.value === family.value ? family : item))
         : [...families, family]
 
+      let publishedFamilies = nextFamilies
       try {
         await this.callbacks.writeSettings({
           [STORAGE_KEYS.CUSTOM_FONT_LIST]: nextFamilies
         })
       } catch (error) {
-        await deleteUnusedCustomFontFaceBlobs(families)
-        throw error
+        let recoveredFamilies: CustomFontFamily[] | null = null
+        try {
+          recoveredFamilies = getFamilies(await this.callbacks.readSettings())
+        } catch {
+          // The catalog state is unknown. Retain the promoted transaction so a
+          // retry or the next startup can reconcile it without losing bytes.
+          throw error
+        }
+        if (!isPublishedFamily(family, recoveredFamilies)) {
+          await this.transactions.abort(transactionId).catch(() => null)
+          await deleteUnreferencedCustomFontFaceBlobs(
+            family.faces.map((face) => face.fileHash),
+            families
+          ).catch(() => {})
+          throw error
+        }
+        publishedFamilies = recoveredFamilies
       }
-      await deleteUnusedCustomFontFaceBlobs(nextFamilies).catch(() => {})
+      await this.transactions.finalize(transactionId).catch(() => {})
+      const replacedFamily = families.find(
+        (item) => item.value === family.value
+      )
+      if (replacedFamily) {
+        await deleteUnreferencedCustomFontFaceBlobs(
+          replacedFamily.faces.map((face) => face.fileHash),
+          publishedFamilies
+        ).catch(() => {})
+      }
       return family
     })
   }
@@ -161,6 +290,9 @@ export class BackgroundCustomFontManager {
       const originalFamilies = getFamilies(currentSettings)
       const expectedFamilies = getFamilies(settings)
       const committedFamilies: CustomFontFamily[] = []
+      let settingsWriteAttempted = false
+      let expectedSettingsPayload: Record<string, unknown> | null = null
+      let publishedFamilies = committedFamilies
 
       try {
         for (const transactionId of transactionIds) {
@@ -185,26 +317,79 @@ export class BackgroundCustomFontManager {
           throw new Error("custom-font-import-batch-mismatch")
         }
 
-        await this.callbacks.writeSettings({
+        expectedSettingsPayload = {
           ...settings,
           [STORAGE_KEYS.CUSTOM_FONT_LIST]: committedFamilies
-        })
+        }
+        settingsWriteAttempted = true
+        await this.callbacks.writeSettings(expectedSettingsPayload)
       } catch (error) {
-        await Promise.all(
-          transactionIds.map((transactionId) =>
-            this.transactions.abort(transactionId).catch(() => {})
+        if (settingsWriteAttempted && expectedSettingsPayload) {
+          let recoveredSettings: Record<string, unknown>
+          try {
+            recoveredSettings = await this.callbacks.readSettings()
+          } catch {
+            // Durable state is unknown after a write attempt. Keep promoted
+            // transactions intact so the import can be retried safely.
+            throw error
+          }
+
+          const recoveredFamilies = getFamilies(recoveredSettings)
+          if (
+            isPublishedSettingsPayload(
+              expectedSettingsPayload,
+              recoveredSettings
+            )
+          ) {
+            publishedFamilies = recoveredFamilies
+          } else if (
+            isPublishedLibrary(committedFamilies, recoveredFamilies) &&
+            transactionIds.length > 0
+          ) {
+            // The font catalog crossed the durability boundary but another
+            // imported setting did not. Do not finalize or abort: the promoted
+            // blobs and journal are required for an idempotent retry.
+            throw error
+          } else {
+            settingsWriteAttempted = false
+          }
+        }
+        if (!settingsWriteAttempted) {
+          // abort() updates the shared transaction journal with a
+          // read-modify-write cycle. Keep these writes sequential so two
+          // transactions cannot resurrect one another from stale snapshots.
+          for (const transactionId of transactionIds) {
+            await this.transactions.abort(transactionId).catch(() => {})
+          }
+          await deleteUnreferencedCustomFontFaceBlobs(
+            committedFamilies.flatMap((family) =>
+              family.faces.map((face) => face.fileHash)
+            ),
+            originalFamilies
           )
-        )
-        await deleteUnusedCustomFontFaceBlobs(originalFamilies)
-        throw error
+          throw error
+        }
       }
-      await deleteUnusedCustomFontFaceBlobs(committedFamilies).catch(() => {})
+      // finalize() has the same journal read-modify-write requirement as
+      // abort(), so bulk finalization must also be serialized.
+      for (const transactionId of transactionIds) {
+        await this.transactions.finalize(transactionId).catch(() => {})
+      }
+      await deleteUnusedCustomFontFaceBlobs(publishedFamilies).catch(() => {})
       return committedFamilies
     })
   }
 
   abort(transactionId: string): Promise<void> {
-    return this.enqueue(() => this.transactions.abort(transactionId))
+    return this.enqueue(async () => {
+      const aborted = await this.transactions.abort(transactionId)
+      if (!aborted?.promoted) return
+      const families = getFamilies(await this.callbacks.readSettings())
+      await deleteUnreferencedCustomFontFaceBlobs(
+        aborted.family.faces.map((face) => face.fileHash),
+        families
+      )
+    })
   }
 
   delete(familyValue: string): Promise<void> {
@@ -220,7 +405,10 @@ export class BackgroundCustomFontManager {
         settings[STORAGE_KEYS.SITE_PROFILES] as SiteProfile[] | undefined
       )
       await this.callbacks.writeSettings(update)
-      await deleteUnusedCustomFontFaceBlobs(
+      await deleteUnreferencedCustomFontFaceBlobs(
+        families
+          .find((family) => family.value === familyValue)
+          ?.faces.map((face) => face.fileHash) ?? [],
         update[STORAGE_KEYS.CUSTOM_FONT_LIST] as CustomFontFamily[]
       )
     })

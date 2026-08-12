@@ -54,7 +54,7 @@ async function getCustomFontRuntimeState(
         )
       )
       const registeredFaces = Array.from(document.fonts).map((fontFace) => ({
-        family: fontFace.family,
+        family: normalizeFamily(fontFace.family),
         status: fontFace.status,
         style: fontFace.style,
         weight: fontFace.weight
@@ -70,6 +70,7 @@ async function getCustomFontRuntimeState(
       const target = document.getElementById("fontara-text")
 
       return {
+        boldChecked: document.fonts.check(boldQuery, sampleText),
         checked: document.fonts.check(query, sampleText),
         computedFamily: target ? getComputedStyle(target).fontFamily : "",
         customWidth: measure(query),
@@ -269,10 +270,23 @@ test("Firefox MV3 uploads, applies, reloads, and deletes a real custom-font fami
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
     await clickByTestId(optionsPage, "fontara-options-nav-fonts")
-    await uploadFilesByTestId(optionsPage, "fontara-custom-font-file", [
-      regularFontPath,
+    await setValueByTestId(
+      optionsPage,
+      "fontara-custom-font-name",
+      "Firefox E2E Shabnam"
+    )
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-regular-file", [
+      regularFontPath
+    ])
+    await optionsPage.waitForSelector(
+      '[data-testid="fontara-custom-font-regular-ready"]'
+    )
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-bold-file", [
       boldFontPath
     ])
+    await optionsPage.waitForSelector(
+      '[data-testid="fontara-custom-font-bold-ready"]'
+    )
     await waitFor(
       () =>
         optionsPage.$eval(
@@ -284,11 +298,6 @@ test("Firefox MV3 uploads, applies, reloads, and deletes a real custom-font fami
           "Firefox did not validate the real Shabnam files in the metadata worker.",
         timeout: 20_000
       }
-    )
-    await setValueByTestId(
-      optionsPage,
-      "fontara-custom-font-name",
-      "Firefox E2E Shabnam"
     )
     await clickByTestId(optionsPage, "fontara-custom-font-add")
 
@@ -309,7 +318,7 @@ test("Firefox MV3 uploads, applies, reloads, and deletes a real custom-font fami
       }
     )
     assert.equal(family.displayName, "Firefox E2E Shabnam")
-    assert.equal(family.sourceFamilyKey, "shabnam")
+    assert.equal(family.sourceFamilyKey, "firefox e2e shabnam")
     assert.equal(family.revision, 1)
     assert.deepEqual(
       family.faces.map((face) => face.weight),
@@ -491,6 +500,94 @@ test("Firefox MV3 uploads, applies, reloads, and deletes a real custom-font fami
     )
     assert.equal(deletedState.hasDataFont, false)
     assert.deepEqual(deletedState.exposedMarkers, [])
+  })
+})
+
+test("Firefox MV3 simple uploader uses one variable Regular file for Regular and Bold", async (t) => {
+  if (await skipUnlessFirefoxBrowserTestsAreEnabled(t)) return
+
+  await withFirefoxMv3ExtensionHarness(t, async (harness) => {
+    const variableFontPath = path.resolve(
+      "assets/fonts/vazir/variable/Vazirmatn[wght].woff2"
+    )
+    await fs.access(variableFontPath)
+
+    const optionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const fixturePage = await harness.createFixturePage()
+    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForContentBridge(fixturePage)
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    await sendSettingsFromContentBridge(fixturePage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    })
+
+    await clickByTestId(optionsPage, "fontara-options-nav-fonts")
+    await setValueByTestId(
+      optionsPage,
+      "fontara-custom-font-name",
+      "Firefox Variable Vazirmatn"
+    )
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-regular-file", [
+      variableFontPath
+    ])
+    await optionsPage.waitForSelector(
+      '[data-testid="fontara-custom-font-regular-ready"]'
+    )
+    assert.equal(
+      await optionsPage.$eval(
+        '[data-testid="fontara-custom-font-bold-file"]',
+        (element) => element instanceof HTMLInputElement && element.disabled
+      ),
+      true
+    )
+    await clickByTestId(optionsPage, "fontara-custom-font-add")
+
+    const family = await waitFor(
+      async () => {
+        const values = await getExtensionLocalValues(optionsPage, [
+          STORAGE_KEYS.CUSTOM_FONT_LIST
+        ])
+        const candidate = values[STORAGE_KEYS.CUSTOM_FONT_LIST]?.[0]
+        return candidate?.faces?.length === 1 ? candidate : false
+      },
+      {
+        message: "Firefox did not commit the variable custom font.",
+        timeout: 20_000
+      }
+    )
+    assert.deepEqual(family.faces[0].weight, { min: 100, max: 900 })
+
+    await sendSettingsFromContentBridge(fixturePage, {
+      [STORAGE_KEYS.SELECTED_FONT]: family.value
+    })
+    const runtimeState = await waitFor(
+      async () => {
+        const state = await getCustomFontRuntimeState(fixturePage, family.value)
+        return state.checked && state.boldChecked && state.faceCount === 1
+          ? state
+          : false
+      },
+      {
+        message:
+          "Firefox did not load the one-face variable family at Regular and Bold weights.",
+        timeout: 30_000
+      }
+    )
+    assert.match(runtimeState.computedFamily, new RegExp(family.value))
+    assert.ok(
+      runtimeState.registeredFaces.some(
+        (face) => face.family === family.value && face.weight === "100 900"
+      ),
+      `Firefox registered an unexpected variable face: ${JSON.stringify(runtimeState.registeredFaces)}`
+    )
+    assert.equal(runtimeState.hasDataFont, false)
   })
 })
 

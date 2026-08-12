@@ -1,4 +1,4 @@
-const CUSTOM_FONT_NAME_MAX_LENGTH = 128
+export const CUSTOM_FONT_NAME_MAX_LENGTH = 128
 const CUSTOM_FONT_SOURCE_KEY_MAX_LENGTH = 256
 const CUSTOM_FONT_FILE_NAME_MAX_LENGTH = 255
 
@@ -37,6 +37,14 @@ export function normalizeCustomFontText(
     visibleValue.trim().replace(/\s+/gu, " "),
     maxLength
   )
+}
+
+export function isCustomFontDisplayNameValid(value: unknown): boolean {
+  const normalized = normalizeCustomFontText(value)
+
+  // Joiners and combining marks can be meaningful inside a real name, but
+  // must not be enough to create an invisible library entry on their own.
+  return /[\p{L}\p{N}\p{P}\p{S}]/u.test(normalized)
 }
 
 export function normalizeCustomFontFamilyKey(value: unknown): string {

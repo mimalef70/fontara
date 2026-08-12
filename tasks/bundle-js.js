@@ -77,6 +77,7 @@ async function bundleJS({ platform, debug, test = false }) {
         entryPoints: [absolutePath(entry.src)],
         outfile: path.join(outDir, entry.dest),
         bundle: true,
+        charset: "utf8",
         format: "iife",
         target: platform === PLATFORM.FIREFOX_MV3 ? "firefox109" : "chrome106",
         platform: "browser",

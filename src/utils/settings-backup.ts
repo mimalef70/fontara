@@ -4,7 +4,11 @@ import type {
   CustomFontFamilyDraft,
   LegacyCustomFontData
 } from "../custom-font-types"
-import { bytesToBase64, dataURLToCustomFontBytes } from "./custom-font-format"
+import {
+  bytesToBase64,
+  dataURLToCustomFontBytes,
+  isSHA256Hash
+} from "./custom-font-format"
 import {
   isLegacyCustomFontData,
   normalizeCustomFontFamilies,
@@ -19,7 +23,12 @@ import {
 import { normalizeStorageValues } from "./storage-normalization"
 
 export const FONTARA_SETTINGS_EXPORT_FORMAT = "fontara-settings"
-export const FONTARA_SETTINGS_EXPORT_VERSION = 2
+/**
+ * Version 3 keys customFontFaces by the content hash instead of the face id.
+ * A single blob can therefore serve multiple faces without being duplicated,
+ * and face ids only need to be unique inside their own family.
+ */
+export const FONTARA_SETTINGS_EXPORT_VERSION = 3
 const MAX_BACKUP_FACE_COUNT =
   MAX_CUSTOM_FONT_FAMILIES * MAX_CUSTOM_FONT_FACES_PER_FAMILY
 const MAX_BACKUP_FACE_BASE64_LENGTH =
@@ -93,7 +102,8 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeCustomFontFaceBackupMap(
-  value: unknown
+  value: unknown,
+  keyMode: "face-id" | "file-hash"
 ): Record<string, string> {
   if (!isPlainRecord(value)) return {}
   const entries = Object.entries(value)
@@ -103,9 +113,12 @@ function normalizeCustomFontFaceBackupMap(
   const result: Record<string, string> = {}
   let decodedBytes = 0
   for (const [key, data] of entries) {
+    const normalizedKey =
+      keyMode === "file-hash" && isSHA256Hash(key) ? key.toLowerCase() : key
     if (
       key.length === 0 ||
       key.length > 128 ||
+      (keyMode === "file-hash" && !isSHA256Hash(key)) ||
       typeof data !== "string" ||
       data.length === 0 ||
       data.length > MAX_BACKUP_FACE_BASE64_LENGTH ||
@@ -115,12 +128,15 @@ function normalizeCustomFontFaceBackupMap(
     ) {
       throw new Error("invalid-custom-font-backup-face")
     }
+    if (hasOwn(result, normalizedKey)) {
+      throw new Error("invalid-custom-font-backup-face")
+    }
     const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0
     decodedBytes += (data.length / 4) * 3 - padding
     if (decodedBytes > MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES) {
       throw new Error("custom-font-backup-library-size-limit")
     }
-    result[key] = data
+    result[normalizedKey] = data
   }
   return result
 }
@@ -232,6 +248,8 @@ export function parseSettingsBackupText(text: string): ParsedSettingsBackup {
     if (
       !isAcceptedAppName(parsed.app) ||
       typeof parsed.version !== "number" ||
+      !Number.isInteger(parsed.version) ||
+      parsed.version < 1 ||
       parsed.version > FONTARA_SETTINGS_EXPORT_VERSION ||
       !isPlainRecord(parsed.settings)
     ) {
@@ -243,7 +261,10 @@ export function parseSettingsBackupText(text: string): ParsedSettingsBackup {
     }
 
     return {
-      customFontFaces: normalizeCustomFontFaceBackupMap(parsed.customFontFaces),
+      customFontFaces: normalizeCustomFontFaceBackupMap(
+        parsed.customFontFaces,
+        parsed.version >= 3 ? "file-hash" : "face-id"
+      ),
       settings: parsed.settings,
       version: parsed.version
     }
@@ -268,8 +289,21 @@ function toFamilyDraft(family: CustomFontFamily): CustomFontFamilyDraft {
 export async function prepareSettingsBackupImport(
   parsed: ParsedSettingsBackup
 ): Promise<PreparedSettingsBackupImport> {
+  const hasCustomFontCatalog = hasOwn(
+    parsed.settings,
+    STORAGE_KEYS.CUSTOM_FONT_LIST
+  )
   const rawFonts = parsed.settings[STORAGE_KEYS.CUSTOM_FONT_LIST]
-  if (!Array.isArray(rawFonts) || rawFonts.length === 0) {
+  if (!hasCustomFontCatalog) {
+    return { customFontFamilies: [], settings: parsed.settings }
+  }
+  // Presence is the user's explicit intent to replace the local-only library.
+  // Only an actual empty array may clear it; malformed values must not be
+  // normalized into [] and silently delete every stored custom font.
+  if (!Array.isArray(rawFonts)) {
+    throw new Error("invalid-custom-font-backup")
+  }
+  if (rawFonts.length === 0) {
     return { customFontFamilies: [], settings: parsed.settings }
   }
   if (rawFonts.length > MAX_CUSTOM_FONT_FAMILIES) {
@@ -312,7 +346,9 @@ export async function prepareSettingsBackupImport(
     if (!family) throw new Error("invalid-custom-font-backup")
     const faceData: Record<string, string> = {}
     for (const face of family.faces) {
-      const data = parsed.customFontFaces[face.id]
+      const backupKey =
+        parsed.version !== null && parsed.version >= 3 ? face.fileHash : face.id
+      const data = parsed.customFontFaces[backupKey]
       if (typeof data !== "string" || data.length === 0) {
         throw new Error("missing-custom-font-backup-face")
       }

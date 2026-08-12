@@ -1,9 +1,7 @@
 import { STORAGE_KEYS } from "../config/storage"
-import type { CustomFontFamily } from "../custom-font-types"
 import {
   getLegacyCustomFontMigrationBytes,
   isLegacyCustomFontData,
-  normalizeCustomFontFamilies,
   normalizeLegacyCustomFontFamily
 } from "../utils/custom-font-normalization"
 import {
@@ -55,15 +53,24 @@ export async function migrateLegacyCustomFontStorage(
     }
   }
 
-  const migratedFamilies: CustomFontFamily[] = []
+  const migratedFamilies: unknown[] = []
   for (const candidate of rawList) {
     if (!isLegacyCustomFontData(candidate)) {
-      migratedFamilies.push(...(await normalizeCustomFontFamilies([candidate])))
+      // This migration owns only the legacy inline-data shape. Preserve newer,
+      // malformed, or forward-version catalog entries byte-for-byte instead of
+      // silently dropping fields/faces that this version cannot understand.
+      // Runtime readers normalize a safe in-memory view independently.
+      migratedFamilies.push(candidate)
       continue
     }
 
     const family = await normalizeLegacyCustomFontFamily(candidate)
-    if (!family) continue
+    if (!family) {
+      // A future migration may know how to recover this legacy entry. Keeping
+      // it in the catalog is safer than making the user's only metadata vanish.
+      migratedFamilies.push(candidate)
+      continue
+    }
     const face = family.faces[0]
     const bytes = getLegacyCustomFontMigrationBytes(candidate)
     if (bytes.byteLength > MAX_CUSTOM_FONT_FILE_SIZE_BYTES) {

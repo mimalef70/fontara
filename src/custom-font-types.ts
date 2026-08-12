@@ -33,6 +33,8 @@ export type CustomFontFamily = {
 
 export type CustomFontFamilyDraft = Omit<CustomFontFamily, "revision">
 
+export type CustomFontTransactionMode = "append" | "replace-library"
+
 export type LegacyCustomFontData = {
   value: string
   name: string
@@ -46,6 +48,7 @@ export type LegacyCustomFontData = {
 export type CustomFontTransactionBeginData = {
   clientMutationId: string
   family: CustomFontFamilyDraft
+  mode?: CustomFontTransactionMode
 }
 
 export type CustomFontTransactionPutFaceData = {

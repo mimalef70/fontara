@@ -4,12 +4,10 @@ import type {
   CustomFontFamily,
   CustomFontLoadResult
 } from "../custom-font-types"
-import {
-  createCustomFontFileHash,
-  isCustomFontFaceSignatureValid
-} from "../utils/custom-font-format"
+import { isCustomFontFaceSignatureValid } from "../utils/custom-font-format"
 import { readCustomFontFaceBytes } from "../utils/custom-font-storage"
 import { getLocalValue } from "../utils/storage"
+import { isExtensionContextInvalidated } from "./content-messaging"
 
 export type CustomFontFamilyReference = {
   value: string
@@ -23,8 +21,7 @@ type LoadedFace = {
 
 type PreparedFamily = {
   family: CustomFontFamily
-  primary: LoadedFace
-  remaining: CustomFontFaceMeta[]
+  faces: LoadedFace[]
 }
 
 type ActiveFamily = {
@@ -32,16 +29,30 @@ type ActiveFamily = {
   faces: LoadedFace[]
 }
 
+type PendingPreparation = {
+  key: string
+  promise: Promise<boolean>
+}
+
 const FACE_LOAD_CONCURRENCY = 2
 
 let activeFamily: ActiveFamily | null = null
 let preparedFamily: PreparedFamily | null = null
+let pendingPreparation: PendingPreparation | null = null
+let latestRequestKey: string | null = null
 let requestedGeneration = 0
 
 function getFontFaceSet(): FontFaceSet | null {
   return typeof document !== "undefined" && document.fonts
     ? document.fonts
     : null
+}
+
+function throwIfExtensionContextInvalidated(): void {
+  if (typeof chrome === "undefined") return
+  if (chrome.runtime?.id) return
+
+  throw new Error("Extension context invalidated")
 }
 
 function getWeightDistance(face: CustomFontFaceMeta): number {
@@ -67,6 +78,19 @@ function choosePrimaryFace(
           first.fileName.localeCompare(second.fileName)
         )
       })[0] ?? null
+  )
+}
+
+function getReferenceKey(reference: CustomFontFamilyReference): string {
+  return `${reference.value.length}:${reference.value}:${reference.revision}`
+}
+
+function isSameFamily(
+  family: CustomFontFamily,
+  reference: CustomFontFamilyReference
+): boolean {
+  return (
+    family.value === reference.value && family.revision === reference.revision
   )
 }
 
@@ -96,12 +120,21 @@ async function loadFace(
   family: CustomFontFamily,
   face: CustomFontFaceMeta
 ): Promise<LoadedFace> {
-  const bytes = await readCustomFontFaceBytes(face.fileHash)
+  let bytes: Uint8Array | null
+  try {
+    bytes = await readCustomFontFaceBytes(face.fileHash)
+  } catch (error) {
+    if (isExtensionContextInvalidated(error)) throw error
+    // Some browsers report a generic storage error after an extension update.
+    // Confirm runtime health so that a detached content script tears down
+    // instead of silently replacing the last-known-good font.
+    throwIfExtensionContextInvalidated()
+    throw error
+  }
   if (
     !bytes ||
     bytes.byteLength !== face.byteLength ||
-    !isCustomFontFaceSignatureValid(face.format, bytes) ||
-    (await createCustomFontFileHash(bytes)) !== face.fileHash
+    !isCustomFontFaceSignatureValid(face.format, bytes)
   ) {
     throw new Error("invalid-custom-font-face-blob")
   }
@@ -144,6 +177,45 @@ function removeLoadedFaces(faces: LoadedFace[]): void {
   for (const face of faces) fontSet.delete(face.fontFace)
 }
 
+function discardPreparedFamily(): void {
+  const prepared = preparedFamily
+  preparedFamily = null
+  if (!prepared) return
+
+  const activeFaces = activeFamily
+    ? new Set(activeFamily.faces.map((face) => face.fontFace))
+    : null
+  removeLoadedFaces(
+    activeFaces
+      ? prepared.faces.filter((face) => !activeFaces.has(face.fontFace))
+      : prepared.faces
+  )
+}
+
+function registerLoadedFaces(faces: LoadedFace[]): boolean {
+  const fontSet = getFontFaceSet()
+  if (!fontSet) return false
+
+  const added: LoadedFace[] = []
+  try {
+    for (const face of faces) {
+      if (face.fontFace.status !== "loaded") {
+        throw new Error("custom-font-face-not-loaded")
+      }
+      if (fontSet.has?.(face.fontFace)) continue
+      fontSet.add(face.fontFace)
+      added.push(face)
+      if (typeof fontSet.has === "function" && !fontSet.has(face.fontFace)) {
+        throw new Error("custom-font-face-registration-failed")
+      }
+    }
+    return true
+  } catch {
+    removeLoadedFaces(added)
+    return false
+  }
+}
+
 function reportLoadResult(result: CustomFontLoadResult): void {
   try {
     chrome.runtime.sendMessage(
@@ -158,29 +230,27 @@ function reportLoadResult(result: CustomFontLoadResult): void {
   }
 }
 
-async function loadRemainingFaces(
-  target: ActiveFamily,
-  faces: CustomFontFaceMeta[],
-  generation: number
-): Promise<void> {
-  const loadedFaceIds = [target.faces[0].meta.id]
+async function loadFamilyFaces(
+  family: CustomFontFamily,
+  faces: CustomFontFaceMeta[]
+): Promise<{ loaded: LoadedFace[]; failedFaceIds: string[] }> {
+  const loaded = new Array<LoadedFace | undefined>(faces.length)
   const failedFaceIds: string[] = []
+  let fatalError: unknown = null
   let cursor = 0
 
   async function worker(): Promise<void> {
-    while (cursor < faces.length) {
+    while (cursor < faces.length && !fatalError) {
+      const index = cursor
       const face = faces[cursor]
       cursor += 1
       try {
-        const loaded = await loadFace(target.family, face)
-        if (generation !== requestedGeneration || activeFamily !== target) {
-          removeLoadedFaces([loaded])
+        loaded[index] = await loadFace(family, face)
+      } catch (error) {
+        if (isExtensionContextInvalidated(error)) {
+          fatalError = error
           return
         }
-        getFontFaceSet()?.add(loaded.fontFace)
-        target.faces.push(loaded)
-        loadedFaceIds.push(face.id)
-      } catch {
         failedFaceIds.push(face.id)
       }
     }
@@ -191,98 +261,165 @@ async function loadRemainingFaces(
       worker()
     )
   )
-  if (generation === requestedGeneration && activeFamily === target) {
-    reportLoadResult({
-      familyValue: target.family.value,
-      familyRevision: target.family.revision,
-      loadedFaceIds,
-      failedFaceIds
-    })
+  if (fatalError) throw fatalError
+  return {
+    loaded: loaded.filter((face): face is LoadedFace => Boolean(face)),
+    failedFaceIds
   }
 }
 
-export async function prepareCustomFontFamily(
-  reference: CustomFontFamilyReference | null
+async function prepareFamily(
+  reference: CustomFontFamilyReference,
+  generation: number
 ): Promise<boolean> {
-  const generation = ++requestedGeneration
-  if (!reference) {
-    preparedFamily = null
-    return true
-  }
-  if (
-    activeFamily?.family.value === reference.value &&
-    activeFamily.family.revision === reference.revision
-  ) {
-    preparedFamily = null
-    return true
-  }
-
-  const family = await readFamily(reference)
-  if (!family || generation !== requestedGeneration) return false
-  const primaryMeta = choosePrimaryFace(family.faces)
-  if (!primaryMeta) return false
-
+  let family: CustomFontFamily | null
   try {
-    const primary = await loadFace(family, primaryMeta)
-    if (generation !== requestedGeneration) return false
-    preparedFamily = {
-      family,
-      primary,
-      remaining: family.faces.filter(
-        (face) => face.id !== primaryMeta.id && face.validation !== "failed"
-      )
-    }
-    return true
-  } catch {
-    if (generation === requestedGeneration) {
-      reportLoadResult({
-        familyValue: family.value,
-        familyRevision: family.revision,
-        loadedFaceIds: [],
-        failedFaceIds: [primaryMeta.id]
-      })
-    }
+    family = await readFamily(reference)
+  } catch (error) {
+    if (isExtensionContextInvalidated(error)) throw error
     return false
   }
+  if (!family || generation !== requestedGeneration) return false
+
+  const primaryMeta = choosePrimaryFace(family.faces)
+  if (!primaryMeta) return false
+  const loadableFaces = [
+    primaryMeta,
+    ...family.faces.filter(
+      (face) => face.id !== primaryMeta.id && face.validation !== "failed"
+    )
+  ]
+  const result = await loadFamilyFaces(family, loadableFaces)
+  if (generation !== requestedGeneration) return false
+
+  if (
+    result.failedFaceIds.length > 0 ||
+    result.loaded.length !== loadableFaces.length
+  ) {
+    reportLoadResult({
+      familyValue: family.value,
+      familyRevision: family.revision,
+      loadedFaceIds: result.loaded.map((face) => face.meta.id),
+      failedFaceIds: result.failedFaceIds
+    })
+    return false
+  }
+
+  preparedFamily = { family, faces: result.loaded }
+  return true
+}
+
+export function prepareCustomFontFamily(
+  reference: CustomFontFamilyReference | null
+): Promise<boolean> {
+  if (!reference) {
+    if (latestRequestKey !== null) requestedGeneration += 1
+    latestRequestKey = null
+    discardPreparedFamily()
+    pendingPreparation = null
+    return Promise.resolve(true)
+  }
+
+  const key = getReferenceKey(reference)
+  if (latestRequestKey !== key) {
+    latestRequestKey = key
+    requestedGeneration += 1
+    discardPreparedFamily()
+  }
+
+  if (
+    activeFamily &&
+    isSameFamily(activeFamily.family, reference) &&
+    registerLoadedFaces(activeFamily.faces)
+  ) {
+    discardPreparedFamily()
+    return Promise.resolve(true)
+  }
+  if (preparedFamily && isSameFamily(preparedFamily.family, reference)) {
+    return Promise.resolve(true)
+  }
+  if (pendingPreparation?.key === key) return pendingPreparation.promise
+
+  const generation = requestedGeneration
+  const promise = prepareFamily(reference, generation).finally(() => {
+    if (pendingPreparation?.promise === promise) pendingPreparation = null
+  })
+  pendingPreparation = { key, promise }
+  return promise
 }
 
 export function activatePreparedCustomFontFamily(
   reference: CustomFontFamilyReference | null
-): void {
+): boolean {
   if (!reference) {
     clearCustomFontFaces()
-    return
+    return true
   }
-  if (
-    activeFamily?.family.value === reference.value &&
-    activeFamily.family.revision === reference.revision
-  ) {
-    return
-  }
-  if (
-    !preparedFamily ||
-    preparedFamily.family.value !== reference.value ||
-    preparedFamily.family.revision !== reference.revision
-  ) {
-    return
+  if (!preparedFamily || !isSameFamily(preparedFamily.family, reference)) {
+    if (activeFamily && isSameFamily(activeFamily.family, reference)) {
+      return registerLoadedFaces(activeFamily.faces)
+    }
+    return false
   }
 
   const previous = activeFamily
   const next: ActiveFamily = {
     family: preparedFamily.family,
-    faces: [preparedFamily.primary]
+    faces: preparedFamily.faces
   }
-  getFontFaceSet()?.add(preparedFamily.primary.fontFace)
+  if (!registerLoadedFaces(next.faces)) {
+    reportLoadResult({
+      familyValue: next.family.value,
+      familyRevision: next.family.revision,
+      loadedFaceIds: [],
+      failedFaceIds: next.faces.map((face) => face.meta.id)
+    })
+    return false
+  }
+
   activeFamily = next
-  const remaining = preparedFamily.remaining
   preparedFamily = null
   if (previous) removeLoadedFaces(previous.faces)
-  void loadRemainingFaces(next, remaining, requestedGeneration)
+  reportLoadResult({
+    familyValue: next.family.value,
+    familyRevision: next.family.revision,
+    loadedFaceIds: next.faces.map((face) => face.meta.id),
+    failedFaceIds: []
+  })
+  return true
+}
+
+/**
+ * Registers every prepared face before CSS is allowed to point at the family.
+ * Activation performs the same check again, making the two-step handoff safe
+ * if a page removes a face between preparation and commit.
+ */
+export function registerPreparedCustomFontFamily(
+  reference: CustomFontFamilyReference
+): boolean {
+  if (preparedFamily && isSameFamily(preparedFamily.family, reference)) {
+    return registerLoadedFaces(preparedFamily.faces)
+  }
+  return Boolean(
+    activeFamily &&
+      isSameFamily(activeFamily.family, reference) &&
+      registerLoadedFaces(activeFamily.faces)
+  )
+}
+
+export function getActiveCustomFontFamilyReference(): CustomFontFamilyReference | null {
+  if (!activeFamily) return null
+  return {
+    value: activeFamily.family.value,
+    revision: activeFamily.family.revision
+  }
 }
 
 export function clearCustomFontFaces(): void {
   requestedGeneration += 1
-  preparedFamily = null
+  latestRequestKey = null
+  pendingPreparation = null
+  discardPreparedFamily()
   if (activeFamily) removeLoadedFaces(activeFamily.faces)
   activeFamily = null
 }

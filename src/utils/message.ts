@@ -113,7 +113,10 @@ export function isFontaraUIMessage(
       return (
         isRecord(message.data) &&
         isClientMutationId(message.data.clientMutationId) &&
-        isRecord(message.data.family)
+        isRecord(message.data.family) &&
+        (!("mode" in message.data) ||
+          message.data.mode === "append" ||
+          message.data.mode === "replace-library")
       )
     case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_PUT_FACE:
       return (
@@ -169,6 +172,7 @@ export function isFontaraContentScriptMessage(
 ): message is FontaraContentScriptMessage {
   return (
     isRecord(message) &&
+    (!("pageURL" in message) || typeof message.pageURL === "string") &&
     typeof message.scriptId === "string" &&
     typeof message.type === "string" &&
     CS_TO_BG_MESSAGE_TYPES.has(message.type)

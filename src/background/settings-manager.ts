@@ -1,3 +1,4 @@
+import { STORAGE_KEYS } from "../config/storage"
 import { getSettingsBackupDefaults } from "../utils/settings-backup"
 import {
   createSettingsUpdatedAtPatch,
@@ -133,6 +134,17 @@ export async function writeBackgroundSettingsWithSyncSnapshot(
       ...nextValues
     })
     const changedValues = pickChangedValues(currentValues, normalizedValues)
+    if (
+      hasOwn(nextValues, STORAGE_KEYS.CUSTOM_FONT_LIST) &&
+      !hasOwn(changedValues, STORAGE_KEYS.CUSTOM_FONT_LIST)
+    ) {
+      // Startup keeps an unrecognized raw catalog recoverable in local storage,
+      // while currentValues is the normalized in-memory view. An explicit
+      // import/reset/font mutation must still be able to replace that raw value
+      // even when both normalized views happen to be equal (commonly []).
+      changedValues[STORAGE_KEYS.CUSTOM_FONT_LIST] =
+        normalizedValues[STORAGE_KEYS.CUSTOM_FONT_LIST]
+    }
     const hasChanges = Object.keys(changedValues).length > 0
     const revision = hasChanges
       ? Math.max(cachedRevision, currentSnapshot.revision) + 1

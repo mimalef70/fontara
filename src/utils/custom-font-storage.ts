@@ -1,16 +1,24 @@
-import type { CustomFontFaceMeta, CustomFontFamily } from "../custom-font-types"
+import type {
+  CustomFontFaceMeta,
+  CustomFontFamily,
+  CustomFontTransactionMode
+} from "../custom-font-types"
 import {
   base64ToBytes,
   bytesToBase64,
   createCustomFontFileHash,
-  isCustomFontFaceSignatureValid
+  isCustomFontFaceSignatureValid,
+  isSHA256Hash
 } from "./custom-font-format"
+import { normalizeCustomFontFamily } from "./custom-font-normalization"
 
 export const CUSTOM_FONT_FACE_STORAGE_PREFIX = "customFontFace:"
 export const CUSTOM_FONT_RECOVERY_STORAGE_PREFIX = "customFontRecovery:"
 export const CUSTOM_FONT_STAGING_STORAGE_PREFIX = "customFontStaging:"
 export const CUSTOM_FONT_TRANSACTION_JOURNAL_KEY =
   "__fontara_custom_font_transaction_journal__"
+export const CUSTOM_FONT_TRANSACTION_RECOVERY_KEY =
+  "__fontara_custom_font_transaction_recovery__"
 export const CUSTOM_FONT_STORAGE_SCHEMA_VERSION_KEY =
   "__fontara_custom_font_storage_schema_version__"
 export const CUSTOM_FONT_STORAGE_SCHEMA_VERSION = 2
@@ -22,6 +30,7 @@ export const MAX_CUSTOM_FONT_FACES_PER_FAMILY = 20
 export const MAX_CUSTOM_FONT_FAMILIES = 64
 export const MAX_CUSTOM_FONT_BATCH_FILES = 32
 export const CUSTOM_FONT_TRANSACTION_TTL_MS = 30 * 60 * 1000
+export const CUSTOM_FONT_PROMOTED_TRANSACTION_TTL_MS = 24 * 60 * 60 * 1000
 const MAX_CUSTOM_FONT_BASE64_LENGTH =
   Math.ceil(MAX_CUSTOM_FONT_FILE_SIZE_BYTES / 3) * 4 + 4
 
@@ -39,9 +48,119 @@ type TransactionEntry = {
   expiresAt: number
   family: Omit<CustomFontFamily, "revision">
   receivedFaceIds: string[]
+  phase?: "uploading" | "promoted"
+  committedRevision?: number
+  promotedAt?: number
 }
 
 type TransactionJournal = Record<string, TransactionEntry>
+
+type TransactionRecovery = {
+  entries: Record<string, unknown>
+  updatedAt: number
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (Object.getPrototypeOf(value) === Object.prototype ||
+      Object.getPrototypeOf(value) === null)
+  )
+}
+
+function isFiniteTimestamp(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+}
+
+function normalizeTransactionEntry(
+  transactionId: string,
+  value: unknown
+): TransactionEntry | null {
+  if (!isPlainRecord(value) || value.id !== transactionId) return null
+  if (
+    !isFiniteTimestamp(value.createdAt) ||
+    !isFiniteTimestamp(value.expiresAt) ||
+    value.expiresAt < value.createdAt ||
+    !isPlainRecord(value.family) ||
+    !Array.isArray(value.family.faces) ||
+    !Array.isArray(value.receivedFaceIds)
+  ) {
+    return null
+  }
+
+  const normalizedFamily = normalizeCustomFontFamily({
+    ...value.family,
+    revision: 1
+  })
+  if (
+    !normalizedFamily ||
+    normalizedFamily.faces.length !== value.family.faces.length
+  ) {
+    return null
+  }
+  const familyFaceIds = new Set(normalizedFamily.faces.map((face) => face.id))
+  if (
+    !value.receivedFaceIds.every(
+      (faceId) => typeof faceId === "string" && familyFaceIds.has(faceId)
+    )
+  ) {
+    return null
+  }
+
+  const phase = value.phase === undefined ? "uploading" : value.phase
+  if (phase !== "uploading" && phase !== "promoted") return null
+  if (
+    phase === "promoted" &&
+    (!Number.isInteger(value.committedRevision) ||
+      Number(value.committedRevision) <= 0 ||
+      !isFiniteTimestamp(value.promotedAt))
+  ) {
+    return null
+  }
+
+  const { revision: _revision, ...family } = normalizedFamily
+  return {
+    id: transactionId,
+    createdAt: value.createdAt,
+    expiresAt: value.expiresAt,
+    family,
+    receivedFaceIds: Array.from(new Set(value.receivedFaceIds as string[])),
+    phase,
+    ...(phase === "promoted"
+      ? {
+          committedRevision: value.committedRevision as number,
+          promotedAt: value.promotedAt as number
+        }
+      : {})
+  }
+}
+
+function getRecoveryEntries(value: unknown): Record<string, unknown> {
+  if (!isPlainRecord(value) || !isPlainRecord(value.entries)) return {}
+  return value.entries
+}
+
+function collectPotentialRecoveryHashes(
+  value: unknown,
+  hashes: Set<string>,
+  depth = 0
+): void {
+  if (depth > 8 || value === null || value === undefined) return
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectPotentialRecoveryHashes(item, hashes, depth + 1)
+    }
+    return
+  }
+  if (!isPlainRecord(value)) return
+
+  if (isSHA256Hash(value.fileHash)) hashes.add(value.fileHash.toLowerCase())
+  for (const item of Object.values(value)) {
+    collectPotentialRecoveryHashes(item, hashes, depth + 1)
+  }
+}
 
 function validateTransactionReservations(
   family: Omit<CustomFontFamily, "revision">,
@@ -139,6 +258,57 @@ function getStagingStorageKey(transactionId: string, faceId: string): string {
   return `${CUSTOM_FONT_STAGING_STORAGE_PREFIX}${transactionId}:${faceId}`
 }
 
+function getFamilyFileHashes(
+  family: Pick<CustomFontFamily, "faces">
+): string[] {
+  return family.faces.map((face) => face.fileHash)
+}
+
+function getReferencedFileHashes(families: CustomFontFamily[]): Set<string> {
+  return new Set(families.flatMap((family) => getFamilyFileHashes(family)))
+}
+
+function getJournalFileHashes(journal: TransactionJournal): Set<string> {
+  return new Set(
+    Object.values(journal).flatMap((transaction) =>
+      getFamilyFileHashes(transaction.family)
+    )
+  )
+}
+
+function getBlobStorageKeys(fileHashes: Iterable<string>): string[] {
+  return Array.from(fileHashes).flatMap((fileHash) => [
+    getFaceStorageKey(fileHash),
+    getRecoveryStorageKey(fileHash)
+  ])
+}
+
+function isPublishedTransaction(
+  transaction: TransactionEntry,
+  families: CustomFontFamily[]
+): boolean {
+  if (
+    transaction.phase !== "promoted" ||
+    typeof transaction.committedRevision !== "number"
+  ) {
+    return false
+  }
+  const family = families.find(
+    (candidate) =>
+      candidate.value === transaction.family.value &&
+      candidate.revision === transaction.committedRevision
+  )
+  if (!family || family.faces.length !== transaction.family.faces.length) {
+    return false
+  }
+  const publishedFaces = new Map(
+    family.faces.map((face) => [face.id, face.fileHash])
+  )
+  return transaction.family.faces.every(
+    (face) => publishedFaces.get(face.id) === face.fileHash
+  )
+}
+
 function isStoredBlob(value: unknown): value is StoredCustomFontBlob {
   if (!value || typeof value !== "object") return false
   const blob = value as Partial<StoredCustomFontBlob>
@@ -152,11 +322,57 @@ function isStoredBlob(value: unknown): value is StoredCustomFontBlob {
 }
 
 async function readJournal(): Promise<TransactionJournal> {
-  const values = await getLocalValues(CUSTOM_FONT_TRANSACTION_JOURNAL_KEY)
-  const journal = values[CUSTOM_FONT_TRANSACTION_JOURNAL_KEY]
-  return journal && typeof journal === "object"
-    ? (journal as TransactionJournal)
-    : {}
+  const values = await getLocalValues([
+    CUSTOM_FONT_TRANSACTION_JOURNAL_KEY,
+    CUSTOM_FONT_TRANSACTION_RECOVERY_KEY
+  ])
+  const rawJournal = values[CUSTOM_FONT_TRANSACTION_JOURNAL_KEY]
+  if (rawJournal === undefined || rawJournal === null) return {}
+
+  const journal: TransactionJournal = {}
+  const rejectedEntries: Record<string, unknown> = {}
+  if (isPlainRecord(rawJournal)) {
+    for (const [transactionId, candidate] of Object.entries(rawJournal)) {
+      const transaction = normalizeTransactionEntry(transactionId, candidate)
+      if (transaction) journal[transactionId] = transaction
+      else rejectedEntries[transactionId] = candidate
+    }
+  } else {
+    rejectedEntries.__invalid_journal__ = rawJournal
+  }
+
+  if (Object.keys(rejectedEntries).length > 0) {
+    const recovery: TransactionRecovery = {
+      entries: {
+        ...getRecoveryEntries(values[CUSTOM_FONT_TRANSACTION_RECOVERY_KEY]),
+        ...rejectedEntries
+      },
+      updatedAt: Date.now()
+    }
+    // Quarantine and sanitize in one storage write. Keeping the invalid source
+    // under a separate key makes startup self-healing without discarding
+    // forward-version metadata or the file hashes needed to protect its blobs.
+    await setLocalValues({
+      [CUSTOM_FONT_TRANSACTION_JOURNAL_KEY]: journal,
+      [CUSTOM_FONT_TRANSACTION_RECOVERY_KEY]: recovery
+    })
+  }
+
+  return journal
+}
+
+async function readTransactionRecoveryHashes(): Promise<Set<string>> {
+  const values = await getLocalValues(CUSTOM_FONT_TRANSACTION_RECOVERY_KEY)
+  const hashes = new Set<string>()
+  collectPotentialRecoveryHashes(
+    getRecoveryEntries(values[CUSTOM_FONT_TRANSACTION_RECOVERY_KEY]),
+    hashes
+  )
+  return hashes
+}
+
+export async function clearCustomFontTransactionRecovery(): Promise<void> {
+  await removeLocalValues(CUSTOM_FONT_TRANSACTION_RECOVERY_KEY)
 }
 
 async function writeJournal(journal: TransactionJournal): Promise<void> {
@@ -184,9 +400,12 @@ export async function createCustomFontFaceBackupMap(
   families: CustomFontFamily[]
 ): Promise<Record<string, string>> {
   const backup: Record<string, string> = {}
+  const bytesByHash = new Map<string, Uint8Array>()
   for (const family of families) {
     for (const face of family.faces) {
-      const bytes = await readCustomFontFaceBytes(face.fileHash)
+      const bytes =
+        bytesByHash.get(face.fileHash) ??
+        (await readCustomFontFaceBytes(face.fileHash))
       if (
         !bytes ||
         bytes.byteLength !== face.byteLength ||
@@ -196,7 +415,10 @@ export async function createCustomFontFaceBackupMap(
       ) {
         throw new Error("missing-custom-font-face-blob")
       }
-      backup[face.id] = bytesToBase64(bytes)
+      if (!bytesByHash.has(face.fileHash)) {
+        bytesByHash.set(face.fileHash, bytes)
+        backup[face.fileHash] = bytesToBase64(bytes)
+      }
     }
   }
   return backup
@@ -258,10 +480,18 @@ export async function writeCustomFontRecoveryBytes(
 export async function deleteUnusedCustomFontFaceBlobs(
   families: CustomFontFamily[]
 ): Promise<void> {
-  const referencedHashes = new Set(
-    families.flatMap((family) => family.faces.map((face) => face.fileHash))
-  )
-  const values = await getLocalValues(null)
+  // readJournal may quarantine malformed entries. Read recovery only after
+  // that write completes so cleanup cannot miss a newly protected hash.
+  const journal = await readJournal()
+  const [recoveryHashes, values] = await Promise.all([
+    readTransactionRecoveryHashes(),
+    getLocalValues(null)
+  ])
+  const referencedHashes = getReferencedFileHashes(families)
+  for (const fileHash of getJournalFileHashes(journal)) {
+    referencedHashes.add(fileHash)
+  }
+  for (const fileHash of recoveryHashes) referencedHashes.add(fileHash)
   const orphanKeys = Object.keys(values).filter(
     (key) =>
       (key.startsWith(CUSTOM_FONT_FACE_STORAGE_PREFIX) ||
@@ -277,17 +507,53 @@ export async function deleteUnusedCustomFontFaceBlobs(
   if (orphanKeys.length > 0) await removeLocalValues(orphanKeys)
 }
 
+/**
+ * Deletes only blobs belonging to a known mutation. Unlike the broad orphan
+ * collector this is safe to call after an explicit replace/delete even when a
+ * settings normalizer has omitted unrelated catalog entries.
+ */
+export async function deleteUnreferencedCustomFontFaceBlobs(
+  candidateFileHashes: Iterable<string>,
+  referencedFamilies: CustomFontFamily[]
+): Promise<void> {
+  const journal = await readJournal()
+  const recoveryHashes = await readTransactionRecoveryHashes()
+  const protectedHashes = getReferencedFileHashes(referencedFamilies)
+  for (const fileHash of getJournalFileHashes(journal)) {
+    protectedHashes.add(fileHash)
+  }
+  for (const fileHash of recoveryHashes) protectedHashes.add(fileHash)
+  const orphanHashes = new Set(
+    Array.from(candidateFileHashes).filter(
+      (fileHash) => !protectedHashes.has(fileHash)
+    )
+  )
+  if (orphanHashes.size > 0) {
+    await removeLocalValues(getBlobStorageKeys(orphanHashes))
+  }
+}
+
+export type AbortedCustomFontTransaction = {
+  family: Omit<CustomFontFamily, "revision">
+  promoted: boolean
+}
+
 export class CustomFontTransactionStore {
-  async collectGarbage(now = Date.now()): Promise<void> {
-    const [journal, values] = await Promise.all([
-      readJournal(),
-      getLocalValues(null)
-    ])
+  async collectGarbage(
+    now = Date.now(),
+    scanForOrphanStaging = false
+  ): Promise<void> {
+    const journal = await readJournal()
+    const values = scanForOrphanStaging ? await getLocalValues(null) : null
     const liveStagingKeys = new Set<string>()
+    const expiredStagingKeys = new Set<string>()
     let changed = false
 
     for (const [transactionId, transaction] of Object.entries(journal)) {
       if (transaction.expiresAt <= now) {
+        for (const face of transaction.family.faces) {
+          expiredStagingKeys.add(getStagingStorageKey(transactionId, face.id))
+        }
         delete journal[transactionId]
         changed = true
         continue
@@ -297,23 +563,53 @@ export class CustomFontTransactionStore {
       }
     }
 
-    const orphanStagingKeys = Object.keys(values).filter(
-      (key) =>
-        key.startsWith(CUSTOM_FONT_STAGING_STORAGE_PREFIX) &&
-        !liveStagingKeys.has(key)
-    )
+    const orphanStagingKeys = values
+      ? Object.keys(values).filter(
+          (key) =>
+            key.startsWith(CUSTOM_FONT_STAGING_STORAGE_PREFIX) &&
+            !liveStagingKeys.has(key)
+        )
+      : []
+    for (const key of expiredStagingKeys) orphanStagingKeys.push(key)
     if (orphanStagingKeys.length > 0) await removeLocalValues(orphanStagingKeys)
     if (changed) await writeJournal(journal)
+  }
+
+  async finalizePublished(families: CustomFontFamily[]): Promise<void> {
+    const journal = await readJournal()
+    const stagingKeys: string[] = []
+    let changed = false
+    for (const [transactionId, transaction] of Object.entries(journal)) {
+      if (!isPublishedTransaction(transaction, families)) continue
+      delete journal[transactionId]
+      changed = true
+      stagingKeys.push(
+        ...transaction.family.faces.map((face) =>
+          getStagingStorageKey(transactionId, face.id)
+        )
+      )
+    }
+    if (!changed) return
+    await writeJournal(journal)
+    if (stagingKeys.length > 0) {
+      await removeLocalValues(stagingKeys)
+    }
   }
 
   async begin(
     family: Omit<CustomFontFamily, "revision">,
     existingFamilies: CustomFontFamily[],
+    mode: CustomFontTransactionMode = "append",
     now = Date.now()
   ): Promise<{ transactionId: string; expiresAt: number }> {
+    await this.finalizePublished(existingFamilies)
     await this.collectGarbage(now)
     const journal = await readJournal()
-    validateTransactionReservations(family, existingFamilies, journal)
+    validateTransactionReservations(
+      family,
+      mode === "replace-library" ? [] : existingFamilies,
+      journal
+    )
     const id = crypto.randomUUID()
     const expiresAt = now + CUSTOM_FONT_TRANSACTION_TTL_MS
     journal[id] = {
@@ -321,7 +617,8 @@ export class CustomFontTransactionStore {
       createdAt: now,
       expiresAt,
       family,
-      receivedFaceIds: []
+      receivedFaceIds: [],
+      phase: "uploading"
     }
     await writeJournal(journal)
     return { transactionId: id, expiresAt }
@@ -337,7 +634,11 @@ export class CustomFontTransactionStore {
     }
     const journal = await readJournal()
     const transaction = journal[transactionId]
-    if (!transaction || transaction.expiresAt <= Date.now()) {
+    if (
+      !transaction ||
+      transaction.phase === "promoted" ||
+      transaction.expiresAt <= Date.now()
+    ) {
       throw new Error("custom-font-transaction-expired")
     }
     const face = transaction.family.faces.find((item) => item.id === faceId)
@@ -380,7 +681,19 @@ export class CustomFontTransactionStore {
   ): Promise<CustomFontFamily> {
     const journal = await readJournal()
     const transaction = journal[transactionId]
-    if (!transaction || transaction.expiresAt <= Date.now()) {
+    if (!transaction) {
+      throw new Error("custom-font-transaction-expired")
+    }
+    if (
+      transaction.phase === "promoted" &&
+      typeof transaction.committedRevision === "number"
+    ) {
+      return {
+        ...transaction.family,
+        revision: transaction.committedRevision
+      }
+    }
+    if (transaction.expiresAt <= Date.now()) {
       throw new Error("custom-font-transaction-expired")
     }
     validateFamilyQuota(transaction.family, existingFamilies)
@@ -413,26 +726,58 @@ export class CustomFontTransactionStore {
           (item) => item.value === transaction.family.value
         )?.revision ?? 0) + 1
     }
-    await setLocalValues(committedBlobs)
-    delete journal[transactionId]
-    await Promise.all([removeLocalValues(stagingKeys), writeJournal(journal)])
+    const promotedAt = Date.now()
+    transaction.phase = "promoted"
+    transaction.committedRevision = family.revision
+    transaction.promotedAt = promotedAt
+    transaction.expiresAt = Math.max(
+      transaction.expiresAt,
+      promotedAt + CUSTOM_FONT_PROMOTED_TRANSACTION_TTL_MS
+    )
+
+    // Persist the promoted blobs and their recovery journal in one storage
+    // operation. The journal is deliberately retained until the catalog write
+    // succeeds, so a service-worker restart cannot turn these blobs into
+    // collectible orphans in the commit window.
+    await setLocalValues({
+      ...committedBlobs,
+      [CUSTOM_FONT_TRANSACTION_JOURNAL_KEY]: journal
+    })
     return family
   }
 
-  async abort(transactionId: string): Promise<void> {
+  async finalize(transactionId: string): Promise<void> {
     const journal = await readJournal()
     const transaction = journal[transactionId]
     if (!transaction) return
+    if (transaction.phase !== "promoted") {
+      throw new Error("custom-font-transaction-not-promoted")
+    }
     delete journal[transactionId]
-    const stagingKeys = transaction.receivedFaceIds.map((faceId) =>
-      getStagingStorageKey(transactionId, faceId)
+    await writeJournal(journal)
+    await removeLocalValues(
+      transaction.family.faces.map((face) =>
+        getStagingStorageKey(transactionId, face.id)
+      )
     )
-    await Promise.all([
-      stagingKeys.length > 0
-        ? removeLocalValues(stagingKeys)
-        : Promise.resolve(),
-      writeJournal(journal)
-    ])
+  }
+
+  async abort(
+    transactionId: string
+  ): Promise<AbortedCustomFontTransaction | null> {
+    const journal = await readJournal()
+    const transaction = journal[transactionId]
+    if (!transaction) return null
+    delete journal[transactionId]
+    const stagingKeys = transaction.family.faces.map((face) =>
+      getStagingStorageKey(transactionId, face.id)
+    )
+    await writeJournal(journal)
+    if (stagingKeys.length > 0) await removeLocalValues(stagingKeys)
+    return {
+      family: transaction.family,
+      promoted: transaction.phase === "promoted"
+    }
   }
 }
 

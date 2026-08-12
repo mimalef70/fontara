@@ -60,11 +60,23 @@ test("runtime message contract validates UI requests", () => {
     isFontaraUIMessage({
       data: {
         clientMutationId: "mutation-font-begin",
-        family: {}
+        family: {},
+        mode: "replace-library"
       },
       type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
     }),
     true
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      data: {
+        clientMutationId: "mutation-font-begin",
+        family: {},
+        mode: "ignore-quotas"
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
+    }),
+    false
   )
   assert.equal(
     isFontaraUIMessage({
@@ -130,10 +142,19 @@ test("runtime message contract validates UI requests", () => {
 test("runtime message contract validates content lifecycle requests", () => {
   assert.equal(
     isFontaraContentScriptMessage({
+      pageURL: "https://example.com/path",
       scriptId: "script-1",
       type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
     }),
     true
+  )
+  assert.equal(
+    isFontaraContentScriptMessage({
+      pageURL: 42,
+      scriptId: "script-1",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    }),
+    false
   )
 
   assert.equal(

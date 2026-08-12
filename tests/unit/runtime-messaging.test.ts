@@ -52,6 +52,7 @@ test("background messenger routes UI requests and reports subscribed changes", a
     }
   }
   const changedSettings: unknown[] = []
+  const begunFontTransactions: unknown[] = []
 
   Reflect.set(globalThis, "chrome", {
     runtime: {
@@ -71,8 +72,9 @@ test("background messenger routes UI requests and reports subscribed changes", a
 
   initMessenger({
     async abortCustomFontTransaction() {},
-    async beginCustomFontTransaction() {
-      throw new Error("unused")
+    async beginCustomFontTransaction(family, mode) {
+      begunFontTransactions.push({ family, mode })
+      return { expiresAt: 1, transactionId: "replacement-transaction" }
     },
     async changeSettings(settings) {
       changedSettings.push(settings)
@@ -122,8 +124,52 @@ test("background messenger routes UI requests and reports subscribed changes", a
   listeners[0](
     {
       data: {
+        clientMutationId: "mutation-font-begin",
+        family: { value: "Imported-Fontara" },
+        mode: "replace-library"
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
+    },
+    allowedSender,
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.deepEqual(begunFontTransactions, [
+    {
+      family: { value: "Imported-Fontara" },
+      mode: "replace-library"
+    }
+  ])
+  assert.deepEqual(response, {
+    data: { expiresAt: 1, transactionId: "replacement-transaction" }
+  })
+
+  listeners[0](
+    {
+      data: {
         clientMutationId: "mutation-1",
         settings: { selectedFont: "Estedad-Fontara" }
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
+    },
+    allowedSender,
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.deepEqual(changedSettings, [{ selectedFont: "Estedad-Fontara" }])
+  assert.deepEqual(response, { data: { revision: 2 } })
+
+  listeners[0](
+    {
+      data: {
+        clientMutationId: "mutation-1",
+        settings: { selectedFont: "Must-Not-Run-Twice-Fontara" }
       },
       type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
     },

@@ -1013,6 +1013,51 @@ test("ensureStorageValues keeps failed metadata and its dormant selection", asyn
   assert.equal(Buffer.from(failedBlob.data ?? "", "base64").toString(), "font")
 })
 
+test("ensureStorageValues preserves a forward-version custom font catalog and its references", async () => {
+  const rawCatalog = [
+    {
+      value: "ForwardCustom-Fontara",
+      displayName: "Forward Custom",
+      sourceFamilyKey: "forward custom",
+      unicodeRange: null,
+      revision: 3,
+      faces: [
+        {
+          id: "forward-face",
+          fileHash: "a".repeat(64),
+          fileName: "forward.woff3",
+          format: "woff3",
+          byteLength: 123,
+          weight: { min: 400, max: 400 },
+          style: "normal",
+          stretch: { min: 100, max: 100 },
+          axes: [],
+          validation: "future-verified"
+        }
+      ],
+      futureMetadata: { version: 3 }
+    }
+  ]
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: rawCatalog,
+    [STORAGE_KEYS.SELECTED_FONT]: "ForwardCustom-Fontara",
+    [STORAGE_KEYS.SITE_PROFILES]: [
+      { font: "ForwardCustom-Fontara", pattern: "example.com" }
+    ],
+    [STORAGE_KEYS.SYNC_SETTINGS]: false,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  assert.deepEqual(values[STORAGE_KEYS.CUSTOM_FONT_LIST], rawCatalog)
+  assert.equal(values[STORAGE_KEYS.SELECTED_FONT], "ForwardCustom-Fontara")
+  assert.deepEqual(values[STORAGE_KEYS.SITE_PROFILES], [
+    { font: "ForwardCustom-Fontara", pattern: "example.com" }
+  ])
+})
+
 test("legacy migration quarantines undecodable font data without losing selection", async () => {
   const values: Record<string, unknown> = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
@@ -1049,6 +1094,37 @@ test("legacy migration quarantines undecodable font data without losing selectio
     Buffer.from(recoveryBlob.data, "base64").toString(),
     /not-a-data-url/
   )
+})
+
+test("legacy migration preserves nonlegacy entries it cannot understand", async () => {
+  const forwardEntry = {
+    value: "ForwardMixed-Fontara",
+    displayName: "Forward Mixed",
+    sourceFamilyKey: "forward mixed",
+    revision: 4,
+    faces: [{ format: "woff3", futureMetadata: true }]
+  }
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
+      {
+        value: "LegacyMixed-Fontara",
+        name: "Legacy Mixed",
+        data: `data:font/woff2;base64,${Buffer.from("wOF2font").toString("base64")}`,
+        type: "woff2"
+      },
+      forwardEntry
+    ],
+    [STORAGE_KEYS.SYNC_SETTINGS]: false,
+    [STORAGE_KEYS.WEBSITE_LIST]: DEFAULT_VALUES.WEBSITE_LIST
+  }
+  mockLocalStorage(values)
+
+  await ensureStorageValues()
+
+  const catalog = values[STORAGE_KEYS.CUSTOM_FONT_LIST] as unknown[]
+  assert.equal(catalog.length, 2)
+  assert.deepEqual(catalog[1], forwardEntry)
+  assert.equal((catalog[0] as { value: string }).value, "LegacyMixed-Fontara")
 })
 
 test("ensureStorageValues seeds empty sync storage without custom font files", async () => {

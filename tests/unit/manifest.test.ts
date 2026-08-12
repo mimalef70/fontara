@@ -21,6 +21,7 @@ type Manifest = {
     js: string[]
     matches?: string[]
     match_about_blank?: boolean
+    match_origin_as_fallback?: boolean
     run_at?: string
   }>
   default_locale?: string
@@ -51,6 +52,15 @@ test("manifest injects FontAra into all frames at document_start", () => {
   assert.equal(contentScript.run_at, "document_start")
   assert.equal(contentScript.all_frames, true)
   assert.equal(contentScript.match_about_blank, true)
+  assert.equal(contentScript.match_origin_as_fallback, true)
+})
+
+test("chromium manifest retains the existing browser support baseline", () => {
+  const chromeManifest = readJSON<{ minimum_chrome_version?: string }>(
+    "src/manifest-chrome-mv3.json"
+  )
+
+  assert.equal(chromeManifest.minimum_chrome_version, "106.0.0.0")
 })
 
 test("manifest grants storage capacity without tabs or activeTab", () => {

@@ -110,6 +110,29 @@ test("background settings manager writes only changed normalized values", async 
   assert.equal(nextSettings, cachedSettings)
 })
 
+test("explicit custom font reset overwrites an unrecognized raw catalog", async () => {
+  const storage = installChromeStorageMock({
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
+      {
+        value: "ForwardCustom-Fontara",
+        formatVersion: 99,
+        faces: [{ format: "woff3" }]
+      }
+    ]
+  })
+
+  const settings = await getBackgroundSettings()
+  assert.deepEqual(settings[STORAGE_KEYS.CUSTOM_FONT_LIST], [])
+
+  await writeBackgroundSettings({ [STORAGE_KEYS.CUSTOM_FONT_LIST]: [] })
+
+  assert.deepEqual(storage.localValues[STORAGE_KEYS.CUSTOM_FONT_LIST], [])
+  assert.deepEqual(
+    storage.getSetCalls()[0]?.[STORAGE_KEYS.CUSTOM_FONT_LIST],
+    []
+  )
+})
+
 test("background settings manager ignores echoed local writes", async () => {
   const storage = installChromeStorageMock({
     [STORAGE_KEYS.SELECTED_FONT]: "Estedad-Fontara"

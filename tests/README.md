@@ -87,10 +87,13 @@ The Chrome browser suite also includes viewport coverage for extension pages:
 mobile, tablet, desktop, and wide desktop.
 
 Licensed local font packages can be exercised without committing their binary
-files. Set `FONTARA_LOCAL_FONT_FAMILY_DIR` to a package whose root contains one
-complete family, then run `pnpm test:browser:local-font-family` or the matching
-Firefox script. `pnpm audit:font-family -- <directory>` additionally checks
-every supported file in nested format directories.
+files. Set `FONTARA_LOCAL_FONT_FAMILY_DIR` to a package whose root contains a
+`Regular`/`Bold` pair, then run `pnpm test:browser:local-font-family` or the
+matching Firefox script. The browser suite also validates the Regular/Bold
+selection found in each nested directory/format and confirms that the two
+upload slots cannot reuse one file.
+`pnpm audit:font-family -- <directory>` remains the lower-level metadata audit
+for every supported file.
 
 It also runs axe against popup and options in English, Persian, and Arabic at
 mobile and desktop sizes, plus browser-level keyboard navigation checks. The

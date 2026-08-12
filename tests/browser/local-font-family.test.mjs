@@ -10,6 +10,7 @@ import {
   STORAGE_KEYS,
   sendSettingsFromContentBridge,
   sendSettingsFromOptions,
+  setValueByTestId,
   uploadFilesByTestId,
   waitFor,
   waitForContentBridge,
@@ -19,9 +20,61 @@ import {
 } from "../support/browser/extension-harness.mjs"
 
 const SAMPLE_TEXT = "آزمایش خانواده فونت ایران یکان ۱۲۳۴۵"
-const EXPECTED_WEIGHTS = [100, 300, 400, 500, 700, 800, 900, 950]
+const EXPECTED_WEIGHTS = [400, 700]
 
-async function getLocalFontPaths(testContext) {
+async function waitForPreparedFontFile(page, slot, filePath) {
+  const expectedFileName = path.basename(filePath).normalize("NFKC")
+  const readySelector = `[data-testid="fontara-custom-font-${slot}-ready"]`
+  const inputSelector = `[data-testid="fontara-custom-font-${slot}-file"]`
+
+  await waitFor(
+    () =>
+      page
+        .$eval(
+          readySelector,
+          (element, expectedName) =>
+            (element.textContent ?? "").includes(expectedName),
+          expectedFileName
+        )
+        .catch(() => false),
+    {
+      message: `FontARA did not prepare ${expectedFileName}.`,
+      timeout: 30_000
+    }
+  )
+
+  await waitFor(
+    () =>
+      page.$eval(
+        inputSelector,
+        (element) => element instanceof HTMLInputElement && !element.disabled
+      ),
+    {
+      message: `FontARA did not finish validating ${expectedFileName}.`,
+      timeout: 30_000
+    }
+  )
+}
+
+function findRegularBoldPair(fontPaths) {
+  const regularPath = fontPaths.find((filePath) =>
+    path
+      .basename(filePath, path.extname(filePath))
+      .toLowerCase()
+      .includes("regular")
+  )
+  const boldPath = fontPaths.find((filePath) => {
+    const stem = path.basename(filePath, path.extname(filePath)).toLowerCase()
+    return (
+      stem.endsWith("bold") &&
+      !/(?:extra|ultra|semi|demi)[-_\s]*bold$/i.test(stem)
+    )
+  })
+
+  return regularPath && boldPath ? { regularPath, boldPath } : null
+}
+
+async function getLocalFontPair(testContext) {
   const directory = process.env.FONTARA_LOCAL_FONT_FAMILY_DIR
   if (!directory) {
     testContext.skip(
@@ -39,17 +92,19 @@ async function getLocalFontPaths(testContext) {
     .map((entry) => path.join(absoluteDirectory, entry.name))
     .sort()
   assert.ok(fontPaths.length > 0, "The local font directory has no font files.")
-  return fontPaths
+  const pair = findRegularBoldPair(fontPaths)
+  assert.ok(pair, "The local font directory needs Regular and Bold files.")
+  return pair
 }
 
-async function collectFontSelections(directory) {
+async function collectFontPairs(directory) {
   const entries = await fs.readdir(directory, { withFileTypes: true })
-  const nestedSelections = []
+  const nestedPairs = []
   const filesByExtension = new Map()
   for (const entry of entries) {
     const entryPath = path.join(directory, entry.name)
     if (entry.isDirectory()) {
-      nestedSelections.push(...(await collectFontSelections(entryPath)))
+      nestedPairs.push(...(await collectFontPairs(entryPath)))
       continue
     }
     if (!entry.isFile() || !/\.(?:otf|ttf|woff|woff2)$/i.test(entry.name)) {
@@ -61,13 +116,13 @@ async function collectFontSelections(directory) {
     filesByExtension.set(extension, files)
   }
 
-  return [
-    ...[...filesByExtension.values()].map((files) => files.sort()),
-    ...nestedSelections
-  ]
+  const localPairs = [...filesByExtension.values()]
+    .map((files) => findRegularBoldPair(files.sort()))
+    .filter(Boolean)
+  return [...localPairs, ...nestedPairs]
 }
 
-async function validateEveryLocalFontSelection(testContext, withHarness) {
+async function validateEveryLocalFontPair(testContext, withHarness) {
   const directory = process.env.FONTARA_LOCAL_FONT_FAMILY_DIR
   if (!directory) {
     testContext.skip(
@@ -75,32 +130,31 @@ async function validateEveryLocalFontSelection(testContext, withHarness) {
     )
     return
   }
-  const selections = await collectFontSelections(path.resolve(directory))
-  assert.ok(selections.length > 0)
+  const pairs = await collectFontPairs(path.resolve(directory))
+  assert.ok(pairs.length > 0)
 
   await withHarness(testContext, async (harness) => {
     const optionsPage = await harness.createExtensionPage(
       "ui/options/index.html"
     )
     await clickByTestId(optionsPage, "fontara-options-nav-fonts")
+    await setValueByTestId(
+      optionsPage,
+      "fontara-custom-font-name",
+      "Local package validation"
+    )
 
-    for (const fontPaths of selections) {
+    for (const { regularPath, boldPath } of pairs) {
       await uploadFilesByTestId(
         optionsPage,
-        "fontara-custom-font-file",
-        fontPaths
+        "fontara-custom-font-regular-file",
+        [regularPath]
       )
-      await waitFor(
-        () =>
-          optionsPage
-            .$eval(
-              '[data-testid="fontara-custom-font-add"]',
-              (element) =>
-                element instanceof HTMLButtonElement && element.disabled
-            )
-            .catch(() => false),
-        { message: "Font validation did not start." }
-      )
+      await waitForPreparedFontFile(optionsPage, "regular", regularPath)
+      await uploadFilesByTestId(optionsPage, "fontara-custom-font-bold-file", [
+        boldPath
+      ])
+      await waitForPreparedFontFile(optionsPage, "bold", boldPath)
       await waitFor(
         () =>
           optionsPage.$eval(
@@ -109,12 +163,9 @@ async function validateEveryLocalFontSelection(testContext, withHarness) {
               element instanceof HTMLButtonElement && !element.disabled
           ),
         {
-          message: `FontARA did not validate ${fontPaths.map((filePath) => path.basename(filePath)).join(", ")}.`,
+          message: `FontARA did not validate ${path.basename(regularPath)} and ${path.basename(boldPath)}.`,
           timeout: 30_000
         }
-      )
-      await optionsPage.waitForSelector(
-        '[data-testid="fontara-custom-font-selection-ready"]'
       )
       const feedbackCount = await optionsPage.$$eval(
         '[role="alert"]',
@@ -123,59 +174,31 @@ async function validateEveryLocalFontSelection(testContext, withHarness) {
       assert.equal(feedbackCount, 0)
     }
 
-    const absoluteDirectory = path.resolve(directory)
-    await uploadFilesByTestId(optionsPage, "fontara-custom-font-file", [
-      path.join(absoluteDirectory, "IRANYekanRegular.ttf"),
-      path.join(absoluteDirectory, "Farsi_numerals/IRANYekanRegularFaNum.ttf")
+    const duplicatePath = pairs[0].regularPath
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-regular-file", [
+      duplicatePath
     ])
-    const mixedFamilyFeedback = await waitFor(
+    await waitForPreparedFontFile(optionsPage, "regular", duplicatePath)
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-bold-file", [
+      duplicatePath
+    ])
+    const duplicateFeedback = await waitFor(
       () =>
         optionsPage
-          .$eval('[role="alert"]', (element) => element.textContent ?? "")
-          .then((text) =>
-            text.includes("IRANYekan") && text.includes("IRANYekanFN")
-              ? text
-              : false
-          ),
-      { message: "The mixed-family guidance was not shown." }
+          .$eval(
+            '[data-testid="fontara-custom-font-bold-error"]',
+            (element) => element.textContent ?? ""
+          )
+          .then((text) => (text.trim() ? text : false)),
+      { message: "The duplicate-file guidance was not shown." }
     )
-    assert.match(mixedFamilyFeedback, /IRANYekanFN/)
-
-    const duplicateFacePaths = [
-      path.join(
-        absoluteDirectory,
-        "WebFonts/fonts/ttf/iranyekanwebregular.ttf"
-      ),
-      path.join(
-        absoluteDirectory,
-        "WebFonts/fonts/woff/iranyekanwebregular.woff"
-      )
-    ]
-    await uploadFilesByTestId(
-      optionsPage,
-      "fontara-custom-font-file",
-      duplicateFacePaths
-    )
-    const duplicateFaceFeedback = await waitFor(
-      () =>
-        optionsPage
-          .$eval('[role="alert"]', (element) => element.textContent ?? "")
-          .then((text) =>
-            duplicateFacePaths.every((filePath) =>
-              text.includes(path.basename(filePath))
-            )
-              ? text
-              : false
-          ),
-      { message: "The duplicate-face guidance was not shown." }
-    )
-    assert.match(duplicateFaceFeedback, /iranyekanwebregular\.woff/)
+    assert.match(duplicateFeedback, /already|قبلاً|مسبقًا/i)
   })
 }
 
 async function verifyLocalFontFamily(testContext, withHarness) {
-  const fontPaths = await getLocalFontPaths(testContext)
-  if (!fontPaths) return
+  const pair = await getLocalFontPair(testContext)
+  if (!pair) return
 
   await withHarness(testContext, async (harness) => {
     const optionsPage = await harness.createExtensionPage(
@@ -194,19 +217,15 @@ async function verifyLocalFontFamily(testContext, withHarness) {
     })
 
     await clickByTestId(optionsPage, "fontara-options-nav-fonts")
-    await uploadFilesByTestId(
-      optionsPage,
-      "fontara-custom-font-file",
-      fontPaths
-    )
-    await optionsPage.waitForSelector(
-      '[data-testid="fontara-custom-font-selection-ready"]'
-    )
-    const detectedName = await optionsPage.$eval(
-      '[data-testid="fontara-custom-font-name"]',
-      (element) => element.value
-    )
-    assert.equal(detectedName, "IRANYekan")
+    await setValueByTestId(optionsPage, "fontara-custom-font-name", "IRANYekan")
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-regular-file", [
+      pair.regularPath
+    ])
+    await waitForPreparedFontFile(optionsPage, "regular", pair.regularPath)
+    await uploadFilesByTestId(optionsPage, "fontara-custom-font-bold-file", [
+      pair.boldPath
+    ])
+    await waitForPreparedFontFile(optionsPage, "bold", pair.boldPath)
     await clickByTestId(optionsPage, "fontara-custom-font-add")
 
     const family = await waitFor(
@@ -216,10 +235,10 @@ async function verifyLocalFontFamily(testContext, withHarness) {
         ])
         const families = values[STORAGE_KEYS.CUSTOM_FONT_LIST]
         const candidate = Array.isArray(families) ? families[0] : null
-        return candidate?.faces?.length === fontPaths.length ? candidate : false
+        return candidate?.faces?.length === 2 ? candidate : false
       },
       {
-        message: "The local multi-weight font family was not committed.",
+        message: "The local Regular/Bold font pair was not committed.",
         timeout: 30_000
       }
     )
@@ -300,19 +319,18 @@ async function verifyLocalFontFamily(testContext, withHarness) {
             EXPECTED_WEIGHTS,
             SAMPLE_TEXT
           )
-          return lastRuntimeState.checked &&
-            lastRuntimeState.faceCount === fontPaths.length
+          return lastRuntimeState.checked && lastRuntimeState.faceCount === 2
             ? lastRuntimeState
             : false
         },
         {
-          message: "The local multi-weight family did not load in the page.",
+          message: "The local Regular/Bold family did not load in the page.",
           timeout: 30_000
         }
       )
     } catch (error) {
       throw new Error(
-        `The local multi-weight family did not load. Last state: ${JSON.stringify(lastRuntimeState)}`,
+        `The local Regular/Bold family did not load. Last state: ${JSON.stringify(lastRuntimeState)}`,
         { cause: error }
       )
     }
@@ -322,15 +340,15 @@ async function verifyLocalFontFamily(testContext, withHarness) {
   })
 }
 
-test("Chrome imports and applies a local multi-weight font family", async (t) => {
+test("Chrome imports and applies a local Regular/Bold font pair", async (t) => {
   await verifyLocalFontFamily(t, withChromeMv3ExtensionHarness)
 })
 
-test("Chrome validates every local font package selection", async (t) => {
-  await validateEveryLocalFontSelection(t, withChromeMv3ExtensionHarness)
+test("Chrome validates every local Regular/Bold package pair", async (t) => {
+  await validateEveryLocalFontPair(t, withChromeMv3ExtensionHarness)
 })
 
-test("Firefox imports and applies a local multi-weight font family", async (t) => {
+test("Firefox imports and applies a local Regular/Bold font pair", async (t) => {
   if (process.env.FONTARA_FIREFOX_BROWSER_TESTS !== "1") {
     t.skip("Set FONTARA_FIREFOX_BROWSER_TESTS=1 to run Firefox.")
     return
@@ -338,10 +356,10 @@ test("Firefox imports and applies a local multi-weight font family", async (t) =
   await verifyLocalFontFamily(t, withFirefoxMv3ExtensionHarness)
 })
 
-test("Firefox validates every local font package selection", async (t) => {
+test("Firefox validates every local Regular/Bold package pair", async (t) => {
   if (process.env.FONTARA_FIREFOX_BROWSER_TESTS !== "1") {
     t.skip("Set FONTARA_FIREFOX_BROWSER_TESTS=1 to run Firefox.")
     return
   }
-  await validateEveryLocalFontSelection(t, withFirefoxMv3ExtensionHarness)
+  await validateEveryLocalFontPair(t, withFirefoxMv3ExtensionHarness)
 })

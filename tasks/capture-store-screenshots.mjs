@@ -35,7 +35,15 @@ async function captureOptionsSection(page, section, fileName) {
   if (section === "sites" && fileName.includes("site-profiles")) {
     await clickByTestId(page, "fontara-sites-tab-profiles")
   }
-  await page.evaluate(() => window.scrollTo({ behavior: "instant", top: 0 }))
+  if (section === "fonts") {
+    await page.$eval(
+      '[data-testid="fontara-custom-font-form"]',
+      (element) =>
+        element.scrollIntoView({ behavior: "instant", block: "center" })
+    )
+  } else {
+    await page.evaluate(() => window.scrollTo({ behavior: "instant", top: 0 }))
+  }
   await waitForOptionsReady(page)
   await page.bringToFront()
   await new Promise((resolve) => setTimeout(resolve, 250))
@@ -47,10 +55,19 @@ async function captureOptionsSection(page, section, fileName) {
 
 async function seedCustomFontFamily(page) {
   await clickByTestId(page, "fontara-options-nav-fonts")
-  await uploadFilesByTestId(page, "fontara-custom-font-file", [
-    path.join(ROOT_DIR, "assets/fonts/shabnam/Shabnam.woff2"),
+  await setValueByTestId(page, "fontara-custom-font-name", "خانوادهٔ شبنم")
+  await uploadFilesByTestId(page, "fontara-custom-font-regular-file", [
+    path.join(ROOT_DIR, "assets/fonts/shabnam/Shabnam.woff2")
+  ])
+  await page.waitForSelector(
+    '[data-testid="fontara-custom-font-regular-ready"]'
+  )
+  await uploadFilesByTestId(page, "fontara-custom-font-bold-file", [
     path.join(ROOT_DIR, "assets/fonts/shabnam/Shabnam-Bold.woff2")
   ])
+  await page.waitForSelector(
+    '[data-testid="fontara-custom-font-bold-ready"]'
+  )
   await waitFor(
     () =>
       page.$eval(
@@ -59,7 +76,6 @@ async function seedCustomFontFamily(page) {
       ),
     { message: "The screenshot custom-font family was not validated." }
   )
-  await setValueByTestId(page, "fontara-custom-font-name", "خانوادهٔ شبنم")
   await clickByTestId(page, "fontara-custom-font-add")
   await waitFor(
     () =>
@@ -221,17 +237,16 @@ await withChromeProductionExtensionHarness(
     await optionsPage.reload({ waitUntil: "load" })
     await waitForOptionsReady(optionsPage)
     await seedCustomFontFamily(optionsPage)
-
-    await captureOptionsSection(
-      optionsPage,
-      "fonts",
-      "fontara-5.1-custom-fonts.png"
-    )
     await optionsPage
       .$eval("[toast-close]", (element) => {
         if (element instanceof HTMLButtonElement) element.click()
       })
       .catch(() => {})
+    await captureOptionsSection(
+      optionsPage,
+      "fonts",
+      "fontara-5.1-custom-fonts.png"
+    )
     await captureOptionsSection(
       optionsPage,
       "general",

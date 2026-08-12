@@ -14,13 +14,15 @@ This project follows a practical release-note format:
 
 ## 5.1.0
 
-- Rebuilt custom fonts around multi-face families with Regular, Bold, Italic,
-  Oblique, and variable-axis metadata. Font files now remain as content-addressed
-  local blobs and are loaded with `FontFace(ArrayBuffer)` instead of exposing
-  base64 data in the page DOM.
-- Added transactional multi-file imports, native font validation, strict
+- Rebuilt custom-font storage around multi-face family metadata while making
+  the user flow intentionally small: enter a display name, add a required
+  Regular file, and optionally add Bold. A Variable Regular file that covers
+  weights 400 and 700 replaces both slots. Font files remain as content-addressed
+  local blobs and load with `FontFace(ArrayBuffer)` instead of exposing base64
+  data in the page DOM.
+- Added transactional family imports, native font validation, strict
   per-face/family/library quotas, resumable legacy migration, orphan cleanup,
-  backup format v2, and WOFF/WOFF2/TTF/OTF metadata extraction in an isolated
+  backup format v3, and WOFF/WOFF2/TTF/OTF metadata extraction in an isolated
   worker.
 - Fixed Chromium System Fonts detection and retry states. The feature remains
   opt-in, preserves dormant global/per-site choices when disabled, and is
@@ -55,8 +57,9 @@ Migration notes:
 
 Known limitations:
 
-- Variable fonts that combine upright and italic through the `ital` axis show a
-  compatibility warning and are not synthesized into two faces in this release.
+- The simple uploader accepts upright Regular/Bold faces only. Italic, Oblique,
+  and Variable fonts that combine upright and italic through the `ital` axis
+  are rejected with explicit guidance rather than guessed or synthesized.
 - TTC and OTC collections are not accepted yet.
 - Site captures with high-churn generated selectors remain exact to their
   source JSON; semantic rewrites require a separate, site-specific review.

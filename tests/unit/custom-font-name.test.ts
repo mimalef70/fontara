@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  isCustomFontDisplayNameValid,
   normalizeCustomFontFamilyKey,
   normalizeCustomFontFileName,
   normalizeCustomFontText
@@ -55,4 +56,11 @@ test("stored custom font metadata is sanitized at the background boundary", () =
   assert.equal(family?.displayName, "فونت امن")
   assert.equal(family?.sourceFamilyKey, "safe family")
   assert.equal(family?.faces[0].fileName, "font.woff2")
+})
+
+test("custom font display names must contain something visible", () => {
+  assert.equal(isCustomFontDisplayNameValid("\u200c\u200d ◌́"), true)
+  assert.equal(isCustomFontDisplayNameValid("\u200c\u200d\u0301"), false)
+  assert.equal(isCustomFontDisplayNameValid("😀"), true)
+  assert.equal(isCustomFontDisplayNameValid("فونت\u200cمن"), true)
 })

@@ -22,7 +22,8 @@ afterEach(() => {
 
 type MessageListener = (
   message: unknown,
-  sender: chrome.runtime.MessageSender
+  sender: chrome.runtime.MessageSender,
+  sendResponse?: (response?: unknown) => void
 ) => boolean
 
 function createChromeMock(
@@ -190,6 +191,200 @@ test("tab manager derives frame identity and URL only from MessageSender", () =>
     }
   )
   assert.equal(getTrackedDocumentCountForTesting(), 1)
+})
+
+test("tab manager resolves inherited blank-frame URLs from the browser-provided origin", () => {
+  const runtime = createChromeMock()
+  const documents: FontaraTrackedDocument[] = []
+  initTabManager({
+    createDocumentMessage(document) {
+      documents.push({ ...document })
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
+    }
+  })
+
+  runtime.messageListeners[0]?.(
+    {
+      pageURL:
+        "https://FRAME.example/projects/private?token=discarded#fragment",
+      scriptId: "blank-frame-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "blank-frame-document",
+      frameId: 4,
+      origin: "https://FRAME.example/?secret=discarded#fragment",
+      tab: { id: 44, url: "https://top.example/private" } as chrome.tabs.Tab,
+      url: "about:blank"
+    }
+  )
+
+  assert.deepEqual(documents, [
+    {
+      documentId: "blank-frame-document",
+      frameId: 4,
+      isTopFrame: false,
+      scriptId: "blank-frame-script",
+      url: "https://frame.example/projects/private"
+    }
+  ])
+  assert.equal(getTrackedDocumentCountForTesting(), 1)
+})
+
+test("tab manager rejects a hostile related-frame page path from another origin", () => {
+  const runtime = createChromeMock()
+  const documents: FontaraTrackedDocument[] = []
+  initTabManager({
+    createDocumentMessage(document) {
+      documents.push({ ...document })
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
+    }
+  })
+
+  runtime.messageListeners[0]?.(
+    {
+      pageURL: "https://attacker.invalid/borrowed-path",
+      scriptId: "related-frame-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "related-frame-document",
+      frameId: 5,
+      origin: "https://trusted.example",
+      tab: { id: 44 } as chrome.tabs.Tab,
+      url: "about:srcdoc"
+    }
+  )
+
+  assert.equal(documents[0]?.url, "https://trusted.example/")
+})
+
+test("tab manager reuses a URL only for the exact tracked document", () => {
+  const runtime = createChromeMock()
+  const documents: FontaraTrackedDocument[] = []
+  initTabManager({
+    createDocumentMessage(document) {
+      documents.push({ ...document })
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
+    }
+  })
+
+  const trackedSender = {
+    documentId: "srcdoc-document",
+    frameId: 6,
+    tab: { id: 45, url: "https://top.example/" } as chrome.tabs.Tab,
+    url: "https://frame.example/private?secret=discarded"
+  }
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "srcdoc-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    trackedSender
+  )
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "srcdoc-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE
+    },
+    {
+      ...trackedSender,
+      url: "about:srcdoc"
+    }
+  )
+
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "replacement-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      ...trackedSender,
+      documentId: "replacement-document",
+      url: "about:srcdoc"
+    }
+  )
+
+  assert.deepEqual(
+    documents.map(({ scriptId, url }) => ({ scriptId, url })),
+    [
+      {
+        scriptId: "srcdoc-script",
+        url: "https://frame.example/private"
+      },
+      {
+        scriptId: "srcdoc-script",
+        url: "https://frame.example/private"
+      }
+    ]
+  )
+  assert.equal(getTrackedDocumentCountForTesting(), 1)
+})
+
+test("tab manager never borrows the top-tab URL for an opaque child frame", () => {
+  const runtime = createChromeMock()
+  const documents: FontaraTrackedDocument[] = []
+  initTabManager({
+    createDocumentMessage(document) {
+      documents.push(document)
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
+    }
+  })
+
+  runtime.messageListeners[0]?.(
+    {
+      pageURL: "https://attacker.invalid/borrowed-path",
+      scriptId: "opaque-child-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "opaque-child-document",
+      frameId: 8,
+      origin: "null",
+      tab: { id: 46, url: "https://top.example/private" } as chrome.tabs.Tab,
+      url: "about:blank"
+    }
+  )
+
+  assert.deepEqual(documents, [])
+  assert.equal(getTrackedDocumentCountForTesting(), 0)
+})
+
+test("tab manager can use the trusted tab URL for a top-level sender only", () => {
+  const runtime = createChromeMock()
+  const documents: FontaraTrackedDocument[] = []
+  initTabManager({
+    createDocumentMessage(document) {
+      documents.push({ ...document })
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
+    }
+  })
+
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "top-fallback-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "top-fallback-document",
+      frameId: 0,
+      tab: {
+        id: 47,
+        url: "https://TOP.example/path?secret=discarded"
+      } as chrome.tabs.Tab,
+      url: "about:blank"
+    }
+  )
+
+  assert.deepEqual(documents, [
+    {
+      documentId: "top-fallback-document",
+      frameId: 0,
+      isTopFrame: true,
+      scriptId: "top-fallback-script",
+      url: "https://top.example/path"
+    }
+  ])
 })
 
 test("tab manager keeps bookkeeping in memory and removes closed documents", () => {
@@ -385,4 +580,168 @@ test("tab manager tolerates unavailable storage and tabs APIs", async () => {
   await assert.doesNotReject(notifyContentScriptsAboutSettingsChange())
   assert.deepEqual(runtime.removedStorageKeys, [])
   assert.deepEqual(runtime.sentMessages, [])
+})
+
+test("tab manager drops a slow stale resolution and orders the newest command", async () => {
+  const runtime = createChromeMock()
+  const resolutions: Array<
+    (value: {
+      message: { type: typeof MESSAGE_TYPES_BG_TO_CS.CLEAN_UP }
+      settingsRevision: number
+    }) => void
+  > = []
+  initTabManager({
+    createDocumentMessage() {
+      return new Promise((resolve) => resolutions.push(resolve))
+    }
+  })
+
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "ordered-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "ordered-document",
+      frameId: 0,
+      tab: { id: 91 } as chrome.tabs.Tab,
+      url: "https://example.com/"
+    }
+  )
+  const update = notifyContentScriptsAboutSettingsChange()
+  assert.equal(resolutions.length, 2)
+
+  resolutions[1]?.({
+    message: { type: MESSAGE_TYPES_BG_TO_CS.CLEAN_UP },
+    settingsRevision: 12
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  resolutions[0]?.({
+    message: { type: MESSAGE_TYPES_BG_TO_CS.CLEAN_UP },
+    settingsRevision: 11
+  })
+  await update
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  assert.equal(runtime.sentMessages.length, 1)
+  assert.deepEqual(runtime.sentMessages[0]?.message, {
+    commandOrder: {
+      dispatcherId: (
+        runtime.sentMessages[0]?.message as {
+          commandOrder: { dispatcherId: string }
+        }
+      ).commandOrder.dispatcherId,
+      sequence: 1,
+      settingsRevision: 12
+    },
+    scriptId: "ordered-script",
+    type: MESSAGE_TYPES_BG_TO_CS.CLEAN_UP
+  })
+  assert.match(
+    (
+      runtime.sentMessages[0]?.message as {
+        commandOrder: { dispatcherId: string }
+      }
+    ).commandOrder.dispatcherId,
+    /\S+/
+  )
+})
+
+test("document lifecycle messages keep the worker event alive through async resolution", async () => {
+  const runtime = createChromeMock()
+  let resolveTheme: (() => void) | undefined
+  initTabManager({
+    async createDocumentMessage() {
+      await new Promise<void>((resolve) => {
+        resolveTheme = resolve
+      })
+      return { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED }
+    }
+  })
+  let responseCount = 0
+
+  const keepsEventAlive = runtime.messageListeners[0]?.(
+    {
+      scriptId: "worker-lifetime-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "worker-lifetime-document",
+      frameId: 0,
+      tab: { id: 95 } as chrome.tabs.Tab,
+      url: "https://example.com/"
+    },
+    () => {
+      responseCount += 1
+    }
+  )
+
+  assert.equal(keepsEventAlive, true)
+  assert.equal(responseCount, 0)
+  assert.equal(runtime.sentMessages.length, 0)
+
+  resolveTheme?.()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  assert.equal(responseCount, 1)
+  assert.equal(runtime.sentMessages.length, 1)
+})
+
+test("tab manager serializes deliveries and preserves per-document sequence", async () => {
+  const runtime = createChromeMock([], { deferSendCallbacks: true })
+  let settingsRevision = 20
+  initTabManager({
+    createDocumentMessage() {
+      return {
+        message: { type: MESSAGE_TYPES_BG_TO_CS.CLEAN_UP },
+        settingsRevision: settingsRevision++
+      }
+    }
+  })
+
+  const sender = {
+    documentId: "serial-document",
+    frameId: 0,
+    tab: { id: 92 } as chrome.tabs.Tab,
+    url: "https://example.com/"
+  }
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "serial-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    sender
+  )
+  runtime.messageListeners[0]?.(
+    {
+      scriptId: "serial-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE
+    },
+    sender
+  )
+
+  assert.equal(runtime.sentMessages.length, 1)
+  runtime.flushSendCallbacks()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(runtime.sentMessages.length, 2)
+
+  const orders = runtime.sentMessages.map(
+    ({ message }) =>
+      (
+        message as {
+          commandOrder: { sequence: number; settingsRevision: number }
+        }
+      ).commandOrder
+  )
+  assert.deepEqual(
+    orders.map(({ sequence, settingsRevision: revision }) => ({
+      revision,
+      sequence
+    })),
+    [
+      { revision: 20, sequence: 1 },
+      { revision: 21, sequence: 2 }
+    ]
+  )
+  runtime.flushSendCallbacks()
 })

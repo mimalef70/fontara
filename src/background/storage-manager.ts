@@ -68,11 +68,42 @@ function logSyncError(message: string, error: unknown): void {
   }
 }
 
+function preserveRawCustomFontCatalog(
+  currentValues: Record<string, unknown>,
+  nextValues: Record<string, unknown>
+): Record<string, unknown> {
+  const rawCatalog = currentValues[STORAGE_KEYS.CUSTOM_FONT_LIST]
+  if (rawCatalog === undefined) return nextValues
+  if (valuesAreEqual(rawCatalog, nextValues[STORAGE_KEYS.CUSTOM_FONT_LIST])) {
+    return nextValues
+  }
+
+  // Custom fonts are local-only and may contain forward-version or recoverable
+  // metadata that the current normalizer cannot safely interpret. Automatic
+  // startup/sync repair must not rewrite that source catalog with a lossy
+  // normalized view. Keep dependent selections too, so a newer version can
+  // restore the complete relationship. Explicit font mutations still replace
+  // these values through the background settings manager.
+  const preservedValues: Record<string, unknown> = {
+    ...nextValues,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: rawCatalog
+  }
+  for (const key of [STORAGE_KEYS.SELECTED_FONT, STORAGE_KEYS.SITE_PROFILES]) {
+    if (currentValues[key] !== undefined) {
+      preservedValues[key] = currentValues[key]
+    }
+  }
+  return preservedValues
+}
+
 async function setLocalValuesIfChanged(
   currentValues: Record<string, unknown>,
   nextValues: Record<string, unknown>
 ): Promise<void> {
-  const changedValues = pickChangedValues(currentValues, nextValues)
+  const changedValues = pickChangedValues(
+    currentValues,
+    preserveRawCustomFontCatalog(currentValues, nextValues)
+  )
   if (Object.keys(changedValues).length === 0) {
     return
   }

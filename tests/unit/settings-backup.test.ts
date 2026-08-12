@@ -31,7 +31,7 @@ test("settings backup exports a versioned allowlisted JSON envelope", () => {
 
   assert.equal(backup.app, "FontAra")
   assert.equal(backup.format, FONTARA_SETTINGS_EXPORT_FORMAT)
-  assert.equal(backup.version, 2)
+  assert.equal(backup.version, 3)
   assert.deepEqual(backup.customFontFaces, {})
   assert.equal(backup.exportedAt, "2026-06-08T10:00:00.000Z")
   assert.equal(backup.extensionVersion, "5.0.0")
@@ -59,9 +59,9 @@ test("settings backup parser accepts FontAra envelopes and rejects invalid files
     })
   )
 
-  assert.equal(parsed.version, 2)
+  assert.equal(parsed.version, 3)
   assert.equal(parsed.settings[STORAGE_KEYS.SELECTED_FONT], "Vazirmatn-Fontara")
-  assert.equal(legacyParsed.version, 2)
+  assert.equal(legacyParsed.version, 3)
   assert.equal(
     legacyParsed.settings[STORAGE_KEYS.SELECTED_FONT],
     "Vazirmatn-Fontara"
@@ -221,6 +221,36 @@ test("settings backup import supports legacy raw storage snapshots", async () =>
   assert.equal(normalized.settings[STORAGE_KEYS.TEXT_STROKE], 0.3)
 })
 
+test("settings backup preparation distinguishes missing, empty, and malformed custom font catalogs", async () => {
+  const missingCatalog = await prepareSettingsBackupImport(
+    parseSettingsBackupText(
+      JSON.stringify({ [STORAGE_KEYS.EXTENSION_ENABLED]: false })
+    )
+  )
+  const emptyCatalog = await prepareSettingsBackupImport(
+    parseSettingsBackupText(
+      JSON.stringify({ [STORAGE_KEYS.CUSTOM_FONT_LIST]: [] })
+    )
+  )
+
+  assert.equal(
+    Object.getOwnPropertyDescriptor(
+      missingCatalog.settings,
+      STORAGE_KEYS.CUSTOM_FONT_LIST
+    ),
+    undefined
+  )
+  assert.deepEqual(emptyCatalog.settings[STORAGE_KEYS.CUSTOM_FONT_LIST], [])
+  await assert.rejects(
+    prepareSettingsBackupImport(
+      parseSettingsBackupText(
+        JSON.stringify({ [STORAGE_KEYS.CUSTOM_FONT_LIST]: null })
+      )
+    ),
+    /invalid-custom-font-backup/
+  )
+})
+
 test("settings backup v1 custom fonts migrate to metadata and separate face data", async () => {
   const legacyBytes = Buffer.from("wOF2legacy-backup-font")
   const parsed = parseSettingsBackupText(
@@ -261,11 +291,15 @@ test("settings backup v1 custom fonts migrate to metadata and separate face data
   )
 })
 
-test("settings backup v2 keeps metadata separate from its face map", async () => {
+test("settings backup v2 remains compatible with face-id keyed blobs", async () => {
   const bytes = Buffer.from("wOF2version-two-font")
   const fileHash = createHash("sha256").update(bytes).digest("hex")
-  const backup = createSettingsBackup(
-    {
+  const backup = {
+    app: "FontAra",
+    format: FONTARA_SETTINGS_EXPORT_FORMAT,
+    version: 2,
+    exportedAt: "2026-08-12T00:00:00.000Z",
+    settings: {
       ...DEFAULT_VALUES,
       [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
         {
@@ -291,8 +325,8 @@ test("settings backup v2 keeps metadata separate from its face map", async () =>
         }
       ]
     },
-    { customFontFaces: { "version-two-face": bytes.toString("base64") } }
-  )
+    customFontFaces: { "version-two-face": bytes.toString("base64") }
+  }
   const prepared = await prepareSettingsBackupImport(
     parseSettingsBackupText(JSON.stringify(backup))
   )
@@ -305,6 +339,66 @@ test("settings backup v2 keeps metadata separate from its face map", async () =>
   assert.equal(
     prepared.customFontFamilies[0].faceData["version-two-face"],
     bytes.toString("base64")
+  )
+})
+
+test("settings backup v3 deduplicates hash blobs and supports duplicate face ids across families", async () => {
+  const sharedBytes = Buffer.from("wOF2shared-version-three-font")
+  const uniqueBytes = Buffer.from("wOF2unique-version-three-font")
+  const sharedHash = createHash("sha256").update(sharedBytes).digest("hex")
+  const uniqueHash = createHash("sha256").update(uniqueBytes).digest("hex")
+  const createFace = (fileHash: string, byteLength: number) => ({
+    id: "shared-face-id",
+    fileHash,
+    fileName: `${fileHash.slice(0, 8)}.woff2`,
+    format: "woff2" as const,
+    byteLength,
+    weight: { min: 400, max: 400 },
+    style: "normal" as const,
+    stretch: { min: 100, max: 100 },
+    axes: [],
+    validation: "verified" as const
+  })
+  const settings = {
+    ...DEFAULT_VALUES,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [
+      {
+        value: "VersionThreeFirst-Fontara",
+        displayName: "Version Three First",
+        sourceFamilyKey: "version three first",
+        unicodeRange: null,
+        revision: 1,
+        faces: [createFace(sharedHash, sharedBytes.byteLength)]
+      },
+      {
+        value: "VersionThreeSecond-Fontara",
+        displayName: "Version Three Second",
+        sourceFamilyKey: "version three second",
+        unicodeRange: null,
+        revision: 1,
+        faces: [createFace(uniqueHash, uniqueBytes.byteLength)]
+      }
+    ]
+  }
+  const backup = createSettingsBackup(settings, {
+    customFontFaces: {
+      [sharedHash]: sharedBytes.toString("base64"),
+      [uniqueHash]: uniqueBytes.toString("base64")
+    }
+  })
+  const prepared = await prepareSettingsBackupImport(
+    parseSettingsBackupText(JSON.stringify(backup))
+  )
+
+  assert.equal(backup.version, 3)
+  assert.equal(prepared.customFontFamilies.length, 2)
+  assert.equal(
+    prepared.customFontFamilies[0].faceData["shared-face-id"],
+    sharedBytes.toString("base64")
+  )
+  assert.equal(
+    prepared.customFontFamilies[1].faceData["shared-face-id"],
+    uniqueBytes.toString("base64")
   )
 })
 

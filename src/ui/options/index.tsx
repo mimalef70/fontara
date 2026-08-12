@@ -33,13 +33,11 @@ import { createRoot } from "react-dom/client"
 
 import { version } from "../../../package.json"
 import {
-  CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE,
   CUSTOM_FONT_UNICODE_RANGE_PRESETS,
   type CustomFontUnicodeRangePresetId,
   DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET,
   getCustomFontUnicodeRangePreset,
-  normalizeCustomFontUnicodeRange,
-  parseCustomFontUnicodeRangeInput
+  normalizeCustomFontUnicodeRange
 } from "../../config/font-unicode-range"
 import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
 import {
@@ -104,15 +102,17 @@ import {
   normalizeCustomFontFormat
 } from "../../utils/custom-font-format"
 import {
+  CUSTOM_FONT_NAME_MAX_LENGTH,
+  isCustomFontDisplayNameValid,
+  normalizeCustomFontFamilyKey,
   normalizeCustomFontFileName,
   normalizeCustomFontText
 } from "../../utils/custom-font-name"
 import {
   createCustomFontFaceBackupMap,
-  MAX_CUSTOM_FONT_BATCH_FILES,
-  MAX_CUSTOM_FONT_FAMILY_SIZE_BYTES,
   MAX_CUSTOM_FONT_FILE_SIZE_BYTES,
-  MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES
+  MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES,
+  readCustomFontFaceBytes
 } from "../../utils/custom-font-storage"
 import {
   getFontFileExtension,
@@ -251,6 +251,13 @@ import {
   extractCustomFontMetadata,
   validateCustomFontWithNativeFontFace
 } from "./custom-font-metadata-client"
+import {
+  type CustomFontMutationErrorKind,
+  classifyCustomFontMutationError,
+  getCustomFontLibraryByteLength,
+  resolveSimpleCustomFontSlot,
+  type SimpleCustomFontSlot
+} from "./custom-font-upload"
 
 type SettingsSection =
   | "general"
@@ -400,35 +407,199 @@ type SiteProfileTargetOption = {
 
 type CustomFontUnicodeRangeSelectValue =
   | CustomFontUnicodeRangePresetId
-  | typeof CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
+  | "custom"
+
+type SimpleCustomFontUnicodeRangePreset = Extract<
+  CustomFontUnicodeRangePresetId,
+  "all" | "arabic-persian" | "latin-arabic"
+>
+
+type CustomFontHealthState = {
+  signature: string
+  status: "checking" | "error" | "ready"
+}
+
+const SIMPLE_CUSTOM_FONT_UNICODE_RANGE_PRESETS = [
+  "arabic-persian",
+  "latin-arabic",
+  "all"
+] as const satisfies readonly SimpleCustomFontUnicodeRangePreset[]
+
+function getCustomFontHealthSignature(font: CustomFontFamily): string {
+  return `${font.revision}:${font.faces
+    .map((face) => `${face.id}:${face.fileHash}`)
+    .join("|")}`
+}
 
 type PreparedCustomFontFile = {
   bytes: ArrayBuffer
+  coversBold: boolean
   face: CustomFontFaceMeta
-  familyGroupName: string
-  hasCombinedItalAxis: boolean
-  sourceFamilyKey: string
+  isVariable: boolean
+  slot: SimpleCustomFontSlot
 }
 
 type CustomFontSelectionFeedback = {
+  slot: SimpleCustomFontSlot
   title: string
 }
 
-class CustomFontSelectionError extends Error {
-  constructor(title: string) {
-    super(title)
-    this.name = "CustomFontSelectionError"
+class UserFacingCustomFontError extends Error {}
+
+const CUSTOM_FONT_UPLOAD_ERROR_KEYS = {
+  "duplicate-name": "options.toast.duplicateFontName",
+  "family-limit": "options.toast.customFontFamilyLimit",
+  "family-size-limit": "options.toast.customFontFamilyTooLarge",
+  "invalid-data": "options.toast.fontProcessingError",
+  "library-limit": "options.toast.customFontLibraryFull",
+  retryable: "options.toast.customFontUploadRetry",
+  "storage-unavailable": "options.toast.customFontStorageUnavailable",
+  unknown: "options.toast.customFontUploadError"
+} as const satisfies Record<CustomFontMutationErrorKind, MessageKey>
+
+function getSettingsImportErrorDescriptionKey(error: unknown): MessageKey {
+  const kind = classifyCustomFontMutationError(error)
+  if (kind === "family-limit") {
+    return "options.toast.settingsImportTooManyFonts"
   }
+  if (kind === "family-size-limit") {
+    return "options.toast.settingsImportFontFamilyTooLarge"
+  }
+  if (kind === "library-limit") {
+    return "options.toast.settingsImportFontLibraryTooLarge"
+  }
+  if (kind === "retryable") {
+    return "options.toast.settingsImportRetry"
+  }
+  if (kind === "storage-unavailable") {
+    return "options.toast.settingsImportStorageUnavailable"
+  }
+  if (kind === "duplicate-name" || kind === "invalid-data") {
+    return "options.toast.settingsImportInvalid"
+  }
+  return "options.toast.settingsImportUnknown"
 }
 
-function getCustomFontFaceSlot(face: CustomFontFaceMeta): string {
-  return [
-    face.style,
-    face.weight.min,
-    face.weight.max,
-    face.stretch.min,
-    face.stretch.max
-  ].join(":")
+function CustomFontUploadSlot({
+  badge,
+  description,
+  disabled,
+  inputRef,
+  label,
+  onChange,
+  onClear,
+  preparedFont,
+  readySummary,
+  removeLabel,
+  selectLabel,
+  slot
+}: {
+  badge: string
+  description: string
+  disabled: boolean
+  inputRef: React.RefObject<HTMLInputElement | null>
+  label: string
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onClear: () => void
+  preparedFont: PreparedCustomFontFile | null
+  readySummary: string
+  removeLabel: string
+  selectLabel: string
+  slot: SimpleCustomFontSlot
+}) {
+  const inputId = `custom-font-${slot}-file`
+
+  return (
+    <div
+      data-testid={`fontara-custom-font-${slot}-slot`}
+      aria-disabled={disabled}
+      className={cn(
+        "group flex min-h-32 flex-col rounded-2xl border p-3.5 text-start transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20",
+        preparedFont
+          ? "border-emerald-200 bg-emerald-50/70 shadow-sm"
+          : "border-dashed border-blue-200 bg-gradient-to-b from-blue-50/80 to-white hover:border-blue-400 hover:bg-blue-50",
+        disabled && "cursor-not-allowed opacity-60"
+      )}>
+      <div className="flex items-start gap-2">
+        <label
+          htmlFor={inputId}
+          className={cn(
+            "min-w-0 flex-1 cursor-pointer",
+            disabled && "cursor-not-allowed"
+          )}>
+          <span className="min-w-0">
+            <strong className="flex items-center gap-1.5 text-sm font-extrabold text-slate-900">
+              {preparedFont && (
+                <Check
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0 text-emerald-700"
+                />
+              )}
+              {label}
+            </strong>
+            <span className="mt-1 block text-xs leading-5 text-slate-500">
+              {description}
+            </span>
+          </span>
+        </label>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="rounded-full bg-white px-2 py-0.5 text-[0.6875rem] font-bold text-slate-600 ring-1 ring-inset ring-slate-200">
+            {badge}
+          </span>
+          {preparedFont && (
+            <button
+              type="button"
+              data-testid={`fontara-custom-font-${slot}-remove`}
+              onClick={onClear}
+              aria-label={removeLabel}
+              disabled={disabled}
+              className="flex size-7 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-inset ring-slate-200 transition hover:bg-red-50 hover:text-red-700 hover:ring-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+              <span aria-hidden="true" className="text-lg leading-none">
+                ×
+              </span>
+            </button>
+          )}
+        </span>
+      </div>
+
+      <label
+        htmlFor={inputId}
+        className={cn(
+          "mt-auto block cursor-pointer pt-3",
+          disabled && "cursor-not-allowed"
+        )}>
+        {preparedFont ? (
+          <span
+            data-testid={`fontara-custom-font-${slot}-ready`}
+            role="status"
+            className="block min-w-0 rounded-xl border border-emerald-200 bg-white px-3 py-2.5">
+            <bdi
+              dir="auto"
+              title={preparedFont.face.fileName}
+              className="block truncate text-xs font-bold text-slate-800">
+              {preparedFont.face.fileName}
+            </bdi>
+            <span className="mt-1 block text-[0.6875rem] font-semibold text-emerald-700">
+              {readySummary}
+            </span>
+          </span>
+        ) : (
+          <span className="text-xs font-bold text-blue-700">{selectLabel}</span>
+        )}
+      </label>
+
+      <input
+        id={inputId}
+        data-testid={`fontara-custom-font-${slot}-file`}
+        ref={inputRef}
+        type="file"
+        onChange={onChange}
+        accept=".ttf,.woff,.woff2,.otf"
+        className="sr-only"
+        disabled={disabled}
+      />
+    </div>
+  )
 }
 
 const unicodeRangeLabelKeys = {
@@ -800,23 +971,41 @@ function OptionsPage() {
     }
   }
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const regularFontInputRef = React.useRef<HTMLInputElement>(null)
+  const boldFontInputRef = React.useRef<HTMLInputElement>(null)
   const settingsImportInputRef = React.useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isBackupBusy, setIsBackupBusy] = useState(false)
   const [isImportWarningVisible, setIsImportWarningVisible] = useState(false)
   const [isResetWarningVisible, setIsResetWarningVisible] = useState(false)
-  const [preparedFontFiles, setPreparedFontFiles] = useState<
-    PreparedCustomFontFile[]
-  >([])
-  const [customFontSelectionFeedback, setCustomFontSelectionFeedback] =
-    useState<CustomFontSelectionFeedback | null>(null)
-  const [fontName, setFontName] = useState("")
+  const [preparedRegularFont, setPreparedRegularFont] =
+    useState<PreparedCustomFontFile | null>(null)
+  const [preparedBoldFont, setPreparedBoldFont] =
+    useState<PreparedCustomFontFile | null>(null)
   const [fontUnicodeRangePreset, setFontUnicodeRangePreset] =
-    useState<CustomFontUnicodeRangeSelectValue>(
+    useState<SimpleCustomFontUnicodeRangePreset>(
       DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET
     )
-  const [customFontUnicodeRange, setCustomFontUnicodeRange] = useState("")
+  const [isFontCoverageSelectOpen, setIsFontCoverageSelectOpen] =
+    useState(false)
+  const [customFontHealth, setCustomFontHealth] = useState<
+    Record<string, CustomFontHealthState>
+  >({})
+  const [previewFontFamily, setPreviewFontFamily] = useState<string | null>(
+    null
+  )
+  const [previewStatus, setPreviewStatus] = useState<
+    "idle" | "loading" | "error" | "ready"
+  >("idle")
+  const [customFontSelectionFeedback, setCustomFontSelectionFeedback] =
+    useState<CustomFontSelectionFeedback | null>(null)
+  const preparedFontFiles = [preparedRegularFont, preparedBoldFont].filter(
+    (font): font is PreparedCustomFontFile => Boolean(font)
+  )
+  const regularCoversBold = preparedRegularFont?.coversBold ?? false
+  const [fontName, setFontName] = useState("")
+  const normalizedFontName = normalizeCustomFontText(fontName)
+  const hasValidFontName = isCustomFontDisplayNameValid(normalizedFontName)
   const [sitePatternScope, setSitePatternScope] =
     useState<SitePatternScope>("domain")
   const [sitePatternInput, setSitePatternInput] = useState("")
@@ -834,6 +1023,13 @@ function OptionsPage() {
   const [systemFontList, setSystemFontList] = useState<SystemFontData[]>([])
   const systemFontsSupported = isSystemFontAccessSupported()
   const { toast } = useToast()
+
+  const getCustomFontUploadErrorMessage = (error: unknown): string => {
+    if (error instanceof UserFacingCustomFontError) return error.message
+    return t(
+      CUSTOM_FONT_UPLOAD_ERROR_KEYS[classifyCustomFontMutationError(error)]
+    )
+  }
 
   React.useEffect(() => {
     document.title = t("common.settings")
@@ -941,148 +1137,207 @@ function OptionsPage() {
     }
   }, [activeSection, siteSettingsTab])
 
-  const resetSelectedFiles = (options: { keepFeedback?: boolean } = {}) => {
-    setPreparedFontFiles([])
-    if (!options.keepFeedback) setCustomFontSelectionFeedback(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+  const clearPreparedFontSlot = (slot: SimpleCustomFontSlot) => {
+    if (slot === "regular") {
+      setPreparedRegularFont(null)
+      if (regularFontInputRef.current) regularFontInputRef.current.value = ""
+      return
     }
+
+    setPreparedBoldFont(null)
+    if (boldFontInputRef.current) boldFontInputRef.current.value = ""
+  }
+
+  const handleClearPreparedFontSlot = (slot: SimpleCustomFontSlot) => {
+    clearPreparedFontSlot(slot)
+    setCustomFontSelectionFeedback((feedback) =>
+      feedback?.slot === slot ? null : feedback
+    )
+  }
+
+  const resetSelectedFiles = (options: { keepFeedback?: boolean } = {}) => {
+    clearPreparedFontSlot("regular")
+    clearPreparedFontSlot("bold")
+    if (!options.keepFeedback) setCustomFontSelectionFeedback(null)
   }
 
   const resetCustomFontForm = () => {
     resetSelectedFiles()
     setFontName("")
     setFontUnicodeRangePreset(DEFAULT_CUSTOM_FONT_UNICODE_RANGE_PRESET)
-    setCustomFontUnicodeRange("")
   }
 
-  const resolveSelectedFontUnicodeRange = (): string | null | undefined => {
-    if (fontUnicodeRangePreset === CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE) {
-      const normalizedRange = parseCustomFontUnicodeRangeInput(
-        customFontUnicodeRange
-      )
+  React.useEffect(() => {
+    let cancelled = false
+    let registeredFaces: FontFace[] = []
+    const previewUnicodeRange = getCustomFontUnicodeRangePreset(
+      fontUnicodeRangePreset
+    )?.unicodeRange
+    const files = [preparedRegularFont, preparedBoldFont].filter(
+      (font): font is PreparedCustomFontFile => Boolean(font)
+    )
 
-      return normalizedRange || undefined
+    setPreviewFontFamily(null)
+    setPreviewStatus(files.length > 0 ? "loading" : "idle")
+    if (files.length === 0) return
+
+    if (
+      typeof FontFace !== "function" ||
+      typeof document.fonts?.add !== "function"
+    ) {
+      setPreviewStatus("error")
+      return
     }
 
-    return getCustomFontUnicodeRangePreset(fontUnicodeRangePreset)?.unicodeRange
-  }
+    const family = `FontaraUploadPreview-${crypto.randomUUID()}`
+    const pendingFaces = files.map(
+      (file) =>
+        new FontFace(family, file.bytes.slice(0), {
+          display: "block",
+          style: "normal",
+          unicodeRange: previewUnicodeRange ?? undefined,
+          weight:
+            file.face.weight.min === file.face.weight.max
+              ? String(file.face.weight.min)
+              : `${file.face.weight.min} ${file.face.weight.max}`
+        })
+    )
 
-  const handleFileChange = async (
+    void Promise.all(pendingFaces.map((face) => face.load()))
+      .then((loadedFaces) => {
+        if (cancelled) return
+        registeredFaces = loadedFaces
+        for (const face of loadedFaces) document.fonts.add(face)
+        setPreviewFontFamily(family)
+        setPreviewStatus("ready")
+      })
+      .catch((error) => {
+        if (__DEBUG__) {
+          console.warn("Failed to render the custom font preview.", error)
+        }
+        if (!cancelled) setPreviewStatus("error")
+      })
+
+    return () => {
+      cancelled = true
+      for (const face of registeredFaces) document.fonts.delete(face)
+    }
+  }, [fontUnicodeRangePreset, preparedBoldFont, preparedRegularFont])
+
+  const handleFontSlotChange = async (
+    slot: SimpleCustomFontSlot,
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const files = Array.from(event.target.files ?? [])
-    if (files.length === 0) return
+    const input = event.currentTarget
+    const file = event.target.files?.[0]
+    if (!file) return
     setCustomFontSelectionFeedback(null)
     setIsLoading(true)
 
     try {
-      if (files.length > MAX_CUSTOM_FONT_BATCH_FILES) {
-        throw new Error(t("options.toast.tooManyFontFiles"))
+      if (slot === "bold" && regularCoversBold) {
+        throw new UserFacingCustomFontError(
+          t("options.toast.boldCoveredByVariable")
+        )
       }
-      if (
-        files.reduce((total, file) => total + file.size, 0) >
-        MAX_CUSTOM_FONT_FAMILY_SIZE_BYTES
-      ) {
-        throw new Error(t("options.toast.fontFamilyTooLarge"))
+      if (/\.(?:ttc|otc)$/i.test(file.name)) {
+        throw new UserFacingCustomFontError(
+          t("options.toast.fontCollectionUnsupported")
+        )
+      }
+      const extension = getFontFileExtension(file.name)
+      const format = normalizeCustomFontFormat(extension)
+      if (!format || !isSupportedFontExtension(extension)) {
+        throw new UserFacingCustomFontError(t("options.toast.invalidExtension"))
+      }
+      if (file.size > MAX_CUSTOM_FONT_FILE_SIZE_BYTES) {
+        throw new UserFacingCustomFontError(t("options.toast.fileTooLarge"))
       }
 
+      const bytes = await file.arrayBuffer()
+      const byteView = new Uint8Array(bytes)
+      if (!isFontFileSignatureSupported(extension, byteView)) {
+        throw new UserFacingCustomFontError(t("options.toast.invalidSignature"))
+      }
+      const fileHash = await createCustomFontFileHash(byteView)
       const storedHashes = new Set(
         customFontList.flatMap((family) =>
           family.faces.map((face) => face.fileHash)
         )
       )
-      const batchHashes = new Set<string>()
-      const prepared: PreparedCustomFontFile[] = []
-
-      for (const file of files) {
-        if (/\.(?:ttc|otc)$/i.test(file.name)) {
-          throw new Error(t("options.toast.fontCollectionUnsupported"))
-        }
-        const extension = getFontFileExtension(file.name)
-        const format = normalizeCustomFontFormat(extension)
-        if (!format || !isSupportedFontExtension(extension)) {
-          throw new Error(t("options.toast.invalidExtension"))
-        }
-        if (file.size > MAX_CUSTOM_FONT_FILE_SIZE_BYTES) {
-          throw new Error(t("options.toast.fileTooLarge"))
-        }
-
-        const bytes = await file.arrayBuffer()
-        const byteView = new Uint8Array(bytes)
-        if (!isFontFileSignatureSupported(extension, byteView)) {
-          throw new Error(t("options.toast.invalidSignature"))
-        }
-        const fileHash = await createCustomFontFileHash(byteView)
-        if (storedHashes.has(fileHash) || batchHashes.has(fileHash)) {
-          throw new Error(t("options.toast.duplicateFile"))
-        }
-
-        await validateCustomFontWithNativeFontFace(bytes.slice(0), format)
-        const metadata = await extractCustomFontMetadata(
-          file.name,
-          bytes.slice(0)
-        )
-        batchHashes.add(fileHash)
-        prepared.push({
-          bytes,
-          familyGroupName: metadata.familyGroupName,
-          hasCombinedItalAxis: metadata.hasCombinedItalAxis,
-          sourceFamilyKey: metadata.sourceFamilyKey,
-          face: {
-            id: createCustomFontFaceId(fileHash),
-            fileHash,
-            fileName: normalizeCustomFontFileName(file.name, `font.${format}`),
-            format,
-            byteLength: bytes.byteLength,
-            weight: metadata.weight,
-            style: metadata.style,
-            stretch: metadata.stretch,
-            axes: metadata.axes,
-            validation: "verified"
-          }
-        })
+      const otherFont =
+        slot === "regular" ? preparedBoldFont : preparedRegularFont
+      if (storedHashes.has(fileHash) || otherFont?.face.fileHash === fileHash) {
+        throw new UserFacingCustomFontError(t("options.toast.duplicateFile"))
       }
 
-      const detectedFamilies = new Map<string, string>()
-      for (const file of prepared) {
-        detectedFamilies.set(file.sourceFamilyKey, file.familyGroupName)
-      }
-      if (detectedFamilies.size > 1) {
-        throw new CustomFontSelectionError(
-          t("options.toast.mixedFontFamilies", {
-            families: Array.from(detectedFamilies.values()).join(" · ")
+      await validateCustomFontWithNativeFontFace(bytes.slice(0), format)
+      const metadata = await extractCustomFontMetadata(
+        file.name,
+        bytes.slice(0)
+      ).catch((error) => {
+        if (__DEBUG__) {
+          console.warn(
+            "Custom font metadata was unavailable; using the selected slot.",
+            error
+          )
+        }
+        return null
+      })
+      const resolution = resolveSimpleCustomFontSlot(metadata, slot)
+      if (!resolution.ok) {
+        if (resolution.reason === "unsupported-style") {
+          throw new UserFacingCustomFontError(
+            t("options.toast.simpleFontStyleUnsupported")
+          )
+        }
+        throw new UserFacingCustomFontError(
+          t("options.toast.variableWeightMissing", {
+            weight: formatNumber(resolution.requiredWeight ?? 400)
           })
         )
       }
 
-      const faceBySlot = new Map<string, PreparedCustomFontFile>()
-      for (const file of prepared) {
-        const slot = getCustomFontFaceSlot(file.face)
-        const conflictingFile = faceBySlot.get(slot)
-        if (conflictingFile) {
-          throw new CustomFontSelectionError(
-            t("options.toast.duplicateFontFaces", {
-              files: `${conflictingFile.face.fileName} · ${file.face.fileName}`
-            })
-          )
+      const prepared: PreparedCustomFontFile = {
+        bytes,
+        coversBold: resolution.coversBold,
+        isVariable: resolution.isVariable,
+        slot,
+        face: {
+          id: createCustomFontFaceId(fileHash),
+          fileHash,
+          fileName: normalizeCustomFontFileName(file.name, `font.${format}`),
+          format,
+          byteLength: bytes.byteLength,
+          weight: resolution.weight,
+          style: "normal",
+          stretch: { min: 100, max: 100 },
+          axes: metadata?.axes ?? [],
+          validation: "verified"
         }
-        faceBySlot.set(slot, file)
       }
 
-      setPreparedFontFiles(prepared)
-      setFontName(prepared[0]?.familyGroupName || "")
+      if (slot === "regular") {
+        setPreparedRegularFont(prepared)
+        if (resolution.coversBold && preparedBoldFont) {
+          clearPreparedFontSlot("bold")
+          toast({ title: t("options.toast.variableReplacedBold") })
+        }
+      } else {
+        setPreparedBoldFont(prepared)
+      }
     } catch (error) {
-      const feedback =
-        error instanceof CustomFontSelectionError
-          ? { title: error.message }
-          : {
-              title:
-                error instanceof Error
-                  ? error.message
-                  : t("options.toast.fontProcessingError")
-            }
-      resetSelectedFiles({ keepFeedback: true })
+      if (__DEBUG__ && !(error instanceof UserFacingCustomFontError)) {
+        console.warn("Failed to process a custom font file.", error)
+      }
+      const feedback = {
+        slot,
+        title:
+          error instanceof UserFacingCustomFontError
+            ? error.message
+            : t("options.toast.fontProcessingError")
+      }
+      input.value = ""
       setCustomFontSelectionFeedback(feedback)
       toast({
         title: feedback.title
@@ -1093,16 +1348,8 @@ function OptionsPage() {
   }
 
   const handleSaveFont = async () => {
-    const normalizedFontName = normalizeCustomFontText(fontName)
-    const unicodeRange = resolveSelectedFontUnicodeRange()
-
-    if (preparedFontFiles.length === 0 || !normalizedFontName) {
+    if (!preparedRegularFont || !hasValidFontName) {
       toast({ title: t("options.toast.emptyFields") })
-      return
-    }
-
-    if (unicodeRange === undefined) {
-      toast({ title: t("options.toast.invalidUnicodeRange") })
       return
     }
 
@@ -1116,7 +1363,19 @@ function OptionsPage() {
       )
 
       if (isDuplicateName) {
-        throw new Error(t("options.toast.duplicateFontName"))
+        throw new UserFacingCustomFontError(
+          t("options.toast.duplicateFontName")
+        )
+      }
+
+      const prospectiveLibraryBytes = getCustomFontLibraryByteLength(
+        customFontList,
+        preparedFontFiles.map((file) => file.face)
+      )
+      if (prospectiveLibraryBytes > MAX_CUSTOM_FONT_LIBRARY_SIZE_BYTES) {
+        throw new UserFacingCustomFontError(
+          t("options.toast.customFontLibraryFull")
+        )
       }
 
       let value = `${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}-Fontara`
@@ -1126,8 +1385,10 @@ function OptionsPage() {
       const family = {
         value,
         displayName: normalizedFontName,
-        sourceFamilyKey: preparedFontFiles[0].sourceFamilyKey,
-        unicodeRange,
+        sourceFamilyKey: normalizeCustomFontFamilyKey(normalizedFontName),
+        unicodeRange:
+          getCustomFontUnicodeRangePreset(fontUnicodeRangePreset)
+            ?.unicodeRange ?? null,
         faces: preparedFontFiles.map((file) => file.face)
       }
 
@@ -1161,10 +1422,7 @@ function OptionsPage() {
       resetCustomFontForm()
     } catch (error) {
       toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : t("options.toast.fontProcessingError")
+        title: getCustomFontUploadErrorMessage(error)
       })
     } finally {
       setIsLoading(false)
@@ -1175,12 +1433,53 @@ function OptionsPage() {
     try {
       await fontaraConnector.deleteCustomFont(fontValue)
       toast({ title: t("options.toast.fontDeleted") })
-    } catch (error) {
+    } catch (_error) {
       toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : t("options.toast.fontDeleteError")
+        title: t("options.toast.fontDeleteError")
+      })
+    }
+  }
+
+  const handleCheckCustomFont = async (font: CustomFontFamily) => {
+    const signature = getCustomFontHealthSignature(font)
+    setCustomFontHealth((current) => ({
+      ...current,
+      [font.value]: { signature, status: "checking" }
+    }))
+
+    try {
+      if (font.faces.length === 0) {
+        throw new Error("custom-font-family-has-no-faces")
+      }
+
+      for (const face of font.faces) {
+        if (face.validation === "failed") {
+          throw new Error("custom-font-face-validation-failed")
+        }
+        const bytes = await readCustomFontFaceBytes(face.fileHash)
+        if (!bytes || bytes.byteLength !== face.byteLength) {
+          throw new Error("missing-custom-font-face-blob")
+        }
+        const bytesCopy = bytes.slice().buffer as ArrayBuffer
+        await validateCustomFontWithNativeFontFace(bytesCopy, face.format)
+      }
+
+      setCustomFontHealth((current) => ({
+        ...current,
+        [font.value]: { signature, status: "ready" }
+      }))
+      toast({ title: t("options.customFonts.healthReady") })
+    } catch (error) {
+      if (__DEBUG__) {
+        console.warn("Failed to verify a saved custom font family.", error)
+      }
+      setCustomFontHealth((current) => ({
+        ...current,
+        [font.value]: { signature, status: "error" }
+      }))
+      toast({
+        title: t("options.customFonts.healthError"),
+        description: t("options.customFonts.healthErrorDescription")
       })
     }
   }
@@ -1233,34 +1532,57 @@ function OptionsPage() {
       input.value = ""
       toast({
         title: t("options.toast.settingsImportError"),
-        description: t("options.toast.settingsImportInvalid")
+        description: t("options.toast.settingsImportFileTooLarge")
       })
       return
     }
 
     setIsBackupBusy(true)
-
     try {
       const parsedBackup = parseSettingsBackupText(await readTextFile(file))
       const preparedImport = await prepareSettingsBackupImport(parsedBackup)
+      const replacesCustomFonts =
+        Object.getOwnPropertyDescriptor(
+          parsedBackup.settings,
+          STORAGE_KEYS.CUSTOM_FONT_LIST
+        ) !== undefined
       const transactionIds: string[] = []
       try {
+        if (!replacesCustomFonts) {
+          const importedSettings = await fontaraConnector.importSettings(
+            preparedImport.settings
+          )
+          setIsImportWarningVisible(false)
+          toast({
+            title: t("options.toast.settingsImported"),
+            description: t("options.toast.settingsImportedDescription", {
+              count: formatNumber(importedSettings.importedKeyCount)
+            })
+          })
+          return
+        }
+
         for (const preparedFamily of preparedImport.customFontFamilies) {
           const transaction = await fontaraConnector.beginCustomFontTransaction(
-            preparedFamily.family
+            preparedFamily.family,
+            "replace-library"
           )
           transactionIds.push(transaction.transactionId)
           for (const face of preparedFamily.family.faces) {
             const bytes = base64ToBytes(preparedFamily.faceData[face.id])
             if (!bytes) throw new Error("invalid-custom-font-backup-face")
             if (face.validation !== "failed") {
-              await validateCustomFontWithNativeFontFace(
-                bytes.buffer.slice(
-                  bytes.byteOffset,
-                  bytes.byteOffset + bytes.byteLength
-                ) as ArrayBuffer,
-                face.format
-              )
+              try {
+                await validateCustomFontWithNativeFontFace(
+                  bytes.buffer.slice(
+                    bytes.byteOffset,
+                    bytes.byteOffset + bytes.byteLength
+                  ) as ArrayBuffer,
+                  face.format
+                )
+              } catch {
+                throw new Error("invalid-custom-font-backup-face")
+              }
             }
             await fontaraConnector.putCustomFontFace(
               transaction.transactionId,
@@ -1297,7 +1619,7 @@ function OptionsPage() {
       }
       toast({
         title: t("options.toast.settingsImportError"),
-        description: t("options.toast.settingsImportInvalid")
+        description: t(getSettingsImportErrorDescriptionKey(error))
       })
     } finally {
       setIsBackupBusy(false)
@@ -2630,7 +2952,9 @@ function OptionsPage() {
                     </section>
 
                     <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                      <section className="fontara-panel p-4 sm:p-5">
+                      <section
+                        data-testid="fontara-custom-font-form"
+                        className="fontara-panel p-4 sm:p-5">
                         <div className="mb-5 flex items-center justify-between gap-3">
                           <div>
                             <h3 className="text-base font-bold text-[#111827]">
@@ -2648,77 +2972,6 @@ function OptionsPage() {
                         <div className="space-y-4">
                           <div>
                             <label
-                              htmlFor="custom-font-file"
-                              className={cn(
-                                "group flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-gradient-to-b from-blue-50 to-white px-5 py-6 text-center transition hover:border-blue-400 hover:bg-blue-50",
-                                isLoading &&
-                                  "cursor-not-allowed opacity-60 hover:border-blue-200"
-                              )}>
-                              <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm ring-1 ring-inset ring-blue-100 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
-                                <Upload className="size-5" />
-                              </span>
-                              <span className="mt-3 text-sm font-extrabold text-slate-900">
-                                {isLoading
-                                  ? t("options.addFont.loading")
-                                  : t("options.addFont.fileLabel")}
-                              </span>
-                              <span className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500">
-                                {t("options.addFont.subtitle")}
-                              </span>
-                              {preparedFontFiles.length > 0 && (
-                                <span
-                                  data-testid="fontara-custom-font-selection-ready"
-                                  role="status"
-                                  className="mt-3 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
-                                  <bdi dir="auto">
-                                    {preparedFontFiles[0].familyGroupName}
-                                  </bdi>{" "}
-                                  ·{" "}
-                                  {t("options.customFonts.familySummary", {
-                                    count: formatNumber(
-                                      preparedFontFiles.length
-                                    ),
-                                    styles: getCustomFontFaceSummary(
-                                      preparedFontFiles.map((file) => file.face)
-                                    )
-                                  })}
-                                </span>
-                              )}
-                              <input
-                                id="custom-font-file"
-                                data-testid="fontara-custom-font-file"
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                onChange={handleFileChange}
-                                accept=".ttf,.woff,.woff2,.otf"
-                                className="sr-only"
-                                disabled={isLoading}
-                              />
-                            </label>
-                            {customFontSelectionFeedback && (
-                              <div
-                                role="alert"
-                                className="mt-3 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-start">
-                                <Info className="mt-0.5 size-4 shrink-0 text-red-600" />
-                                <div className="min-w-0">
-                                  <p className="text-xs font-bold text-red-900">
-                                    {customFontSelectionFeedback.title}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                            {preparedFontFiles.some(
-                              (file) => file.hasCombinedItalAxis
-                            ) && (
-                              <p className="mt-2 text-xs leading-5 text-amber-800">
-                                {t("options.customFonts.italAxisWarning")}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <label
                               htmlFor="custom-font-name"
                               className="mb-2 block text-sm font-medium text-[#334155]">
                               {t("options.addFont.nameLabel")}
@@ -2728,82 +2981,240 @@ function OptionsPage() {
                               data-testid="fontara-custom-font-name"
                               type="text"
                               value={fontName}
+                              maxLength={CUSTOM_FONT_NAME_MAX_LENGTH}
                               onChange={(event) =>
                                 setFontName(event.target.value)
                               }
                               placeholder={t("options.addFont.namePlaceholder")}
-                              className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
+                              aria-describedby="custom-font-name-description"
+                              aria-invalid={
+                                fontName.length > 0 && !hasValidFontName
+                              }
+                              className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15 aria-invalid:border-red-400 aria-invalid:ring-red-500/15"
                               disabled={isLoading}
                               dir="auto"
                             />
+                            <p
+                              id="custom-font-name-description"
+                              className={cn(
+                                "mt-1.5 text-xs leading-5",
+                                fontName.length > 0 && !hasValidFontName
+                                  ? "font-semibold text-red-700"
+                                  : "text-[#64748b]"
+                              )}>
+                              {fontName.length > 0 && !hasValidFontName
+                                ? t("options.addFont.nameInvalid")
+                                : t("options.addFont.nameDescription")}
+                            </p>
                           </div>
 
                           <div>
                             <label
                               htmlFor="custom-font-unicode-range"
                               className="mb-2 block text-sm font-medium text-[#334155]">
-                              {t("options.addFont.unicodeRangeLabel")}
+                              {t("options.addFont.coverageLabel")}
                             </label>
                             <Select
                               dir={direction}
-                              disabled={isLoading}
+                              open={isFontCoverageSelectOpen}
+                              onOpenChange={setIsFontCoverageSelectOpen}
                               value={fontUnicodeRangePreset}
-                              onValueChange={(value) =>
+                              onValueChange={(value) => {
                                 setFontUnicodeRangePreset(
-                                  value as CustomFontUnicodeRangeSelectValue
+                                  value as SimpleCustomFontUnicodeRangePreset
                                 )
-                              }>
+                                setIsFontCoverageSelectOpen(false)
+                              }}
+                              disabled={isLoading}>
                               <SelectTrigger
                                 id="custom-font-unicode-range"
-                                className="h-11 border-[#dbe3ef] bg-white text-sm text-[#111827] focus:ring-2 focus:ring-[#2374ff]/15">
+                                data-testid="fontara-custom-font-coverage"
+                                aria-describedby="custom-font-unicode-range-description"
+                                className="h-11 w-full border-[#dbe3ef] bg-white">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {CUSTOM_FONT_UNICODE_RANGE_PRESETS.map(
-                                  (preset) => (
-                                    <SelectItem
-                                      key={preset.id}
-                                      value={preset.id}>
-                                      {t(unicodeRangeLabelKeys[preset.id])}
-                                    </SelectItem>
-                                  )
-                                )}
-                                <SelectItem
-                                  value={
-                                    CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
-                                  }>
-                                  {t(
-                                    unicodeRangeLabelKeys[
-                                      CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE
-                                    ]
+                              {isFontCoverageSelectOpen && (
+                                <SelectContent dir={direction}>
+                                  {SIMPLE_CUSTOM_FONT_UNICODE_RANGE_PRESETS.map(
+                                    (preset) => (
+                                      <SelectItem
+                                        key={preset}
+                                        value={preset}
+                                        data-testid={`fontara-custom-font-coverage-${preset}`}>
+                                        {t(unicodeRangeLabelKeys[preset])}
+                                      </SelectItem>
+                                    )
                                   )}
-                                </SelectItem>
-                              </SelectContent>
+                                </SelectContent>
+                              )}
                             </Select>
+                            <p
+                              id="custom-font-unicode-range-description"
+                              className="mt-1.5 text-xs leading-5 text-[#64748b]">
+                              {t("options.addFont.coverageDescription")}
+                            </p>
                           </div>
 
-                          {fontUnicodeRangePreset ===
-                            CUSTOM_FONT_UNICODE_RANGE_CUSTOM_VALUE && (
-                            <div>
-                              <label
-                                htmlFor="custom-font-unicode-range-value"
-                                className="mb-2 block text-sm font-medium text-[#334155]">
-                                {t("options.addFont.unicodeRangeCustomLabel")}
-                              </label>
-                              <input
-                                id="custom-font-unicode-range-value"
-                                type="text"
-                                value={customFontUnicodeRange}
-                                onChange={(event) =>
-                                  setCustomFontUnicodeRange(event.target.value)
-                                }
-                                placeholder={t(
-                                  "options.addFont.unicodeRangeCustomPlaceholder"
-                                )}
-                                className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-                                disabled={isLoading}
-                                dir="ltr"
+                          <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-3.5 py-3 text-xs leading-5 text-blue-900">
+                            <span className="flex items-start gap-2.5">
+                              <Info
+                                aria-hidden="true"
+                                className="mt-0.5 size-4 shrink-0 text-blue-600"
                               />
+                              <span>{t("options.addFont.variableHint")}</span>
+                            </span>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <CustomFontUploadSlot
+                              slot="regular"
+                              inputRef={regularFontInputRef}
+                              label={t("options.addFont.regularLabel")}
+                              badge={t("options.addFont.required")}
+                              description={t(
+                                "options.addFont.regularDescription"
+                              )}
+                              selectLabel={t("options.addFont.selectFile")}
+                              removeLabel={t("options.addFont.removeFile", {
+                                role: t("options.addFont.regularLabel")
+                              })}
+                              preparedFont={preparedRegularFont}
+                              readySummary={
+                                preparedRegularFont?.isVariable
+                                  ? t("options.addFont.variableReady", {
+                                      max: formatNumber(
+                                        preparedRegularFont.face.weight.max
+                                      ),
+                                      min: formatNumber(
+                                        preparedRegularFont.face.weight.min
+                                      )
+                                    })
+                                  : t("options.addFont.regularReady")
+                              }
+                              disabled={isLoading}
+                              onClear={() =>
+                                handleClearPreparedFontSlot("regular")
+                              }
+                              onChange={(event) =>
+                                void handleFontSlotChange("regular", event)
+                              }
+                            />
+                            <CustomFontUploadSlot
+                              slot="bold"
+                              inputRef={boldFontInputRef}
+                              label={t("options.addFont.boldLabel")}
+                              badge={t("options.addFont.optional")}
+                              description={
+                                regularCoversBold
+                                  ? t("options.addFont.boldCovered")
+                                  : t("options.addFont.boldDescription")
+                              }
+                              selectLabel={t("options.addFont.selectFile")}
+                              removeLabel={t("options.addFont.removeFile", {
+                                role: t("options.addFont.boldLabel")
+                              })}
+                              preparedFont={preparedBoldFont}
+                              readySummary={
+                                preparedBoldFont?.isVariable
+                                  ? t("options.addFont.boldVariableReady")
+                                  : t("options.addFont.boldReady")
+                              }
+                              disabled={isLoading || regularCoversBold}
+                              onClear={() =>
+                                handleClearPreparedFontSlot("bold")
+                              }
+                              onChange={(event) =>
+                                void handleFontSlotChange("bold", event)
+                              }
+                            />
+                          </div>
+
+                          {customFontSelectionFeedback && (
+                            <div
+                              role="alert"
+                              data-testid={`fontara-custom-font-${customFontSelectionFeedback.slot}-error`}
+                              className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-start">
+                              <Info className="mt-0.5 size-4 shrink-0 text-red-600" />
+                              <p className="min-w-0 text-xs font-bold text-red-900">
+                                {customFontSelectionFeedback.title}
+                              </p>
+                            </div>
+                          )}
+
+                          {preparedRegularFont && (
+                            <div
+                              data-testid="fontara-custom-font-preview"
+                              aria-live="polite"
+                              className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <h4 className="text-xs font-extrabold text-slate-900">
+                                    {t("options.addFont.previewTitle")}
+                                  </h4>
+                                  <p className="mt-1 text-[0.6875rem] leading-5 text-slate-500">
+                                    {t("options.addFont.previewDescription")}
+                                  </p>
+                                </div>
+                                {previewStatus === "loading" && (
+                                  <span className="shrink-0 text-[0.6875rem] font-bold text-blue-700">
+                                    {t("options.addFont.previewLoading")}
+                                  </span>
+                                )}
+                              </div>
+
+                              {previewStatus === "error" ? (
+                                <p
+                                  role="status"
+                                  className="mt-3 text-xs font-bold text-red-700">
+                                  {t("options.addFont.previewError")}
+                                </p>
+                              ) : (
+                                <div
+                                  className={cn(
+                                    "mt-3 space-y-2 rounded-lg bg-white px-3 py-3 ring-1 ring-inset ring-slate-200 transition-opacity",
+                                    previewStatus !== "ready" && "opacity-45"
+                                  )}
+                                  style={{
+                                    fontFamily: previewFontFamily ?? undefined
+                                  }}>
+                                  <div>
+                                    <span className="mb-1 block font-sans text-[0.625rem] font-bold text-slate-500">
+                                      {t("options.addFont.regularLabel")}
+                                    </span>
+                                    <p
+                                      dir="rtl"
+                                      lang="fa"
+                                      className="text-base leading-7 text-slate-900">
+                                      {t("fontSelector.previewText")}
+                                    </p>
+                                    <p
+                                      dir="ltr"
+                                      lang="en"
+                                      className="text-sm leading-6 text-slate-800">
+                                      {t("fontSelector.previewTextLatin")}
+                                    </p>
+                                  </div>
+                                  {(preparedBoldFont || regularCoversBold) && (
+                                    <div className="border-t border-slate-100 pt-2">
+                                      <span className="mb-1 block font-sans text-[0.625rem] font-bold text-slate-500">
+                                        {t("options.addFont.boldLabel")}
+                                      </span>
+                                      <p
+                                        dir="rtl"
+                                        lang="fa"
+                                        className="text-base font-bold leading-7 text-slate-900">
+                                        {t("fontSelector.previewText")}
+                                      </p>
+                                      <p
+                                        dir="ltr"
+                                        lang="en"
+                                        className="text-sm font-bold leading-6 text-slate-800">
+                                        {t("fontSelector.previewTextLatin")}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -2813,7 +3224,9 @@ function OptionsPage() {
                             onClick={handleSaveFont}
                             className="h-11 w-full bg-[#2374ff] text-white hover:bg-[#1f66df]"
                             disabled={
-                              isLoading || preparedFontFiles.length === 0
+                              isLoading ||
+                              !preparedRegularFont ||
+                              !hasValidFontName
                             }>
                             <Upload className="size-4" />
                             {isLoading
@@ -2846,6 +3259,21 @@ function OptionsPage() {
                           </div>
                         </div>
 
+                        <div className="mb-4 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/70 px-3.5 py-3 text-blue-950">
+                          <HardDrive
+                            aria-hidden="true"
+                            className="mt-0.5 size-4 shrink-0 text-blue-700"
+                          />
+                          <div className="min-w-0">
+                            <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[0.6875rem] font-extrabold text-blue-800 ring-1 ring-inset ring-blue-200">
+                              {t("options.customFonts.localOnlyBadge")}
+                            </span>
+                            <p className="mt-1.5 text-xs leading-5 text-blue-900">
+                              {t("options.customFonts.localOnlyDescription")}
+                            </p>
+                          </div>
+                        </div>
+
                         <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
                           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-600">
                             <span className="font-semibold">
@@ -2869,83 +3297,157 @@ function OptionsPage() {
                           <Progress
                             dir={direction}
                             value={customFontStoragePercent}
+                            aria-label={t("options.customFonts.storageUsage", {
+                              used: formatBytes(
+                                customFontStorageBytes,
+                                formatNumber,
+                                t("unit.kb"),
+                                t("unit.mb")
+                              ),
+                              limit: customFontStorageLimit
+                            })}
                             className="h-1.5 bg-slate-200"
                           />
                         </div>
 
                         {customFontList.length > 0 ? (
                           <div className="space-y-3">
-                            {customFontList.map((font) => (
-                              <div
-                                key={font.value}
-                                data-testid={`fontara-custom-font-family-${font.value}`}
-                                className="flex items-center justify-between gap-3 rounded-md border border-[#e5e7eb] px-3 py-3">
-                                <div className="min-w-0">
-                                  <bdi
-                                    dir="auto"
-                                    title={font.displayName}
-                                    className="block truncate text-sm font-semibold text-[#111827]">
-                                    {font.displayName}
-                                  </bdi>
-                                  <div className="mt-1 truncate text-xs text-[#64748b]">
-                                    {t("options.customFonts.familySummary", {
-                                      count: formatNumber(font.faces.length),
-                                      styles: getCustomFontFaceSummary(
-                                        font.faces
-                                      )
-                                    })}
+                            {customFontList.map((font) => {
+                              const recordedHealth =
+                                customFontHealth[font.value]
+                              const health =
+                                recordedHealth?.signature ===
+                                getCustomFontHealthSignature(font)
+                                  ? recordedHealth.status
+                                  : null
+
+                              return (
+                                <div
+                                  key={font.value}
+                                  data-testid={`fontara-custom-font-family-${font.value}`}
+                                  className="flex flex-col gap-3 rounded-md border border-[#e5e7eb] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <div className="min-w-0 flex-1">
+                                    <bdi
+                                      dir="auto"
+                                      title={font.displayName}
+                                      className="block truncate text-sm font-semibold text-[#111827]">
+                                      {font.displayName}
+                                    </bdi>
+                                    <div className="mt-1 truncate text-xs text-[#64748b]">
+                                      {t("options.customFonts.familySummary", {
+                                        count: formatNumber(font.faces.length),
+                                        styles: getCustomFontFaceSummary(
+                                          font.faces
+                                        )
+                                      })}
+                                    </div>
+                                    <div className="mt-1 truncate text-xs text-[#64748b]">
+                                      {t("options.savedFonts.unicodeRange", {
+                                        range: getCustomFontUnicodeRangeLabel(
+                                          font.unicodeRange
+                                        )
+                                      })}
+                                    </div>
+                                    {health && (
+                                      <div
+                                        role="status"
+                                        data-testid={`fontara-custom-font-health-status-${font.value}`}
+                                        className={cn(
+                                          "mt-2 inline-flex rounded-full px-2 py-0.5 text-[0.6875rem] font-bold",
+                                          health === "ready" &&
+                                            "bg-emerald-50 text-emerald-700",
+                                          health === "error" &&
+                                            "bg-red-50 text-red-700",
+                                          health === "checking" &&
+                                            "bg-blue-50 text-blue-700"
+                                        )}>
+                                        {health === "ready"
+                                          ? t("options.customFonts.healthReady")
+                                          : health === "error"
+                                            ? t(
+                                                "options.customFonts.healthError"
+                                              )
+                                            : t(
+                                                "options.customFonts.healthChecking"
+                                              )}
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="mt-1 truncate text-xs text-[#64748b]">
-                                    {t("options.savedFonts.unicodeRange", {
-                                      range: getCustomFontUnicodeRangeLabel(
-                                        font.unicodeRange
-                                      )
-                                    })}
-                                  </div>
-                                </div>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
+                                  <div className="flex shrink-0 flex-wrap items-center gap-2">
                                     <Button
                                       type="button"
                                       variant="outline"
                                       size="sm"
-                                      data-testid={`fontara-custom-font-delete-${font.value}`}
-                                      className="shrink-0 border-red-100 text-red-700 hover:bg-red-50 hover:text-red-800"
-                                      disabled={isLoading}>
-                                      <Trash2 className="size-4" />
-                                      {t("common.delete")}
+                                      data-testid={`fontara-custom-font-health-${font.value}`}
+                                      onClick={() =>
+                                        void handleCheckCustomFont(font)
+                                      }
+                                      disabled={
+                                        isLoading || health === "checking"
+                                      }
+                                      className="border-blue-100 text-blue-700 hover:bg-blue-50 hover:text-blue-800">
+                                      {health === "error" ? (
+                                        <RotateCcw className="size-4" />
+                                      ) : (
+                                        <ShieldCheck className="size-4" />
+                                      )}
+                                      {health === "checking"
+                                        ? t(
+                                            "options.customFonts.healthChecking"
+                                          )
+                                        : health === "error"
+                                          ? t("options.customFonts.healthRetry")
+                                          : t(
+                                              "options.customFonts.healthCheck"
+                                            )}
                                     </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent dir={direction}>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>
-                                        {t("options.customFonts.deleteTitle")}
-                                      </AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        {t(
-                                          "options.customFonts.deleteDescription",
-                                          {
-                                            font: font.displayName
-                                          }
-                                        )}
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>
-                                        {t("options.backup.cancelButton")}
-                                      </AlertDialogCancel>
-                                      <AlertDialogAction
-                                        data-testid={`fontara-custom-font-delete-confirm-${font.value}`}
-                                        onClick={() =>
-                                          void handleDeleteFont(font.value)
-                                        }>
-                                        {t("common.delete")}
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            ))}
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          data-testid={`fontara-custom-font-delete-${font.value}`}
+                                          className="shrink-0 border-red-100 text-red-700 hover:bg-red-50 hover:text-red-800"
+                                          disabled={isLoading}>
+                                          <Trash2 className="size-4" />
+                                          {t("common.delete")}
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent dir={direction}>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>
+                                            {t(
+                                              "options.customFonts.deleteTitle"
+                                            )}
+                                          </AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            {t(
+                                              "options.customFonts.deleteDescription",
+                                              {
+                                                font: font.displayName
+                                              }
+                                            )}
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>
+                                            {t("options.backup.cancelButton")}
+                                          </AlertDialogCancel>
+                                          <AlertDialogAction
+                                            data-testid={`fontara-custom-font-delete-confirm-${font.value}`}
+                                            onClick={() =>
+                                              void handleDeleteFont(font.value)
+                                            }>
+                                            {t("common.delete")}
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         ) : (
                           <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-[#dbe3ef] text-sm text-[#64748b]">
@@ -4141,7 +4643,9 @@ function OptionsPage() {
                               {t("options.backup.importWarningTitle")}
                             </h4>
                             <p className="mt-2 text-xs leading-5 text-[#92400e]">
-                              {t("options.backup.importWarningDescription")}
+                              {t("options.backup.importWarningDescription", {
+                                count: formatNumber(customFontList.length)
+                              })}
                             </p>
                             <div className="mt-4 flex flex-wrap gap-2">
                               <Button
@@ -4237,7 +4741,9 @@ function OptionsPage() {
                                 {t("options.backup.resetWarningTitle")}
                               </AlertDialogTitle>
                               <AlertDialogDescription>
-                                {t("options.backup.resetWarningDescription")}
+                                {t("options.backup.resetWarningDescription", {
+                                  count: formatNumber(customFontList.length)
+                                })}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

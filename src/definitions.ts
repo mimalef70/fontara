@@ -84,6 +84,19 @@ export interface FontaraPageThemeCommandData {
   rtl: FontaraRtlThemeCommandData
 }
 
+/**
+ * Orders resolved theme commands for one content-script document.
+ *
+ * `dispatcherId` distinguishes service-worker lifetimes, `sequence` orders
+ * commands produced by one worker for the document, and `settingsRevision`
+ * prevents an asynchronously resolved command from restoring older settings.
+ */
+export interface FontaraContentCommandOrder {
+  dispatcherId: string
+  sequence: number
+  settingsRevision: number
+}
+
 export type FontaraUIMessage =
   | {
       type: "fontara-ui-bg-get-data"
@@ -152,6 +165,7 @@ export type FontaraBackgroundMessage = {
 }
 
 export type FontaraContentScriptMessage = {
+  pageURL?: string
   scriptId: string
   type:
     | "fontara-cs-bg-document-connect"
@@ -169,11 +183,13 @@ export type FontaraCustomFontTransactionFamily = CustomFontFamilyDraft
 
 export type FontaraContentCommandMessage =
   | {
+      commandOrder?: FontaraContentCommandOrder
       data: FontaraPageThemeCommandData
       scriptId?: string
       type: "fontara-bg-cs-apply-theme"
     }
   | {
+      commandOrder?: FontaraContentCommandOrder
       scriptId?: string
       type: "fontara-bg-cs-clean-up"
     }

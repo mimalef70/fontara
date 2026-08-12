@@ -1,7 +1,8 @@
 import type {
   CustomFontFamilyDraft,
   CustomFontTransactionBeginResult,
-  CustomFontTransactionCommitResult
+  CustomFontTransactionCommitResult,
+  CustomFontTransactionMode
 } from "../../custom-font-types"
 import type {
   FontaraExtensionData,
@@ -24,8 +25,13 @@ class FontaraConnector {
   private mutationSequence = 0
 
   private createClientMutationId(): string {
+    if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
+
+    // randomUUID is available in supported extension contexts; retain a
+    // collision-resistant fallback for unusual test or embedded runtimes.
     this.mutationSequence += 1
-    return `${Date.now().toString(36)}-${this.mutationSequence.toString(36)}`
+    const entropy = crypto.getRandomValues(new Uint32Array(2)).join("-")
+    return `${Date.now().toString(36)}-${this.mutationSequence.toString(36)}-${entropy}`
   }
 
   private sendRequest<T>(message: FontaraUIMessage): Promise<T> {
@@ -131,10 +137,15 @@ class FontaraConnector {
   }
 
   beginCustomFontTransaction(
-    family: CustomFontFamilyDraft
+    family: CustomFontFamilyDraft,
+    mode?: CustomFontTransactionMode
   ): Promise<CustomFontTransactionBeginResult> {
     return this.sendRequest<CustomFontTransactionBeginResult>({
-      data: { clientMutationId: this.createClientMutationId(), family },
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        family,
+        ...(mode ? { mode } : {})
+      },
       type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
     })
   }

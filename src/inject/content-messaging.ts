@@ -3,6 +3,7 @@ import type {
   FontaraContentScriptMessage
 } from "../definitions"
 import type { MESSAGE_TYPES_CS_TO_BG } from "../utils/message"
+import { getRelatedFrameRuntimePageURL } from "../utils/runtime-url"
 
 export type RuntimeMessageEvent = typeof chrome.runtime.onMessage
 export type RuntimeControlMessage = Partial<FontaraContentCommandMessage> & {
@@ -73,7 +74,9 @@ export function sendDocumentLifecycleMessage(
 ): boolean {
   if (options.isDisposed()) return false
 
+  const relatedPageURL = getRelatedFrameRuntimePageURL()
   const message: FontaraContentScriptMessage = {
+    ...(relatedPageURL ? { pageURL: relatedPageURL } : {}),
     scriptId: options.scriptId,
     type
   }

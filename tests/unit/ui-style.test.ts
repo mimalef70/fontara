@@ -483,15 +483,15 @@ test("options page exposes extension hotkey controls", () => {
   assert.match(extensionSource, /updateIconStatus\(data\.settings\)/)
   assert.match(
     extensionSource,
-    /private static async publishSettingsChange\([\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*settings\s*\)[\s\S]*?scheduleReportChanges\(\)/
+    /private static async publishSettingsChange\([\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*settings,\s*settingsRevision\s*\)[\s\S]*?scheduleReportChanges\(\)/
   )
   assert.match(
     extensionSource,
-    /private static async persistSettingsChange\([\s\S]*?revision,[\s\S]*?settings: updatedSettings,[\s\S]*?syncSnapshot[\s\S]*?writeBackgroundSettingsWithSyncSnapshot\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings\)[\s\S]*?if \(options\.flushSync\)[\s\S]*?flushPendingSettingsSync\(syncSnapshot\)[\s\S]*?schedulePendingSettingsSync\(syncSnapshot\)[\s\S]*?return \{ revision \}/
+    /private static async persistSettingsChange\([\s\S]*?revision,[\s\S]*?settings: updatedSettings,[\s\S]*?syncSnapshot[\s\S]*?writeBackgroundSettingsWithSyncSnapshot\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings, revision\)[\s\S]*?if \(options\.flushSync\)[\s\S]*?flushPendingSettingsSync\(syncSnapshot\)[\s\S]*?schedulePendingSettingsSync\(syncSnapshot\)[\s\S]*?return \{ revision \}/
   )
   assert.match(
     extensionSource,
-    /const settings = await syncBackgroundSettingsCacheFromLocalChanges\(changes\)[\s\S]*?publishSettingsChange\(settings\)/
+    /const settings = await syncBackgroundSettingsCacheFromLocalChanges\(changes\)[\s\S]*?getBackgroundSettingsSnapshot\(\)[\s\S]*?publishSettingsChange\(settings, revision\)/
   )
   assert.match(
     extensionSource,
@@ -762,14 +762,35 @@ test("custom font uploads validate metadata and commit binary transactions", () 
   )
   assert.match(optionsSource, /validateCustomFontWithNativeFontFace/)
   assert.match(optionsSource, /extractCustomFontMetadata/)
+  assert.match(optionsSource, /resolveSimpleCustomFontSlot/)
   assert.match(optionsSource, /beginCustomFontTransaction/)
+  assert.match(
+    optionsSource,
+    /beginCustomFontTransaction\(\s*preparedFamily\.family,\s*"replace-library"\s*\)/
+  )
   assert.match(optionsSource, /putCustomFontFace/)
   assert.match(optionsSource, /commitCustomFontTransaction/)
-  assert.match(optionsSource, /parseCustomFontUnicodeRangeInput/)
-  assert.match(optionsSource, /unicodeRange/)
-  assert.match(optionsSource, /options\.addFont\.unicodeRangeLabel/)
+  assert.match(
+    optionsSource,
+    /getCustomFontUnicodeRangePreset\(fontUnicodeRangePreset\)/
+  )
   assert.match(optionsSource, /displayName: normalizedFontName/)
-  assert.match(optionsSource, /multiple/)
+  assert.match(optionsSource, /fontara-custom-font-\$\{slot\}-file/)
+  assert.match(optionsSource, /!preparedRegularFont/)
+  assert.doesNotMatch(optionsSource, /\bmultiple\b/)
+  assert.match(optionsSource, /options\.addFont\.coverageLabel/)
+  assert.match(optionsSource, /SIMPLE_CUSTOM_FONT_UNICODE_RANGE_PRESETS/)
+  assert.match(optionsSource, /FontaraUploadPreview-/)
+  assert.match(
+    optionsSource,
+    /unicodeRange: previewUnicodeRange \?\? undefined/
+  )
+  assert.match(
+    optionsSource,
+    /\[fontUnicodeRangePreset, preparedBoldFont, preparedRegularFont\]/
+  )
+  assert.match(optionsSource, /readCustomFontFaceBytes/)
+  assert.match(optionsSource, /options\.customFonts\.localOnlyBadge/)
   assert.match(optionsSource, /fontAddedSelectFromPopup/)
   assert.doesNotMatch(optionsSource, /normalizeFontDataURL/)
   assert.doesNotMatch(optionsSource, /readAsDataURL/)
@@ -788,6 +809,22 @@ test("settings export reads the latest local storage snapshot", () => {
   assert.doesNotMatch(
     optionsSource,
     /createSettingsBackup\(extensionData\.settings/
+  )
+})
+
+test("partial settings backups preserve the local custom-font catalog", () => {
+  const optionsSource = fs.readFileSync(
+    path.resolve("src/ui/options/index.tsx"),
+    "utf8"
+  )
+
+  assert.match(
+    optionsSource,
+    /Object\.getOwnPropertyDescriptor\(\s*parsedBackup\.settings,\s*STORAGE_KEYS\.CUSTOM_FONT_LIST\s*\)/
+  )
+  assert.match(
+    optionsSource,
+    /if \(!replacesCustomFonts\) \{[\s\S]*fontaraConnector\.importSettings\(\s*preparedImport\.settings\s*\)/
   )
 })
 

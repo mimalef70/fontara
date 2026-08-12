@@ -2,7 +2,8 @@ import { STORAGE_KEYS, URLS } from "../config/storage"
 import type {
   CustomFontFamilyDraft,
   CustomFontTransactionBeginResult,
-  CustomFontTransactionCommitResult
+  CustomFontTransactionCommitResult,
+  CustomFontTransactionMode
 } from "../custom-font-types"
 import type {
   FontaraExtensionData,
@@ -50,6 +51,7 @@ import {
   schedulePendingSettingsSync
 } from "./storage-manager"
 import {
+  type FontaraResolvedDocumentMessage,
   initTabManager,
   notifyContentScriptsAboutSettingsChange
 } from "./tab-manager"
@@ -141,9 +143,16 @@ export class ExtensionRuntime {
     if (startPromise) return startPromise
 
     startPromise = ensureStorageValues()
-      .then(() => {
+      .then(async () => {
         invalidateBackgroundSettingsCache()
-        return customFontManager?.initialize()
+        try {
+          await customFontManager?.initialize()
+        } catch (error) {
+          // Recovery/cleanup must never make the whole MV3 worker unusable.
+          // Journals and blobs are intentionally retained by the manager so a
+          // later startup or explicit health check can retry safely.
+          logDebug("Failed to recover custom font transactions.", error)
+        }
       })
       .then(() => {
         started = true
@@ -182,25 +191,40 @@ export class ExtensionRuntime {
     await updateIconStatus(data.settings)
   }
 
-  private static async createDocumentMessage(document: { url: string }) {
+  private static async createDocumentMessage(document: {
+    url: string
+  }): Promise<FontaraResolvedDocumentMessage> {
     await ExtensionRuntime.ensureStarted()
-    return ExtensionRuntime.createContentCommandMessage(
-      document.url,
-      await getBackgroundSettings()
-    )
+    const { revision, settings } = await getBackgroundSettingsSnapshot()
+    return {
+      message: await ExtensionRuntime.createContentCommandMessage(
+        document.url,
+        settings
+      ),
+      settingsRevision: revision
+    }
   }
 
   private static async notifyContentScriptsAboutSettingsChange(
-    settings?: Record<string, unknown>
+    settings?: Record<string, unknown>,
+    settingsRevision?: number
   ): Promise<void> {
     await ExtensionRuntime.ensureStarted()
-    const resolvedSettings = settings ?? (await getBackgroundSettings())
-    await notifyContentScriptsAboutSettingsChange((document) =>
-      ExtensionRuntime.createContentCommandMessage(
+    let resolvedSettings = settings
+    let resolvedRevision = settingsRevision
+    if (!resolvedSettings || resolvedRevision === undefined) {
+      const snapshot = await getBackgroundSettingsSnapshot()
+      resolvedSettings = resolvedSettings ?? snapshot.settings
+      resolvedRevision = resolvedRevision ?? snapshot.revision
+    }
+
+    await notifyContentScriptsAboutSettingsChange(async (document) => ({
+      message: await ExtensionRuntime.createContentCommandMessage(
         document.url,
         resolvedSettings
-      )
-    )
+      ),
+      settingsRevision: resolvedRevision
+    }))
   }
 
   private static async handleLocalSettingsChange(
@@ -210,13 +234,18 @@ export class ExtensionRuntime {
     const settings = await syncBackgroundSettingsCacheFromLocalChanges(changes)
     if (!settings) return
 
-    await ExtensionRuntime.publishSettingsChange(settings)
+    const { revision } = await getBackgroundSettingsSnapshot()
+    await ExtensionRuntime.publishSettingsChange(settings, revision)
   }
 
   private static async publishSettingsChange(
-    settings: Record<string, unknown>
+    settings: Record<string, unknown>,
+    settingsRevision?: number
   ): Promise<void> {
-    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(settings)
+    await ExtensionRuntime.notifyContentScriptsAboutSettingsChange(
+      settings,
+      settingsRevision
+    )
     ExtensionRuntime.scheduleReportChanges()
   }
 
@@ -231,7 +260,7 @@ export class ExtensionRuntime {
       syncSnapshot
     } = await writeBackgroundSettingsWithSyncSnapshot(settings)
 
-    await ExtensionRuntime.publishSettingsChange(updatedSettings)
+    await ExtensionRuntime.publishSettingsChange(updatedSettings, revision)
     if (options.flushSync) {
       await flushPendingSettingsSync(syncSnapshot)
     } else {
@@ -297,10 +326,32 @@ export class ExtensionRuntime {
     settings: FontaraSettings
   ): Promise<FontaraImportedSettingsResult> {
     return enqueueSettingsMutation(async () => {
+      const replacesCustomFonts =
+        Object.getOwnPropertyDescriptor(
+          settings,
+          STORAGE_KEYS.CUSTOM_FONT_LIST
+        ) !== undefined
+      if (
+        replacesCustomFonts &&
+        !Array.isArray(settings[STORAGE_KEYS.CUSTOM_FONT_LIST])
+      ) {
+        // The background is the durability boundary. Do not rely on the
+        // options-page preflight here: normalization turns malformed catalog
+        // values into [], which would otherwise look like an intentional
+        // request to erase the complete local font library.
+        throw new Error("invalid-custom-font-backup")
+      }
       const normalizedBackup = await normalizeSettingsBackup(settings)
+      if (!replacesCustomFonts) {
+        // Old and partial backups did not necessarily contain custom-font
+        // data. Omit the generated default instead of copying the normalized
+        // catalog back: this preserves even quarantined/forward-compatible raw
+        // metadata in storage until the user explicitly replaces the library.
+        delete normalizedBackup.settings[STORAGE_KEYS.CUSTOM_FONT_LIST]
+      }
       const importedCustomFonts =
         normalizedBackup.settings[STORAGE_KEYS.CUSTOM_FONT_LIST]
-      if (Array.isArray(importedCustomFonts)) {
+      if (replacesCustomFonts && Array.isArray(importedCustomFonts)) {
         if (!customFontManager) {
           throw new Error("custom-font-manager-not-ready")
         }
@@ -312,7 +363,16 @@ export class ExtensionRuntime {
           flushSync: true
         }
       )
-      await customFontManager?.initialize()
+      if (replacesCustomFonts) {
+        try {
+          await customFontManager?.collectUnusedAfterCatalogReplacement()
+        } catch (error) {
+          // The settings import has already crossed its durability boundary.
+          // Orphan cleanup is best-effort and must not report a successful
+          // import as failed (or invite the UI to submit it again).
+          logDebug("Failed to clean unused custom fonts after import.", error)
+        }
+      }
 
       return {
         ignoredKeyCount: normalizedBackup.ignoredKeyCount,
@@ -330,7 +390,13 @@ export class ExtensionRuntime {
           flushSync: true
         }
       )
-      await customFontManager?.initialize()
+      try {
+        await customFontManager?.collectUnusedAfterCatalogReplacement()
+      } catch (error) {
+        // Reset is already persisted; retain recoverable blobs for a later
+        // cleanup instead of turning this into a false mutation failure.
+        logDebug("Failed to clean unused custom fonts after reset.", error)
+      }
       return result
     })
   }
@@ -356,11 +422,12 @@ export class ExtensionRuntime {
   }
 
   static async beginCustomFontTransaction(
-    family: CustomFontFamilyDraft
+    family: CustomFontFamilyDraft,
+    mode?: CustomFontTransactionMode
   ): Promise<CustomFontTransactionBeginResult> {
     await ExtensionRuntime.ensureStarted()
     if (!customFontManager) throw new Error("custom-font-manager-not-ready")
-    return customFontManager.begin(family)
+    return customFontManager.begin(family, mode)
   }
 
   static async putCustomFontFace(

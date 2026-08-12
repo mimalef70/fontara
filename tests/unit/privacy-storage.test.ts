@@ -5,7 +5,10 @@ import {
   getCommandURL
 } from "../../src/background/extension-data"
 import { STORAGE_KEYS } from "../../src/config/storage"
-import { sanitizeRuntimePageURL } from "../../src/utils/runtime-url"
+import {
+  getRelatedFrameRuntimePageURL,
+  sanitizeRuntimePageURL
+} from "../../src/utils/runtime-url"
 import { normalizeStorageValues } from "../../src/utils/storage-normalization"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
@@ -93,5 +96,44 @@ test("runtime page state removes URL secrets while preserving the activation pat
   assert.doesNotMatch(
     JSON.stringify(activeTab),
     /user|password|token|secret|message/
+  )
+})
+
+test("related-frame page identity keeps only a same-origin sanitized referrer", () => {
+  assert.equal(
+    getRelatedFrameRuntimePageURL(
+      "about:srcdoc",
+      "https://user:password@EXAMPLE.com/projects/private?token=secret#message",
+      "https://example.com"
+    ),
+    "https://example.com/projects/private"
+  )
+  assert.equal(
+    getRelatedFrameRuntimePageURL(
+      "blob:https://example.com/id",
+      "https://attacker.invalid/borrowed-path",
+      "https://example.com"
+    ),
+    "https://example.com/"
+  )
+  assert.equal(
+    getRelatedFrameRuntimePageURL(
+      "data:text/html,<p>related</p>",
+      "https://EXAMPLE.com/projects/firefox?token=secret#message",
+      undefined
+    ),
+    "https://example.com/projects/firefox"
+  )
+  assert.equal(
+    getRelatedFrameRuntimePageURL("about:blank", "", undefined),
+    null
+  )
+  assert.equal(
+    getRelatedFrameRuntimePageURL(
+      "https://example.com/regular",
+      "https://example.com/referrer",
+      "https://example.com"
+    ),
+    null
   )
 })

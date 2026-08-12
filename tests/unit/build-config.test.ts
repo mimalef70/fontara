@@ -12,6 +12,7 @@ test("JS bundler uses React production runtime for extension pages", () => {
   )
   assert.match(bundleJS, /src\/ui\/i18n\/bootstrap\.ts/)
   assert.match(bundleJS, /ui\/i18n\/bootstrap\.js/)
+  assert.match(bundleJS, /charset:\s*["']utf8["']/)
 })
 
 test("build pipeline generates WebExtension locales from the i18n catalog", () => {

@@ -4,7 +4,9 @@ import {
   activatePreparedCustomFontFamily,
   type CustomFontFamilyReference,
   clearCustomFontFaces,
-  prepareCustomFontFamily
+  getActiveCustomFontFamilyReference,
+  prepareCustomFontFamily,
+  registerPreparedCustomFontFamily
 } from "./custom-font-manager"
 import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
 import {
@@ -51,9 +53,10 @@ export function cleanupResolvedPageTheme(): void {
 export async function applyResolvedPageTheme(
   data: FontaraPageThemeCommandData,
   callbacks: ThemeApplierCallbacks = {}
-): Promise<void> {
-  if (isDisposed(callbacks)) return
+): Promise<boolean> {
+  if (isDisposed(callbacks)) return false
   const applyGeneration = ++themeApplyGeneration
+  let fullyApplied = true
 
   try {
     if (!data.font.active) {
@@ -69,23 +72,50 @@ export async function applyResolvedPageTheme(
           : null
       const customFontReady = await prepareCustomFontFamily(customFontReference)
       if (isDisposed(callbacks) || applyGeneration !== themeApplyGeneration) {
-        return
+        return false
       }
+      const customFontRegistered = Boolean(
+        customFontReference &&
+          customFontReady &&
+          registerPreparedCustomFontFamily(customFontReference)
+      )
+      const lastKnownGoodCustomFont =
+        customFontReference && !customFontRegistered
+          ? getActiveCustomFontFamilyReference()
+          : null
       const resolvedFont =
-        customFontReference && !customFontReady
+        customFontReference && !customFontRegistered
           ? {
               ...data.font,
-              customFontFamilyRevision: null,
-              customFontFamilyValue: null,
-              fontName: DEFAULT_VALUES.SELECTED_FONT
+              customFontFamilyRevision:
+                lastKnownGoodCustomFont?.revision ?? null,
+              customFontFamilyValue: lastKnownGoodCustomFont?.value ?? null,
+              // A transient storage or parser failure must not make an
+              // already-rendered page jump back to the bundled default.
+              fontName:
+                lastKnownGoodCustomFont?.value ?? DEFAULT_VALUES.SELECTED_FONT
             }
           : data.font
+      fullyApplied = !customFontReference || customFontRegistered
 
       injectResolvedTextStrokeStyle(resolvedFont.textStrokeCSS)
       const hasCustomCSS = injectResolvedFontStyles(resolvedFont)
-      activatePreparedCustomFontFamily(
-        customFontReady ? customFontReference : null
-      )
+      if (customFontReference && customFontRegistered) {
+        if (!activatePreparedCustomFontFamily(customFontReference)) {
+          fullyApplied = false
+          const activeReference = getActiveCustomFontFamilyReference()
+          injectResolvedFontStyles({
+            ...data.font,
+            customFontFamilyRevision: activeReference?.revision ?? null,
+            customFontFamilyValue: activeReference?.value ?? null,
+            fontName: activeReference?.value ?? DEFAULT_VALUES.SELECTED_FONT
+          })
+        }
+      } else if (lastKnownGoodCustomFont) {
+        activatePreparedCustomFontFamily(lastKnownGoodCustomFont)
+      } else if (!customFontReference) {
+        activatePreparedCustomFontFamily(null)
+      }
 
       if (hasCustomCSS) {
         stopObserving()
@@ -102,12 +132,14 @@ export async function applyResolvedPageTheme(
     }
 
     applyResolvedRtlSupport(data.rtl)
+    return fullyApplied
   } catch (error) {
     stopObserving()
     if (callbacks.isExtensionContextInvalidated?.(error)) {
       callbacks.onExtensionContextInvalidated?.()
-      return
+      return false
     }
     callbacks.warn?.("Failed to apply resolved FontAra theme.", error)
+    return false
   }
 }

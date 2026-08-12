@@ -47,6 +47,7 @@ import {
   normalizeSystemFontFamilyKey,
   type SystemFontData
 } from "../../utils/system-fonts"
+import { fontaraConnector } from "../connect/connector"
 import { useExtensionData } from "../hooks/use-extension-data"
 import { useDebouncedStorageValue, useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
@@ -120,6 +121,10 @@ export default function PerSiteSettings() {
   const [drawerOpen, setDrawerOpen] = React.useState(false)
   const [googleFonts, setGoogleFonts] = React.useState<GoogleFontData[]>([])
   const [googleFontsReady, setGoogleFontsReady] = React.useState(false)
+  const [googleFontPreparation, setGoogleFontPreparation] = React.useState<{
+    status: "error" | "loading"
+    value: string
+  } | null>(null)
   const [systemFonts, setSystemFonts] = React.useState<SystemFontData[]>([])
   const [systemFontsReady, setSystemFontsReady] = React.useState(false)
 
@@ -464,12 +469,29 @@ export default function PerSiteSettings() {
     })
   }
 
-  const handleFontChange = async (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const nextFont = event.currentTarget.value
+  const selectPerSiteFont = async (nextFont: string) => {
+    const googleFontFamily = decodeGoogleFontValue(nextFont)
 
-    await saveProfilePatch({ enabled: true, font: nextFont || null })
+    try {
+      if (googleFontFamily) {
+        setGoogleFontPreparation({ status: "loading", value: nextFont })
+        await fontaraConnector.prepareGoogleFont(nextFont)
+      }
+
+      await saveProfilePatch({ enabled: true, font: nextFont || null })
+      setGoogleFontPreparation(null)
+    } catch (error) {
+      if (googleFontFamily) {
+        setGoogleFontPreparation({ status: "error", value: nextFont })
+      }
+      if (__DEBUG__) {
+        console.warn("Failed to prepare the per-site Google Font.", error)
+      }
+    }
+  }
+
+  const handleFontChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    void selectPerSiteFont(event.currentTarget.value)
   }
 
   const handleCustomStrokeToggle = async (checked: boolean) => {
@@ -648,7 +670,8 @@ export default function PerSiteSettings() {
                 id="fontara-per-site-font"
                 value={currentProfile?.font ?? ""}
                 data-testid="fontara-per-site-font-select"
-                onChange={(event) => void handleFontChange(event)}
+                disabled={googleFontPreparation?.status === "loading"}
+                onChange={handleFontChange}
                 className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15">
                 <option value="">
                   {t("popup.perSite.globalFontWithValue", {
@@ -682,6 +705,38 @@ export default function PerSiteSettings() {
                     })
                   : t("popup.perSite.globalFont")}
               </p>
+              {googleFontPreparation && (
+                <div
+                  aria-live="polite"
+                  className={cn(
+                    "flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-xs",
+                    googleFontPreparation.status === "error"
+                      ? "border-red-100 bg-red-50 text-red-700"
+                      : "border-blue-100 bg-blue-50 text-blue-700"
+                  )}>
+                  <span>
+                    {googleFontPreparation.status === "loading"
+                      ? t("fontSelector.googleDownloading", {
+                          font:
+                            decodeGoogleFontValue(
+                              googleFontPreparation.value
+                            ) ?? ""
+                        })
+                      : t("fontSelector.googleDownloadFailed")}
+                  </span>
+                  {googleFontPreparation.status === "error" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-7 shrink-0 px-2 text-[11px]"
+                      onClick={() =>
+                        void selectPerSiteFont(googleFontPreparation.value)
+                      }>
+                      {t("fontSelector.googleRetry")}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 rounded-md border border-[#e5e7eb] p-3">

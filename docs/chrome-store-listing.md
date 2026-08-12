@@ -60,7 +60,8 @@ Privacy:
 FontAra processes page text locally in your browser. Custom-font files remain in
 local extension storage and are never uploaded to a FontAra server. Optional
 settings sync is handled by your browser provider. Google Fonts is off by
-default; after opt-in, selected fonts are requested directly from Google. We do
+default; after opt-in, the extension background requests and locally caches the
+selected font without sending the visited page origin to Google. We do
 not collect, sell, or share browsing data. Full details are in
 `docs/privacy.html`.
 
@@ -99,8 +100,9 @@ Fonts اختیاری، فونت‌های مرورگر/سیستم در مرورگ
 FontAra پردازش متن صفحه را به‌صورت محلی در مرورگر شما انجام می‌دهد. فایل‌های
 فونت دلخواه فقط در storage محلی افزونه می‌مانند و به سرور FontAra آپلود
 نمی‌شوند. همگام‌سازی اختیاری را ارائه‌دهندهٔ مرورگر انجام می‌دهد. Google Fonts
-در حالت پیش‌فرض خاموش است و پس از opt-in، فونت انتخابی مستقیماً از Google
-درخواست می‌شود. ما داده‌های مرور شما را جمع‌آوری، فروش یا به اشتراک نمی‌گذاریم.
+در حالت پیش‌فرض خاموش است و پس از opt-in، پس‌زمینهٔ افزونه فونت انتخابی را بدون
+ارسال مبدأ صفحه از Google می‌گیرد و محلی کش می‌کند. ما داده‌های مرور شما را
+جمع‌آوری، فروش یا به اشتراک نمی‌گذاریم.
 
 ## Arabic Short Description
 
@@ -135,6 +137,6 @@ FontAra إضافة تراعي الخصوصية لتغيير الخطوط على 
 
 يعالج FontAra نصوص الصفحات محليًا داخل متصفحك. تبقى ملفات الخطوط المخصصة في
 التخزين المحلي ولا تُرفع إلى خادم FontAra، وتتم المزامنة الاختيارية بواسطة
-مزود المتصفح. تكون Google Fonts معطلة افتراضيًا، وبعد الاشتراك الصريح تُطلب
-الخطوط المحددة مباشرة من Google. نحن لا نجمع بيانات التصفح ولا نبيعها ولا
-نشاركها.
+مزود المتصفح. تكون Google Fonts معطلة افتراضيًا، وبعد الاشتراك الصريح تطلب
+خلفية الإضافة الخط المحدد من Google وتخزنه محليًا من دون إرسال أصل الصفحة.
+نحن لا نجمع بيانات التصفح ولا نبيعها ولا نشاركها.

@@ -101,11 +101,24 @@ function getCacheKey(fontFamily: string): string {
 }
 
 export function isGoogleFontFeatureSupported(): boolean {
-  if (typeof __CHROMIUM_MV3__ !== "undefined") {
-    return __CHROMIUM_MV3__
+  if (
+    typeof __CHROMIUM_MV3__ !== "undefined" ||
+    typeof __FIREFOX_MV3__ !== "undefined"
+  ) {
+    return (
+      (typeof __CHROMIUM_MV3__ !== "undefined" && __CHROMIUM_MV3__) ||
+      (typeof __FIREFOX_MV3__ !== "undefined" && __FIREFOX_MV3__)
+    )
   }
 
   return true
+}
+
+export function isGoogleFontCSSLoadingSupported(): boolean {
+  if (typeof __CHROMIUM_MV3__ !== "undefined") return __CHROMIUM_MV3__
+  // Unit/library contexts without a build target retain the legacy helper for
+  // backward-compatible cache parsing. Production selection never calls it.
+  return typeof __FIREFOX_MV3__ === "undefined"
 }
 
 export function createGoogleFontValue(fontFamily: string): string {
@@ -555,7 +568,7 @@ export async function loadGoogleFontFaceCSS(
   selectedFont: unknown,
   options: GoogleFontFaceCSSLoadOptions = {}
 ): Promise<string | null> {
-  if (!isGoogleFontFeatureSupported()) return null
+  if (!isGoogleFontCSSLoadingSupported()) return null
 
   const fontFamily = decodeGoogleFontValue(selectedFont)
   if (!fontFamily) return null

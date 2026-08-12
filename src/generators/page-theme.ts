@@ -14,6 +14,7 @@ import type {
 } from "../definitions"
 import { getFontFaceCSS } from "./font-face"
 import {
+  type FontaraFontSelectionOptions,
   type GoogleFontCSSLoadMode,
   resolveFontSelection
 } from "./font-selection"
@@ -21,6 +22,7 @@ import { createTextStrokeCSS, getTextStrokeConfig } from "./text-stroke"
 
 export type FontaraPageThemeDataOptions = {
   googleFontCSSLoadMode?: GoogleFontCSSLoadMode
+  resolveGoogleFontBinary?: FontaraFontSelectionOptions["resolveGoogleFontBinary"]
 }
 
 const INACTIVE_FONT_THEME: FontaraFontThemeCommandData = {
@@ -32,6 +34,7 @@ const INACTIVE_FONT_THEME: FontaraFontThemeCommandData = {
   fontFaceCSS: "",
   fontName: DEFAULT_VALUES.SELECTED_FONT,
   googleFontCSS: null,
+  localFont: null,
   textStrokeCSS: ""
 }
 
@@ -81,6 +84,7 @@ async function createFontThemeData(
       STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
       DEFAULT_VALUES.GOOGLE_FONTS_ENABLED
     ),
+    resolveGoogleFontBinary: options.resolveGoogleFontBinary,
     systemFontsEnabled: getSetting(
       settings,
       STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
@@ -105,6 +109,7 @@ async function createFontThemeData(
     fontFaceCSS: getFontFaceCSS(),
     fontName: selectedFontState.fontName,
     googleFontCSS: selectedFontState.googleFontCSS,
+    localFont: selectedFontState.localFont,
     textStrokeCSS
   }
 }

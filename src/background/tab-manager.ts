@@ -23,6 +23,7 @@ type DocumentMessageFactory = (
 ) => DocumentMessageFactoryResult | Promise<DocumentMessageFactoryResult>
 
 export type FontaraResolvedDocumentMessage = {
+  keepAlive?: Promise<unknown>
   message: FontaraContentCommandMessage
   settingsRevision: number
 }
@@ -416,7 +417,7 @@ function sendDocumentMessageFromFactory(
     if (isPromiseLikeMessage(result)) {
       return result
         .catch(() => createSettingsChangedMessage())
-        .then((resolvedMessage) => {
+        .then(async (resolvedMessage) => {
           queueResolvedDocumentMessage(
             tabId,
             document,
@@ -425,6 +426,9 @@ function sendDocumentMessageFromFactory(
             resolvedMessage,
             onDeliveryFailure
           )
+          if (isResolvedDocumentMessage(resolvedMessage)) {
+            await resolvedMessage.keepAlive
+          }
         })
     }
 
@@ -436,6 +440,9 @@ function sendDocumentMessageFromFactory(
       result,
       onDeliveryFailure
     )
+    if (isResolvedDocumentMessage(result)) {
+      return Promise.resolve(result.keepAlive).then(() => undefined)
+    }
   } catch {
     queueResolvedDocumentMessage(
       tabId,

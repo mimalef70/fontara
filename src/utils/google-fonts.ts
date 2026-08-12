@@ -4,7 +4,7 @@ import {
   createGoogleFontValue,
   decodeGoogleFontValue,
   type GoogleFontFaceCSSLoadOptions,
-  isGoogleFontFeatureSupported,
+  isGoogleFontCSSLoadingSupported,
   isSafeGoogleFontFamily,
   isSelectableGoogleFontFamily,
   loadGoogleFontFaceCSS as loadGoogleFontFaceCSSFromRuntime,
@@ -35,8 +35,25 @@ type GoogleFontsCatalogPayload = {
 let cachedGoogleFonts: GoogleFontData[] | null = null
 let googleFontsLoadPromise: Promise<GoogleFontData[]> | null = null
 
+// Google serves CJK families as hundreds of unicode-range slices even for a
+// single weight. Registering all of them in every document/frame would exceed
+// the bounded binary loader and create disproportionate memory use. Keep them
+// out of the picker until a dedicated subset-on-demand design exists.
+const GOOGLE_FONT_OVERSIZED_SUBSETS = new Set([
+  "chinese-hongkong",
+  "chinese-simplified",
+  "chinese-traditional",
+  "japanese",
+  "korean"
+])
+const GOOGLE_FONT_OVERSIZED_FAMILIES = new Set(["Google Sans"])
+
 export function isSelectableGoogleFont(font: GoogleFontMetadata): boolean {
-  return isSelectableGoogleFontFamily(font.family)
+  return (
+    isSelectableGoogleFontFamily(font.family) &&
+    !GOOGLE_FONT_OVERSIZED_FAMILIES.has(font.family) &&
+    !font.subsets.some((subset) => GOOGLE_FONT_OVERSIZED_SUBSETS.has(subset))
+  )
 }
 
 function createGoogleFontData(font: GoogleFontMetadata): GoogleFontData {
@@ -145,7 +162,7 @@ export async function loadGoogleFontFaceCSS(
   selectedFont: unknown,
   options: GoogleFontFaceCSSLoadOptions = {}
 ): Promise<string | null> {
-  if (!isGoogleFontFeatureSupported()) return null
+  if (!isGoogleFontCSSLoadingSupported()) return null
 
   const fontFamily = decodeGoogleFontValue(selectedFont)
   if (!fontFamily) return null

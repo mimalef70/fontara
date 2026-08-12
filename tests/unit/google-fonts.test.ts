@@ -21,6 +21,7 @@ import {
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 const originalChromium = Reflect.get(globalThis, "__CHROMIUM_MV3__") as unknown
+const originalFirefox = Reflect.get(globalThis, "__FIREFOX_MV3__") as unknown
 const originalFetch = Reflect.get(globalThis, "fetch") as unknown
 const originalDateNow = Date.now
 const catalog = JSON.parse(
@@ -98,6 +99,7 @@ afterEach(() => {
   resetGoogleFontCatalogForTesting()
   Reflect.set(globalThis, "chrome", originalChrome)
   Reflect.set(globalThis, "__CHROMIUM_MV3__", originalChromium)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", originalFirefox)
   Reflect.set(globalThis, "fetch", originalFetch)
   Date.now = originalDateNow
 })
@@ -144,6 +146,26 @@ test("Google Font display list is lazy and exposes safe selectable data", async 
   )
   assert.equal(
     fonts.some((font) => font.family === "Noto Color Emoji"),
+    false
+  )
+  assert.equal(
+    fonts.some((font) => font.family === "Noto Sans JP"),
+    false
+  )
+  assert.equal(
+    fonts.some((font) => font.family === "Noto Sans KR"),
+    false
+  )
+  assert.equal(
+    fonts.some((font) => font.family === "Noto Sans SC"),
+    false
+  )
+  assert.equal(
+    fonts.some((font) => font.family === "Noto Sans HK"),
+    false
+  )
+  assert.equal(
+    fonts.some((font) => font.family === "Google Sans"),
     false
   )
   assert.equal(
@@ -573,15 +595,16 @@ test("Google Font CSS loader rejects oversized and non-CSS responses", async () 
   assert.equal(await loadGoogleFontFaceCSS(selectedFont), null)
 })
 
-test("Google Font remote loading is disabled outside Chromium builds", async () => {
+test("Firefox supports local Google fonts but never uses legacy remote CSS", async () => {
   Reflect.set(globalThis, "__CHROMIUM_MV3__", false)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", true)
   let fetchCalls = 0
   Reflect.set(globalThis, "fetch", async () => {
     fetchCalls += 1
     throw new Error("unexpected network request")
   })
 
-  assert.equal(isGoogleFontFeatureSupported(), false)
+  assert.equal(isGoogleFontFeatureSupported(), true)
   assert.equal(
     await loadGoogleFontFaceCSS(createGoogleFontValue("Inter")),
     null
@@ -591,12 +614,18 @@ test("Google Font remote loading is disabled outside Chromium builds", async () 
 
 test("Google Fonts storage defaults honor the build capability", () => {
   Reflect.set(globalThis, "__CHROMIUM_MV3__", true)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", false)
   assert.equal(isGoogleFontFeatureSupported(), true)
   assert.equal(getGoogleFontsEnabledInitialValue(true), true)
   assert.equal(getGoogleFontsEnabledInitialValue(false), false)
   assert.equal(getGoogleFontsEnabledInitialValue(undefined), false)
 
   Reflect.set(globalThis, "__CHROMIUM_MV3__", false)
+  Reflect.set(globalThis, "__FIREFOX_MV3__", true)
+  assert.equal(isGoogleFontFeatureSupported(), true)
+  assert.equal(getGoogleFontsEnabledInitialValue(true), true)
+
+  Reflect.set(globalThis, "__FIREFOX_MV3__", false)
   assert.equal(isGoogleFontFeatureSupported(), false)
   assert.equal(getGoogleFontsEnabledInitialValue(true), false)
 })

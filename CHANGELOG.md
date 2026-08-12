@@ -12,6 +12,18 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Enabled Google Fonts on supported Firefox versions through a page-private
+  binary pipeline: the background downloads and validates CSS/WOFF2 assets,
+  publishes them to a bounded local cache, and content scripts register all
+  faces atomically with `FontFace(ArrayBuffer)`. Page origins are no longer
+  sent to Google, strict page CSP remains effective, and cached fonts survive
+  reloads and work offline.
+- Added explicit Firefox data-consent handling, immediate network cancellation
+  on disable or permission revocation, stale-last-known-good recovery,
+  transactional cache cleanup, and user-visible download/cache controls.
+- Excluded non-text and oversized sliced font families from the Google picker
+  until they can be loaded within the per-document memory budget.
+
 ## 5.1.0
 
 - Rebuilt custom-font storage around multi-face family metadata while making
@@ -38,8 +50,8 @@ This project follows a practical release-note format:
   production runtime bundles below their release budgets. Google font requests
   now include useful regular, bold, and italic faces, use timeout-bounded and
   serialized stale-while-revalidate caching, and fall back without switching
-  to an unavailable family. Remote Google Fonts are disabled on Firefox and
-  Safari until font files can be loaded locally without page-origin requests.
+  to an unavailable family. Safari remains disabled until its binary font path
+  can be validated in a real Safari App Extension.
 - Improved keyboard navigation, disabled states, loading skeletons, mobile
   navigation, ARIA state, contrast, visible scrollbars, RTL layout, and deletion
   confirmation across popup and options.
@@ -101,9 +113,8 @@ Migration notes:
 
 Known issues and notes:
 
-- On Chromium, Google Fonts still requires network access to Google font
-  endpoints for uncached font files; its CSS metadata cache does not yet store
-  the font binaries themselves.
+- Google Fonts requires network access only while preparing an uncached or
+  stale family; verified font binaries are retained in local extension storage.
 - Built-in site optimizations may need updates when target websites ship major UI
   changes.
 

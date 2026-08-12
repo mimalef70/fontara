@@ -36,11 +36,9 @@ export function injectResolvedFontStyles(
   upsertStyle(FONT_STYLES_ID, data.fontFaceCSS)
   updateFontVariable(data.fontName)
 
-  if (data.googleFontCSS) {
-    upsertStyle(GOOGLE_FONT_STYLES_ID, data.googleFontCSS)
-  } else {
-    removeStyle(GOOGLE_FONT_STYLES_ID)
-  }
+  // Google fonts are registered from locally cached bytes. Remove the legacy
+  // URL-backed stylesheet during upgrades so pages never contact gstatic.
+  removeStyle(GOOGLE_FONT_STYLES_ID)
 
   if (data.customCSS) {
     removeEditableFontStyles()

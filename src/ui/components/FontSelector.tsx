@@ -31,6 +31,7 @@ import {
   normalizeSystemFontFamilyKey,
   type SystemFontData
 } from "../../utils/system-fonts"
+import { fontaraConnector } from "../connect/connector"
 import { useIsMobile } from "../hooks/use-mobile"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
@@ -94,6 +95,7 @@ type FontListRowProps = {
   getFontDisplayName: (font: DisplayFont) => string
   getFontFamily: (font: DisplayFont) => string
   hoveredFont: string | null
+  isSelectionBusy: boolean
   onFontSelect: (fontValue: string) => void
   onHoveredFontChange: (fontValue: string | null) => void
   rows: FontListRow[]
@@ -161,6 +163,7 @@ function FontListRow({
   getFontFamily,
   hoveredFont,
   index,
+  isSelectionBusy,
   onFontSelect,
   onHoveredFontChange,
   rows,
@@ -258,6 +261,7 @@ function FontListRow({
       aria-posinset={optionPosition}
       aria-selected={selectedFont === font.value}
       aria-setsize={optionCount}
+      disabled={isSelectionBusy}
       onClick={() => onFontSelect(font.value)}
       onFocus={() => onHoveredFontChange(font.value)}
       onBlur={() => onHoveredFontChange(null)}
@@ -265,7 +269,7 @@ function FontListRow({
       onMouseLeave={() => onHoveredFontChange(null)}
       data-testid={`fontara-font-option-${font.value}`}
       style={{ ...style, ...getFontPreviewStyle(getFontFamily(font)) }}
-      className="group w-full cursor-pointer bg-transparent p-1 text-start">
+      className="group w-full cursor-pointer bg-transparent p-1 text-start disabled:cursor-wait disabled:opacity-60">
       <span
         className={cn(
           "flex h-full w-full items-center rounded-lg p-3 transition-colors",
@@ -309,6 +313,10 @@ const FontSelector = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [googleFonts, setGoogleFonts] = useState<GoogleFontData[]>([])
   const [googleFontsReady, setGoogleFontsReady] = useState(false)
+  const [googleFontPreparation, setGoogleFontPreparation] = useState<{
+    status: "error" | "loading"
+    value: string
+  } | null>(null)
   const [systemFonts, setSystemFonts] = useState<SystemFontData[]>([])
   const [systemFontsLoading, setSystemFontsLoading] = useState(false)
   const [systemFontsFailed, setSystemFontsFailed] = useState(false)
@@ -502,10 +510,20 @@ const FontSelector = () => {
 
   const handleFontSelect = useCallback(
     async (fontValue: string) => {
+      const googleFontFamily = decodeGoogleFontValue(fontValue)
+
       try {
+        if (googleFontFamily) {
+          setGoogleFontPreparation({ status: "loading", value: fontValue })
+          await fontaraConnector.prepareGoogleFont(fontValue)
+        }
         await setSelectedFont(fontValue)
+        setGoogleFontPreparation(null)
         setIsOpen(false)
       } catch (error) {
+        if (googleFontFamily) {
+          setGoogleFontPreparation({ status: "error", value: fontValue })
+        }
         if (__DEBUG__) {
           console.warn("Failed to save selected font.", error)
         }
@@ -586,6 +604,16 @@ const FontSelector = () => {
       : systemFontsEnabled && systemFontsFailed && !systemFontsLoading
         ? t("fontSelector.systemUnavailable")
         : null
+  const preparedGoogleFontFamily = googleFontPreparation
+    ? decodeGoogleFontValue(googleFontPreparation.value)
+    : null
+  const googleFontsStatusMessage = googleFontPreparation
+    ? googleFontPreparation.status === "loading"
+      ? t("fontSelector.googleDownloading", {
+          font: preparedGoogleFontFamily ?? ""
+        })
+      : t("fontSelector.googleDownloadFailed")
+    : null
   const fontListRowProps = useMemo<FontListRowProps>(
     () => ({
       direction,
@@ -593,6 +621,7 @@ const FontSelector = () => {
       getFontDisplayName,
       getFontFamily,
       hoveredFont,
+      isSelectionBusy: googleFontPreparation?.status === "loading",
       onFontSelect: handleFontSelect,
       onHoveredFontChange: setHoveredFont,
       rows: fontListRows,
@@ -606,6 +635,7 @@ const FontSelector = () => {
       getFontFamily,
       handleFontSelect,
       hoveredFont,
+      googleFontPreparation?.status,
       selectedFont
     ]
   )
@@ -645,20 +675,38 @@ const FontSelector = () => {
             {t("fontSelector.noResults")}
           </div>
         )}
-        {fontListRows.length > 0 && systemFontsStatusMessage && (
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-white via-white/95 to-transparent px-3 pb-2 pt-8 text-center text-xs text-slate-500">
-            <span>{systemFontsStatusMessage}</span>
-            {systemFontsFailed && !systemFontsLoading && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void refreshSystemFonts(true)}
-                className="h-7 rounded-md px-2 text-[11px]">
-                {t("fontSelector.systemRetry")}
-              </Button>
-            )}
-          </div>
-        )}
+        {fontListRows.length > 0 &&
+          (googleFontsStatusMessage || systemFontsStatusMessage) && (
+            <div
+              aria-live="polite"
+              className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-white via-white/95 to-transparent px-3 pb-2 pt-8 text-center text-xs text-slate-500">
+              <span>
+                {googleFontsStatusMessage ?? systemFontsStatusMessage}
+              </span>
+              {googleFontPreparation?.status === "error" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    void handleFontSelect(googleFontPreparation.value)
+                  }
+                  className="h-7 rounded-md px-2 text-[11px]">
+                  {t("fontSelector.googleRetry")}
+                </Button>
+              )}
+              {!googleFontPreparation &&
+                systemFontsFailed &&
+                !systemFontsLoading && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void refreshSystemFonts(true)}
+                    className="h-7 rounded-md px-2 text-[11px]">
+                    {t("fontSelector.systemRetry")}
+                  </Button>
+                )}
+            </div>
+          )}
       </div>
     </div>
   )

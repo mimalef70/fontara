@@ -299,7 +299,12 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.siteProfiles\.applyProfile/)
   assert.match(optionsSource, /options\.siteProfiles\.active/)
   assert.match(optionsSource, /options\.siteProfiles\.inactive/)
-  assert.match(optionsSource, /removeSiteProfileFontOverrides/)
+  const googleToggleHandler = optionsSource.slice(
+    optionsSource.indexOf("const handleGoogleFontsToggle"),
+    optionsSource.indexOf("const handleClearGoogleFontCache")
+  )
+  assert.doesNotMatch(googleToggleHandler, /STORAGE_KEYS\.SELECTED_FONT/)
+  assert.doesNotMatch(googleToggleHandler, /STORAGE_KEYS\.SITE_PROFILES/)
   assert.match(optionsSource, /normalizeSitePattern/)
   assert.match(optionsSource, /normalizeSiteProfiles/)
   assert.match(optionsSource, /isSiteListUrlEnabled/)

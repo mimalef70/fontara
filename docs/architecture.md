@@ -36,6 +36,8 @@ Main responsibilities:
 - Broadcast settings updates after tab delivery failures or service worker
   restarts.
 - Maintain action icon state and extension commands.
+- Download and strictly validate opted-in Google Fonts, then publish immutable
+  WOFF2 blobs and versioned family manifests to a bounded local cache.
 
 Key folders:
 
@@ -48,7 +50,7 @@ Key folders:
 Main responsibilities:
 
 - Resolve activation for the current URL.
-- Inject bundled, Google, system, or custom font CSS.
+- Inject bundled/system CSS and register custom or Google font bytes locally.
 - Apply selected font without forcing page reloads.
 - Process newly inserted DOM nodes.
 - Protect code, icon, hidden, and editable surfaces.
@@ -66,6 +68,11 @@ The content script has two application paths:
 | --- | --- | --- |
 | Site CSS | A matching site fix exists. | Injects curated CSS from `assets/styles` and avoids generic DOM scanning. |
 | Generic processing | No site CSS match. | Walks readable DOM text, writes font fallbacks, observes later mutations. |
+
+Custom and Google families share one local-font state machine. Every requested
+face is loaded from extension storage and registered before the CSS variable is
+changed; the previous family remains active on a cache miss, race, corrupt
+asset, or parse failure. Remote Google URLs are never inserted into page DOM.
 
 ## Extension UI
 
@@ -116,6 +123,9 @@ Settings are normalized at startup and when imported. Important groups:
 - Per-site profiles: font, activation, and text-stroke overrides.
 - Custom fonts: metadata-only family records plus content-addressed local face
   blobs, loaded into pages with `FontFace(ArrayBuffer)`.
+- Google fonts: versioned family manifests plus content-addressed verified
+  WOFF2 blobs, downloaded by the background only after explicit opt-in and
+  loaded into pages with `FontFace(ArrayBuffer)`.
 - RTL settings: global enablement and curated site adapter preferences.
 - Runtime state: tab/content document tracking for update delivery.
 

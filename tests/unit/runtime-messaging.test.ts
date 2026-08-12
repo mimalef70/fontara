@@ -53,6 +53,7 @@ test("background messenger routes UI requests and reports subscribed changes", a
   }
   const changedSettings: unknown[] = []
   const begunFontTransactions: unknown[] = []
+  const preparedGoogleFonts: string[] = []
 
   Reflect.set(globalThis, "chrome", {
     runtime: {
@@ -97,10 +98,25 @@ test("background messenger routes UI requests and reports subscribed changes", a
     async deleteCustomFont() {
       return { revision: 4 }
     },
+    async clearGoogleFontCache() {
+      return { familyCount: 0, pinnedFamilyCount: 0, totalBytes: 0 }
+    },
+    async getGoogleFontCacheStats() {
+      return { familyCount: 1, pinnedFamilyCount: 0, totalBytes: 1024 }
+    },
     async importCustomFontBatch() {
       throw new Error("unused")
     },
     async putCustomFontFace() {},
+    async prepareGoogleFont(selectedValue) {
+      preparedGoogleFonts.push(selectedValue)
+      return {
+        faceCount: 2,
+        fontFamily: "Inter",
+        reference: { key: "a".repeat(64), revision: 1 },
+        totalBytes: 1024
+      }
+    },
     async resetSettings() {
       return { revision: 5 }
     },
@@ -120,6 +136,31 @@ test("background messenger routes UI requests and reports subscribed changes", a
   await waitForMessageResponse()
 
   assert.deepEqual(response, { data: extensionData })
+
+  listeners[0](
+    {
+      data: {
+        clientMutationId: "mutation-google-prepare",
+        selectedValue: "google-font:Inter"
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE
+    },
+    allowedSender,
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.deepEqual(preparedGoogleFonts, ["google-font:Inter"])
+  assert.deepEqual(response, {
+    data: {
+      faceCount: 2,
+      fontFamily: "Inter",
+      reference: { key: "a".repeat(64), revision: 1 },
+      totalBytes: 1024
+    }
+  })
 
   listeners[0](
     {

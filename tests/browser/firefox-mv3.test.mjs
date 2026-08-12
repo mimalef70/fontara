@@ -8,19 +8,24 @@ import {
   clickByTestId,
   createBasicPageStyleExpectation,
   createHardFixtureStyleExpectation,
+  createSeededGoogleFontBinaryCache,
   evaluate,
   expectPageStyles,
   findFirefoxBinary,
   getExtensionLocalValues,
   getExtensionSyncRawValues,
   mountHardFixtureAdvancedText,
+  observeDocumentGoogleFontRequests,
   STORAGE_KEYS,
+  STRICT_FONT_CSP_FIXTURE_PATH,
   sendSettingsFromContentBridge,
+  setExtensionLocalValues,
   setValueByTestId,
   uploadFilesByTestId,
   waitFor,
   waitForContentBridge,
   waitForExtensionLocalValue,
+  waitForGoogleFontBinaryRuntimeState,
   withFirefoxMv3ExtensionHarness
 } from "../support/browser/extension-harness.mjs"
 
@@ -245,7 +250,7 @@ test("Firefox MV3 applies and excludes FontARA through the content bridge", asyn
   })
 })
 
-test("Firefox MV3 applies a generic system font and keeps Google Fonts dormant without remote styles", async (t) => {
+test("Firefox MV3 applies a generic system font across reload", async (t) => {
   if (await skipUnlessFirefoxBrowserTestsAreEnabled(t)) return
 
   await withFirefoxMv3ExtensionHarness(t, async (harness) => {
@@ -299,69 +304,121 @@ test("Firefox MV3 applies a generic system font and keeps Google Fonts dormant w
         loadId: systemReloadLoadId
       })
     )
+  })
+})
 
-    const googleFontValue = "google-font:Roboto"
-    await sendSettingsFromContentBridge(fixturePage, {
-      [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
-      [STORAGE_KEYS.SELECTED_FONT]: googleFontValue
+test("Firefox MV3 applies durable Google binary faces under strict page CSP across reload", async (t) => {
+  if (await skipUnlessFirefoxBrowserTestsAreEnabled(t)) return
+
+  await withFirefoxMv3ExtensionHarness(t, async (harness) => {
+    const optionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const fixturePage = await harness.createFixturePage({
+      path: STRICT_FONT_CSP_FIXTURE_PATH
     })
-    await expectPageStyles(
-      fixturePage,
-      createBasicPageStyleExpectation({
-        fontName: "Vazirmatn-Fontara",
-        loadId: systemReloadLoadId
-      })
-    )
-    await waitForExtensionLocalValue(
-      optionsPage,
-      STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
-      true
-    )
-    await waitForExtensionLocalValue(
-      optionsPage,
-      STORAGE_KEYS.SELECTED_FONT,
-      googleFontValue
-    )
-
-    const dormantGoogleState = await evaluate(fixturePage, () => ({
-      googleFontStyleText:
-        document.getElementById("fontara-google-font-styles")?.textContent ??
-        "",
-      googleRequests: performance
-        .getEntriesByType("resource")
-        .map((entry) => entry.name)
-        .filter(
-          (url) =>
-            url.startsWith("https://fonts.googleapis.com/") ||
-            url.startsWith("https://fonts.gstatic.com/")
-        )
-    }))
-    assert.equal(dormantGoogleState.googleFontStyleText, "")
-    assert.deepEqual(dormantGoogleState.googleRequests, [])
-
-    await fixturePage.reload({ waitUntil: "load" })
+    await fixturePage.waitForFunction(() => document.readyState === "complete")
     await waitForContentBridge(fixturePage)
-    const googleReloadLoadId = await evaluate(
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    const fixture = await createSeededGoogleFontBinaryCache()
+    const documentGoogleRequests =
+      observeDocumentGoogleFontRequests(fixturePage)
+
+    await setExtensionLocalValues(optionsPage, fixture.storageValues)
+    const initialLoadId = await evaluate(
       fixturePage,
       () => window.__fontaraLoadId
     )
-    assert.notEqual(googleReloadLoadId, systemReloadLoadId)
+    await sendSettingsFromContentBridge(fixturePage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: fixture.selectedValue,
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    })
+
     await expectPageStyles(
       fixturePage,
       createBasicPageStyleExpectation({
-        fontName: "Vazirmatn-Fontara",
-        loadId: googleReloadLoadId
+        fontName: fixture.runtimeFamily,
+        loadId: initialLoadId
       })
     )
-    assert.equal(
-      await evaluate(
-        fixturePage,
-        () =>
-          document.getElementById("fontara-google-font-styles")?.textContent ??
-          ""
-      ),
-      ""
+    const initialState = await waitForGoogleFontBinaryRuntimeState(
+      fixturePage,
+      fixture,
+      {
+        loadId: initialLoadId,
+        message:
+          "Firefox did not activate all four seeded Google binary faces under strict CSP."
+      }
     )
+    assert.deepEqual(
+      initialState.faceDescriptors.map(
+        (face) => `${face.style}:${face.weight}:${face.status}`
+      ),
+      [
+        "italic:400:loaded",
+        "italic:700:loaded",
+        "normal:400:loaded",
+        "normal:700:loaded"
+      ]
+    )
+    for (const widths of initialState.widths) {
+      assert.ok(
+        Math.max(
+          Math.abs(widths.font - widths.serif),
+          Math.abs(widths.font - widths.monospace)
+        ) > 1,
+        "A seeded Google binary face rendered like both fallback families."
+      )
+    }
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      fixture.selectedValue
+    )
+
+    await fixturePage.reload({ waitUntil: "load" })
+    await waitForContentBridge(fixturePage)
+    const reloadLoadId = await evaluate(
+      fixturePage,
+      () => window.__fontaraLoadId
+    )
+    assert.notEqual(reloadLoadId, initialLoadId)
+    await expectPageStyles(
+      fixturePage,
+      createBasicPageStyleExpectation({
+        fontName: fixture.runtimeFamily,
+        loadId: reloadLoadId
+      })
+    )
+    await waitForGoogleFontBinaryRuntimeState(fixturePage, fixture, {
+      loadId: reloadLoadId,
+      message:
+        "Firefox lost the seeded Google binary faces after an offline Google-cache reload."
+    })
+
+    const durableStorage = await getExtensionLocalValues(optionsPage, [
+      `googleFontFamily:${fixture.family.key}:1`,
+      ...fixture.assetHashes.map((hash) => `googleFontFace:${hash}`),
+      "__fontara_google_font_binary_catalog__",
+      "__fontara_google_font_binary_index__"
+    ])
+    assert.equal(
+      durableStorage[`googleFontFamily:${fixture.family.key}:1`]?.runtimeFamily,
+      fixture.runtimeFamily
+    )
+    for (const assetHash of fixture.assetHashes) {
+      assert.equal(
+        durableStorage[`googleFontFace:${assetHash}`]?.hash,
+        assetHash
+      )
+    }
+    assert.deepEqual(documentGoogleRequests.requests, [])
+    documentGoogleRequests.stop()
   })
 })
 

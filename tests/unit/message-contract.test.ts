@@ -59,6 +59,39 @@ test("runtime message contract validates UI requests", () => {
   assert.equal(
     isFontaraUIMessage({
       data: {
+        clientMutationId: "mutation-google-prepare",
+        selectedValue: "google-font:Inter"
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE
+    }),
+    true
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      data: {
+        clientMutationId: "mutation-google-prepare",
+        selectedValue: ""
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE
+    }),
+    false
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      data: { clientMutationId: "mutation-google-clear" },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_CLEAR
+    }),
+    true
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_STATS
+    }),
+    true
+  )
+  assert.equal(
+    isFontaraUIMessage({
+      data: {
         clientMutationId: "mutation-font-begin",
         family: {},
         mode: "replace-library"

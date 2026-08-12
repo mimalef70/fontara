@@ -39,7 +39,9 @@ function withPlatformCapabilities(manifest, platform) {
     patchedManifest.content_security_policy = {
       ...patchedManifest.content_security_policy,
       extension_pages:
-        "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
+        platform === PLATFORM.FIREFOX_MV3
+          ? "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src https://fonts.googleapis.com https://fonts.gstatic.com; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
+          : "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
     }
   }
 

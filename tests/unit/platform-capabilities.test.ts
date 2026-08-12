@@ -85,7 +85,7 @@ test("Chromium manifests retain Chrome-only font capability metadata", () => {
   }
 })
 
-test("Firefox keeps its existing manifest permission boundary", () => {
+test("Firefox allows background-only Google font downloads", () => {
   const manifest = withPlatformCapabilities(
     {
       content_security_policy: {
@@ -100,9 +100,12 @@ test("Firefox keeps its existing manifest permission boundary", () => {
 
   assert.deepEqual(manifest.permissions, ["storage", "unlimitedStorage"])
   assert.equal("minimum_chrome_version" in manifest, false)
-  assert.doesNotMatch(
-    (manifest.content_security_policy as { extension_pages: string })
-      .extension_pages,
-    /fonts\.(?:googleapis|gstatic)\.com/
+  const csp = (manifest.content_security_policy as { extension_pages: string })
+    .extension_pages
+  assert.match(
+    csp,
+    /connect-src https:\/\/fonts\.googleapis\.com https:\/\/fonts\.gstatic\.com/
   )
+  assert.match(csp, /font-src 'self';/)
+  assert.doesNotMatch(csp, /font-src[^;]*fonts\.gstatic\.com/)
 })

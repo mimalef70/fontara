@@ -13,6 +13,7 @@ import {
   clickByTestId,
   createBasicPageStyleExpectation,
   createHardFixtureStyleExpectation,
+  createSeededGoogleFontBinaryCache,
   delay,
   evaluate,
   expectPageStyles,
@@ -21,7 +22,9 @@ import {
   getExtensionSyncRawValues,
   installDownloadCapture,
   mountHardFixtureAdvancedText,
+  observeDocumentGoogleFontRequests,
   STORAGE_KEYS,
+  STRICT_FONT_CSP_FIXTURE_PATH,
   sendSettingsFromContentBridge,
   sendSettingsFromOptions,
   setExtensionLocalValues,
@@ -33,54 +36,14 @@ import {
   waitForContentBridge,
   waitForExtensionLocalValue,
   waitForExtensionSyncValue,
+  waitForGoogleFontBinaryRuntimeState,
   waitForInputChecked,
   waitForSwitchChecked,
   withChromeMv3ExtensionHarness
 } from "../support/browser/extension-harness.mjs"
 
 const CUSTOM_FONT_SAMPLE_TEXT = "سلام فارسی آزمایش فونت سفارشی پندار گسترش قلم"
-const SEEDED_GOOGLE_FONT_FAMILY = "Roboto"
-const SEEDED_GOOGLE_FONT_VALUE = "google-font:Roboto"
 let customFontMutationSequence = 0
-
-function createSeededGoogleFontCSSCache() {
-  const requestUrl = new URL("https://fonts.googleapis.com/css2")
-  requestUrl.searchParams.set(
-    "family",
-    `${SEEDED_GOOGLE_FONT_FAMILY}:ital,wght@0,400;0,700;1,400;1,700`
-  )
-  requestUrl.searchParams.set("display", "swap")
-
-  const faces = [
-    { file: "normal-400.woff2", style: "normal", weight: 400 },
-    { file: "normal-700.woff2", style: "normal", weight: 700 },
-    { file: "italic-400.woff2", style: "italic", weight: 400 },
-    { file: "italic-700.woff2", style: "italic", weight: 700 }
-  ]
-  const css = faces
-    .map(
-      ({ file, style, weight }) => `
-        @font-face {
-          font-family: '${SEEDED_GOOGLE_FONT_FAMILY}';
-          font-style: ${style};
-          font-weight: ${weight};
-          font-display: swap;
-          src: url(https://fonts.gstatic.com/s/roboto/fontara-test/${file}) format('woff2');
-        }
-      `
-    )
-    .join("\n")
-
-  return {
-    roboto: {
-      css,
-      createdAt: Date.now(),
-      fontFamily: SEEDED_GOOGLE_FONT_FAMILY,
-      requestUrl: requestUrl.toString(),
-      version: 2
-    }
-  }
-}
 
 async function getCustomFontRuntimeState(
   page,
@@ -423,33 +386,19 @@ test("Chrome MV3 applies a real installed system font across reload and service-
   })
 })
 
-test("Chrome MV3 applies cached Google Font regular, bold, and italic faces without a CSS network request", async (t) => {
+test("Chrome MV3 applies durable Google binary faces under strict page CSP across reload and service-worker restart", async (t) => {
   await withChromeMv3ExtensionHarness(t, async (harness) => {
     const optionsPage = await harness.createExtensionPage(
       "ui/options/index.html"
     )
-    const testPage = await harness.createFixturePage()
+    const testPage = await harness.createFixturePage({
+      path: STRICT_FONT_CSP_FIXTURE_PATH
+    })
     const sitePattern = `127.0.0.1:${harness.server.port}`
     await waitForContentBridge(testPage)
-
-    const googleFontRequests = []
-    await testPage.setRequestInterception(true)
-    testPage.on("request", (request) => {
-      const hostname = new URL(request.url()).hostname
-      if (
-        hostname === "fonts.googleapis.com" ||
-        hostname === "fonts.gstatic.com"
-      ) {
-        googleFontRequests.push(request.url())
-        void request.abort()
-        return
-      }
-      void request.continue()
-    })
-
-    await setExtensionLocalValues(optionsPage, {
-      googleFontCssCache: createSeededGoogleFontCSSCache()
-    })
+    const fixture = await createSeededGoogleFontBinaryCache()
+    const documentGoogleRequests = observeDocumentGoogleFontRequests(testPage)
+    await setExtensionLocalValues(optionsPage, fixture.storageValues)
     const loadId = await evaluate(testPage, () => window.__fontaraLoadId)
     await sendSettingsFromContentBridge(testPage, {
       [STORAGE_KEYS.DISABLED_FOR]: [],
@@ -457,45 +406,46 @@ test("Chrome MV3 applies cached Google Font regular, bold, and italic faces with
       [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
       [STORAGE_KEYS.EXTENSION_ENABLED]: true,
       [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
-      [STORAGE_KEYS.SELECTED_FONT]: SEEDED_GOOGLE_FONT_VALUE,
+      [STORAGE_KEYS.SELECTED_FONT]: fixture.selectedValue,
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
 
     await expectPageStyles(
       testPage,
       createBasicPageStyleExpectation({
-        fontName: SEEDED_GOOGLE_FONT_FAMILY,
+        fontName: fixture.runtimeFamily,
         loadId
       })
     )
-    const googleFontStyleText = await waitFor(
-      () =>
-        evaluate(testPage, () => {
-          const css =
-            document.getElementById("fontara-google-font-styles")
-              ?.textContent ?? ""
-          return css.includes("font-weight: 700") &&
-            css.includes("font-style: italic")
-            ? css
-            : false
-        }),
+    const initialState = await waitForGoogleFontBinaryRuntimeState(
+      testPage,
+      fixture,
       {
+        loadId,
         message:
-          "Chrome did not inject the seeded Google Font regular, bold, and italic faces."
+          "Chrome did not activate all four seeded Google binary faces under strict CSP."
       }
     )
-    assert.equal((googleFontStyleText.match(/@font-face/g) ?? []).length, 4)
-    assert.match(googleFontStyleText, /font-style:\s*normal/)
-    assert.match(googleFontStyleText, /font-style:\s*italic/)
-    assert.match(googleFontStyleText, /font-weight:\s*400/)
-    assert.match(googleFontStyleText, /font-weight:\s*700/)
-    assert.equal(
-      googleFontRequests.some((url) =>
-        url.startsWith("https://fonts.googleapis.com/")
+    assert.deepEqual(
+      initialState.faceDescriptors.map(
+        (face) => `${face.style}:${face.weight}:${face.status}`
       ),
-      false,
-      "A fresh seeded CSS cache should avoid the Google Fonts CSS endpoint."
+      [
+        "italic:400:loaded",
+        "italic:700:loaded",
+        "normal:400:loaded",
+        "normal:700:loaded"
+      ]
     )
+    for (const widths of initialState.widths) {
+      assert.ok(
+        Math.max(
+          Math.abs(widths.font - widths.serif),
+          Math.abs(widths.font - widths.monospace)
+        ) > 1,
+        "A seeded Google binary face rendered like both fallback families."
+      )
+    }
 
     await testPage.reload({ waitUntil: "load" })
     await waitForContentBridge(testPage)
@@ -504,22 +454,54 @@ test("Chrome MV3 applies cached Google Font regular, bold, and italic faces with
     await expectPageStyles(
       testPage,
       createBasicPageStyleExpectation({
-        fontName: SEEDED_GOOGLE_FONT_FAMILY,
+        fontName: fixture.runtimeFamily,
         loadId: reloadLoadId
       })
     )
-    assert.equal(
-      await evaluate(
-        testPage,
-        () =>
-          (
-            document
-              .getElementById("fontara-google-font-styles")
-              ?.textContent.match(/@font-face/g) ?? []
-          ).length
-      ),
-      4
+    await waitForGoogleFontBinaryRuntimeState(testPage, fixture, {
+      loadId: reloadLoadId,
+      message: "Chrome lost the seeded Google binary faces after page reload."
+    })
+
+    await stopChromeExtensionServiceWorkers(optionsPage)
+    await testPage.reload({ waitUntil: "load" })
+    await waitForContentBridge(testPage)
+    const restartedLoadId = await evaluate(
+      testPage,
+      () => window.__fontaraLoadId
     )
+    assert.notEqual(restartedLoadId, reloadLoadId)
+    await expectPageStyles(
+      testPage,
+      createBasicPageStyleExpectation({
+        fontName: fixture.runtimeFamily,
+        loadId: restartedLoadId
+      })
+    )
+    await waitForGoogleFontBinaryRuntimeState(testPage, fixture, {
+      loadId: restartedLoadId,
+      message:
+        "Chrome lost the seeded Google binary cache after its service worker restarted."
+    })
+
+    const durableStorage = await getExtensionLocalValues(optionsPage, [
+      `googleFontFamily:${fixture.family.key}:1`,
+      ...fixture.assetHashes.map((hash) => `googleFontFace:${hash}`),
+      "__fontara_google_font_binary_catalog__",
+      "__fontara_google_font_binary_index__"
+    ])
+    assert.equal(
+      durableStorage[`googleFontFamily:${fixture.family.key}:1`]?.runtimeFamily,
+      fixture.runtimeFamily
+    )
+    for (const assetHash of fixture.assetHashes) {
+      assert.equal(
+        durableStorage[`googleFontFace:${assetHash}`]?.hash,
+        assetHash
+      )
+    }
+    assert.deepEqual(documentGoogleRequests.requests, [])
+    documentGoogleRequests.stop()
   })
 })
 

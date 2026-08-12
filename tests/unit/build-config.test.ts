@@ -15,6 +15,28 @@ test("JS bundler uses React production runtime for extension pages", () => {
   assert.match(bundleJS, /charset:\s*["']utf8["']/)
 })
 
+test("background budget includes the local Google font validation pipeline", () => {
+  const validateBuildSource = fs.readFileSync(
+    path.resolve("tasks/validate-build.js"),
+    "utf8"
+  )
+
+  assert.match(validateBuildSource, /"background\/index\.js": 170 \* 1024/)
+  assert.match(validateBuildSource, /Google CSS\/WOFF2 validation/)
+})
+
+test("coverage gates the local Google font pipeline", () => {
+  const coverageSource = fs.readFileSync(
+    path.resolve("tasks/check-coverage.js"),
+    "utf8"
+  )
+
+  assert.match(coverageSource, /name: "google-local-font"/)
+  assert.match(coverageSource, /src\/background\/google-font-\*\.ts/)
+  assert.match(coverageSource, /src\/inject\/local-font-manager\.ts/)
+  assert.match(coverageSource, /src\/utils\/google-font-\*\.ts/)
+})
+
 test("build pipeline generates WebExtension locales from the i18n catalog", () => {
   const buildSource = fs.readFileSync(path.resolve("tasks/build.js"), "utf8")
   const bundleLocalesSource = fs.readFileSync(

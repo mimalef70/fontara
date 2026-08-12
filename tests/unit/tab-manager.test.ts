@@ -687,6 +687,48 @@ test("document lifecycle messages keep the worker event alive through async reso
   assert.equal(runtime.sentMessages.length, 1)
 })
 
+test("resolved commands can keep the worker alive while a font downloads", async () => {
+  const runtime = createChromeMock()
+  let finishDownload: (() => void) | undefined
+  initTabManager({
+    createDocumentMessage() {
+      return {
+        keepAlive: new Promise<void>((resolve) => {
+          finishDownload = resolve
+        }),
+        message: { type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED },
+        settingsRevision: 1
+      }
+    }
+  })
+  let responseCount = 0
+
+  const keepsEventAlive = runtime.messageListeners[0]?.(
+    {
+      scriptId: "font-download-script",
+      type: MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT
+    },
+    {
+      documentId: "font-download-document",
+      frameId: 0,
+      tab: { id: 96 } as chrome.tabs.Tab,
+      url: "https://example.com/"
+    },
+    () => {
+      responseCount += 1
+    }
+  )
+
+  assert.equal(keepsEventAlive, true)
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(runtime.sentMessages.length, 1)
+  assert.equal(responseCount, 0)
+
+  finishDownload?.()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.equal(responseCount, 1)
+})
+
 test("tab manager serializes deliveries and preserves per-document sequence", async () => {
   const runtime = createChromeMock([], { deferSendCallbacks: true })
   let settingsRevision = 20

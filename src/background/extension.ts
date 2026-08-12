@@ -7,10 +7,14 @@ import type {
 } from "../custom-font-types"
 import type {
   FontaraExtensionData,
+  FontaraGoogleFontCacheStats,
+  FontaraGoogleFontPrepareResult,
   FontaraImportedSettingsResult,
   FontaraSettings,
   FontaraSettingsMutationResult
 } from "../definitions"
+import { isGoogleFontDataPermissionRemoved } from "../utils/google-font-consent"
+import { createGoogleFontsDisabledUpdate } from "../utils/google-font-settings"
 import {
   createSettingsResetValues,
   normalizeSettingsBackup
@@ -35,6 +39,7 @@ import {
   collectShortcuts,
   getCommandURL
 } from "./extension-data"
+import { BackgroundGoogleFontManager } from "./google-font-manager"
 import { registerIconListeners, updateIconStatus } from "./icon-manager"
 import { initMessenger, reportChanges } from "./messenger"
 import {
@@ -63,6 +68,7 @@ let started = false
 let startPromise: Promise<void> | null = null
 let reportChangesTimeout: ReturnType<typeof setTimeout> | null = null
 let customFontManager: BackgroundCustomFontManager | null = null
+let googleFontManager: BackgroundGoogleFontManager | null = null
 let settingsMutationQueue: Promise<void> = Promise.resolve()
 
 function enqueueSettingsMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -98,6 +104,11 @@ export class ExtensionRuntime {
       readSettings: getBackgroundSettings,
       writeSettings: ExtensionRuntime.persistSettingsChange
     })
+    googleFontManager = new BackgroundGoogleFontManager({
+      onFamilyReady: () =>
+        ExtensionRuntime.notifyContentScriptsAboutSettingsChange(),
+      readSettings: getBackgroundSettings
+    })
     initMessenger({
       abortCustomFontTransaction: ExtensionRuntime.abortCustomFontTransaction,
       beginCustomFontTransaction: ExtensionRuntime.beginCustomFontTransaction,
@@ -105,9 +116,12 @@ export class ExtensionRuntime {
       collect: ExtensionRuntime.collectData,
       commitCustomFontTransaction: ExtensionRuntime.commitCustomFontTransaction,
       deleteCustomFont: ExtensionRuntime.deleteCustomFont,
+      clearGoogleFontCache: ExtensionRuntime.clearGoogleFontCache,
+      getGoogleFontCacheStats: ExtensionRuntime.getGoogleFontCacheStats,
       importCustomFontBatch: ExtensionRuntime.importCustomFontBatch,
       importSettings: ExtensionRuntime.importSettings,
       putCustomFontFace: ExtensionRuntime.putCustomFontFace,
+      prepareGoogleFont: ExtensionRuntime.prepareGoogleFont,
       resetSettings: ExtensionRuntime.resetSettings,
       runCommand: ExtensionRuntime.runCommand
     })
@@ -120,6 +134,17 @@ export class ExtensionRuntime {
     registerCommandListeners()
     registerContextMenuListeners()
     registerCustomFontLoadResultListener()
+    chrome.permissions?.onRemoved?.addListener((permissions) => {
+      if (!isGoogleFontDataPermissionRemoved(permissions)) return
+      void ExtensionRuntime.handleGoogleFontPermissionRemoved().catch(
+        (error) => {
+          logDebug(
+            "Failed to disable Google Fonts after permission removal.",
+            error
+          )
+        }
+      )
+    })
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === "local" && Object.keys(changes).length > 0) {
         void ExtensionRuntime.handleLocalSettingsChange(changes)
@@ -152,6 +177,14 @@ export class ExtensionRuntime {
           // Journals and blobs are intentionally retained by the manager so a
           // later startup or explicit health check can retry safely.
           logDebug("Failed to recover custom font transactions.", error)
+        }
+        try {
+          await googleFontManager?.initialize()
+        } catch (error) {
+          // Google fonts are an optional source. A cache recovery failure must
+          // not prevent bundled/custom fonts or the rest of the worker from
+          // starting.
+          logDebug("Failed to recover the Google Fonts cache.", error)
         }
       })
       .then(() => {
@@ -196,11 +229,18 @@ export class ExtensionRuntime {
   }): Promise<FontaraResolvedDocumentMessage> {
     await ExtensionRuntime.ensureStarted()
     const { revision, settings } = await getBackgroundSettingsSnapshot()
+    const keepAliveTasks: Promise<unknown>[] = []
+    const message = await ExtensionRuntime.createContentCommandMessage(
+      document.url,
+      settings,
+      keepAliveTasks
+    )
     return {
-      message: await ExtensionRuntime.createContentCommandMessage(
-        document.url,
-        settings
-      ),
+      keepAlive:
+        keepAliveTasks.length > 0
+          ? Promise.allSettled(keepAliveTasks)
+          : undefined,
+      message,
       settingsRevision: revision
     }
   }
@@ -218,21 +258,39 @@ export class ExtensionRuntime {
       resolvedRevision = resolvedRevision ?? snapshot.revision
     }
 
-    await notifyContentScriptsAboutSettingsChange(async (document) => ({
-      message: await ExtensionRuntime.createContentCommandMessage(
+    await notifyContentScriptsAboutSettingsChange(async (document) => {
+      const keepAliveTasks: Promise<unknown>[] = []
+      const message = await ExtensionRuntime.createContentCommandMessage(
         document.url,
-        resolvedSettings
-      ),
-      settingsRevision: resolvedRevision
-    }))
+        resolvedSettings,
+        keepAliveTasks
+      )
+      return {
+        keepAlive:
+          keepAliveTasks.length > 0
+            ? Promise.allSettled(keepAliveTasks)
+            : undefined,
+        message,
+        settingsRevision: resolvedRevision
+      }
+    })
   }
 
   private static async handleLocalSettingsChange(
     changes: Record<string, chrome.storage.StorageChange>
   ): Promise<void> {
     await ExtensionRuntime.ensureStarted()
+    if (
+      changes[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] &&
+      changes[STORAGE_KEYS.GOOGLE_FONTS_ENABLED].newValue !== true
+    ) {
+      googleFontManager?.cancelPendingNetwork()
+    }
     const settings = await syncBackgroundSettingsCacheFromLocalChanges(changes)
     if (!settings) return
+    if (changes[STORAGE_KEYS.GOOGLE_FONTS_ENABLED]?.newValue === true) {
+      googleFontManager?.resumeNetwork()
+    }
 
     const { revision } = await getBackgroundSettingsSnapshot()
     await ExtensionRuntime.publishSettingsChange(settings, revision)
@@ -254,11 +312,17 @@ export class ExtensionRuntime {
     options: { flushSync?: boolean } = {}
   ): Promise<FontaraSettingsMutationResult> {
     await ExtensionRuntime.ensureStarted()
+    if (settings[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] === false) {
+      googleFontManager?.cancelPendingNetwork()
+    }
     const {
       revision,
       settings: updatedSettings,
       syncSnapshot
     } = await writeBackgroundSettingsWithSyncSnapshot(settings)
+    if (settings[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] === true) {
+      googleFontManager?.resumeNetwork()
+    }
 
     await ExtensionRuntime.publishSettingsChange(updatedSettings, revision)
     if (options.flushSync) {
@@ -281,13 +345,62 @@ export class ExtensionRuntime {
 
   private static async createContentCommandMessage(
     url: string,
-    settings: Record<string, unknown>
+    settings: Record<string, unknown>,
+    keepAliveTasks: Promise<unknown>[] = []
   ) {
     const { createFontaraContentCommandMessage } = await import(
       "./theme-message"
     )
 
-    return createFontaraContentCommandMessage(url, settings)
+    return createFontaraContentCommandMessage(url, settings, "full", {
+      resolveGoogleFontBinary: (selectedValue, options) => {
+        if (!googleFontManager) return Promise.resolve(null)
+        return googleFontManager.resolve(selectedValue, {
+          allowNetwork: options.allowNetwork,
+          track: (task) => keepAliveTasks.push(task)
+        })
+      }
+    })
+  }
+
+  private static async handleGoogleFontPermissionRemoved(): Promise<void> {
+    await ExtensionRuntime.ensureStarted()
+    googleFontManager?.cancelPendingNetwork()
+    const settings = await getBackgroundSettings()
+    if (settings[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] !== true) return
+    await ExtensionRuntime.writeSettingsChange(
+      createGoogleFontsDisabledUpdate(
+        settings[STORAGE_KEYS.SELECTED_FONT],
+        settings[STORAGE_KEYS.SITE_PROFILES]
+      )
+    )
+  }
+
+  static async prepareGoogleFont(
+    selectedValue: string
+  ): Promise<FontaraGoogleFontPrepareResult> {
+    await ExtensionRuntime.ensureStarted()
+    if (!googleFontManager) throw new Error("google-font-manager-not-ready")
+    const family = await googleFontManager.prepare(selectedValue)
+    return {
+      faceCount: family.faces.length,
+      fontFamily: family.fontFamily,
+      reference: { key: family.key, revision: family.revision },
+      totalBytes: family.totalBytes
+    }
+  }
+
+  static async clearGoogleFontCache(): Promise<FontaraGoogleFontCacheStats> {
+    await ExtensionRuntime.ensureStarted()
+    if (!googleFontManager) throw new Error("google-font-manager-not-ready")
+    await googleFontManager.clear()
+    return googleFontManager.getStats()
+  }
+
+  static async getGoogleFontCacheStats(): Promise<FontaraGoogleFontCacheStats> {
+    await ExtensionRuntime.ensureStarted()
+    if (!googleFontManager) throw new Error("google-font-manager-not-ready")
+    return googleFontManager.getStats()
   }
 
   static async collectData(): Promise<FontaraExtensionData> {

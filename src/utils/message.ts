@@ -20,7 +20,10 @@ export const MESSAGE_TYPES_UI_TO_BG = {
   CUSTOM_FONT_COMMIT: "fontara-ui-bg-custom-font-commit",
   CUSTOM_FONT_IMPORT_BATCH: "fontara-ui-bg-custom-font-import-batch",
   CUSTOM_FONT_ABORT: "fontara-ui-bg-custom-font-abort",
-  CUSTOM_FONT_DELETE: "fontara-ui-bg-custom-font-delete"
+  CUSTOM_FONT_DELETE: "fontara-ui-bg-custom-font-delete",
+  GOOGLE_FONT_PREPARE: "fontara-ui-bg-google-font-prepare",
+  GOOGLE_FONT_CACHE_CLEAR: "fontara-ui-bg-google-font-cache-clear",
+  GOOGLE_FONT_CACHE_STATS: "fontara-ui-bg-google-font-cache-stats"
 } as const
 
 export const MESSAGE_TYPES_BG_TO_UI = {
@@ -150,6 +153,19 @@ export function isFontaraUIMessage(
         isRecord(message.data) &&
         isClientMutationId(message.data.clientMutationId) &&
         typeof message.data.familyValue === "string"
+      )
+    case MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE:
+      return (
+        isRecord(message.data) &&
+        isClientMutationId(message.data.clientMutationId) &&
+        typeof message.data.selectedValue === "string" &&
+        message.data.selectedValue.length > 0 &&
+        message.data.selectedValue.length <= 512
+      )
+    case MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_CLEAR:
+      return (
+        isRecord(message.data) &&
+        isClientMutationId(message.data.clientMutationId)
       )
     default:
       return true

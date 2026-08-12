@@ -31,6 +31,18 @@ test("UI message catalogs cover the same keys for every supported language", () 
     UI_MESSAGES.en["options.googleFonts.privacyNotice"],
     /Google Fonts/
   )
+  assert.match(
+    UI_MESSAGES.en["options.googleFonts.privacyNotice"],
+    /page origin is not sent/i
+  )
+  assert.match(
+    UI_MESSAGES.en["options.googleFonts.privacyNotice"],
+    /IP address.*browser request metadata.*font resource.*font choice/i
+  )
+  assert.match(
+    UI_MESSAGES.en["options.googleFonts.privacyNotice"],
+    /local extension storage/i
+  )
   assert.match(UI_MESSAGES.fa["options.googleFonts.privacyNotice"], /IP/)
   assert.match(
     UI_MESSAGES.ar["options.googleFonts.privacyNotice"],

@@ -7,11 +7,25 @@ import type {
   CustomFontTransactionIdData,
   CustomFontTransactionPutFaceData
 } from "./custom-font-types"
+import type {
+  GoogleFontBinaryCacheStats,
+  GoogleFontBinaryPrepareResult
+} from "./google-font-binary-types"
+import type { FontaraLocalFontCommand } from "./local-font-types"
 
 export type {
   CustomFontFaceMeta,
   CustomFontFamily
 } from "./custom-font-types"
+
+export type {
+  GoogleFontBinaryCacheStats,
+  GoogleFontBinaryPrepareResult
+} from "./google-font-binary-types"
+export type {
+  FontaraLocalFontCommand,
+  LocalFontFamilyReference
+} from "./local-font-types"
 
 export interface WebsiteItem {
   url: string
@@ -71,6 +85,7 @@ export interface FontaraFontThemeCommandData {
   fontFaceCSS: string
   fontName: string
   googleFontCSS: string | null
+  localFont?: FontaraLocalFontCommand
   textStrokeCSS: string
 }
 
@@ -158,6 +173,17 @@ export type FontaraUIMessage =
       data: { clientMutationId: string; familyValue: string }
       type: "fontara-ui-bg-custom-font-delete"
     }
+  | {
+      data: { clientMutationId: string; selectedValue: string }
+      type: "fontara-ui-bg-google-font-prepare"
+    }
+  | {
+      data: { clientMutationId: string }
+      type: "fontara-ui-bg-google-font-cache-clear"
+    }
+  | {
+      type: "fontara-ui-bg-google-font-cache-stats"
+    }
 
 export type FontaraBackgroundMessage = {
   data: FontaraExtensionData
@@ -202,3 +228,6 @@ export type FontaraMessageResponse<T = unknown> = {
   data?: T
   error?: string
 }
+
+export type FontaraGoogleFontPrepareResult = GoogleFontBinaryPrepareResult
+export type FontaraGoogleFontCacheStats = GoogleFontBinaryCacheStats

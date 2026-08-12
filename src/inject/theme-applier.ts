@@ -1,18 +1,22 @@
 import { DEFAULT_VALUES } from "../config/storage"
-import type { FontaraPageThemeCommandData } from "../definitions"
-import {
-  activatePreparedCustomFontFamily,
-  type CustomFontFamilyReference,
-  clearCustomFontFaces,
-  getActiveCustomFontFamilyReference,
-  prepareCustomFontFamily,
-  registerPreparedCustomFontFamily
-} from "./custom-font-manager"
+import type {
+  FontaraFontThemeCommandData,
+  FontaraLocalFontCommand,
+  FontaraPageThemeCommandData
+} from "../definitions"
 import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
 import {
   injectResolvedFontStyles,
   removeFontStyles
 } from "./font-style-manager"
+import {
+  activatePreparedLocalFontFamily,
+  clearLocalFontFaces,
+  getActiveLocalFontFamilyName,
+  getActiveLocalFontFamilyReference,
+  prepareLocalFontFamily,
+  registerPreparedLocalFontFamily
+} from "./local-font-manager"
 import { startObserving, stopObserving } from "./observer"
 import { applyResolvedRtlSupport } from "./rtl"
 import {
@@ -28,26 +32,79 @@ type ThemeApplierCallbacks = {
 }
 
 let themeApplyGeneration = 0
+let lastAppliedFontTheme: FontaraFontThemeCommandData | null = null
 
 function isDisposed(callbacks: ThemeApplierCallbacks): boolean {
   return callbacks.isDisposed?.() ?? false
 }
 
+function getLocalFontCommand(
+  data: FontaraFontThemeCommandData
+): FontaraLocalFontCommand {
+  if (data.localFont !== undefined) return data.localFont
+  return data.customFontFamilyValue && data.customFontFamilyRevision !== null
+    ? {
+        reference: {
+          revision: data.customFontFamilyRevision,
+          source: "custom",
+          value: data.customFontFamilyValue
+        },
+        state: "ready"
+      }
+    : null
+}
+
+function getLastKnownGoodTheme(
+  requested: FontaraFontThemeCommandData
+): FontaraFontThemeCommandData {
+  if (lastAppliedFontTheme) return lastAppliedFontTheme
+
+  const activeReference = getActiveLocalFontFamilyReference()
+  const activeName = getActiveLocalFontFamilyName()
+  return {
+    ...requested,
+    customFontFamilyRevision:
+      activeReference?.source === "custom" ? activeReference.revision : null,
+    customFontFamilyValue:
+      activeReference?.source === "custom" ? activeReference.value : null,
+    fontName: activeName ?? DEFAULT_VALUES.SELECTED_FONT,
+    googleFontCSS: null,
+    localFont: activeReference
+      ? { reference: activeReference, state: "ready" }
+      : null
+  }
+}
+
+function applyFontStylesAndObservation(
+  data: FontaraFontThemeCommandData
+): void {
+  injectResolvedTextStrokeStyle(data.textStrokeCSS)
+  const hasCustomCSS = injectResolvedFontStyles(data)
+  if (hasCustomCSS) {
+    stopObserving()
+    resetProcessedElements()
+    return
+  }
+
+  if (data.applyMode === "full" && document.body) {
+    applyFontToTreeChunked(document.body)
+  }
+  if (document.body) startObserving()
+}
+
 export function cleanupFontTheme(): void {
   themeApplyGeneration += 1
+  lastAppliedFontTheme = null
   stopObserving()
   resetProcessedElements()
   removeFontStyles()
-  clearCustomFontFaces()
+  clearLocalFontFaces()
   removeTextStrokeStyle()
 }
 
 export function cleanupResolvedPageTheme(): void {
   cleanupFontTheme()
-  applyResolvedRtlSupport({
-    active: false,
-    siteId: null
-  })
+  applyResolvedRtlSupport({ active: false, siteId: null })
 }
 
 export async function applyResolvedPageTheme(
@@ -62,71 +119,42 @@ export async function applyResolvedPageTheme(
     if (!data.font.active) {
       cleanupFontTheme()
     } else {
-      const customFontReference: CustomFontFamilyReference | null =
-        data.font.customFontFamilyValue &&
-        data.font.customFontFamilyRevision !== null
-          ? {
-              value: data.font.customFontFamilyValue,
-              revision: data.font.customFontFamilyRevision
-            }
-          : null
-      const customFontReady = await prepareCustomFontFamily(customFontReference)
-      if (isDisposed(callbacks) || applyGeneration !== themeApplyGeneration) {
-        return false
-      }
-      const customFontRegistered = Boolean(
-        customFontReference &&
-          customFontReady &&
-          registerPreparedCustomFontFamily(customFontReference)
-      )
-      const lastKnownGoodCustomFont =
-        customFontReference && !customFontRegistered
-          ? getActiveCustomFontFamilyReference()
-          : null
-      const resolvedFont =
-        customFontReference && !customFontRegistered
-          ? {
-              ...data.font,
-              customFontFamilyRevision:
-                lastKnownGoodCustomFont?.revision ?? null,
-              customFontFamilyValue: lastKnownGoodCustomFont?.value ?? null,
-              // A transient storage or parser failure must not make an
-              // already-rendered page jump back to the bundled default.
-              fontName:
-                lastKnownGoodCustomFont?.value ?? DEFAULT_VALUES.SELECTED_FONT
-            }
-          : data.font
-      fullyApplied = !customFontReference || customFontRegistered
+      const localFont = getLocalFontCommand(data.font)
 
-      injectResolvedTextStrokeStyle(resolvedFont.textStrokeCSS)
-      const hasCustomCSS = injectResolvedFontStyles(resolvedFont)
-      if (customFontReference && customFontRegistered) {
-        if (!activatePreparedCustomFontFamily(customFontReference)) {
-          fullyApplied = false
-          const activeReference = getActiveCustomFontFamilyReference()
-          injectResolvedFontStyles({
-            ...data.font,
-            customFontFamilyRevision: activeReference?.revision ?? null,
-            customFontFamilyValue: activeReference?.value ?? null,
-            fontName: activeReference?.value ?? DEFAULT_VALUES.SELECTED_FONT
-          })
+      if (localFont?.state === "pending") {
+        fullyApplied = false
+        if (!lastAppliedFontTheme) {
+          const fallback = getLastKnownGoodTheme(data.font)
+          applyFontStylesAndObservation(fallback)
+          lastAppliedFontTheme = fallback
         }
-      } else if (lastKnownGoodCustomFont) {
-        activatePreparedCustomFontFamily(lastKnownGoodCustomFont)
-      } else if (!customFontReference) {
-        activatePreparedCustomFontFamily(null)
-      }
-
-      if (hasCustomCSS) {
-        stopObserving()
-        resetProcessedElements()
       } else {
-        if (data.font.applyMode === "full" && document.body) {
-          applyFontToTreeChunked(document.body)
+        const reference =
+          localFont?.state === "ready" ? localFont.reference : null
+        const ready = await prepareLocalFontFamily(reference)
+        if (isDisposed(callbacks) || applyGeneration !== themeApplyGeneration) {
+          return false
         }
 
-        if (document.body) {
-          startObserving()
+        const registered = Boolean(
+          reference && ready && registerPreparedLocalFontFamily(reference)
+        )
+        if (reference && !registered) {
+          fullyApplied = false
+          applyFontStylesAndObservation(getLastKnownGoodTheme(data.font))
+        } else {
+          applyFontStylesAndObservation(data.font)
+          if (reference) {
+            if (!activatePreparedLocalFontFamily(reference)) {
+              fullyApplied = false
+              applyFontStylesAndObservation(getLastKnownGoodTheme(data.font))
+            } else {
+              lastAppliedFontTheme = data.font
+            }
+          } else {
+            activatePreparedLocalFontFamily(null)
+            lastAppliedFontTheme = data.font
+          }
         }
       }
     }

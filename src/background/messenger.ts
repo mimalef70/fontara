@@ -6,6 +6,8 @@ import type {
 } from "../custom-font-types"
 import type {
   FontaraExtensionData,
+  FontaraGoogleFontCacheStats,
+  FontaraGoogleFontPrepareResult,
   FontaraImportedSettingsResult,
   FontaraMessageResponse,
   FontaraSettings,
@@ -49,6 +51,11 @@ export type FontaraMessengerAdapter = {
     faceId: string,
     base64: string
   ): Promise<void>
+  prepareGoogleFont(
+    selectedValue: string
+  ): Promise<FontaraGoogleFontPrepareResult>
+  clearGoogleFontCache(): Promise<FontaraGoogleFontCacheStats>
+  getGoogleFontCacheStats(): Promise<FontaraGoogleFontCacheStats>
 }
 
 type SendResponse = (response: FontaraMessageResponse) => void
@@ -165,6 +172,12 @@ async function handleMessage(message: FontaraUIMessage): Promise<unknown> {
       return true
     case MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_DELETE:
       return adapter.deleteCustomFont(message.data.familyValue)
+    case MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE:
+      return adapter.prepareGoogleFont(message.data.selectedValue)
+    case MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_CLEAR:
+      return adapter.clearGoogleFontCache()
+    case MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_STATS:
+      return adapter.getGoogleFontCacheStats()
   }
 }
 

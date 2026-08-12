@@ -48,6 +48,16 @@ const coverageGroups = [
     ]
   },
   {
+    name: "google-local-font",
+    thresholds: { lines: 90, branches: 78, functions: 90 },
+    includes: [
+      "src/background/google-font-*.ts",
+      "src/google-font-binary-types.ts",
+      "src/inject/local-font-manager.ts",
+      "src/utils/google-font-*.ts"
+    ]
+  },
+  {
     name: "storage",
     thresholds: { lines: 90, branches: 85, functions: 88 },
     includes: [

@@ -35,10 +35,10 @@
         <p>فایل‌های Custom Font به‌صورت blobهای جداگانه و content-addressed فقط در storage محلی افزونه نگه‌داری می‌شوند؛ باینری آن‌ها وارد browser sync، پیام‌های عمومی UI یا DOM صفحه نمی‌شود و به سرور FontARA ارسال نمی‌شود. فقط وقتی کاربر خودش خروجی پشتیبان می‌گیرد، باینری فونت در فایل پشتیبان دانلودشده روی دستگاه او قرار می‌گیرد.</p>
 
         <h2>Google Fonts اختیاری</h2>
-        <p>Google Fonts در نصب اولیه خاموش است. پس از opt-in کاربر، انتخاب یک Google Font باعث درخواست CSS و فایل فونت از <code>fonts.googleapis.com</code> و <code>fonts.gstatic.com</code> می‌شود. در نتیجه Google می‌تواند اطلاعات معمول یک درخواست شبکه، از جمله نشانی IP و user agent، را دریافت کند. با خاموش‌کردن Google Fonts این درخواست‌ها متوقف می‌شوند.</p>
+        <p>Google Fonts در نصب اولیه خاموش است. پس از opt-in کاربر، خود افزونه در پس‌زمینه CSS و فایل‌های WOFF2 فونت انتخاب‌شده را از <code>fonts.googleapis.com</code> و <code>fonts.gstatic.com</code> دریافت، اعتبارسنجی و در storage محلی کش می‌کند. درخواست از داخل صفحهٔ وب انجام نمی‌شود و مبدأ صفحه برای Google ارسال نمی‌شود. Google همچنان می‌تواند نشانی IP، user agent، فرادادهٔ معمول درخواست و منبع فونت درخواستی را ببیند که ممکن است انتخاب فونت را مشخص کند. خاموش‌کردن قابلیت یا پس‌گرفتن مجوز فایرفاکس درخواست‌های در حال اجرا را متوقف می‌کند.</p>
 
         <h2>مجوزهای مرورگر</h2>
-        <p>دسترسی سایت‌ها برای اعمال فونت روی صفحه‌های وب استفاده می‌شود. <code>storage</code> و <code>unlimitedStorage</code> برای تنظیمات و کتابخانهٔ محلی فونت لازم‌اند. <code>fontSettings</code> فقط در Chromium برای فهرست‌کردن فونت‌های نصب‌شده به‌کار می‌رود؛ System Fonts در Firefox پشتیبانی نمی‌شود. <code>contextMenus</code> اختیاری است و فقط با درخواست کاربر گرفته می‌شود و هنگام خاموش‌کردن قابلیت پس داده می‌شود.</p>
+        <p>دسترسی سایت‌ها برای اعمال فونت روی صفحه‌های وب استفاده می‌شود. <code>storage</code> و <code>unlimitedStorage</code> برای تنظیمات و کتابخانهٔ محلی فونت لازم‌اند. <code>fontSettings</code> فقط در Chromium برای فهرست‌کردن نام فونت‌های نصب‌شده به‌کار می‌رود؛ Firefox فقط خانواده‌های عمومی CSS مانند <code>system-ui</code> را ارائه می‌کند. <code>contextMenus</code> اختیاری است. در Firefoxهای پشتیبانی‌شده، مجوز اختیاری <code>technicalAndInteraction</code> فقط هنگام روشن‌کردن Google Fonts درخواست می‌شود و با پس‌گرفتن آن شبکهٔ Google Fonts فوراً متوقف می‌شود.</p>
 
         <h2>جمع‌آوری، فروش و تحلیل آماری</h2>
         <p>FontARA هیچ analytics، تبلیغ، fingerprinting یا سازوکار فروش و اشتراک داده ندارد. وب‌سایت معرفی FontARA نیز اسکریپت Google Analytics ندارد.</p>
@@ -53,7 +53,7 @@
 
         <section lang="en">
           <h2>English summary</h2>
-          <p>FontARA does not send browsing data, page content, or locally uploaded font files to a FontARA server. Settings stay in browser extension storage; optional sync is provided by the browser. Custom-font binaries remain local. Google Fonts is disabled by default and makes requests to Google only after explicit opt-in. FontARA and this website contain no analytics or advertising SDK.</p>
+          <p>FontARA does not send browsing data, page content, or locally uploaded font files to a FontARA server. Settings stay in browser extension storage; optional sync is provided by the browser. Custom-font binaries remain local. Google Fonts is disabled by default; after explicit opt-in, the extension background downloads and locally caches only the selected font without sending the visited page origin. Google can still receive the IP address, request metadata, and requested font resource. FontARA and this website contain no analytics or advertising SDK.</p>
         </section>
 
         <p><a href="index.html">بازگشت به وب‌سایت FontARA</a></p>

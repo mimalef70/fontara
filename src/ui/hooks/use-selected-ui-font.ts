@@ -2,15 +2,14 @@ import { useEffect } from "react"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import type { CustomFontFamily } from "../../custom-font-types"
+import { createGoogleFontBinaryFamilyKey } from "../../google-font-binary-types"
 import {
-  activatePreparedCustomFontFamily,
-  prepareCustomFontFamily
-} from "../../inject/custom-font-manager"
+  activatePreparedLocalFontFamily,
+  prepareLocalFontFamily
+} from "../../inject/local-font-manager"
 import { formatFontFamilyForCSS } from "../../utils/font-data"
-import {
-  decodeGoogleFontValue,
-  loadGoogleFontFaceCSS
-} from "../../utils/google-fonts"
+import { getLatestGoogleFontBinaryFamily } from "../../utils/google-font-binary-storage"
+import { decodeGoogleFontValue } from "../../utils/google-fonts"
 import {
   decodeSystemFontValue,
   isSystemFontAccessSupported,
@@ -23,29 +22,6 @@ import {
   getSystemFontsEnabledInitialValue
 } from "../storage-defaults"
 import { useStorageValue } from "./use-storage"
-
-const GOOGLE_FONT_STYLE_ID = "fontara-ui-google-font-styles"
-
-function upsertGoogleFontStyles(css: string | null): void {
-  const existingStyle = document.getElementById(GOOGLE_FONT_STYLE_ID)
-
-  if (!css) {
-    existingStyle?.remove()
-    return
-  }
-
-  const styleElement =
-    existingStyle instanceof HTMLStyleElement
-      ? existingStyle
-      : document.createElement("style")
-
-  styleElement.id = GOOGLE_FONT_STYLE_ID
-  styleElement.textContent = css
-
-  if (!styleElement.parentElement) {
-    document.head.appendChild(styleElement)
-  }
-}
 
 export function useSelectedUIFont(): void {
   const [selectedFont] = useStorageValue<string>(
@@ -75,37 +51,51 @@ export function useSelectedUIFont(): void {
 
     void (async () => {
       const customFontReference = customFont
-        ? { value: customFont.value, revision: customFont.revision }
+        ? {
+            revision: customFont.revision,
+            source: "custom" as const,
+            value: customFont.value
+          }
         : null
-      const customFontReady = await prepareCustomFontFamily(customFontReference)
+      const customFontReady = await prepareLocalFontFamily(customFontReference)
       if (cancelled) return
 
       if (customFont && customFontReady) {
-        upsertGoogleFontStyles(null)
         document.documentElement.style.setProperty(
           "--fontara-ui-font",
           formatFontFamilyForCSS(customFont.value)
         )
-        activatePreparedCustomFontFamily(customFontReference)
+        activatePreparedLocalFontFamily(customFontReference)
         return
       }
 
       if (googleFontFamily && googleFontsEnabled) {
-        const css = await loadGoogleFontFaceCSS(selectedFont)
+        const family = await getLatestGoogleFontBinaryFamily(
+          await createGoogleFontBinaryFamilyKey(googleFontFamily),
+          { touch: false }
+        )
+        const reference = family
+          ? {
+              key: family.key,
+              revision: family.revision,
+              source: "google" as const
+            }
+          : null
+        const ready = reference
+          ? await prepareLocalFontFamily(reference)
+          : false
         if (cancelled) return
 
-        if (css) {
-          upsertGoogleFontStyles(css)
+        if (family && reference && ready) {
           document.documentElement.style.setProperty(
             "--fontara-ui-font",
-            formatFontFamilyForCSS(googleFontFamily)
+            formatFontFamilyForCSS(family.runtimeFamily)
           )
-          activatePreparedCustomFontFamily(null)
+          activatePreparedLocalFontFamily(reference)
           return
         }
       }
 
-      upsertGoogleFontStyles(null)
       let systemFontAvailable = Boolean(systemFontFamily)
       if (
         systemFontsEnabled &&
@@ -132,7 +122,7 @@ export function useSelectedUIFont(): void {
         "--fontara-ui-font",
         formatFontFamilyForCSS(fontName)
       )
-      activatePreparedCustomFontFamily(null)
+      activatePreparedLocalFontFamily(null)
     })()
 
     return () => {

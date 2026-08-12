@@ -4,6 +4,14 @@ import path from "node:path"
 import test from "node:test"
 
 type Manifest = {
+  browser_specific_settings?: {
+    gecko?: {
+      data_collection_permissions?: {
+        optional?: string[]
+        required?: string[]
+      }
+    }
+  }
   commands?: Record<
     string,
     {
@@ -143,6 +151,14 @@ test("chromium manifest grants system font access while firefox omits it", () =>
     true
   )
   assert.equal(firefoxManifest.permissions.includes("fontSettings"), false)
+  assert.deepEqual(
+    firefoxManifest.browser_specific_settings?.gecko
+      ?.data_collection_permissions,
+    {
+      required: ["none"],
+      optional: ["technicalAndInteraction"]
+    }
+  )
 })
 
 test("manifest keeps extension page CSP locked down", () => {
@@ -154,9 +170,13 @@ test("manifest keeps extension page CSP locked down", () => {
   assert.match(csp, /object-src 'none'/)
   assert.match(csp, /base-uri 'none'/)
   assert.match(csp, /form-action 'none'/)
-  assert.match(csp, /font-src 'self' https:\/\/fonts\.gstatic\.com/)
+  assert.match(csp, /font-src 'self';/)
+  assert.doesNotMatch(csp, /font-src[^;]*fonts\.gstatic\.com/)
   assert.doesNotMatch(csp, /font-src[^;]*\bdata:/)
-  assert.match(csp, /connect-src https:\/\/fonts\.googleapis\.com/)
+  assert.match(
+    csp,
+    /connect-src https:\/\/fonts\.googleapis\.com https:\/\/fonts\.gstatic\.com/
+  )
   assert.match(csp, /style-src 'self' 'unsafe-inline'/)
   assert.match(csp, /img-src 'self' data:/)
   assert.match(csp, /worker-src 'self'/)

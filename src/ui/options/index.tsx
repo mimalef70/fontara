@@ -76,7 +76,6 @@ import {
   isSiteProfileEnabled,
   normalizeSiteProfiles,
   removeSiteProfile,
-  removeSiteProfileFontOverrides,
   upsertSiteProfile
 } from "../../config/site-profiles"
 import { normalizePinnedWebsiteUrls } from "../../config/sites"
@@ -91,7 +90,11 @@ import type {
   CustomFontFaceMeta,
   CustomFontFamily
 } from "../../custom-font-types"
-import type { SiteProfile, WebsiteItem } from "../../definitions"
+import type {
+  FontaraGoogleFontCacheStats,
+  SiteProfile,
+  WebsiteItem
+} from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
 import {
@@ -120,11 +123,14 @@ import {
   isSupportedFontExtension
 } from "../../utils/font-data"
 import {
+  getGoogleFontDataConsentState,
+  requestGoogleFontNetworkConsent
+} from "../../utils/google-font-consent"
+import {
   decodeGoogleFontValue,
   type GoogleFontData,
   getGoogleFontByValue,
   isGoogleFontFeatureSupported,
-  isGoogleFontValue,
   loadGoogleFontList
 } from "../../utils/google-fonts"
 import {
@@ -1018,6 +1024,8 @@ function OptionsPage() {
   const [siteProfileFontInput, setSiteProfileFontInput] = useState("")
   const [siteProfileFontPickerOpen, setSiteProfileFontPickerOpen] =
     useState(false)
+  const [siteProfileGoogleFontStatus, setSiteProfileGoogleFontStatus] =
+    useState<"error" | "idle" | "loading">("idle")
   const [siteProfileTextStroke, setSiteProfileTextStroke] = useState(
     DEFAULT_VALUES.TEXT_STROKE
   )
@@ -1025,8 +1033,21 @@ function OptionsPage() {
     useState(true)
   const [systemFontList, setSystemFontList] = useState<SystemFontData[]>([])
   const [systemFontListReady, setSystemFontListReady] = useState(false)
+  const [googleFontConsentState, setGoogleFontConsentState] = useState<
+    "checking" | "granted" | "not-granted" | "unsupported"
+  >("checking")
+  const [googleFontsToggleBusy, setGoogleFontsToggleBusy] = useState(false)
+  const [googleFontCacheBusy, setGoogleFontCacheBusy] = useState(false)
+  const [googleFontCacheStats, setGoogleFontCacheStats] =
+    useState<FontaraGoogleFontCacheStats | null>(null)
   const systemFontsSupported = isSystemFontFeatureSupported()
   const googleFontsSupported = isGoogleFontFeatureSupported()
+  const googleFontsAvailable =
+    googleFontsSupported && googleFontConsentState !== "unsupported"
+  const googleFontsActive =
+    googleFontsAvailable &&
+    googleFontConsentState === "granted" &&
+    googleFontsEnabled
   const { toast } = useToast()
 
   const getCustomFontUploadErrorMessage = (error: unknown): string => {
@@ -1039,6 +1060,49 @@ function OptionsPage() {
   React.useEffect(() => {
     document.title = t("common.settings")
   }, [t])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    if (!googleFontsSupported) {
+      setGoogleFontConsentState("unsupported")
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void getGoogleFontDataConsentState()
+      .then((state) => {
+        if (!cancelled) setGoogleFontConsentState(state)
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleFontConsentState("not-granted")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [googleFontsSupported])
+
+  React.useEffect(() => {
+    let cancelled = false
+    if (!googleFontsSupported || activeSection !== "fonts") return
+
+    void fontaraConnector
+      .getGoogleFontCacheStats()
+      .then((stats) => {
+        if (!cancelled) setGoogleFontCacheStats(stats)
+      })
+      .catch((error) => {
+        if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+          console.warn("Failed to read Google Fonts cache stats.", error)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeSection, googleFontsSupported])
 
   React.useEffect(() => {
     if (!extensionData) {
@@ -2238,6 +2302,7 @@ function OptionsPage() {
     setSiteProfileTargetSearch("")
     setSiteProfileTargetOpen(false)
     setSiteProfileFontInput("")
+    setSiteProfileGoogleFontStatus("idle")
     setSiteProfileTextStroke(DEFAULT_VALUES.TEXT_STROKE)
     setSiteProfileUsesGlobalStroke(true)
   }
@@ -2261,6 +2326,26 @@ function OptionsPage() {
     if (!siteProfileFontInput && siteProfileUsesGlobalStroke) {
       toast({ title: t("options.toast.emptySiteProfile") })
       return
+    }
+
+    const googleFontFamily = decodeGoogleFontValue(siteProfileFontInput)
+    if (googleFontFamily) {
+      setSiteProfileGoogleFontStatus("loading")
+      try {
+        await fontaraConnector.prepareGoogleFont(siteProfileFontInput)
+        setSiteProfileGoogleFontStatus("idle")
+      } catch (error) {
+        setSiteProfileGoogleFontStatus("error")
+        toast({
+          title: t("fontSelector.googleDownloadFailed"),
+          ...(typeof __DEBUG__ !== "undefined" &&
+          __DEBUG__ &&
+          error instanceof Error
+            ? { description: error.message }
+            : {})
+        })
+        return
+      }
     }
 
     const existingProfile = normalizedSiteProfiles.find(
@@ -2401,34 +2486,72 @@ function OptionsPage() {
   }
 
   const handleGoogleFontsToggle = async (checked: boolean) => {
+    if (googleFontsToggleBusy) return
+    setGoogleFontsToggleBusy(true)
+
     try {
       if (!checked) {
-        await fontaraConnector.changeSettings({
-          [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: false,
-          [STORAGE_KEYS.SITE_PROFILES]: removeSiteProfileFontOverrides(
-            normalizedSiteProfiles,
-            isGoogleFontValue
-          ),
-          ...(isGoogleFontValue(selectedFont)
-            ? { [STORAGE_KEYS.SELECTED_FONT]: DEFAULT_VALUES.SELECTED_FONT }
-            : {})
-        })
+        await setGoogleFontsEnabled(false)
         return
       }
 
       if (!isGoogleFontFeatureSupported()) {
+        setGoogleFontConsentState("unsupported")
         toast({ title: t("options.toast.googleFontsUnsupported") })
         return
       }
 
+      if (
+        googleFontConsentState === "checking" ||
+        googleFontConsentState === "unsupported"
+      ) {
+        toast({ title: t("options.toast.googleFontsUnsupported") })
+        return
+      }
+
+      // Start the permission request synchronously from the switch gesture.
+      // Firefox can reject requests made after an earlier awaited operation.
+      const granted = await requestGoogleFontNetworkConsent()
+      if (!granted) {
+        toast({ title: t("options.toast.googleFontsConsentDenied") })
+        return
+      }
+      setGoogleFontConsentState("granted")
+
       await setGoogleFontsEnabled(true)
     } catch (error) {
       toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : t("options.toast.siteSettingsError")
+        title: t("options.toast.googleFontsConsentError"),
+        ...(typeof __DEBUG__ !== "undefined" &&
+        __DEBUG__ &&
+        error instanceof Error
+          ? { description: error.message }
+          : {})
       })
+    } finally {
+      setGoogleFontsToggleBusy(false)
+    }
+  }
+
+  const handleClearGoogleFontCache = async () => {
+    if (googleFontCacheBusy) return
+    setGoogleFontCacheBusy(true)
+
+    try {
+      const stats = await fontaraConnector.clearGoogleFontCache()
+      setGoogleFontCacheStats(stats)
+      toast({ title: t("options.googleFonts.cacheCleared") })
+    } catch (error) {
+      toast({
+        title: t("options.googleFonts.cacheClearError"),
+        ...(typeof __DEBUG__ !== "undefined" &&
+        __DEBUG__ &&
+        error instanceof Error
+          ? { description: error.message }
+          : {})
+      })
+    } finally {
+      setGoogleFontCacheBusy(false)
     }
   }
 
@@ -2901,12 +3024,10 @@ function OptionsPage() {
                         </div>
 
                         <div
-                          data-active={
-                            googleFontsSupported && googleFontsEnabled
-                          }
+                          data-active={googleFontsActive}
                           className={cn(
                             "fontara-choice flex min-h-36 items-start justify-between gap-4 rounded-xl border p-4 transition",
-                            !googleFontsSupported && "opacity-75"
+                            !googleFontsAvailable && "opacity-75"
                           )}>
                           <div className="flex min-w-0 items-start gap-3">
                             <div className="fontara-icon-tile">
@@ -2922,16 +3043,24 @@ function OptionsPage() {
                               <p className="mt-2 text-xs text-[#64748b]">
                                 {!googleFontsSupported
                                   ? t("options.googleFonts.unsupported")
-                                  : googleFontsEnabled
-                                    ? t("options.googleFonts.enabled")
-                                    : t("options.googleFonts.disabled")}
+                                  : googleFontConsentState === "unsupported"
+                                    ? t(
+                                        "options.googleFonts.consentUnsupported"
+                                      )
+                                    : googleFontsActive
+                                      ? t("options.googleFonts.enabled")
+                                      : t("options.googleFonts.disabled")}
                               </p>
                             </div>
                           </div>
                           <Switch
                             dir="ltr"
-                            checked={googleFontsSupported && googleFontsEnabled}
-                            disabled={!googleFontsSupported}
+                            checked={googleFontsActive}
+                            disabled={
+                              !googleFontsAvailable ||
+                              googleFontConsentState === "checking" ||
+                              googleFontsToggleBusy
+                            }
                             onCheckedChange={(checked) =>
                               void handleGoogleFontsToggle(checked)
                             }
@@ -3019,9 +3148,40 @@ function OptionsPage() {
                       {googleFontsSupported && (
                         <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-100 bg-amber-50 px-4 py-3">
                           <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
-                          <p className="text-xs leading-5 text-amber-800">
-                            {t("options.googleFonts.privacyNotice")}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs leading-5 text-amber-800">
+                              {t("options.googleFonts.privacyNotice")}
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                              {googleFontCacheStats && (
+                                <span className="text-[11px] text-amber-700">
+                                  {t("options.googleFonts.cacheUsage", {
+                                    count: formatNumber(
+                                      googleFontCacheStats.familyCount
+                                    ),
+                                    size: formatBytes(
+                                      googleFontCacheStats.totalBytes,
+                                      formatNumber,
+                                      t("unit.kb"),
+                                      t("unit.mb")
+                                    )
+                                  })}
+                                </span>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 border-amber-200 bg-white px-3 text-xs text-amber-800 hover:bg-amber-100"
+                                disabled={googleFontCacheBusy}
+                                onClick={() =>
+                                  void handleClearGoogleFontCache()
+                                }>
+                                {googleFontCacheBusy
+                                  ? t("options.googleFonts.clearingCache")
+                                  : t("options.googleFonts.clearCache")}
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </section>
@@ -3990,19 +4150,23 @@ function OptionsPage() {
                               </label>
                               <Select
                                 dir={direction}
+                                disabled={
+                                  siteProfileGoogleFontStatus === "loading"
+                                }
                                 open={siteProfileFontPickerOpen}
                                 value={
                                   siteProfileFontInput ||
                                   GLOBAL_SITE_PROFILE_FONT_VALUE
                                 }
                                 onOpenChange={setSiteProfileFontPickerOpen}
-                                onValueChange={(value) =>
+                                onValueChange={(value) => {
+                                  setSiteProfileGoogleFontStatus("idle")
                                   setSiteProfileFontInput(
                                     value === GLOBAL_SITE_PROFILE_FONT_VALUE
                                       ? ""
                                       : value
                                   )
-                                }>
+                                }}>
                                 <SelectTrigger
                                   id="site-profile-font"
                                   data-testid="fontara-site-profile-font-select"
@@ -4040,6 +4204,38 @@ function OptionsPage() {
                                   )}
                                 </SelectContent>
                               </Select>
+                              {siteProfileGoogleFontStatus !== "idle" && (
+                                <div
+                                  aria-live="polite"
+                                  className={cn(
+                                    "mt-2 flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-xs",
+                                    siteProfileGoogleFontStatus === "error"
+                                      ? "border-red-100 bg-red-50 text-red-700"
+                                      : "border-blue-100 bg-blue-50 text-blue-700"
+                                  )}>
+                                  <span>
+                                    {siteProfileGoogleFontStatus === "loading"
+                                      ? t("fontSelector.googleDownloading", {
+                                          font:
+                                            decodeGoogleFontValue(
+                                              siteProfileFontInput
+                                            ) ?? ""
+                                        })
+                                      : t("fontSelector.googleDownloadFailed")}
+                                  </span>
+                                  {siteProfileGoogleFontStatus === "error" && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-7 shrink-0 px-2 text-[11px]"
+                                      onClick={() =>
+                                        void handleSaveSiteProfile()
+                                      }>
+                                      {t("fontSelector.googleRetry")}
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             <div className="space-y-3 rounded-md border border-[#eef2f7] bg-[#f8fafc] p-3">
@@ -4120,6 +4316,9 @@ function OptionsPage() {
                             <div className="flex flex-wrap gap-2">
                               <Button
                                 type="submit"
+                                disabled={
+                                  siteProfileGoogleFontStatus === "loading"
+                                }
                                 data-testid="fontara-site-profile-save"
                                 className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
                                 <Check className="size-4" />

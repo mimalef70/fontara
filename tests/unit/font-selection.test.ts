@@ -61,7 +61,8 @@ test("font selection resolver keeps bundled fonts without extra assets", async (
     customFontFamilyRevision: null,
     customFontFamilyValue: null,
     fontName: "Estedad-Fontara",
-    googleFontCSS: null
+    googleFontCSS: null,
+    localFont: null
   })
 })
 
@@ -90,7 +91,8 @@ test("font selection resolver falls back when optional font sources are disabled
     customFontFamilyRevision: null,
     customFontFamilyValue: null,
     fontName: DEFAULT_VALUES.SELECTED_FONT,
-    googleFontCSS: null
+    googleFontCSS: null,
+    localFont: null
   })
 })
 
@@ -116,52 +118,27 @@ test("font selection resolver falls back when an enumerated system font was remo
     customFontFamilyRevision: null,
     customFontFamilyValue: null,
     fontName: DEFAULT_VALUES.SELECTED_FONT,
-    googleFontCSS: null
+    googleFontCSS: null,
+    localFont: null
   })
 })
 
-test("font selection resolver falls back when a Google family is missing from the catalog", async () => {
-  Reflect.set(globalThis, "chrome", {
-    runtime: {
-      getURL(assetPath: string) {
-        return `chrome-extension://fontara/${assetPath}`
-      }
-    }
+test("font selection resolver keeps a missing Google binary pending", async () => {
+  const selectedValue = createGoogleFontValue("Inter")
+  const font = await resolveFontSelection(selectedValue, {
+    googleFontsEnabled: true,
+    resolveGoogleFontBinary: async () => null
   })
-  Reflect.set(
-    globalThis,
-    "fetch",
-    async () =>
-      new Response(
-        JSON.stringify({
-          fonts: [
-            {
-              category: "sans-serif",
-              fallback: "sans-serif",
-              family: "Inter",
-              recommended: true,
-              subsets: ["latin"],
-              variants: ["regular", "700"]
-            }
-          ],
-          source: "google-fonts-developer-api-v1"
-        }),
-        {
-          headers: { "content-type": "application/json" },
-          status: 200
-        }
-      )
-  )
-
-  const font = await resolveFontSelection(
-    createGoogleFontValue("Missing Catalog Font"),
-    { googleFontsEnabled: true }
-  )
 
   assert.deepEqual(font, {
     customFontFamilyRevision: null,
     customFontFamilyValue: null,
     fontName: DEFAULT_VALUES.SELECTED_FONT,
-    googleFontCSS: null
+    googleFontCSS: null,
+    localFont: {
+      selectedValue,
+      source: "google",
+      state: "pending"
+    }
   })
 })

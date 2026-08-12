@@ -6,6 +6,8 @@ import type {
 } from "../../custom-font-types"
 import type {
   FontaraExtensionData,
+  FontaraGoogleFontCacheStats,
+  FontaraGoogleFontPrepareResult,
   FontaraImportedSettingsResult,
   FontaraMessageResponse,
   FontaraSettings,
@@ -211,6 +213,31 @@ class FontaraConnector {
         familyValue
       },
       type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_DELETE
+    })
+  }
+
+  prepareGoogleFont(
+    selectedValue: string
+  ): Promise<FontaraGoogleFontPrepareResult> {
+    return this.sendRequest<FontaraGoogleFontPrepareResult>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        selectedValue
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE
+    })
+  }
+
+  clearGoogleFontCache(): Promise<FontaraGoogleFontCacheStats> {
+    return this.sendRequest<FontaraGoogleFontCacheStats>({
+      data: { clientMutationId: this.createClientMutationId() },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_CLEAR
+    })
+  }
+
+  getGoogleFontCacheStats(): Promise<FontaraGoogleFontCacheStats> {
+    return this.sendRequest<FontaraGoogleFontCacheStats>({
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_STATS
     })
   }
 

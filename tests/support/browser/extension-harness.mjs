@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
 import http from "node:http"
 import os from "node:os"
@@ -59,9 +60,365 @@ const HARD_FIXTURE_PATH = "/hard.html"
 const FRAME_FIXTURE_PATH = "/frame.html"
 const CROSS_ORIGIN_FRAME_PATH = "/cross-origin-frame.html"
 const CROSS_ORIGIN_FRAME_NAME = "fontara-cross-origin-frame"
+export const STRICT_FONT_CSP_FIXTURE_PATH = "/strict-font-csp.html"
 const FONTARA_INLINE_FONT_MARKER = "var(--fontara-font)"
 const FONTARA_FONT_FAMILY_PATTERN = /fontara/i
+const STRICT_FONT_CSP =
+  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src 'none'; connect-src 'none'; img-src data:; media-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
 let browserMutationSequence = 0
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex")
+}
+
+function createGoogleFontBinaryBlob(bytes, hash) {
+  return {
+    byteLength: bytes.byteLength,
+    data: bytes.toString("base64"),
+    encoding: "base64",
+    hash,
+    mimeType: "font/woff2",
+    schemaVersion: 1
+  }
+}
+
+/**
+ * Builds the exact durable storage transaction used by the Google binary
+ * cache. The fixture uses real WOFF2 bytes already shipped by FontARA, so the
+ * browser must successfully parse and register the faces through FontFace's
+ * ArrayBuffer constructor; no Google endpoint is needed by the test.
+ */
+export async function createSeededGoogleFontBinaryCache(options = {}) {
+  const {
+    boldFontPath = path.join(
+      ROOT_DIR,
+      "assets/fonts/shabnam/Shabnam-Bold.woff2"
+    ),
+    fontFamily = "Roboto",
+    regularFontPath = path.join(ROOT_DIR, "assets/fonts/shabnam/Shabnam.woff2")
+  } = options
+  const [regularBytes, boldBytes] = await Promise.all([
+    fs.readFile(regularFontPath),
+    fs.readFile(boldFontPath)
+  ])
+  for (const [name, bytes] of [
+    ["regular", regularBytes],
+    ["bold", boldBytes]
+  ]) {
+    assert.equal(
+      bytes.subarray(0, 4).toString("ascii"),
+      "wOF2",
+      `The seeded Google ${name} fixture is not a real WOFF2 file.`
+    )
+  }
+
+  const familyKey = sha256(
+    fontFamily.trim().normalize("NFKC").toLocaleLowerCase("en-US")
+  )
+  const regularHash = sha256(regularBytes)
+  const boldHash = sha256(boldBytes)
+  const cssHash = sha256(
+    JSON.stringify({ boldHash, fontFamily, regularHash, schemaVersion: 1 })
+  )
+  const runtimeFamily = `FontAraGoogle-${cssHash.slice(0, 24)}`
+  const selectedValue = `google-font:${encodeURIComponent(fontFamily)}`
+  const requestUrl = new URL("https://fonts.googleapis.com/css2")
+  requestUrl.searchParams.set(
+    "family",
+    `${fontFamily}:ital,wght@0,400;0,700;1,400;1,700`
+  )
+  requestUrl.searchParams.set("display", "swap")
+  const now = Date.now()
+  const faceFixtures = [
+    {
+      assetHash: regularHash,
+      byteLength: regularBytes.byteLength,
+      id: "google-test-normal-400",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/normal-400.woff2",
+      style: "normal",
+      weight: "400"
+    },
+    {
+      assetHash: boldHash,
+      byteLength: boldBytes.byteLength,
+      id: "google-test-normal-700",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/normal-700.woff2",
+      style: "normal",
+      weight: "700"
+    },
+    {
+      assetHash: regularHash,
+      byteLength: regularBytes.byteLength,
+      id: "google-test-italic-400",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/italic-400.woff2",
+      style: "italic",
+      weight: "400"
+    },
+    {
+      assetHash: boldHash,
+      byteLength: boldBytes.byteLength,
+      id: "google-test-italic-700",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/italic-700.woff2",
+      style: "italic",
+      weight: "700"
+    }
+  ]
+  const faces = faceFixtures.map((face) => ({
+    ...face,
+    stretch: "100%",
+    unicodeRange: null
+  }))
+  const totalBytes = regularBytes.byteLength + boldBytes.byteLength
+  const family = {
+    createdAt: now,
+    cssHash,
+    faces,
+    fontFamily,
+    key: familyKey,
+    lastAccessedAt: now,
+    pinned: false,
+    requestUrl: requestUrl.toString(),
+    revision: 1,
+    runtimeFamily,
+    schemaVersion: 1,
+    totalBytes,
+    updatedAt: now
+  }
+  const assetEntries = [
+    [regularHash, regularBytes],
+    [boldHash, boldBytes]
+  ]
+  const storageValues = {
+    [`googleFontFamily:${familyKey}:1`]: family,
+    __fontara_google_font_binary_catalog__: {
+      assets: Object.fromEntries(
+        assetEntries.map(([hash, bytes]) => [
+          hash,
+          { byteLength: bytes.byteLength, refCount: 1 }
+        ])
+      ),
+      families: {
+        [familyKey]: { latestRevision: 1, revisions: [1] }
+      },
+      schemaVersion: 1,
+      updatedAt: now
+    },
+    __fontara_google_font_binary_index__: {
+      families: { [familyKey]: family },
+      schemaVersion: 1,
+      totalBytes,
+      updatedAt: now
+    },
+    ...Object.fromEntries(
+      assetEntries.map(([hash, bytes]) => [
+        `googleFontFace:${hash}`,
+        createGoogleFontBinaryBlob(bytes, hash)
+      ])
+    )
+  }
+
+  return {
+    assetHashes: [regularHash, boldHash],
+    family,
+    forbiddenDocumentMarkers: [
+      requestUrl.toString(),
+      ...faces.map((face) => face.sourceUrl),
+      ...assetEntries.map(([, bytes]) => bytes.toString("base64").slice(0, 64))
+    ],
+    runtimeFamily,
+    selectedValue,
+    storageValues
+  }
+}
+
+export function observeDocumentGoogleFontRequests(page) {
+  const requests = []
+  const listener = (request) => {
+    try {
+      const { hostname } = new URL(request.url())
+      if (
+        hostname === "fonts.googleapis.com" ||
+        hostname === "fonts.gstatic.com"
+      ) {
+        requests.push(request.url())
+      }
+    } catch {
+      // Ignore non-URL protocol requests emitted by the browser target.
+    }
+  }
+  page.on("request", listener)
+  return {
+    requests,
+    stop() {
+      page.off("request", listener)
+    }
+  }
+}
+
+export async function getGoogleFontBinaryRuntimeState(
+  page,
+  runtimeFamily,
+  forbiddenDocumentMarkers = []
+) {
+  return page.evaluate(
+    async (family, markers) => {
+      const sampleText = "سلام فارسی آزمایش فونت گوگل پندار گسترش قلم"
+      const escapedFamily = family
+        .replaceAll("\\", "\\\\")
+        .replaceAll('"', '\\"')
+      const quotedFamily = `"${escapedFamily}"`
+      const specs = [
+        { style: "normal", weight: "400" },
+        { style: "normal", weight: "700" },
+        { style: "italic", weight: "400" },
+        { style: "italic", weight: "700" }
+      ]
+      const queries = specs.map(
+        ({ style, weight }) => `${style} ${weight} 32px ${quotedFamily}`
+      )
+      const loadedByQuery = await Promise.all(
+        queries.map((query) => document.fonts.load(query, sampleText))
+      )
+      await document.fonts.ready
+
+      const normalizeFamily = (value) => value.replace(/^['"]|['"]$/g, "")
+      const familyFaces = Array.from(
+        new Set(
+          [...Array.from(document.fonts), ...loadedByQuery.flat()].filter(
+            (fontFace) => normalizeFamily(fontFace.family) === family
+          )
+        )
+      )
+      const canvas = document.createElement("canvas")
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("Canvas 2D context is unavailable.")
+      const measure = (font) => {
+        context.font = font
+        return context.measureText(sampleText).width
+      }
+      const html = document.documentElement.outerHTML
+      const dynamicStyleText =
+        document.getElementById("fontara-dynamic-font")?.textContent ?? ""
+      const legacyGoogleStyleText =
+        document.getElementById("fontara-google-font-styles")?.textContent ?? ""
+      const target = document.getElementById("fontara-text")
+
+      return {
+        checkedQueries: queries.map((query) =>
+          document.fonts.check(query, sampleText)
+        ),
+        computedFamily: target ? getComputedStyle(target).fontFamily : "",
+        csp:
+          document
+            .querySelector('meta[http-equiv="Content-Security-Policy"]')
+            ?.getAttribute("content") ?? "",
+        dynamicStyleText,
+        exposedMarkers: markers.filter(
+          (marker) => marker.length > 0 && html.includes(marker)
+        ),
+        faceDescriptors: familyFaces
+          .map((fontFace) => ({
+            status: fontFace.status,
+            stretch: fontFace.stretch,
+            style: fontFace.style,
+            weight: fontFace.weight
+          }))
+          .sort((first, second) =>
+            `${first.style}:${first.weight}`.localeCompare(
+              `${second.style}:${second.weight}`
+            )
+          ),
+        googleResourceUrls: performance
+          .getEntriesByType("resource")
+          .map((entry) => entry.name)
+          .filter((url) => {
+            try {
+              const { hostname } = new URL(url)
+              return (
+                hostname === "fonts.googleapis.com" ||
+                hostname === "fonts.gstatic.com"
+              )
+            } catch {
+              return false
+            }
+          }),
+        hasDataFont: /data:font/i.test(html),
+        hasRemoteFontUrl: /https:\/\/fonts\.(?:googleapis|gstatic)\.com/i.test(
+          html
+        ),
+        legacyGoogleStyleText,
+        loadId: window.__fontaraLoadId,
+        loadedCounts: loadedByQuery.map((faces) => faces.length),
+        widths: queries.map((query) => ({
+          font: measure(query),
+          monospace: measure(query.replace(quotedFamily, "monospace")),
+          serif: measure(query.replace(quotedFamily, "serif"))
+        }))
+      }
+    },
+    runtimeFamily,
+    forbiddenDocumentMarkers
+  )
+}
+
+export async function waitForGoogleFontBinaryRuntimeState(
+  page,
+  fixture,
+  options = {}
+) {
+  const {
+    loadId,
+    message = "The seeded Google binary faces did not become active under strict CSP."
+  } = options
+  const expectedDescriptors = [
+    "italic:400",
+    "italic:700",
+    "normal:400",
+    "normal:700"
+  ]
+  let lastState = null
+
+  try {
+    return await waitFor(
+      async () => {
+        const state = await getGoogleFontBinaryRuntimeState(
+          page,
+          fixture.runtimeFamily,
+          fixture.forbiddenDocumentMarkers
+        )
+        lastState = state
+        const descriptors = state.faceDescriptors.map(
+          (face) => `${face.style}:${face.weight}`
+        )
+        return (loadId === undefined || state.loadId === loadId) &&
+          state.computedFamily.includes(fixture.runtimeFamily) &&
+          state.dynamicStyleText.includes(fixture.runtimeFamily) &&
+          /font-src\s+'none'/i.test(state.csp) &&
+          state.checkedQueries.every(Boolean) &&
+          state.loadedCounts.every((count) => count > 0) &&
+          state.faceDescriptors.every((face) => face.status === "loaded") &&
+          JSON.stringify(descriptors) === JSON.stringify(expectedDescriptors) &&
+          state.exposedMarkers.length === 0 &&
+          state.googleResourceUrls.length === 0 &&
+          !state.hasDataFont &&
+          !state.hasRemoteFontUrl &&
+          state.legacyGoogleStyleText === ""
+          ? state
+          : false
+      },
+      { message, timeout: 20_000 }
+    )
+  } catch (error) {
+    if (error instanceof Error) {
+      error.message += `\n\nLast Google binary runtime state:\n${JSON.stringify(lastState, null, 2)}`
+    }
+    throw error
+  }
+}
 
 function createBrowserMutationId() {
   browserMutationSequence += 1
@@ -291,9 +648,13 @@ export function createTestServer(options = {}) {
     }
 
     const url = new URL(request.url ?? "/", "http://127.0.0.1")
+    const isStrictFontCspFixture = url.pathname === STRICT_FONT_CSP_FIXTURE_PATH
     response.writeHead(200, {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      ...(isStrictFontCspFixture
+        ? { "content-security-policy": STRICT_FONT_CSP }
+        : {})
     })
 
     if (url.pathname === HARD_FIXTURE_PATH) {
@@ -476,6 +837,11 @@ export function createTestServer(options = {}) {
       <html>
         <head>
           <meta charset="utf-8">
+          ${
+            isStrictFontCspFixture
+              ? `<meta http-equiv="Content-Security-Policy" content="${STRICT_FONT_CSP}">`
+              : ""
+          }
           <title>FontARA MV3 Browser Test</title>
           <script>
             window.__fontaraLoadId = String(Date.now()) + "-" + Math.random();

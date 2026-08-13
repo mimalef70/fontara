@@ -16,9 +16,10 @@ FontARA is a cross-browser WebExtension for applying your preferred fonts across
 the web. It supports multilingual pages through built-in, Google, custom, and
 Chromium system fonts, with special support for RTL-first workflows: smart RTL
 text detection, editable-field auto-direction, and curated per-site RTL handling.
-Version 5.1.0 adds private multi-face custom-font families, reliable opt-in
-Chromium system fonts, revisioned settings writes, stronger privacy and
-accessibility, and production release gates for Chrome and Firefox.
+Version 5.1.0 adds a private, deliberately simple custom-font flow (a name,
+required Regular, and optional Bold), reliable opt-in Chromium system fonts,
+revisioned settings writes, stronger privacy and accessibility, and production
+release gates for Chrome and Firefox.
 
 ![FontARA 5.1 popup](docs/images/store/5.1.0/fa/fontara-5.1-popup.png)
 
@@ -90,8 +91,9 @@ are mainly for testers, reviewers, and contributors.
 - Smart RTL support for right-to-left scripts, editable text surfaces, and
   curated site adapters.
 - Multilingual extension UI for English, Persian, and Arabic.
-- Multi-file custom-font families with local-only binary storage and no base64
-  exposure in page DOM.
+- Simple custom-font setup with a required Regular file, an optional Bold file,
+  and one-file Variable Regular support. Binaries stay local and no base64 font
+  data is exposed in the page DOM.
 - Backup, import, export, reset, sync settings, and cross-browser MV3 builds for
   Chrome, Firefox, Edge, Brave, Opera, and Safari-style packages.
 

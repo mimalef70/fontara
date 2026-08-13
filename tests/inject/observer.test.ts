@@ -9,7 +9,8 @@ const GLOBAL_KEYS = [
   "HTMLElement",
   "MutationObserver",
   "Node",
-  "requestAnimationFrame"
+  "requestAnimationFrame",
+  "ShadowRoot"
 ] as const
 const ORIGINAL_GLOBALS = GLOBAL_KEYS.map((key) => ({
   exists: key in globalThis,
@@ -27,6 +28,10 @@ class FakeNode {
 
 class FakeShadowRoot extends FakeNode {
   readonly children: FakeElement[] = []
+
+  constructor(readonly host: FakeElement) {
+    super()
+  }
 
   querySelectorAll(): FakeElement[] {
     return this.children.flatMap((child) => [child, ...child.descendants()])
@@ -132,6 +137,7 @@ test("observer reconnects to a replacement body and its open shadow roots", () =
   Reflect.set(globalThis, "Node", FakeNode)
   Reflect.set(globalThis, "HTMLElement", FakeElement)
   Reflect.set(globalThis, "MutationObserver", FakeMutationObserver)
+  Reflect.set(globalThis, "ShadowRoot", FakeShadowRoot)
   Reflect.set(globalThis, "document", documentValue)
   Reflect.set(globalThis, "requestAnimationFrame", () => {
     animationFrameCalls += 1
@@ -155,7 +161,7 @@ test("observer reconnects to a replacement body and its open shadow roots", () =
 
   const replacementBody = new FakeElement("body")
   const shadowHost = new FakeElement("fontara-shell")
-  const shadowRoot = new FakeShadowRoot()
+  const shadowRoot = new FakeShadowRoot(shadowHost)
   shadowHost.shadowRoot = shadowRoot
   replacementBody.appendChild(shadowHost)
   documentElement.removeChild(originalBody)
@@ -189,4 +195,49 @@ test("observer reconnects to a replacement body and its open shadow roots", () =
 
   stopObserving()
   assert.equal(cancelledFrame, 1)
+})
+
+test("observer revisits a shadow host when direct shadow children are removed", () => {
+  const documentElement = new FakeElement("html")
+  const body = new FakeElement("body")
+  const shadowHost = new FakeElement("fontara-shell")
+  const shadowRoot = new FakeShadowRoot(shadowHost)
+  const removedChild = new FakeElement("span")
+  shadowHost.shadowRoot = shadowRoot
+  shadowRoot.children.push(removedChild)
+  body.appendChild(shadowHost)
+  documentElement.appendChild(body)
+
+  let animationFrameCallback: (() => void) | null = null
+  Reflect.set(globalThis, "Node", FakeNode)
+  Reflect.set(globalThis, "HTMLElement", FakeElement)
+  Reflect.set(globalThis, "MutationObserver", FakeMutationObserver)
+  Reflect.set(globalThis, "ShadowRoot", FakeShadowRoot)
+  Reflect.set(globalThis, "document", {
+    body,
+    documentElement,
+    querySelectorAll: () => []
+  })
+  Reflect.set(globalThis, "requestAnimationFrame", (callback: () => void) => {
+    animationFrameCallback = callback
+    return 1
+  })
+  Reflect.set(globalThis, "cancelAnimationFrame", () => {})
+
+  startObserving()
+  const mutationObserver =
+    FakeMutationObserver.instances[FakeMutationObserver.instances.length - 1]
+  assert.ok(mutationObserver)
+
+  mutationObserver.trigger([
+    {
+      addedNodes: [],
+      attributeName: null,
+      removedNodes: [removedChild],
+      target: shadowRoot,
+      type: "childList"
+    } as unknown as MutationRecord
+  ])
+
+  assert.ok(animationFrameCallback)
 })

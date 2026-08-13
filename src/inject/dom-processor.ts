@@ -6,7 +6,7 @@ import {
   ICON_CLASSES
 } from "../config/selectors"
 import { normalizeFontFamilyName, splitFontFamilies } from "../utils/font-data"
-import { collectOpenShadowRoots, type FontaraFontRoot } from "./shadow-roots"
+import type { FontaraFontRoot } from "./shadow-roots"
 
 export type FontWork = {
   fallbackFontFamily: string
@@ -15,9 +15,22 @@ export type FontWork = {
 
 type FontWorkCollection = {
   done: boolean
-  rootNode: FontaraFontRoot
-  rootPending: boolean
-  walker: TreeWalker
+  stack: FontTraversalFrame[]
+}
+
+type FontTraversalNode = Element | ShadowRoot
+
+type FontTraversalFrame = {
+  childIndex: number
+  node: FontTraversalNode
+  shadowVisited: boolean
+}
+
+type FontWorkSlice = {
+  deadline: IdleDeadline | undefined
+  operationLimit: number
+  startedAt: number
+  visitedCount: number
 }
 
 const ICON_FONT_FAMILIES = new Set([
@@ -45,11 +58,16 @@ const ICON_FONT_FAMILIES = new Set([
 ])
 const ICON_FONT_FAMILY_PARTS = ["font awesome", "glyphicon"]
 const TEXT_CONTROL_TAGS = new Set(["input", "textarea", "select", "option"])
-const ROOT_COLLECTIONS_PER_TIMEOUT = 20
+const IDLE_CALLBACK_TIMEOUT_MS = 100
+const IDLE_TIME_RESERVE_MS = 4
+const FORCED_SLICE_BUDGET_MS = 8
+const COLLECTION_OPERATIONS_PER_TURN = 40
 const WORK_CHUNK_SIZE = 200
+const TRAVERSAL_OPERATIONS_PER_SLICE = WORK_CHUNK_SIZE * 3
 
 let processedElements = new WeakSet<HTMLElement>()
 let processingGeneration = 0
+const scheduledCallbacks = new Set<{ cancel: () => void }>()
 
 function getContentEditableValue(node: HTMLElement): string | null {
   return typeof node.getAttribute === "function"
@@ -149,13 +167,18 @@ function getCleanFontFamily(fontFamily: string): string {
     .map((family) => family.trim())
     .filter((family) => {
       const normalizedFamily = normalizeFontFamilyName(family)
-      return Boolean(normalizedFamily) && !normalizedFamily.endsWith("-Fontara")
+      return (
+        Boolean(normalizedFamily) &&
+        !normalizedFamily.endsWith("-Fontara") &&
+        !/^FontAraGoogle-[a-f\d]{24}$/i.test(normalizedFamily)
+      )
     })
     .join(", ")
 }
 
 function addFontWork(node: HTMLElement, work: FontWork[]): void {
   if (
+    !node.isConnected ||
     processedElements.has(node) ||
     !hasRenderableText(node) ||
     hasExcludedInlineFontStyle(node)
@@ -188,48 +211,83 @@ function createFontWorkCollection(
 
   return {
     done: false,
-    rootNode,
-    rootPending: true,
-    walker: document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT, {
-      acceptNode(node) {
-        if (!isHTMLElement(node)) {
-          return NodeFilter.FILTER_SKIP
-        }
-
-        return isExcludedSubtree(node)
-          ? NodeFilter.FILTER_REJECT
-          : NodeFilter.FILTER_ACCEPT
-      }
-    })
+    stack: [createFontTraversalFrame(rootNode)]
   }
+}
+
+function createFontTraversalFrame(node: FontTraversalNode): FontTraversalFrame {
+  return {
+    childIndex: 0,
+    node,
+    shadowVisited: false
+  }
+}
+
+function getOpenShadowRoot(node: FontTraversalNode): ShadowRoot | null {
+  if (!isHTMLElement(node)) return null
+  const shadowRoot = node.shadowRoot
+  return shadowRoot && typeof shadowRoot.querySelectorAll === "function"
+    ? shadowRoot
+    : null
+}
+
+function getElementChild(
+  rootNode: FontTraversalNode,
+  childIndex: number
+): Element | null {
+  const { children } = rootNode
+  if (typeof children.item === "function") return children.item(childIndex)
+  return (children as unknown as Element[])[childIndex] ?? null
 }
 
 function collectNextFontWork(
   collection: FontWorkCollection,
   work: FontWork[],
-  deadline?: IdleDeadline
+  slice?: FontWorkSlice,
+  maxOperations = Number.POSITIVE_INFINITY
 ): boolean {
-  let visitedCount = 0
+  const initialOperationCount = slice?.visitedCount ?? 0
 
-  while (!collection.done && shouldContinueChunk(deadline, visitedCount)) {
-    const node = collection.rootPending
-      ? collection.rootNode
-      : collection.walker.nextNode()
-
-    collection.rootPending = false
-
-    if (!node) {
+  while (
+    !collection.done &&
+    (!slice || hasSliceBudget(slice)) &&
+    (slice?.visitedCount ?? 0) - initialOperationCount < maxOperations
+  ) {
+    const frame = collection.stack[collection.stack.length - 1]
+    if (!frame) {
       collection.done = true
       break
     }
 
-    if (isHTMLElement(node)) {
-      addFontWork(node, work)
+    if (!frame.shadowVisited) {
+      frame.shadowVisited = true
+      const shadowRoot = getOpenShadowRoot(frame.node)
+      if (shadowRoot) {
+        collection.stack.push(createFontTraversalFrame(shadowRoot))
+      }
+      if (slice) slice.visitedCount += 1
+      continue
     }
 
-    visitedCount += 1
+    const child = getElementChild(frame.node, frame.childIndex)
+    if (child) {
+      frame.childIndex += 1
+      if (!isHTMLElement(child) || !isExcludedSubtree(child)) {
+        collection.stack.push(createFontTraversalFrame(child))
+      }
+      if (slice) slice.visitedCount += 1
+      continue
+    }
+
+    // Complete descendants before their ancestor. This keeps the computed
+    // fallback pristine when an earlier progressive batch has already written
+    // FontARA styles elsewhere in the tree.
+    collection.stack.pop()
+    if (isHTMLElement(frame.node)) addFontWork(frame.node, work)
+    if (slice) slice.visitedCount += 1
   }
 
+  collection.done = collection.stack.length === 0
   return collection.done
 }
 
@@ -253,7 +311,10 @@ function getFontFamilyValue(fallbackFontFamily: string): string {
 }
 
 function writeFontWork({ fallbackFontFamily, node }: FontWork): void {
-  if (!node.isConnected) return
+  if (!node.isConnected) {
+    processedElements.delete(node)
+    return
+  }
 
   node.style.setProperty(
     "font-family",
@@ -270,22 +331,84 @@ export function writeFontWorkBatch(work: FontWork[]): void {
 
 function scheduleIdle(callback: (deadline?: IdleDeadline) => void): void {
   if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback((deadline) => callback(deadline))
+    let completed = false
+    let scheduled: { cancel: () => void } | null = null
+    const callbackId = window.requestIdleCallback(
+      (deadline) => {
+        completed = true
+        if (scheduled) scheduledCallbacks.delete(scheduled)
+        callback(deadline)
+      },
+      {
+        timeout: IDLE_CALLBACK_TIMEOUT_MS
+      }
+    )
+    scheduled = {
+      cancel: () => window.cancelIdleCallback?.(callbackId)
+    }
+    if (!completed) scheduledCallbacks.add(scheduled)
     return
   }
 
-  window.setTimeout(() => callback(), 16)
+  scheduleTimeout(() => callback(), 16)
 }
 
-function shouldContinueChunk(
-  deadline: IdleDeadline | undefined,
-  writtenCount: number
-): boolean {
-  if (!deadline) {
-    return writtenCount < WORK_CHUNK_SIZE
+function scheduleInitialSlice(callback: () => void): void {
+  // A newly enabled, already-rendered SPA must show progress even when the
+  // browser has no idle time. Continuations still prefer idle periods.
+  scheduleTimeout(callback, 0)
+}
+
+function scheduleTimeout(callback: () => void, delay: number): void {
+  let completed = false
+  let scheduled: { cancel: () => void } | null = null
+  const timeoutId = window.setTimeout(() => {
+    completed = true
+    if (scheduled) scheduledCallbacks.delete(scheduled)
+    callback()
+  }, delay)
+  scheduled = {
+    cancel: () => window.clearTimeout(timeoutId)
+  }
+  if (!completed) scheduledCallbacks.add(scheduled)
+}
+
+function cancelScheduledCallbacks(): void {
+  for (const scheduled of scheduledCallbacks) scheduled.cancel()
+  scheduledCallbacks.clear()
+}
+
+function getCurrentTime(): number {
+  return typeof performance !== "undefined" &&
+    typeof performance.now === "function"
+    ? performance.now()
+    : Date.now()
+}
+
+function createFontWorkSlice(
+  deadline?: IdleDeadline,
+  operationLimit = WORK_CHUNK_SIZE
+): FontWorkSlice {
+  return {
+    deadline,
+    operationLimit,
+    startedAt: getCurrentTime(),
+    visitedCount: 0
+  }
+}
+
+function hasSliceBudget(slice: FontWorkSlice): boolean {
+  if (slice.visitedCount === 0) return true
+  if (slice.visitedCount >= slice.operationLimit) return false
+
+  if (slice.deadline && !slice.deadline.didTimeout) {
+    return slice.deadline.timeRemaining() > IDLE_TIME_RESERVE_MS
   }
 
-  return deadline.timeRemaining() > 4 || writtenCount === 0
+  // A timed-out idle callback reports no remaining idle time. Give it a small
+  // wall-clock budget as well as a hard node cap so progress is guaranteed
+  // without monopolizing the main thread.
+  return getCurrentTime() - slice.startedAt < FORCED_SLICE_BUDGET_MS
 }
 
 function writeFontWorkChunked(work: FontWork[], generation: number): void {
@@ -299,15 +422,15 @@ function writeFontWorkChunked(work: FontWork[], generation: number): void {
   const step = (deadline?: IdleDeadline): void => {
     if (generation !== processingGeneration) return
 
-    let writtenCount = 0
+    const slice = createFontWorkSlice(deadline)
     while (
       index < work.length &&
       generation === processingGeneration &&
-      shouldContinueChunk(deadline, writtenCount)
+      hasSliceBudget(slice)
     ) {
       writeFontWork(work[index])
       index += 1
-      writtenCount += 1
+      slice.visitedCount += 1
     }
 
     if (index < work.length) {
@@ -315,7 +438,7 @@ function writeFontWorkChunked(work: FontWork[], generation: number): void {
     }
   }
 
-  scheduleIdle(step)
+  scheduleInitialSlice(() => step())
 }
 
 export function writeFontWorkBatchChunked(work: FontWork[]): void {
@@ -327,30 +450,9 @@ export function shouldChunkFontWork(work: FontWork[]): boolean {
 }
 
 export function resetProcessedElements(): void {
+  cancelScheduledCallbacks()
   processedElements = new WeakSet<HTMLElement>()
   processingGeneration += 1
-}
-
-function expandFontRootNodes(rootNodes: FontaraFontRoot[]): FontaraFontRoot[] {
-  const expandedRootNodes: FontaraFontRoot[] = []
-  const seenRootNodes = new WeakSet<object>()
-
-  function addRootNode(rootNode: FontaraFontRoot): void {
-    if (seenRootNodes.has(rootNode)) return
-
-    seenRootNodes.add(rootNode)
-    expandedRootNodes.push(rootNode)
-
-    for (const shadowRoot of collectOpenShadowRoots(rootNode)) {
-      addRootNode(shadowRoot)
-    }
-  }
-
-  for (const rootNode of rootNodes) {
-    addRootNode(rootNode)
-  }
-
-  return expandedRootNodes
 }
 
 export function applyFontToTreeChunked(rootNode: FontaraFontRoot): void {
@@ -360,45 +462,61 @@ export function applyFontToTreeChunked(rootNode: FontaraFontRoot): void {
 export function applyFontToTreesChunked(rootNodes: FontaraFontRoot[]): void {
   if (rootNodes.length === 0) return
 
-  const collections = expandFontRootNodes(rootNodes).flatMap((rootNode) => {
+  const collections = rootNodes.flatMap((rootNode) => {
     const collection = createFontWorkCollection(rootNode)
     return collection ? [collection] : []
   })
-  const work: FontWork[] = []
   const generation = processingGeneration
-  let collectionIndex = 0
+  let nextCollectionIndex = 0
+  let remainingCollections = collections.length
 
   if (collections.length === 0) return
+
+  const getNextCollection = (): FontWorkCollection | null => {
+    for (let checked = 0; checked < collections.length; checked += 1) {
+      const collection = collections[nextCollectionIndex]
+      nextCollectionIndex = (nextCollectionIndex + 1) % collections.length
+      if (!collection.done) return collection
+    }
+    return null
+  }
 
   const collectStep = (deadline?: IdleDeadline): void => {
     if (generation !== processingGeneration) return
 
-    let completedCollections = 0
+    const work: FontWork[] = []
+    const slice = createFontWorkSlice(deadline, TRAVERSAL_OPERATIONS_PER_SLICE)
     while (
-      collectionIndex < collections.length &&
-      generation === processingGeneration
+      remainingCollections > 0 &&
+      generation === processingGeneration &&
+      hasSliceBudget(slice)
     ) {
-      const collection = collections[collectionIndex]
-      if (!collectNextFontWork(collection, work, deadline)) {
-        scheduleIdle(collectStep)
-        return
-      }
-
-      collectionIndex += 1
-      completedCollections += 1
-
+      const collection = getNextCollection()
+      if (!collection) break
       if (
-        collectionIndex < collections.length &&
-        ((deadline && !shouldContinueChunk(deadline, 1)) ||
-          (!deadline && completedCollections >= ROOT_COLLECTIONS_PER_TIMEOUT))
+        collectNextFontWork(
+          collection,
+          work,
+          slice,
+          COLLECTION_OPERATIONS_PER_TURN
+        )
       ) {
-        scheduleIdle(collectStep)
-        return
+        remainingCollections -= 1
       }
     }
 
-    writeFontWorkChunked(work, generation)
+    if (generation !== processingGeneration) return
+
+    // Keep computed-style reads and inline writes separated inside each
+    // bounded slice, but commit every completed slice immediately. The old
+    // all-or-nothing collection made a mature SPA appear stuck until its
+    // entire DOM had been scanned.
+    writeFontWorkBatch(work)
+
+    if (remainingCollections > 0) {
+      scheduleIdle(collectStep)
+    }
   }
 
-  scheduleIdle(collectStep)
+  scheduleInitialSlice(() => collectStep())
 }

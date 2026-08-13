@@ -1975,6 +1975,24 @@ export async function clickByTestId(page, testId) {
   await page.mouse.click(point.x, point.y)
 }
 
+/**
+ * Activates a control without foregrounding its Puppeteer page.
+ *
+ * Browser tests render the toolbar popup in a regular extension tab. Making
+ * that tab active would replace the website returned by chrome.tabs.query(),
+ * unlike a real toolbar popup, and can unmount current-site controls between
+ * locating and clicking them. Dispatching the element activation in its own
+ * document keeps the fixture tab active while exercising the same UI handler.
+ */
+export async function activateByTestId(page, testId) {
+  const selector = testIdSelector(testId)
+  await page.waitForSelector(selector, { visible: true })
+  await page.$eval(selector, (element) => {
+    element.scrollIntoView({ block: "center", inline: "center" })
+    element.click()
+  })
+}
+
 export async function setValueByTestId(page, testId, value) {
   const selector = testIdSelector(testId)
   await page.waitForSelector(selector)

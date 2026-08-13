@@ -43,6 +43,17 @@ function getMutationElement(node: Node): HTMLElement | null {
   return null
 }
 
+function getMutationParentElement(node: Node): HTMLElement | null {
+  const element = getMutationElement(node)
+  if (element) return element
+
+  return typeof ShadowRoot !== "undefined" &&
+    node instanceof ShadowRoot &&
+    node.host instanceof HTMLElement
+    ? node.host
+    : null
+}
+
 function isNestedPendingNode(
   node: HTMLElement,
   nodes: Set<HTMLElement>
@@ -208,6 +219,16 @@ export function startObserving(): void {
 
       for (const node of mutation.removedNodes) {
         markEditableFontStylesDirtyForNode(node)
+      }
+
+      // A progressive traversal keeps an index into the live child list.
+      // Removing an earlier sibling can shift an unvisited node behind that
+      // index, so revisit the stable parent after the current frame.
+      if (mutation.removedNodes.length > 0) {
+        const mutationElement = getMutationParentElement(mutation.target)
+        if (mutationElement) {
+          addPendingNodeIfOutsideContentEditable(mutationElement)
+        }
       }
     }
 

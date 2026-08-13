@@ -17,8 +17,12 @@ class FakeElement {
   isConnected = true
   isContentEditable = false
   parentElement: FakeElement | null = null
+  shadowRoot: FakeShadowRoot | null = null
+  styleProperties = new Map<string, { priority: string; value: string }>()
   style = {
-    setProperty() {}
+    setProperty: (name: string, value: string, priority = "") => {
+      this.styleProperties.set(name, { priority, value })
+    }
   }
   tagName: string
   textContent = ""
@@ -43,6 +47,23 @@ class FakeElement {
       this.isContentEditable = value.toLowerCase() !== "false"
     }
   }
+
+  getStyleProperty(propertyName: string): string {
+    return this.styleProperties.get(propertyName)?.value ?? ""
+  }
+}
+
+class FakeShadowRoot {
+  children: FakeElement[] = []
+
+  appendChild(child: FakeElement): FakeElement {
+    this.children.push(child)
+    return child
+  }
+
+  querySelectorAll(): FakeElement[] {
+    return this.children
+  }
 }
 
 function createTextElement(tagName: string, text: string): FakeElement {
@@ -52,7 +73,27 @@ function createTextElement(tagName: string, text: string): FakeElement {
   return element
 }
 
-function setupDomProcessorGlobals(): void {
+type ScheduledIdleTask = {
+  callback: (deadline: IdleDeadline) => void
+  id: number
+  options?: IdleRequestOptions
+}
+
+type ScheduledTimeoutTask = {
+  callback: () => void
+  id: number
+}
+
+function setupDomProcessorGlobals(): {
+  idleTasks: ScheduledIdleTask[]
+  readEvents: string[]
+  timeoutTasks: ScheduledTimeoutTask[]
+} {
+  const idleTasks: ScheduledIdleTask[] = []
+  const readEvents: string[] = []
+  const timeoutTasks: ScheduledTimeoutTask[] = []
+  let nextTaskId = 1
+
   Reflect.set(globalThis, "HTMLElement", FakeElement)
   Reflect.set(globalThis, "Node", { TEXT_NODE: 3 })
   Reflect.set(globalThis, "NodeFilter", {
@@ -88,7 +129,16 @@ function setupDomProcessorGlobals(): void {
     }
   })
   Reflect.set(globalThis, "window", {
+    cancelIdleCallback(callbackId: number) {
+      const index = idleTasks.findIndex((task) => task.id === callbackId)
+      if (index >= 0) idleTasks.splice(index, 1)
+    },
+    clearTimeout(timeoutId: number) {
+      const index = timeoutTasks.findIndex((task) => task.id === timeoutId)
+      if (index >= 0) timeoutTasks.splice(index, 1)
+    },
     getComputedStyle(element: FakeElement) {
+      readEvents.push(element.textContent)
       return {
         fontFamily:
           element.getAttribute("data-font-kind") === "icon"
@@ -97,11 +147,32 @@ function setupDomProcessorGlobals(): void {
               ? '"Material Sans", system-ui'
               : "system-ui, sans-serif"
       }
+    },
+    requestIdleCallback(
+      callback: (deadline: IdleDeadline) => void,
+      options?: IdleRequestOptions
+    ) {
+      const id = nextTaskId
+      nextTaskId += 1
+      idleTasks.push({ callback, id, options })
+      return id
+    },
+    setTimeout(callback: () => void) {
+      const id = nextTaskId
+      nextTaskId += 1
+      timeoutTasks.push({ callback, id })
+      return id
     }
   })
+
+  return { idleTasks, readEvents, timeoutTasks }
 }
 
-afterEach(() => {
+afterEach(async () => {
+  const { resetProcessedElements } = await import(
+    "../../src/inject/dom-processor"
+  )
+  resetProcessedElements()
   for (const [key, value] of Object.entries(originalGlobals)) {
     Reflect.set(globalThis, key, value)
   }
@@ -158,8 +229,8 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
   const work = collectFontWork(root as unknown as HTMLElement)
   const expectedNodes = [
     visibleText,
-    styledWrapper,
     childInsideStyledWrapper,
+    styledWrapper,
     materialTextElement,
     fontWeightElement
   ] as unknown as HTMLElement[]
@@ -188,5 +259,157 @@ test("font work skips code, icon, aria-hidden, and inline font targets", async (
   assert.equal(
     work.some((item) => item.node === fontShorthandNode),
     false
+  )
+})
+
+function countAppliedFontStyles(elements: FakeElement[]): number {
+  return elements.filter((element) =>
+    element.getStyleProperty("font-family").includes("var(--fontara-font)")
+  ).length
+}
+
+function timeoutDeadline(): IdleDeadline {
+  return {
+    didTimeout: true,
+    timeRemaining: () => 0
+  }
+}
+
+test("large existing DOM applies progressively even when idle callbacks time out", async () => {
+  const { idleTasks, timeoutTasks } = setupDomProcessorGlobals()
+  const { applyFontToTreeChunked, resetProcessedElements } = await import(
+    "../../src/inject/dom-processor"
+  )
+  resetProcessedElements()
+
+  const root = new FakeElement("main")
+  const textElements = Array.from({ length: 450 }, (_, index) =>
+    root.appendChild(createTextElement("p", `text ${index}`))
+  )
+
+  applyFontToTreeChunked(root as unknown as HTMLElement)
+
+  assert.equal(timeoutTasks.length, 1)
+  assert.equal(idleTasks.length, 0)
+  timeoutTasks.shift()?.callback()
+
+  const firstAppliedCount = countAppliedFontStyles(textElements)
+  assert.ok(firstAppliedCount > 0)
+  assert.ok(firstAppliedCount < textElements.length)
+  assert.equal(root.getStyleProperty("font-family"), "")
+  assert.equal(idleTasks.length, 1)
+  assert.ok((idleTasks[0]?.options?.timeout ?? 0) > 0)
+
+  const beforeTimedOutSlice = countAppliedFontStyles(textElements)
+  idleTasks.shift()?.callback(timeoutDeadline())
+  const afterTimedOutSlice = countAppliedFontStyles(textElements)
+  assert.ok(afterTimedOutSlice - beforeTimedOutSlice > 1)
+  assert.ok(afterTimedOutSlice - beforeTimedOutSlice <= 200)
+
+  let safety = 20
+  while (idleTasks.length > 0 && safety > 0) {
+    safety -= 1
+    idleTasks.shift()?.callback(timeoutDeadline())
+  }
+
+  assert.ok(safety > 0)
+  assert.equal(countAppliedFontStyles(textElements), textElements.length)
+  assert.equal(
+    textElements[0]?.getStyleProperty("font-family"),
+    "var(--fontara-font), system-ui, sans-serif"
+  )
+  assert.equal(
+    textElements[0]?.styleProperties.get("font-family")?.priority,
+    "important"
+  )
+})
+
+test("reset cancels queued traversal and stale callbacks cannot restore styles", async () => {
+  const { idleTasks, timeoutTasks } = setupDomProcessorGlobals()
+  const { applyFontToTreeChunked, resetProcessedElements } = await import(
+    "../../src/inject/dom-processor"
+  )
+  resetProcessedElements()
+
+  const root = new FakeElement("main")
+  const textElement = root.appendChild(createTextElement("p", "stale text"))
+
+  applyFontToTreeChunked(root as unknown as HTMLElement)
+  const staleCallback = timeoutTasks[0]?.callback
+  assert.ok(staleCallback)
+
+  resetProcessedElements()
+  assert.equal(timeoutTasks.length, 0)
+  staleCallback()
+
+  assert.equal(textElement.getStyleProperty("font-family"), "")
+  assert.equal(idleTasks.length, 0)
+  assert.equal(timeoutTasks.length, 0)
+})
+
+test("progressive batches read descendants before writing their ancestors", async () => {
+  const { idleTasks, readEvents, timeoutTasks } = setupDomProcessorGlobals()
+  const { applyFontToTreeChunked, resetProcessedElements } = await import(
+    "../../src/inject/dom-processor"
+  )
+  resetProcessedElements()
+
+  const root = new FakeElement("main")
+  const parent = root.appendChild(createTextElement("div", "parent text"))
+  const descendants = Array.from({ length: 260 }, (_, index) =>
+    parent.appendChild(createTextElement("span", `child ${index}`))
+  )
+
+  applyFontToTreeChunked(root as unknown as HTMLElement)
+  timeoutTasks.shift()?.callback()
+
+  assert.ok(countAppliedFontStyles(descendants) > 0)
+  assert.ok(countAppliedFontStyles(descendants) < descendants.length)
+  assert.equal(parent.getStyleProperty("font-family"), "")
+  assert.equal(readEvents.includes("parent text"), false)
+
+  while (idleTasks.length > 0) {
+    idleTasks.shift()?.callback(timeoutDeadline())
+  }
+
+  assert.equal(
+    parent.getStyleProperty("font-family").includes("FontAraGoogle"),
+    false
+  )
+  assert.equal(
+    parent.getStyleProperty("font-family"),
+    "var(--fontara-font), system-ui, sans-serif"
+  )
+})
+
+test("lazy traversal applies nested open shadow roots without a synchronous pre-scan", async () => {
+  const { idleTasks, timeoutTasks } = setupDomProcessorGlobals()
+  const { applyFontToTreeChunked, resetProcessedElements } = await import(
+    "../../src/inject/dom-processor"
+  )
+  resetProcessedElements()
+
+  const root = new FakeElement("main")
+  const host = root.appendChild(new FakeElement("fontara-shell"))
+  const firstShadowRoot = new FakeShadowRoot()
+  const nestedHost = firstShadowRoot.appendChild(
+    new FakeElement("nested-shell")
+  )
+  const nestedShadowRoot = new FakeShadowRoot()
+  const shadowText = nestedShadowRoot.appendChild(
+    createTextElement("span", "nested shadow text")
+  )
+  host.shadowRoot = firstShadowRoot
+  nestedHost.shadowRoot = nestedShadowRoot
+
+  applyFontToTreeChunked(root as unknown as HTMLElement)
+  timeoutTasks.shift()?.callback()
+  while (idleTasks.length > 0) {
+    idleTasks.shift()?.callback(timeoutDeadline())
+  }
+
+  assert.equal(
+    shadowText.getStyleProperty("font-family"),
+    "var(--fontara-font), system-ui, sans-serif"
   )
 })

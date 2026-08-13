@@ -6,6 +6,7 @@ import path from "node:path"
 import test from "node:test"
 
 import {
+  activateByTestId,
   addHardFixtureDynamicText,
   assertStoredActivationSettings,
   BROWSER_VIEWPORTS,
@@ -502,6 +503,113 @@ test("Chrome MV3 applies durable Google binary faces under strict page CSP acros
     }
     assert.deepEqual(documentGoogleRequests.requests, [])
     documentGoogleRequests.stop()
+  })
+})
+
+test("Chrome MV3 activates a prepared Google font across a mature generic page without reload", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const optionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const testPage = await harness.createFixturePage({
+      path: STRICT_FONT_CSP_FIXTURE_PATH
+    })
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    const fixture = await createSeededGoogleFontBinaryCache()
+    const documentGoogleRequests = observeDocumentGoogleFontRequests(testPage)
+    t.after(() => documentGoogleRequests.stop())
+
+    await waitForContentBridge(testPage)
+    await setExtensionLocalValues(optionsPage, fixture.storageValues)
+
+    const loadId = await evaluate(testPage, () => window.__fontaraLoadId)
+    const inactiveSettings = {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: fixture.selectedValue,
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    }
+    await sendSettingsFromContentBridge(testPage, inactiveSettings)
+
+    const targetIndexes = [0, 600, 1200]
+    await evaluate(
+      testPage,
+      (indexes) => {
+        const container = document.createElement("main")
+        container.id = "fontara-mature-page"
+        const fragment = document.createDocumentFragment()
+
+        for (let index = 0; index <= indexes.at(-1); index += 1) {
+          const paragraph = document.createElement("p")
+          paragraph.id = `fontara-mature-text-${index}`
+          paragraph.textContent = `Mature page text ${index} — متن فارسی آزمایشی`
+          fragment.append(paragraph)
+        }
+
+        container.append(fragment)
+        document.body.append(container)
+      },
+      targetIndexes
+    )
+
+    const matureTargets = targetIndexes.map((index) => ({
+      font: false,
+      inline: "clean",
+      name: `mature text ${index}`,
+      selector: `#fontara-mature-text-${index}`
+    }))
+    await expectPageStyles(testPage, {
+      loadId,
+      message:
+        "The mature generic page became active before its domain was enabled.",
+      styleSheets: { font: false },
+      targets: matureTargets
+    })
+
+    const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      viewport: { height: 650, width: 360 }
+    })
+    await testPage.bringToFront()
+    await sendSettingsFromContentBridge(testPage, inactiveSettings)
+    await waitForInputChecked(
+      popupPage,
+      "fontara-current-site-toggle-input",
+      false
+    )
+
+    await clickByTestId(popupPage, "fontara-current-site-toggle")
+    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [
+      sitePattern
+    ])
+
+    const appliedState = await expectPageStyles(testPage, {
+      loadId,
+      message:
+        "The prepared Google font did not reach the first, middle, and last mature-page nodes without a reload.",
+      styleSheets: { font: fixture.runtimeFamily },
+      targets: matureTargets.map((target) => ({
+        ...target,
+        font: fixture.runtimeFamily,
+        inline: "fontara"
+      }))
+    })
+    assert.equal(appliedState.loadId, loadId)
+
+    const googleRuntimeState = await waitForGoogleFontBinaryRuntimeState(
+      testPage,
+      fixture,
+      {
+        loadId,
+        message:
+          "The prepared Google binary faces did not activate on the mature page without a reload."
+      }
+    )
+    assert.equal(googleRuntimeState.loadId, loadId)
+    assert.deepEqual(googleRuntimeState.googleResourceUrls, [])
+    assert.deepEqual(documentGoogleRequests.requests, [])
   })
 })
 
@@ -1471,7 +1579,7 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
       "fontara-extension-enabled-toggle",
       true
     )
-    await clickByTestId(popupPage, "fontara-extension-enabled-toggle")
+    await activateByTestId(popupPage, "fontara-extension-enabled-toggle")
     await waitForExtensionLocalValue(
       popupPage,
       STORAGE_KEYS.EXTENSION_ENABLED,
@@ -1486,7 +1594,7 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
     )
     assert.equal(disabledState.loadId, initialLoadId)
 
-    await clickByTestId(popupPage, "fontara-extension-enabled-toggle")
+    await activateByTestId(popupPage, "fontara-extension-enabled-toggle")
     await waitForExtensionLocalValue(
       popupPage,
       STORAGE_KEYS.EXTENSION_ENABLED,
@@ -1501,8 +1609,11 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
     )
     assert.equal(reenabledState.loadId, initialLoadId)
 
-    await clickByTestId(popupPage, "fontara-font-selector-trigger")
-    await clickByTestId(popupPage, "fontara-font-option-Vazirmatn-Fontara")
+    await activateByTestId(popupPage, "fontara-font-selector-trigger")
+    await activateByTestId(
+      popupPage,
+      "fontara-font-option-Vazirmatn-Fontara"
+    )
     await waitForExtensionLocalValue(
       popupPage,
       STORAGE_KEYS.SELECTED_FONT,
@@ -1785,8 +1896,7 @@ test("Chrome MV3 popup per-site settings save profiles without enabling sites", 
     await popupPage.waitForSelector(
       '[data-testid="fontara-per-site-settings-open"]'
     )
-    await popupPage.bringToFront()
-    await clickByTestId(popupPage, "fontara-per-site-settings-open")
+    await activateByTestId(popupPage, "fontara-per-site-settings-open")
     await popupPage.waitForSelector(
       '[data-testid="fontara-per-site-site-off-notice"]'
     )
@@ -1891,8 +2001,7 @@ test("Chrome MV3 popup per-site settings edit the strongest matching profile", a
     await popupPage.waitForSelector(
       '[data-testid="fontara-per-site-settings-open"]'
     )
-    await popupPage.bringToFront()
-    await clickByTestId(popupPage, "fontara-per-site-settings-open")
+    await activateByTestId(popupPage, "fontara-per-site-settings-open")
     await waitFor(() =>
       popupPage.$eval(
         '[data-testid="fontara-per-site-font-select"]',
@@ -1996,9 +2105,8 @@ test("Chrome MV3 popup per-site settings disable profiles without deleting path 
     await popupPage.waitForSelector(
       '[data-testid="fontara-per-site-settings-open"]'
     )
-    await popupPage.bringToFront()
-    await clickByTestId(popupPage, "fontara-per-site-settings-open")
-    await clickByTestId(popupPage, "fontara-per-site-custom-toggle")
+    await activateByTestId(popupPage, "fontara-per-site-settings-open")
+    await activateByTestId(popupPage, "fontara-per-site-custom-toggle")
 
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.SITE_PROFILES, [
       {

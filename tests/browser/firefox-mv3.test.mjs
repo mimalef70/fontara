@@ -4,6 +4,7 @@ import path from "node:path"
 import test from "node:test"
 
 import {
+  activateByTestId,
   addHardFixtureDynamicText,
   clickByTestId,
   createBasicPageStyleExpectation,
@@ -559,7 +560,7 @@ test("Firefox MV3 uploads, applies, reloads, and deletes a real custom-font fami
       "fontara-font-selector-search",
       family.displayName
     )
-    await clickByTestId(popupPage, `fontara-font-option-${family.value}`)
+    await activateByTestId(popupPage, `fontara-font-option-${family.value}`)
     await waitForExtensionLocalValue(
       popupPage,
       STORAGE_KEYS.SELECTED_FONT,
@@ -750,12 +751,34 @@ test("Firefox MV3 simple uploader uses one variable Regular file for Regular and
     )
     assert.deepEqual(family.faces[0].weight, { min: 100, max: 900 })
 
+    // Older FontARA releases generated hexadecimal aliases that could begin
+    // with a digit. Firefox ESR requires that family to be quoted when passed
+    // to FontFace, so exercise the persisted compatibility path explicitly.
+    const legacyFamily = {
+      ...family,
+      value: `1${family.value.slice(1)}`
+    }
+
+    // Simulate a catalog persisted by an older FontARA release. Catalog
+    // replacement itself normally goes through a transaction, while this
+    // direct test seed specifically exercises upgrade compatibility.
+    await setExtensionLocalValues(optionsPage, {
+      [STORAGE_KEYS.CUSTOM_FONT_LIST]: [legacyFamily]
+    })
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.CUSTOM_FONT_LIST,
+      [legacyFamily]
+    )
     await sendSettingsFromContentBridge(fixturePage, {
-      [STORAGE_KEYS.SELECTED_FONT]: family.value
+      [STORAGE_KEYS.SELECTED_FONT]: legacyFamily.value
     })
     const runtimeState = await waitFor(
       async () => {
-        const state = await getCustomFontRuntimeState(fixturePage, family.value)
+        const state = await getCustomFontRuntimeState(
+          fixturePage,
+          legacyFamily.value
+        )
         return state.checked && state.boldChecked && state.faceCount === 1
           ? state
           : false
@@ -766,10 +789,11 @@ test("Firefox MV3 simple uploader uses one variable Regular file for Regular and
         timeout: 30_000
       }
     )
-    assert.match(runtimeState.computedFamily, new RegExp(family.value))
+    assert.match(runtimeState.computedFamily, new RegExp(legacyFamily.value))
     assert.ok(
       runtimeState.registeredFaces.some(
-        (face) => face.family === family.value && face.weight === "100 900"
+        (face) =>
+          face.family === legacyFamily.value && face.weight === "100 900"
       ),
       `Firefox registered an unexpected variable face: ${JSON.stringify(runtimeState.registeredFaces)}`
     )

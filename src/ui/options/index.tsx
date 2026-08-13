@@ -1462,9 +1462,9 @@ function OptionsPage() {
         )
       }
 
-      let value = `${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}-Fontara`
+      let value = `f${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}-Fontara`
       while (customFontList.some((font) => font.value === value)) {
-        value = `${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}-Fontara`
+        value = `f${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}-Fontara`
       }
       const family = {
         value,

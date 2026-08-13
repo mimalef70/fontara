@@ -39,8 +39,10 @@ const originalGlobals = [
 }))
 
 class FakeFontFace {
+  static readonly constructorFamilies: string[] = []
   static readonly gates = new Map<string, Promise<void>>()
   static readonly loadCounts = new Map<string, number>()
+  static rejectDigitLeadingRawFamily = false
 
   readonly family: string
   status: FontFaceLoadStatus = "unloaded"
@@ -50,7 +52,14 @@ class FakeFontFace {
     readonly source: string | ArrayBuffer,
     readonly descriptors: FontFaceDescriptors = {}
   ) {
-    this.family = family
+    FakeFontFace.constructorFamilies.push(family)
+    if (FakeFontFace.rejectDigitLeadingRawFamily && /^\d/.test(family)) {
+      throw new DOMException(
+        "An invalid or illegal string was specified",
+        "SyntaxError"
+      )
+    }
+    this.family = family.replace(/^(["'])|(["'])$/g, "")
   }
 
   async load(): Promise<FakeFontFace> {
@@ -411,6 +420,8 @@ afterEach(async () => {
   manager.clearLocalFontFaces()
   FakeFontFace.gates.clear()
   FakeFontFace.loadCounts.clear()
+  FakeFontFace.constructorFamilies.length = 0
+  FakeFontFace.rejectDigitLeadingRawFamily = false
   for (const { exists, key, value } of originalGlobals) {
     if (exists) Reflect.set(globalThis, key, value)
     else Reflect.deleteProperty(globalThis, key)
@@ -513,6 +524,44 @@ test("custom and Google families replace each other without leaving cross-source
     new Set(Array.from(fixture.fontSet.faces, ({ family }) => family)),
     new Set([custom.family.value])
   )
+})
+
+test("digit-leading persisted custom aliases are quoted for Firefox ESR", async () => {
+  FakeFontFace.rejectDigitLeadingRawFamily = true
+  const custom = createCustomFamily("1Legacy-Fontara", 1, [1])
+  const fixture = installFixture({ custom: [custom] })
+  const manager = await import("../../src/inject/local-font-manager")
+  const customReference = {
+    revision: custom.family.revision,
+    source: "custom" as const,
+    value: custom.family.value
+  }
+
+  assert.equal(await manager.prepareLocalFontFamily(customReference), true)
+  assert.deepEqual(FakeFontFace.constructorFamilies, [
+    "1Legacy-Fontara",
+    '"1Legacy-Fontara"'
+  ])
+  assert.equal(manager.registerPreparedLocalFontFamily(customReference), true)
+  assert.equal(manager.activatePreparedLocalFontFamily(customReference), true)
+  assert.deepEqual(
+    new Set(Array.from(fixture.fontSet.faces, ({ family }) => family)),
+    new Set([custom.family.value])
+  )
+})
+
+test("Chromium keeps digit-leading custom aliases raw", async () => {
+  const custom = createCustomFamily("1Legacy-Fontara", 1, [1])
+  installFixture({ custom: [custom] })
+  const manager = await import("../../src/inject/local-font-manager")
+  const customReference = {
+    revision: custom.family.revision,
+    source: "custom" as const,
+    value: custom.family.value
+  }
+
+  assert.equal(await manager.prepareLocalFontFamily(customReference), true)
+  assert.deepEqual(FakeFontFace.constructorFamilies, ["1Legacy-Fontara"])
 })
 
 test("a newer request wins an A to B race and clear invalidates in-flight loads", async () => {

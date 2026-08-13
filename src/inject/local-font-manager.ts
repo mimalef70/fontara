@@ -11,6 +11,7 @@ import type {
 import type { LocalFontFamilyReference } from "../local-font-types"
 import { isCustomFontFaceSignatureValid } from "../utils/custom-font-format"
 import { readCustomFontFaceBytes } from "../utils/custom-font-storage"
+import { formatFontFamilyForCSS } from "../utils/font-data"
 import {
   readGoogleFontBinaryAsset,
   readGoogleFontBinaryFamilyReference
@@ -192,6 +193,48 @@ function descriptors(face: LoadableFace): FontFaceDescriptors {
   }
 }
 
+function isFontFamilySyntaxError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "SyntaxError"
+  )
+}
+
+async function createAndLoadFontFace(
+  family: LoadableFamily,
+  source: ArrayBuffer,
+  face: LoadableFace
+): Promise<FontFace> {
+  const faceDescriptors = descriptors(face)
+  try {
+    const fontFace = new FontFace(family.fontFamily, source, faceDescriptors)
+    await fontFace.load()
+    return fontFace
+  } catch (error) {
+    // Older FontARA releases generated hexadecimal aliases that could start
+    // with a digit. Chromium accepts the raw alias, while Firefox ESR rejects
+    // it as CSS syntax. Retry only that parse failure with a quoted family so
+    // both browsers keep matching the same persisted CSS family name.
+    if (
+      family.reference.source !== "custom" ||
+      !/^\d/.test(family.fontFamily) ||
+      !isFontFamilySyntaxError(error)
+    ) {
+      throw error
+    }
+
+    const fontFace = new FontFace(
+      formatFontFamilyForCSS(family.fontFamily),
+      source,
+      faceDescriptors
+    )
+    await fontFace.load()
+    return fontFace
+  }
+}
+
 async function loadFace(
   family: LoadableFamily,
   face: LoadableFace
@@ -219,8 +262,7 @@ async function loadFace(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength
   ) as ArrayBuffer
-  const fontFace = new FontFace(family.fontFamily, source, descriptors(face))
-  await fontFace.load()
+  const fontFace = await createAndLoadFontFace(family, source, face)
   return { fontFace, meta: face }
 }
 

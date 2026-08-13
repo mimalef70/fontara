@@ -1,9 +1,19 @@
 overrides:
+  brace-expansion: 1.1.18
   esbuild: 0.28.1
-  js-yaml: 4.3.0
-  shell-quote: 1.8.4
-  undici: 7.28.0
+  fast-uri: 3.1.5
+  js-yaml: 4.3.1
+  nanoid: 3.3.18
+  postcss: 8.5.26
+  shell-quote: 1.10.0
+  undici: 7.29.0
 
 allowBuilds:
   esbuild: true
   spawn-sync: true
+
+auditConfig:
+  ignoreGhsas:
+    # addons-linter 10.10.0 pins image-size 2.0.2; npm has no patched 2.0.3 yet.
+    - GHSA-5p2g-fcmc-qvqq
+    - GHSA-w3rx-r6r6-pgpr

@@ -111,12 +111,12 @@
     "axe-core": "4.12.1",
     "chokidar": "^5.0.0",
     "esbuild": "^0.28.1",
-    "postcss": "^8.4.38",
+    "postcss": "8.5.26",
     "puppeteer-core": "^25.1.0",
     "tailwindcss": "^4.3.0",
     "tsx": "4.22.3",
     "typescript": "6.0.3",
-    "web-ext": "10.5.0",
+    "web-ext": "10.6.0",
     "yazl": "^3.3.1"
   }
 }

@@ -16,6 +16,11 @@ test("CI, release, and browser workflows use native build checks without Plasmo 
 
   assert.match(workflowText, /version:\s*11\.5\.0/)
   assert.match(workflowText, /node-version:\s*24\.x/)
+  assert.match(workflowText, /actions\/checkout@v7/)
+  assert.match(workflowText, /actions\/setup-node@v7/)
+  assert.match(workflowText, /pnpm\/action-setup@v6/)
+  assert.match(releaseGateText, /actions\/upload-artifact@v7/)
+  assert.match(release, /softprops\/action-gh-release@v3/)
   assert.match(releaseGateText, /pnpm check/)
   assert.match(releaseGateText, /pnpm build:all/)
   assert.match(releaseGateText, /pnpm lint:extension/)

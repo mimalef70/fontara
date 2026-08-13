@@ -1610,10 +1610,7 @@ test("Chrome MV3 popup UI toggles FontARA and changes fonts without page reload"
     assert.equal(reenabledState.loadId, initialLoadId)
 
     await activateByTestId(popupPage, "fontara-font-selector-trigger")
-    await activateByTestId(
-      popupPage,
-      "fontara-font-option-Vazirmatn-Fontara"
-    )
+    await activateByTestId(popupPage, "fontara-font-option-Vazirmatn-Fontara")
     await waitForExtensionLocalValue(
       popupPage,
       STORAGE_KEYS.SELECTED_FONT,

@@ -417,6 +417,7 @@ function createRuntimeMocks(): {
       }
     },
     clearInterval() {},
+    clearTimeout,
     history: historyMock,
     location: locationMock,
     requestIdleCallback(callback: (deadline: IdleDeadline) => void) {

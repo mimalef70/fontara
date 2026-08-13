@@ -95,7 +95,7 @@ export function startContentRuntime(): void {
     themeScheduler.dispose()
     stopWaitingForBody?.()
     stopWaitingForBody = null
-    stopObserving()
+    stopObserving({ cancelPendingEditableWork: true })
     if (options.removeStyles && !options.preserveAppliedTheme) {
       cleanupFontTheme()
     }

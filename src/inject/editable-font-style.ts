@@ -111,6 +111,10 @@ let pendingShadowRemovalJobs: ShadowEditableRemovalJob[] = []
 let pendingShadowRemovalHead = 0
 let shadowRemovalTimer: { cancel: () => void } | null = null
 
+function isHTMLElement(value: unknown): value is HTMLElement {
+  return typeof HTMLElement !== "undefined" && value instanceof HTMLElement
+}
+
 function getElementTagName(element: HTMLElement): string {
   return (element.localName || element.tagName).toLowerCase()
 }
@@ -352,7 +356,7 @@ function getCleanupElementChild(
     typeof children.item === "function"
       ? children.item(childIndex)
       : (children as unknown as Element[])[childIndex]
-  return child instanceof HTMLElement ? child : null
+  return isHTMLElement(child) ? child : null
 }
 
 function hasFontaraInlineFont(element: HTMLElement): boolean {
@@ -376,7 +380,7 @@ function processInlineFontCleanupJob(
 
     if (!frame.visited) {
       frame.visited = true
-      if (frame.node instanceof HTMLElement) {
+      if (isHTMLElement(frame.node)) {
         frame.insideEditable =
           frame.insideEditable || isContentEditableElement(frame.node)
         if (
@@ -758,6 +762,20 @@ function cancelEditableStylePrune(): void {
   editableStylePruneTimer = null
   editableStylePruneIterator = null
   editableStylePruneRestartRequested = false
+}
+
+/**
+ * Pauses maintenance owned by the active theme without removing its styles.
+ * Retired-generation style removal deliberately keeps running so a pause or
+ * mode switch cannot strand stale Shadow DOM styles.
+ */
+export function cancelPendingEditableFontWork(): void {
+  cancelInlineFontCleanup()
+  cancelEditableStylePrune()
+  cancelShadowEditableRefresh()
+  // A cancelled document cleanup must be scheduled again when the same theme
+  // resumes. The style node remains in place and its next upsert is idempotent.
+  editableFontSignature = ""
 }
 
 export function pruneDisconnectedEditableFontStyles(): void {

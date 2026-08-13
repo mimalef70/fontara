@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test, { afterEach } from "node:test"
 import { ICON_EXCLUDED_SELECTORS } from "../../src/config/selectors"
 import {
+  cancelPendingEditableFontWork,
   isOwnedEditableFontStyle,
   pruneDisconnectedEditableFontStyles,
   refreshEditableFontStyles,
@@ -439,8 +440,9 @@ test("detached shadow styles are pruned using their original root", () => {
   assert.notEqual(replacementStyle, originalStyle)
 })
 
-test("editable style pruning is bounded and keeps same-task reconnected roots", async () => {
-  installShadowEnvironment()
+test("editable style pruning is bounded and keeps same-task reconnected roots", () => {
+  const timers = new DeterministicTimers()
+  installShadowEnvironment(undefined, timers)
   const entries: Array<{
     host: FakeElement
     root: FakeShadowRoot
@@ -460,7 +462,7 @@ test("editable style pruning is bounded and keeps same-task reconnected roots", 
   }
 
   // Let the unrelated bounded inline-style cleanup queue settle first.
-  await new Promise((resolve) => globalThis.setTimeout(resolve, 20))
+  timers.drain()
   const tail = entries[entries.length - 1]
   assert.ok(tail)
   tail.host.isConnected = false
@@ -475,7 +477,7 @@ test("editable style pruning is bounded and keeps same-task reconnected roots", 
   // MutationObserver reports a removal for a same-task move. The style must
   // survive when its host reconnects before the bounded scan reaches it.
   tail.host.isConnected = true
-  await new Promise((resolve) => globalThis.setTimeout(resolve, 20))
+  timers.drain()
   assert.equal(isOwnedEditableFontStyle(tail.style), true)
   assert.equal(
     tail.root.querySelector("style[data-fontara-editable-style]"),
@@ -487,7 +489,7 @@ test("editable style pruning is bounded and keeps same-task reconnected roots", 
   pruneDisconnectedEditableFontStyles()
   assert.ok(FakeElement.isConnectedReads <= 100)
   assert.equal(isOwnedEditableFontStyle(tail.style), true)
-  await new Promise((resolve) => globalThis.setTimeout(resolve, 20))
+  timers.drain()
   assert.equal(isOwnedEditableFontStyle(tail.style), false)
 })
 
@@ -601,6 +603,36 @@ test("global shadow editable refresh and teardown stay bounded and reach the tai
 
   assert.equal(remainingStyleCount, 0)
   assert.equal(tailRoot.querySelector(SHADOW_STYLE_SELECTOR), null)
+})
+
+test("pausing editable maintenance cancels active jobs but preserves retired-style cleanup", () => {
+  const timers = new DeterministicTimers()
+  installShadowEnvironment(undefined, timers)
+  const roots = createRegisteredShadowRoots(1_201)
+
+  refreshEditableFontStyles({ includeDocument: false })
+  const styledBeforePause = countEditableShadowStyles(roots)
+  assert.ok(styledBeforePause > 0 && styledBeforePause < roots.length)
+  assert.ok(timers.pendingCount > 0)
+
+  cancelPendingEditableFontWork()
+  assert.equal(timers.pendingCount, 0)
+  timers.drain()
+  assert.equal(countEditableShadowStyles(roots), styledBeforePause)
+
+  refreshEditableFontStyles({ includeDocument: false })
+  timers.drain()
+  assert.equal(countEditableShadowStyles(roots), roots.length)
+
+  removeEditableFontStyles()
+  assert.ok(timers.pendingCount > 0)
+  cancelPendingEditableFontWork()
+  timers.drain()
+  assert.equal(
+    countEditableShadowStyles(roots),
+    0,
+    "Pausing active-theme work must not cancel retired-generation removal."
+  )
 })
 
 test("a font switch supersedes an in-flight global shadow editable refresh", () => {

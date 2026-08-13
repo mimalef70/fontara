@@ -172,7 +172,7 @@ export async function applyResolvedPageTheme(
     applyResolvedRtlSupport(data.rtl)
     return fullyApplied
   } catch (error) {
-    stopObserving()
+    stopObserving({ cancelPendingEditableWork: true })
     if (callbacks.isExtensionContextInvalidated?.(error)) {
       callbacks.onExtensionContextInvalidated?.()
       return false

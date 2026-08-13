@@ -211,7 +211,7 @@ export function createContentThemeScheduler(
       const applied = await applyResolvedPageTheme(data, themeApplierCallbacks)
       if (applied) localThemeDuplicateGuard.recordLocal(data)
     } catch (error) {
-      stopObserving()
+      stopObserving({ cancelPendingEditableWork: true })
       if (isExtensionContextInvalidated(error)) {
         options.onExtensionContextInvalidated()
         return

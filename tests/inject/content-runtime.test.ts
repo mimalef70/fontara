@@ -212,6 +212,7 @@ function createRuntimeMocks(): {
   dispatchStorageChange: StorageListener
   getStorageGetCount: (key: string) => number
   getRegisteredFontFamilies: () => string[]
+  getPendingWindowTimeoutCount: () => number
   getStyleText: (id: string) => string
   getTreeWalkerCount: () => number
   dispatchRuntimeMessage: (message: unknown) => void
@@ -237,6 +238,7 @@ function createRuntimeMocks(): {
   const listeners: StorageListener[] = []
   const runtimeMessageListeners: Array<(message: unknown) => void> = []
   const storageGetCounts = new Map<string, number>()
+  const windowTimeouts = new Set<ReturnType<typeof setTimeout>>()
   const windowListeners = new Map<string, Array<(event: unknown) => void>>()
   let runtimeRemoveError: unknown = null
   let treeWalkerCount = 0
@@ -403,6 +405,18 @@ function createRuntimeMocks(): {
       }
     }
   }
+  const clearWindowTimeout = (timerId: ReturnType<typeof setTimeout>) => {
+    clearTimeout(timerId)
+    windowTimeouts.delete(timerId)
+  }
+  const setWindowTimeout = (callback: () => void, delay = 0) => {
+    const timerId = setTimeout(() => {
+      windowTimeouts.delete(timerId)
+      callback()
+    }, delay)
+    windowTimeouts.add(timerId)
+    return timerId
+  }
   const windowMock = {
     getComputedStyle(element: FakeElement) {
       return {
@@ -417,7 +431,7 @@ function createRuntimeMocks(): {
       }
     },
     clearInterval() {},
-    clearTimeout,
+    clearTimeout: clearWindowTimeout,
     history: historyMock,
     location: locationMock,
     requestIdleCallback(callback: (deadline: IdleDeadline) => void) {
@@ -427,7 +441,7 @@ function createRuntimeMocks(): {
     setInterval(_callback: () => void) {
       return 1
     },
-    setTimeout
+    setTimeout: setWindowTimeout
   }
   Reflect.set(globalThis, "window", windowMock)
   Reflect.set(
@@ -545,6 +559,9 @@ function createRuntimeMocks(): {
     },
     getRegisteredFontFamilies() {
       return Array.from(fontFaceSet.faces, (face) => face.family)
+    },
+    getPendingWindowTimeoutCount() {
+      return windowTimeouts.size
     },
     getStyleText(id) {
       return elementsById.get(id)?.textContent ?? ""
@@ -1024,6 +1041,11 @@ test("selected custom font changes load its FontFace without a reload", async ()
     assert.doesNotThrow(() => {
       runtime.dispatchWindowEvent("pagehide", { persisted: false })
     })
+    assert.equal(
+      runtime.getPendingWindowTimeoutCount(),
+      0,
+      "runtime teardown must cancel pending editable maintenance timers"
+    )
     assert.equal(warnCalls, 0)
   } finally {
     console.warn = originalWarn

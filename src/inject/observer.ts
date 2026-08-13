@@ -7,6 +7,7 @@ import {
   resetProcessedElements
 } from "./dom-processor"
 import {
+  cancelPendingEditableFontWork,
   EDITABLE_OBSERVER_ATTRIBUTES,
   isContentEditableElement,
   isInsideContentEditableElement,
@@ -41,6 +42,9 @@ let shadowRootTracker: OpenShadowRootTracker | null = null
 let observationMode: FontObservationMode = "all"
 
 export type FontObservationMode = "all" | "shadow-only"
+export type StopObservingOptions = {
+  cancelPendingEditableWork?: boolean
+}
 
 const PENDING_FLUSH_TIMEOUT_MS = 100
 const LARGE_CHILD_LIST_THRESHOLD = 100
@@ -608,7 +612,10 @@ export function startObserving(mode: FontObservationMode = "all"): void {
   observeCurrentDocument()
 }
 
-export function stopObserving(): void {
+export function stopObserving(options: StopObservingOptions = {}): void {
+  if (options.cancelPendingEditableWork) {
+    cancelPendingEditableFontWork()
+  }
   if (scheduledFrame !== null) {
     cancelAnimationFrame(scheduledFrame)
     scheduledFrame = null

@@ -120,6 +120,13 @@ html.fontara-popup-page #root {
   overflow: hidden;
 }
 
+html.fontara-options-document,
+html.fontara-options-document body,
+html.fontara-options-document #root {
+  min-height: 100%;
+  background: #f5f7fb;
+}
+
 .fontara-options-page {
   min-height: 100svh;
   background:

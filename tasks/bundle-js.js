@@ -1,6 +1,7 @@
 const fs = require("node:fs")
 const path = require("node:path")
 const esbuild = require("esbuild")
+const { minify } = require("terser")
 
 const { absolutePath, getDestDir } = require("./paths")
 const { isChromiumMV3Platform, PLATFORM } = require("./platform")
@@ -72,10 +73,11 @@ async function bundleJS({ platform, debug, test = false }) {
   const outDir = getDestDir({ platform, debug, test })
 
   await Promise.all(
-    jsEntries.map((entry) =>
-      esbuild.build({
+    jsEntries.map(async (entry) => {
+      const outfile = path.join(outDir, entry.dest)
+      await esbuild.build({
         entryPoints: [absolutePath(entry.src)],
-        outfile: path.join(outDir, entry.dest),
+        outfile,
         bundle: true,
         charset: "utf8",
         format: "iife",
@@ -102,7 +104,20 @@ async function bundleJS({ platform, debug, test = false }) {
         },
         plugins: [textPlugin]
       })
-    )
+      if (debug || entry.dest !== "inject/index.js") return
+
+      const source = await fs.promises.readFile(outfile, "utf8")
+      const result = await minify(source, {
+        compress: { passes: 2 },
+        ecma: 2020,
+        format: { comments: false },
+        mangle: true
+      })
+      if (!result.code) {
+        throw new Error(`Failed to minify ${entry.dest}.`)
+      }
+      await fs.promises.writeFile(outfile, result.code)
+    })
   )
 }
 

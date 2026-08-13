@@ -4,7 +4,12 @@ import type {
   FontaraLocalFontCommand,
   FontaraPageThemeCommandData
 } from "../definitions"
-import { applyFontToTreeChunked, resetProcessedElements } from "./dom-processor"
+import {
+  applyFontToTreeChunked,
+  resetProcessedElements,
+  setActiveFontFamilyForProcessing
+} from "./dom-processor"
+import { setActiveFontFamilyForEditableStyles } from "./editable-font-style"
 import {
   injectResolvedFontStyles,
   removeFontStyles
@@ -78,26 +83,31 @@ function getLastKnownGoodTheme(
 function applyFontStylesAndObservation(
   data: FontaraFontThemeCommandData
 ): void {
+  setActiveFontFamilyForProcessing(data.fontName)
+  setActiveFontFamilyForEditableStyles(data.fontName)
   injectResolvedTextStrokeStyle(data.textStrokeCSS)
   const hasCustomCSS = injectResolvedFontStyles(data)
   if (hasCustomCSS) {
     stopObserving()
     resetProcessedElements()
+    if (document.body) startObserving("shadow-only")
     return
   }
 
+  if (document.body) startObserving()
   if (data.applyMode === "full" && document.body) {
     applyFontToTreeChunked(document.body)
   }
-  if (document.body) startObserving()
 }
 
 export function cleanupFontTheme(): void {
   themeApplyGeneration += 1
   lastAppliedFontTheme = null
   stopObserving()
-  resetProcessedElements()
+  setActiveFontFamilyForProcessing(null)
+  setActiveFontFamilyForEditableStyles(null)
   removeFontStyles()
+  resetProcessedElements()
   clearLocalFontFaces()
   removeTextStrokeStyle()
 }

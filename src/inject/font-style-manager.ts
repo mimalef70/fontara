@@ -1,10 +1,13 @@
 import type { FontaraFontThemeCommandData } from "../definitions"
 import { formatFontFamilyForCSS } from "../utils/font-data"
 import {
+  removeAllOwnedFontStyles,
+  removeOrphanedFontaraInlineStyles
+} from "./dom-processor"
+import {
   refreshEditableFontStyles,
   removeEditableFontStyles
 } from "./editable-font-style"
-import { getDocumentAndShadowStyleRoots } from "./shadow-roots"
 import { removeStyle, upsertStyle } from "./style-utils"
 
 const FONT_STYLES_ID = "fontara-font-styles"
@@ -12,17 +15,11 @@ const CUSTOM_CSS_ID = "fontara-custom-css-style"
 const DYNAMIC_FONT_ID = "fontara-dynamic-font"
 const GOOGLE_FONT_STYLES_ID = "fontara-google-font-styles"
 
-export function removeInlineFontStyles(): void {
-  for (const root of getDocumentAndShadowStyleRoots()) {
-    root.querySelectorAll("[style*='fontara-font']").forEach((element) => {
-      if (element instanceof HTMLElement) {
-        element.style.fontFamily = ""
-        if (element.style.length === 0) {
-          element.removeAttribute("style")
-        }
-      }
-    })
-  }
+export function removeInlineFontStyles(
+  options: { includeShadowRoots?: boolean } = {}
+): void {
+  removeAllOwnedFontStyles()
+  removeOrphanedFontaraInlineStyles(options)
 }
 
 export function injectResolvedFontStyles(
@@ -42,7 +39,9 @@ export function injectResolvedFontStyles(
 
   if (data.customCSS) {
     removeEditableFontStyles()
-    removeInlineFontStyles()
+    // Site CSS owns light DOM, while generic traversal remains active inside
+    // open Shadow DOM where document styles cannot cross the boundary.
+    removeInlineFontStyles({ includeShadowRoots: false })
     upsertStyle(CUSTOM_CSS_ID, data.customCSS)
     return true
   }

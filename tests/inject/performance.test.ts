@@ -19,7 +19,13 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.match(domProcessorSource, /function hasDirectText/)
   assert.match(domProcessorSource, /createFontTraversalFrame/)
   assert.match(domProcessorSource, /collection\.stack\.pop\(\)/)
-  assert.match(domProcessorSource, /new WeakSet<HTMLElement>\(\)/)
+  assert.match(
+    domProcessorSource,
+    /new WeakMap<HTMLElement, OwnedFontState>\(\)/
+  )
+  assert.match(domProcessorSource, /stillOwnsFontDeclaration/)
+  assert.match(domProcessorSource, /isOwnedFontStyleMutation/)
+  assert.match(domProcessorSource, /reconcileFontTreesChunked/)
   assert.match(domProcessorSource, /applyFontToTreeChunked/)
   assert.match(domProcessorSource, /applyFontToTreesChunked/)
   assert.match(domProcessorSource, /requestIdleCallback/)
@@ -100,25 +106,33 @@ test("mutation observer coalesces added nodes before processing", () => {
   const domProcessorSource = readSource("src/inject/dom-processor.ts")
   const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
 
-  assert.match(observerSource, /pendingNodes = new Set<HTMLElement>\(\)/)
+  assert.match(observerSource, /pendingNodes = new Set<FontaraFontRoot>\(\)/)
   assert.match(observerSource, /requestAnimationFrame\(flushPendingNodes\)/)
   assert.match(observerSource, /cancelAnimationFrame\(scheduledFrame\)/)
-  assert.match(observerSource, /getTopLevelPendingNodes/)
-  assert.match(observerSource, /node\.isConnected/)
+  assert.match(observerSource, /getTopLevelPendingRoots/)
+  assert.match(observerSource, /isConnectedFontRoot/)
   assert.match(observerSource, /applyFontToTreesChunked\(connectedNodes\)/)
   assert.match(observerSource, /refreshEditableFontStyles/)
   assert.match(observerSource, /editableFontStylesDirty/)
   assert.match(observerSource, /addPendingNodeIfOutsideContentEditable/)
   assert.match(observerSource, /isInsideContentEditableElement/)
-  assert.match(observerSource, /containsContentEditableElement/)
+  assert.doesNotMatch(observerSource, /containsContentEditableElement/)
   assert.match(observerSource, /removedNodes/)
   assert.match(observerSource, /EDITABLE_OBSERVER_ATTRIBUTES/)
-  assert.match(observerSource, /attributeFilter: EDITABLE_OBSERVER_ATTRIBUTES/)
-  assert.match(observerSource, /collectOpenShadowRoots/)
-  assert.match(observerSource, /observedShadowRoots/)
+  assert.match(observerSource, /characterData: true/)
+  assert.match(observerSource, /"aria-hidden"/)
+  assert.match(observerSource, /"class"/)
+  assert.match(observerSource, /"style"/)
+  assert.match(observerSource, /pendingReconciliationNodes/)
+  assert.match(observerSource, /reconcileFontTreesChunked/)
+  assert.match(observerSource, /isOwnedFontStyleMutation/)
+  assert.match(observerSource, /createOpenShadowRootTracker/)
+  assert.match(observerSource, /shadowRootObservers/)
+  assert.match(observerSource, /LARGE_CHILD_LIST_THRESHOLD = 100/)
   assert.match(domProcessorSource, /getOpenShadowRoot/)
   assert.match(domProcessorSource, /FontaraFontRoot/)
-  assert.match(fontStyleManagerSource, /getDocumentAndShadowStyleRoots/)
+  assert.match(fontStyleManagerSource, /removeAllOwnedFontStyles/)
+  assert.doesNotMatch(fontStyleManagerSource, /querySelectorAll/)
   assert.doesNotMatch(observerSource, /EDITABLE_SELECTOR_ATTRIBUTES/)
   assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*aria-label/)
   assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*role/)
@@ -337,6 +351,21 @@ test("content theme executor is separated from lifecycle wiring", () => {
   assert.match(themeApplierSource, /injectResolvedTextStrokeStyle/)
   assert.match(themeApplierSource, /applyResolvedRtlSupport/)
   assert.match(themeApplierSource, /startObserving/)
+  const shadowOnlyObservationIndex = themeApplierSource.indexOf(
+    'startObserving("shadow-only")'
+  )
+  const genericObservationIndex = themeApplierSource.indexOf(
+    "if (document.body) startObserving()"
+  )
+  const fullTraversalIndex = themeApplierSource.indexOf(
+    "applyFontToTreeChunked(document.body)"
+  )
+  assert.ok(shadowOnlyObservationIndex >= 0)
+  assert.ok(genericObservationIndex > shadowOnlyObservationIndex)
+  assert.ok(
+    fullTraversalIndex > genericObservationIndex,
+    "A live custom-CSS to generic switch must enter all-DOM observation before queuing the full traversal, so the mode reset cannot cancel that work."
+  )
   assert.doesNotMatch(fontStyleManagerSource, /getLocalValue/)
   assert.doesNotMatch(fontStyleManagerSource, /resolveFontSelection/)
   assert.doesNotMatch(fontStyleManagerSource, /export async function/)

@@ -927,6 +927,8 @@ function getChromeLaunchArgs() {
 async function createPage(browser, url, options = {}) {
   const page = await browser.newPage()
   const isFirefoxExtensionPage = url.startsWith("moz-extension://")
+  const activePage = options.keepPageActive
+  if (activePage) await activePage.bringToFront().catch(() => {})
   if (options.onConsole) page.on("console", options.onConsole)
   if (options.onPageError) page.on("pageerror", options.onPageError)
   if (options.viewport) {
@@ -960,7 +962,8 @@ async function createPage(browser, url, options = {}) {
       timeout: isFirefoxExtensionPage ? 5000 : 30_000,
       waitUntil: isFirefoxExtensionPage ? "domcontentloaded" : "load"
     })
-    await page.bringToFront().catch(() => {})
+    if (activePage) await activePage.bringToFront().catch(() => {})
+    else await page.bringToFront().catch(() => {})
   } catch (error) {
     const isExpectedFirefoxExtensionNavigationError =
       isFirefoxExtensionPage &&
@@ -2020,6 +2023,22 @@ export async function activateByTestId(page, testId) {
     element.scrollIntoView({ block: "center", inline: "center" })
     element.click()
   })
+}
+
+/**
+ * Lets a tab-rendered popup capture the website as Chrome's active tab, then
+ * briefly foregrounds the popup so its requestAnimationFrame readiness gate
+ * can paint. A real toolbar popup gets both properties without becoming a tab.
+ */
+export async function settleBackgroundExtensionPage(
+  page,
+  activePage,
+  readyTestId
+) {
+  const selector = testIdSelector(readyTestId)
+  await page.bringToFront()
+  await page.waitForSelector(selector, { visible: true })
+  await activePage.bringToFront()
 }
 
 export async function setValueByTestId(page, testId, value) {

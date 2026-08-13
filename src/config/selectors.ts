@@ -53,10 +53,7 @@ export const ICON_CLASS_SUBSTRINGS = [
 export const EXCLUDED_INLINE_FONT_STYLE_PATTERN =
   /(?:^|;)\s*font(?:-family)?\s*:/i
 
-export const GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS = [
-  "pre",
-  "pre *",
-  "code",
+export const ICON_EXCLUDED_SELECTORS = [
   '[aria-hidden="true"]',
   '[class*="fa-"]',
   ".fa",
@@ -69,7 +66,6 @@ export const GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS = [
   ".fasr",
   ".fat",
   ".icofont",
-  '[style*="font-"]',
   '[class*="icon"]',
   '[class*="Icon"]',
   '[class*="symbol"]',
@@ -81,4 +77,12 @@ export const GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS = [
   '[class*="mu-"]',
   ".typcn",
   '[class*="vjs-"]'
+]
+
+export const GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS = [
+  "pre",
+  "pre *",
+  "code",
+  '[style*="font-"]',
+  ...ICON_EXCLUDED_SELECTORS
 ]

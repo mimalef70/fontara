@@ -29,6 +29,7 @@ import {
   sendSettingsFromContentBridge,
   sendSettingsFromOptions,
   setExtensionLocalValues,
+  settleBackgroundExtensionPage,
   setValueByTestId,
   stopChromeExtensionServiceWorkers,
   uploadFilesByTestId,
@@ -569,19 +570,11 @@ test("Chrome MV3 activates a prepared Google font across a mature generic page w
       targets: matureTargets
     })
 
-    const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
-      viewport: { height: 650, width: 360 }
+    await sendSettingsFromContentBridge(testPage, {
+      ...inactiveSettings,
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern]
     })
-    await testPage.bringToFront()
-    await sendSettingsFromContentBridge(testPage, inactiveSettings)
-    await waitForInputChecked(
-      popupPage,
-      "fontara-current-site-toggle-input",
-      false
-    )
-
-    await clickByTestId(popupPage, "fontara-current-site-toggle")
-    await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [
+    await waitForExtensionLocalValue(optionsPage, STORAGE_KEYS.ENABLED_FOR, [
       sitePattern
     ])
 
@@ -610,6 +603,384 @@ test("Chrome MV3 activates a prepared Google font across a mature generic page w
     assert.equal(googleRuntimeState.loadId, loadId)
     assert.deepEqual(googleRuntimeState.googleResourceUrls, [])
     assert.deepEqual(documentGoogleRequests.requests, [])
+  })
+})
+
+test("Chrome MV3 recovers recycled SPA text and late shadow content without reload", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const optionsPage = await harness.createExtensionPage(
+      "ui/options/index.html"
+    )
+    const testPage = await harness.createFixturePage()
+    const sitePattern = `127.0.0.1:${harness.server.port}`
+    await waitForContentBridge(testPage)
+    const loadId = await evaluate(testPage, () => window.__fontaraLoadId)
+
+    await sendSettingsFromOptions(optionsPage, {
+      [STORAGE_KEYS.DISABLED_FOR]: [],
+      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+      [STORAGE_KEYS.ENABLED_FOR]: [],
+      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
+      [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    })
+    await waitForExtensionLocalValue(
+      optionsPage,
+      STORAGE_KEYS.SELECTED_FONT,
+      "Samim-Fontara"
+    )
+
+    await evaluate(testPage, () => {
+      const fixtureStyle = document.createElement("style")
+      fixtureStyle.textContent = `
+        .fontara-local-icon {
+          font-family: "FontARA Browser Icon" !important;
+        }
+      `
+      document.head.append(fixtureStyle)
+
+      const fixture = document.createElement("section")
+      fixture.id = "fontara-recycled-spa-fixture"
+
+      const emptyText = document.createElement("p")
+      emptyText.id = "fontara-recycled-empty-text"
+      emptyText.append(document.createTextNode(""))
+
+      const recycledKind = document.createElement("span")
+      recycledKind.id = "fontara-recycled-kind"
+      recycledKind.textContent = "Readable recycled text"
+
+      const pageStyleTarget = document.createElement("p")
+      pageStyleTarget.id = "fontara-page-style-target"
+      pageStyleTarget.textContent = "Page-owned style target"
+
+      const lateShadowHost = document.createElement("fontara-late-shadow")
+      lateShadowHost.id = "fontara-late-shadow-host"
+
+      fixture.append(emptyText, recycledKind, pageStyleTarget, lateShadowHost)
+      document.body.append(fixture)
+    })
+
+    await sendSettingsFromOptions(optionsPage, {
+      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern]
+    })
+    await waitForExtensionLocalValue(optionsPage, STORAGE_KEYS.ENABLED_FOR, [
+      sitePattern
+    ])
+    await expectPageStyles(testPage, {
+      loadId,
+      targets: [
+        {
+          font: "Samim-Fontara",
+          inline: "fontara",
+          name: "recycled readable text",
+          selector: "#fontara-recycled-kind"
+        },
+        {
+          font: "Samim-Fontara",
+          inline: "fontara",
+          name: "page style target",
+          selector: "#fontara-page-style-target"
+        }
+      ]
+    })
+
+    await evaluate(testPage, () => {
+      document
+        .getElementById("fontara-page-style-target")
+        ?.removeAttribute("style")
+    })
+    await expectPageStyles(testPage, {
+      loadId,
+      message: "FontARA did not recover after its inline style was removed.",
+      targets: [
+        {
+          font: "Samim-Fontara",
+          inline: "fontara",
+          name: "removed inline style",
+          selector: "#fontara-page-style-target"
+        }
+      ]
+    })
+
+    await evaluate(testPage, () => {
+      const emptyText = document.getElementById("fontara-recycled-empty-text")
+      const pageStyleTarget = document.getElementById(
+        "fontara-page-style-target"
+      )
+      if (!emptyText?.firstChild || !pageStyleTarget) {
+        throw new Error("Recycled SPA fixture is incomplete.")
+      }
+
+      emptyText.firstChild.nodeValue = "Text populated through characterData"
+      pageStyleTarget.setAttribute("style", "color: rgb(1, 2, 3)")
+    })
+
+    await expectPageStyles(testPage, {
+      loadId,
+      message:
+        "FontARA did not recover characterData or a page-owned style overwrite.",
+      targets: [
+        {
+          font: "Samim-Fontara",
+          inline: "fontara",
+          name: "characterData text",
+          selector: "#fontara-recycled-empty-text"
+        },
+        {
+          font: "Samim-Fontara",
+          inline: "fontara",
+          name: "overwritten page style",
+          selector: "#fontara-page-style-target"
+        }
+      ]
+    })
+    assert.equal(
+      await evaluate(
+        testPage,
+        () =>
+          document
+            .getElementById("fontara-page-style-target")
+            ?.style.getPropertyValue("color") ?? ""
+      ),
+      "rgb(1, 2, 3)"
+    )
+
+    await evaluate(testPage, () => {
+      document
+        .getElementById("fontara-recycled-kind")
+        ?.classList.add("fontara-local-icon")
+    })
+    await waitFor(
+      async () => {
+        const state = await evaluate(testPage, () => {
+          const target = document.getElementById("fontara-recycled-kind")
+          return {
+            fontFamily: target ? getComputedStyle(target).fontFamily : "",
+            inlineStyle: target?.getAttribute("style") ?? "",
+            loadId: window.__fontaraLoadId
+          }
+        })
+        return state.loadId === loadId &&
+          state.fontFamily.includes("FontARA Browser Icon") &&
+          !state.inlineStyle.includes("var(--fontara-font)")
+          ? state
+          : false
+      },
+      {
+        message: "FontARA did not release a recycled node that became an icon."
+      }
+    )
+
+    await evaluate(testPage, () => {
+      document
+        .getElementById("fontara-recycled-kind")
+        ?.classList.remove("fontara-local-icon")
+    })
+    await expectPageStyles(testPage, {
+      loadId,
+      message: "FontARA did not reclaim an icon node recycled back into text.",
+      targets: [
+        {
+          font: "Samim-Fontara",
+          inline: "fontara",
+          name: "icon recycled back into text",
+          selector: "#fontara-recycled-kind"
+        }
+      ]
+    })
+
+    await evaluate(testPage, () => {
+      const host = document.getElementById("fontara-late-shadow-host")
+      if (!host) throw new Error("Late shadow host is missing.")
+      const root = host.attachShadow({ mode: "open" })
+      const style = document.createElement("style")
+      style.textContent = `
+        .fontara-local-icon {
+          font-family: "FontARA Browser Icon" !important;
+        }
+        code {
+          font-family: monospace !important;
+        }
+      `
+      const text = document.createElement("p")
+      text.id = "fontara-late-shadow-text"
+      text.textContent = "Late shadow text"
+      const editable = document.createElement("div")
+      editable.id = "fontara-late-shadow-editable"
+      editable.contentEditable = "true"
+      const editableText = document.createElement("p")
+      editableText.id = "fontara-late-shadow-editable-text"
+      editableText.dataset.text = "true"
+      editableText.textContent = "Late editable shadow text"
+      const editableIcon = document.createElement("span")
+      editableIcon.id = "fontara-late-shadow-editable-icon"
+      editableIcon.className = "fontara-local-icon"
+      const editableIconGlyph = document.createElement("span")
+      editableIconGlyph.id = "fontara-late-shadow-editable-icon-glyph"
+      editableIconGlyph.textContent = "icon"
+      editableIcon.append(editableIconGlyph)
+      const editableCode = document.createElement("code")
+      editableCode.id = "fontara-late-shadow-editable-code"
+      editableCode.textContent = "const font = 'site-owned'"
+      editable.append(editableText, editableIcon, editableCode)
+      root.append(style, text, editable)
+    })
+
+    const lateShadowState = await waitFor(
+      async () => {
+        const state = await evaluate(testPage, () => {
+          const root = document.getElementById(
+            "fontara-late-shadow-host"
+          )?.shadowRoot
+          const read = (selector) => {
+            const target = root?.querySelector(selector)
+            return {
+              fontFamily: target ? getComputedStyle(target).fontFamily : "",
+              inlineStyle: target?.getAttribute("style") ?? ""
+            }
+          }
+          return {
+            code: read("#fontara-late-shadow-editable-code"),
+            editable: read("#fontara-late-shadow-editable-text"),
+            icon: read("#fontara-late-shadow-editable-icon"),
+            iconGlyph: read("#fontara-late-shadow-editable-icon-glyph"),
+            loadId: window.__fontaraLoadId,
+            text: read("#fontara-late-shadow-text")
+          }
+        })
+        const matches =
+          state.loadId === loadId &&
+          state.text.fontFamily.includes("Samim-Fontara") &&
+          state.text.inlineStyle.includes("var(--fontara-font)") &&
+          state.editable.fontFamily.includes("Samim-Fontara") &&
+          !state.editable.inlineStyle.includes("var(--fontara-font)") &&
+          state.icon.fontFamily.includes("FontARA Browser Icon") &&
+          !state.icon.inlineStyle.includes("var(--fontara-font)") &&
+          state.iconGlyph.fontFamily.includes("FontARA Browser Icon") &&
+          !state.iconGlyph.inlineStyle.includes("var(--fontara-font)") &&
+          state.code.fontFamily.includes("monospace") &&
+          !state.code.inlineStyle.includes("var(--fontara-font)")
+        if (!matches) {
+          throw new Error(
+            `Late shadow state did not settle: ${JSON.stringify(state)}`
+          )
+        }
+        return state
+      },
+      {
+        message:
+          "FontARA did not discover late shadow text or safely style its contenteditable subtree.",
+        timeout: 20_000
+      }
+    )
+    assert.equal(lateShadowState.loadId, loadId)
+
+    await evaluate(testPage, () => {
+      const root = document.getElementById(
+        "fontara-late-shadow-host"
+      )?.shadowRoot
+      const style = root?.querySelector("style[data-fontara-editable-style]")
+      if (!style) throw new Error("Shadow editable style is missing.")
+
+      window.__fontaraShadowStyleMutationCount = 0
+      window.__fontaraShadowStyleMutationObserver = new MutationObserver(
+        (records) => {
+          window.__fontaraShadowStyleMutationCount += records.length
+        }
+      )
+      window.__fontaraShadowStyleMutationObserver.observe(style, {
+        attributeFilter: ["data-fontara-editable-style", "disabled", "media"],
+        attributes: true,
+        characterData: true,
+        childList: true,
+        subtree: true
+      })
+
+      style.removeAttribute("data-fontara-editable-style")
+      style.textContent =
+        "[contenteditable] { font-family: Comic Sans MS !important; }"
+      style.disabled = true
+      style.setAttribute("disabled", "")
+      style.setAttribute("media", "not all")
+    })
+
+    await waitFor(
+      async () => {
+        const state = await evaluate(testPage, () => {
+          const style = document
+            .getElementById("fontara-late-shadow-host")
+            ?.shadowRoot?.querySelector("style[data-fontara-editable-style]")
+          return {
+            disabled: style?.disabled ?? true,
+            disabledAttribute: style?.hasAttribute("disabled") ?? true,
+            marker: style?.getAttribute("data-fontara-editable-style") ?? null,
+            mediaAttribute: style?.hasAttribute("media") ?? true,
+            text: style?.textContent ?? ""
+          }
+        })
+        return state.marker === "true" &&
+          !state.disabled &&
+          !state.disabledAttribute &&
+          !state.mediaAttribute &&
+          state.text.includes("var(--fontara-font)") &&
+          !state.text.includes("Comic Sans MS")
+          ? state
+          : false
+      },
+      {
+        message:
+          "FontARA did not repair marker, text, disabled, and media tampering on its Shadow DOM editable style."
+      }
+    )
+
+    await delay(250)
+    const settledShadowStyleMutationCount = await evaluate(
+      testPage,
+      () => window.__fontaraShadowStyleMutationCount
+    )
+    await delay(250)
+    assert.equal(
+      await evaluate(testPage, () => window.__fontaraShadowStyleMutationCount),
+      settledShadowStyleMutationCount,
+      "Shadow editable style repair entered a self-triggered mutation loop."
+    )
+    assert.ok(
+      settledShadowStyleMutationCount < 20,
+      `Shadow editable style repair emitted ${settledShadowStyleMutationCount} mutations.`
+    )
+
+    await evaluate(testPage, () => {
+      const root = document.getElementById(
+        "fontara-late-shadow-host"
+      )?.shadowRoot
+      const lateText = document.createElement("p")
+      lateText.id = "fontara-later-shadow-text"
+      lateText.textContent = "Text added after late shadow discovery"
+      root?.append(lateText)
+    })
+    await waitFor(
+      async () => {
+        const state = await evaluate(testPage, () => {
+          const target = document
+            .getElementById("fontara-late-shadow-host")
+            ?.shadowRoot?.getElementById("fontara-later-shadow-text")
+          return {
+            fontFamily: target ? getComputedStyle(target).fontFamily : "",
+            inlineStyle: target?.getAttribute("style") ?? "",
+            loadId: window.__fontaraLoadId
+          }
+        })
+        return state.loadId === loadId &&
+          state.fontFamily.includes("Samim-Fontara") &&
+          state.inlineStyle.includes("var(--fontara-font)")
+          ? state
+          : false
+      },
+      {
+        message: "FontARA did not observe later children of a late shadow root."
+      }
+    )
   })
 })
 
@@ -1652,25 +2023,21 @@ test("Chrome MV3 popup and options UI update current-site include/exclude lists"
     )
 
     const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      keepPageActive: testPage,
       viewport: { height: 650, width: 360 }
     })
-
-    await testPage.bringToFront()
-    await sendSettingsFromContentBridge(testPage, {
-      [STORAGE_KEYS.DISABLED_FOR]: [],
-      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: true,
-      [STORAGE_KEYS.ENABLED_FOR]: [],
-      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
-      [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara",
-      [STORAGE_KEYS.SYNC_SETTINGS]: true
-    })
+    await settleBackgroundExtensionPage(
+      popupPage,
+      testPage,
+      "fontara-current-site-toggle"
+    )
 
     await waitForInputChecked(
       popupPage,
       "fontara-current-site-toggle-input",
       true
     )
-    await clickByTestId(popupPage, "fontara-current-site-toggle")
+    await activateByTestId(popupPage, "fontara-current-site-toggle")
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.DISABLED_FOR, [
       sitePattern
     ])
@@ -1682,7 +2049,7 @@ test("Chrome MV3 popup and options UI update current-site include/exclude lists"
       })
     )
 
-    await clickByTestId(popupPage, "fontara-current-site-toggle")
+    await activateByTestId(popupPage, "fontara-current-site-toggle")
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.DISABLED_FOR, [])
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [
       sitePattern
@@ -1877,19 +2244,14 @@ test("Chrome MV3 popup per-site settings save profiles without enabling sites", 
     )
 
     const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      keepPageActive: testPage,
       viewport: { height: 700, width: 360 }
     })
-    await testPage.bringToFront()
-    await sendSettingsFromContentBridge(testPage, {
-      [STORAGE_KEYS.DISABLED_FOR]: [],
-      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
-      [STORAGE_KEYS.ENABLED_FOR]: [],
-      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
-      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
-      [STORAGE_KEYS.SITE_PROFILES]: [],
-      [STORAGE_KEYS.SYNC_SETTINGS]: true,
-      [STORAGE_KEYS.TEXT_STROKE]: 0
-    })
+    await settleBackgroundExtensionPage(
+      popupPage,
+      testPage,
+      "fontara-per-site-settings-open"
+    )
     await popupPage.waitForSelector(
       '[data-testid="fontara-per-site-settings-open"]'
     )
@@ -1972,29 +2334,14 @@ test("Chrome MV3 popup per-site settings edit the strongest matching profile", a
     )
 
     const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      keepPageActive: testPage,
       viewport: { height: 700, width: 360 }
     })
-    await testPage.bringToFront()
-    await sendSettingsFromContentBridge(testPage, {
-      [STORAGE_KEYS.DISABLED_FOR]: [],
-      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
-      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
-      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
-      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
-      [STORAGE_KEYS.SITE_PROFILES]: [
-        {
-          font: "Sahel-Fontara",
-          pattern: sitePattern
-        },
-        {
-          font: "Samim-Fontara",
-          pattern: scopedPattern,
-          textStroke: 0.5
-        }
-      ],
-      [STORAGE_KEYS.SYNC_SETTINGS]: true,
-      [STORAGE_KEYS.TEXT_STROKE]: 0
-    })
+    await settleBackgroundExtensionPage(
+      popupPage,
+      testPage,
+      "fontara-per-site-settings-open"
+    )
     await popupPage.waitForSelector(
       '[data-testid="fontara-per-site-settings-open"]'
     )
@@ -2076,29 +2423,14 @@ test("Chrome MV3 popup per-site settings disable profiles without deleting path 
     )
 
     const popupPage = await harness.createExtensionPage("ui/popup/index.html", {
+      keepPageActive: testPage,
       viewport: { height: 700, width: 360 }
     })
-    await testPage.bringToFront()
-    await sendSettingsFromContentBridge(testPage, {
-      [STORAGE_KEYS.DISABLED_FOR]: [],
-      [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
-      [STORAGE_KEYS.ENABLED_FOR]: [sitePattern],
-      [STORAGE_KEYS.EXTENSION_ENABLED]: true,
-      [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara",
-      [STORAGE_KEYS.SITE_PROFILES]: [
-        {
-          font: "Sahel-Fontara",
-          pattern: sitePattern
-        },
-        {
-          font: "Samim-Fontara",
-          pattern: scopedPattern,
-          textStroke: 0.5
-        }
-      ],
-      [STORAGE_KEYS.SYNC_SETTINGS]: true,
-      [STORAGE_KEYS.TEXT_STROKE]: 0
-    })
+    await settleBackgroundExtensionPage(
+      popupPage,
+      testPage,
+      "fontara-per-site-settings-open"
+    )
     await popupPage.waitForSelector(
       '[data-testid="fontara-per-site-settings-open"]'
     )

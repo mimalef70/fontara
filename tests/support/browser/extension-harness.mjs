@@ -930,7 +930,30 @@ async function createPage(browser, url, options = {}) {
   if (options.onConsole) page.on("console", options.onConsole)
   if (options.onPageError) page.on("pageerror", options.onPageError)
   if (options.viewport) {
-    await page.setViewport(options.viewport)
+    try {
+      await page.setViewport(options.viewport)
+    } catch (error) {
+      const isUnsupportedFirefoxEsrOrientationOverride =
+        page.browser().protocol === "webDriverBiDi" &&
+        error instanceof Error &&
+        error.message.includes("emulation.setScreenOrientationOverride") &&
+        (error.message.includes("unknown command") ||
+          error.message.includes("unsupported operation"))
+
+      if (!isUnsupportedFirefoxEsrOrientationOverride) throw error
+
+      // Puppeteer 25 couples the standard viewport command to a newer screen
+      // orientation command that Firefox ESR 140 does not implement. Retry the
+      // supported WebDriver BiDi operation directly; these tests only need the
+      // viewport dimensions and do not emulate device orientation.
+      await page.mainFrame().browsingContext.setViewport({
+        devicePixelRatio: options.viewport.deviceScaleFactor ?? null,
+        viewport: {
+          height: options.viewport.height,
+          width: options.viewport.width
+        }
+      })
+    }
   }
   try {
     await page.goto(url, {

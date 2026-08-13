@@ -31,6 +31,15 @@ import {
 
 const CUSTOM_FONT_SAMPLE_TEXT = "سلام فارسی آزمایش فونت سفارشی پندار گسترش قلم"
 
+async function waitForDocumentReady(page) {
+  await waitFor(
+    () => evaluate(page, () => document.readyState === "complete"),
+    {
+      message: "Firefox fixture document did not finish loading."
+    }
+  )
+}
+
 async function getCustomFontRuntimeState(
   page,
   familyValue,
@@ -205,7 +214,7 @@ test("Firefox MV3 applies and excludes FontARA through the content bridge", asyn
     assert.match(harness.extensionBaseUrl, /^moz-extension:\/\//)
 
     const fixturePage = await harness.createFixturePage()
-    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForDocumentReady(fixturePage)
     await waitForContentBridge(fixturePage)
     const sitePattern = `127.0.0.1:${harness.server.port}`
     const initialLoadId = await fixturePage.evaluate(
@@ -258,7 +267,7 @@ test("Firefox MV3 applies a generic system font across reload", async (t) => {
       "ui/options/index.html"
     )
     const fixturePage = await harness.createFixturePage()
-    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForDocumentReady(fixturePage)
     await waitForContentBridge(fixturePage)
     const sitePattern = `127.0.0.1:${harness.server.port}`
     const systemFontValue = "system-font:system-ui"
@@ -317,7 +326,7 @@ test("Firefox MV3 applies durable Google binary faces under strict page CSP acro
     const fixturePage = await harness.createFixturePage({
       path: STRICT_FONT_CSP_FIXTURE_PATH
     })
-    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForDocumentReady(fixturePage)
     await waitForContentBridge(fixturePage)
     const sitePattern = `127.0.0.1:${harness.server.port}`
     const fixture = await createSeededGoogleFontBinaryCache()
@@ -434,7 +443,7 @@ test("Firefox MV3 uploads, applies, reloads, and deletes a real custom-font fami
       "ui/options/index.html"
     )
     const fixturePage = await harness.createFixturePage()
-    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForDocumentReady(fixturePage)
     await waitForContentBridge(fixturePage)
     const sitePattern = `127.0.0.1:${harness.server.port}`
 
@@ -693,7 +702,7 @@ test("Firefox MV3 simple uploader uses one variable Regular file for Regular and
       "ui/options/index.html"
     )
     const fixturePage = await harness.createFixturePage()
-    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForDocumentReady(fixturePage)
     await waitForContentBridge(fixturePage)
     const sitePattern = `127.0.0.1:${harness.server.port}`
     await sendSettingsFromContentBridge(fixturePage, {
@@ -775,7 +784,7 @@ test("Firefox MV3 handles contenteditable, shadow DOM, iframes, and dynamic node
     assert.match(harness.extensionBaseUrl, /^moz-extension:\/\//)
 
     const fixturePage = await harness.createFixturePage({ path: "/hard.html" })
-    await fixturePage.waitForFunction(() => document.readyState === "complete")
+    await waitForDocumentReady(fixturePage)
     await waitForContentBridge(fixturePage)
     const sitePattern = `127.0.0.1:${harness.server.port}`
     const initialLoadId = await fixturePage.evaluate(

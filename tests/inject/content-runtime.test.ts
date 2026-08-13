@@ -562,9 +562,7 @@ async function waitFor(
   condition: () => boolean,
   message: string
 ): Promise<void> {
-  const deadline = Date.now() + 2_000
-
-  while (Date.now() < deadline) {
+  for (let index = 0; index < 60; index += 1) {
     if (condition()) return
     await new Promise((resolve) => setTimeout(resolve, 5))
   }

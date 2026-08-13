@@ -44,6 +44,20 @@ async function waitForSurfaceReady(page, surface) {
   await page.waitForSelector("[data-testid='fontara-font-selector-trigger']")
 }
 
+async function waitForAnimationsToSettle(page, selector) {
+  await page.evaluate(async (targetSelector) => {
+    const target = document.querySelector(targetSelector)
+    if (!target) throw new Error(`Unable to find ${targetSelector}.`)
+
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    await Promise.allSettled(
+      target
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished)
+    )
+  }, selector)
+}
+
 async function openOptionsSection(page, section, isMobile) {
   if (isMobile) {
     await page.evaluate((nextSection) => {
@@ -126,6 +140,10 @@ test("Chrome MV3 popup and options pass axe in en/fa/ar on mobile and desktop", 
                 )
                 await clickByTestId(page, "fontara-font-selector-trigger")
                 await page.waitForSelector("#fontara-font-selector-dialog")
+                await waitForAnimationsToSettle(
+                  page,
+                  "#fontara-font-selector-dialog"
+                )
                 const openPickerViolations = await runAxe(page)
                 assert.equal(
                   openPickerViolations.length,

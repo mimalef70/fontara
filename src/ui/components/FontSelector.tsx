@@ -764,7 +764,7 @@ const FontSelector = () => {
             className="max-h-[85vh] max-w-2xl gap-0 overflow-hidden rounded-2xl border-slate-200 p-0 shadow-2xl">
             <DialogHeader className="border-b border-slate-100 px-6 pb-4 pt-6 text-start sm:text-start">
               <DialogTitle>{t("fontSelector.title")}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-slate-600">
                 {t("fontSelector.description")}
               </DialogDescription>
             </DialogHeader>

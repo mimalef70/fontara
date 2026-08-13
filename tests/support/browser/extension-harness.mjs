@@ -1035,7 +1035,13 @@ async function launchFirefoxWithExtension(extensionDir) {
   )
   const remoteDebuggingPort = await getFreePort()
   const browser = await puppeteer.launch({
-    args: [`--remote-debugging-port=${remoteDebuggingPort}`],
+    args: [
+      `--remote-debugging-port=${remoteDebuggingPort}`,
+      // Firefox 153+ treats moz-extension:// pages as privileged navigation.
+      // Explicitly grant the local WebDriver BiDi test session access so the
+      // harness can open the installed extension's own options page.
+      "--remote-allow-system-access"
+    ],
     browser: "firefox",
     defaultViewport: BROWSER_VIEWPORTS.desktop,
     executablePath: firefoxPath,

@@ -7,6 +7,7 @@ import { DEFAULT_RTL_SITE_SETTINGS } from "../../src/config/rtl-sites"
 import { STORAGE_KEYS } from "../../src/config/storage"
 import { RtlAutoDirection } from "../../src/inject/rtl/auto-direction"
 import { getElementText, RtlEngine } from "../../src/inject/rtl/rtl-engine"
+import { detectDominantDirection } from "../../src/inject/rtl/site-adapters"
 import { isRtlText } from "../../src/inject/rtl/text-direction"
 import { getRtlActivationStateFromSettings } from "../../src/utils/rtl"
 
@@ -603,3 +604,33 @@ test("RTL engine reads textContent without forcing innerText layout", () => {
 
   assert.equal(getElementText(element), "cheap text content")
 })
+
+test("detectDominantDirection correctly identifies Persian lines with long English technical terms", () => {
+  assert.equal(
+    detectDominantDirection("مدیریت آزمایش‌ها و مدل: MLflow, Weights & Biases, Comet"),
+    "rtl"
+  )
+  assert.equal(
+    detectDominantDirection("پایپ‌لاین و ارکستراسیون: Kubeflow, Airflow, Prefect"),
+    "rtl"
+  )
+  assert.equal(
+    detectDominantDirection(
+      "پلتفرم‌های جامع ابری: AWS SageMaker, Google Cloud Vertex AI, Azure Machine Learning"
+    ),
+    "rtl"
+  )
+  assert.equal(
+    detectDominantDirection("Docker یک پلتفرم کانتینرسازی پرکاربرد است"),
+    "rtl"
+  )
+  assert.equal(
+    detectDominantDirection("چرخه حیات و پایپلاین خودکار MLOps. Source: ML-Ops.org"),
+    "rtl"
+  )
+  assert.equal(
+    detectDominantDirection("MLflow is an open source platform for machine learning"),
+    "ltr"
+  )
+})
+

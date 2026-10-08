@@ -506,7 +506,10 @@ function createGeminiAdapter(): RtlSiteAdapter {
   const messageSelectors = [
     '[data-test-id="luminous-collapsed-bubble"]',
     '[id^="model-response-message-content"]',
-    '[id^="model-user-message-content"]'
+    '[id^="model-user-message-content"]',
+    "message-content",
+    "model-response",
+    "user-query"
   ]
   const uiExcludeSelectors = [
     '[data-test-id="overflow-container"]',
@@ -588,6 +591,11 @@ function createGeminiAdapter(): RtlSiteAdapter {
         return true
       }
 
+      const messageText = getElementText(element)
+      if (detectDominantDirection(messageText) === "rtl") {
+        currentEngine.applyRTL(element)
+      }
+
       const candidates = new Set<HTMLElement>()
       if (element.matches('[data-test-id="luminous-collapsed-bubble"]')) {
         candidates.add(element)
@@ -625,14 +633,8 @@ function createGeminiAdapter(): RtlSiteAdapter {
           direction: rtl !important;
           text-align: right !important;
           list-style: none !important;
-          margin-inline-start: 0 !important;
-          margin-inline-end: 0 !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
           padding-inline-start: 0 !important;
           padding-inline-end: 0 !important;
-          padding-left: 0 !important;
-          padding-right: 0 !important;
         }
 
         ${messageScope} :is(ul, ol)[dir="rtl"] > li {

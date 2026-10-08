@@ -24,6 +24,12 @@ const GEMINI_UI_SKIP = [
   "mat-nav-list[gem-sidenav-list]"
 ].join(", ")
 
+const GOOGLE_SHEETS_SKIP = [
+  "#waffle-rich-text-editor",
+  ".cell-input",
+  ".docs-texteventtarget-iframe"
+].join(", ")
+
 type TrackedEditable = {
   cleanup: () => void
   dirAttr: string | null
@@ -60,8 +66,24 @@ export class RtlAutoDirection {
     return window.location.hostname === "gemini.google.com"
   }
 
+  private isGoogleDocsHost(): boolean {
+    return window.location.hostname === "docs.google.com"
+  }
+
   private shouldSkipElement(element: Element): boolean {
-    return this.isGeminiHost() && Boolean(element.closest(GEMINI_UI_SKIP))
+    if (this.isGeminiHost() && Boolean(element.closest(GEMINI_UI_SKIP))) {
+      return true
+    }
+    if (
+      this.isGoogleDocsHost() &&
+      !element.closest(
+        ".docos-input-textarea, .docos-input-contenteditable, [class*='docos-']"
+      ) &&
+      Boolean(element.closest(GOOGLE_SHEETS_SKIP))
+    ) {
+      return true
+    }
+    return false
   }
 
   private isEditable(element: unknown): element is HTMLElement {

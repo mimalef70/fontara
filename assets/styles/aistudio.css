@@ -42,7 +42,8 @@
 [ms-input].small,
 body,
 html,
-ms-cmark-node p,
+ms-cmark-node,
+ms-cmark-node *,
 textarea {
   font-family: var(--fontara-font),
     var(--fontara-aistudio-inter-ui-fallback) !important;

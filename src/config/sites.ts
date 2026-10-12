@@ -84,7 +84,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
   },
   {
     url: "https://notebooklm.google.com",
-    regex: "^https://notebooklm\\.google\\.com/.*$",
+    regex: "^https://notebook(lm)?\\.google\\.com/.*$",
     icon: "assets/logos/NotebookLM.svg",
     pattern: "https://notebooklm.google.com/*",
     siteName: "NotebookLM",

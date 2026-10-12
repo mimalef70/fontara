@@ -11,8 +11,8 @@ const PRODUCTION_BUNDLE_BUDGETS = {
   // binary-cache recovery so pages never fetch remote font URLs themselves.
   "background/index.js": 170 * 1024,
   // Bounded RTL discovery, fair cleanup, and reversible message reconciliation
-  // bring the measured Chrome bundle to 160.9 KiB; retain a small growth margin.
-  "inject/index.js": 164 * 1024,
+  // bring the measured Chrome bundle to ~165.2 KiB; retain a small growth margin.
+  "inject/index.js": 170 * 1024,
   "ui/options/custom-font-metadata-worker.js": 400 * 1024,
   "ui/options/index.js": 750 * 1024,
   "ui/popup/index.js": 600 * 1024

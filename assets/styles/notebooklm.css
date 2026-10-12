@@ -7,6 +7,31 @@
   --fontara-notebooklm-google-sans-display-fallback: "Google Sans";
 }
 
+body,
+html,
+.to-copy-content,
+.to-copy-content *,
+body :where(
+  p,
+  span,
+  div,
+  h1, h2, h3, h4, h5, h6,
+  li,
+  button,
+  input,
+  textarea,
+  a,
+  label
+):not(
+  pre,
+  pre *,
+  code,
+  code *,
+  [class*="icon" i],
+  [class*="symbol" i],
+  mat-icon,
+  mat-icon *
+),
 .date-separator,
 .label-medium-button,
 .mat-label-medium,

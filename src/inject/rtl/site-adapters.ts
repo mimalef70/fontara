@@ -267,7 +267,16 @@ function createChatGptAdapter(): RtlSiteAdapter {
     "[data-message-author-role]",
     '[data-testid="assistant-turn"]',
     '[data-testid="user-turn"]',
-    '[data-testid="message-text"]'
+    '[data-testid="message-text"]',
+    '[data-dil-message-id]',
+    '[class*="DilRenderer-"]',
+    '[class*="DilResponseRoot-"]',
+    '[data-testid*="canvas"]',
+    '[class*="canvas"]',
+    '[class*="Canvas"]',
+    '[class*="editor-"]',
+    ".writing-block-editor",
+    ".ProseMirror"
   ]
   const codeGuardSelectors = [
     ...COMMON_CODE_GUARD_SELECTORS,
@@ -282,7 +291,12 @@ function createChatGptAdapter(): RtlSiteAdapter {
   const textSelector = joinSelectors([
     ...DEFAULT_TEXTUAL_DESCENDANTS,
     "strong",
-    "em"
+    "em",
+    '[class*="Paragraph-"]',
+    '[class*="TextBase-"]',
+    '[class*="Title-"]',
+    '[class*="RadioLabel-"]',
+    '[data-d-component]'
   ])
 
   return createStandardAdapter({
@@ -320,7 +334,13 @@ function createClaudeAdapter(): RtlSiteAdapter {
     "[data-test-render-count]",
     '[class*="Message"]',
     "article",
-    '[role="article"]'
+    '[role="article"]',
+    ".standard-markdown",
+    '[data-cds="Prose"]',
+    ".prose",
+    "[data-sourcepos]",
+    '[data-testid="artifact-content"]',
+    '[class*="artifact-content"]'
   ]
   const ignoreSelectors = [
     ...COMMON_CODE_GUARD_SELECTORS,
@@ -351,9 +371,7 @@ function createClaudeAdapter(): RtlSiteAdapter {
     messageSelectors,
     textSelectors: [],
     applyToMessage: (container) => {
-      Array.from(container.children).forEach((child) => {
-        processElement(child)
-      })
+      processElement(container)
       return true
     }
   })
@@ -378,6 +396,21 @@ function createClaudeAdapter(): RtlSiteAdapter {
     element.setAttribute("dir", "ltr")
     engine.setStyle(element, "direction", "ltr", "important")
     engine.setStyle(element, "text-align", "left", "important")
+  }
+
+  const applyRtlList = (element: HTMLElement) => {
+    engine.rememberStyle(
+      element,
+      ["direction", "text-align", "padding-right", "padding-left"],
+      ["fontara-rtl-modified"]
+    )
+    element.setAttribute("dir", "rtl")
+    engine.setStyle(element, "direction", "rtl", "important")
+    engine.setStyle(element, "text-align", "right", "important")
+    engine.setStyle(element, "padding-right", "2rem", "important")
+    engine.setStyle(element, "padding-left", "0", "important")
+    element.classList.add("fontara-rtl-modified")
+    isolateMathInRtl(element)
   }
 
   const applyRtlText = (element: HTMLElement) => {
@@ -423,18 +456,7 @@ function createClaudeAdapter(): RtlSiteAdapter {
       const finalDirection = rtlCount > ltrCount ? "rtl" : "ltr"
 
       if (finalDirection === "rtl") {
-        engine.rememberStyle(
-          element,
-          ["direction", "text-align", "padding-right", "padding-left"],
-          ["fontara-rtl-modified"]
-        )
-        element.setAttribute("dir", "rtl")
-        engine.setStyle(element, "direction", "rtl", "important")
-        engine.setStyle(element, "text-align", "right", "important")
-        engine.setStyle(element, "padding-right", "2rem", "important")
-        engine.setStyle(element, "padding-left", "0", "important")
-        element.classList.add("fontara-rtl-modified")
-        isolateMathInRtl(element)
+        applyRtlList(element)
       } else {
         restoreIfModified(element)
       }
@@ -449,12 +471,35 @@ function createClaudeAdapter(): RtlSiteAdapter {
 
       if (direction === "rtl") {
         applyRtlText(element)
+        if (element.tagName === "LI") {
+          const parentList = element.parentElement
+          if (
+            parentList instanceof HTMLElement &&
+            (parentList.tagName === "UL" || parentList.tagName === "OL") &&
+            parentList.getAttribute("dir") !== "rtl"
+          ) {
+            applyRtlList(parentList)
+          }
+        }
       } else {
         restoreIfModified(element)
       }
     }
 
-    if (["DIV", "SECTION", "ARTICLE"].includes(element.tagName)) {
+    if (
+      [
+        "DIV",
+        "SECTION",
+        "ARTICLE",
+        "MAIN",
+        "LI",
+        "BLOCKQUOTE",
+        "TABLE",
+        "THEAD",
+        "TBODY",
+        "TR"
+      ].includes(element.tagName)
+    ) {
       Array.from(element.children).forEach((child) => {
         processElement(child)
       })
@@ -506,7 +551,10 @@ function createGeminiAdapter(): RtlSiteAdapter {
   const messageSelectors = [
     '[data-test-id="luminous-collapsed-bubble"]',
     '[id^="model-response-message-content"]',
-    '[id^="model-user-message-content"]'
+    '[id^="model-user-message-content"]',
+    "message-content",
+    "model-response",
+    "user-query"
   ]
   const uiExcludeSelectors = [
     '[data-test-id="overflow-container"]',
@@ -588,6 +636,11 @@ function createGeminiAdapter(): RtlSiteAdapter {
         return true
       }
 
+      const messageText = getElementText(element)
+      if (detectDominantDirection(messageText) === "rtl") {
+        currentEngine.applyRTL(element)
+      }
+
       const candidates = new Set<HTMLElement>()
       if (element.matches('[data-test-id="luminous-collapsed-bubble"]')) {
         candidates.add(element)
@@ -625,14 +678,8 @@ function createGeminiAdapter(): RtlSiteAdapter {
           direction: rtl !important;
           text-align: right !important;
           list-style: none !important;
-          margin-inline-start: 0 !important;
-          margin-inline-end: 0 !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
           padding-inline-start: 0 !important;
           padding-inline-end: 0 !important;
-          padding-left: 0 !important;
-          padding-right: 0 !important;
         }
 
         ${messageScope} :is(ul, ol)[dir="rtl"] > li {

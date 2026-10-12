@@ -43,8 +43,93 @@ kbd {
     var(--fontara-chatgpt-kbd-fallback) !important;
 }
 
-:is(.\*\:font-sans > *) {
+:is(.\*\:font-sans > *),
+[class*="Paragraph-"],
+[class*="TextBase-"],
+[class*="Text-"],
+[class*="Title-"],
+[class*="RadioLabel-"],
+[class*="ButtonInner-"],
+[class*="DilRenderer-"],
+[class*="DilResponseRoot-"],
+[data-dil-message-id],
+[data-d-component],
+[data-d-text-flow],
+[class*="editor-"],
+.writing-block-editor,
+.magic-edit-minimal,
+.ProseMirror,
+[class*="content-"],
+[dir="auto"],
+.markdown,
+[class*="markdown_"],
+.prose,
+[data-message-author-role],
+[data-testid*="canvas"],
+[class*="canvas"],
+[class*="Canvas"],
+:where(
+  [data-message-author-role],
+  [data-testid*="conversation-turn"],
+  [data-testid*="canvas"],
+  [class*="canvas"],
+  [class*="Canvas"],
+  [class*="editor-"],
+  .writing-block-editor,
+  .magic-edit-minimal,
+  .ProseMirror,
+  [class*="content-"],
+  [class*="DilRenderer-"],
+  [class*="DilResponseRoot-"],
+  [data-dil-message-id],
+  .markdown,
+  [class*="markdown_"],
+  .prose,
+  [class*="Paragraph-"],
+  [class*="TextBase-"],
+  [dir="auto"],
+  article,
+  main
+) :where(
+  p,
+  span,
+  div,
+  li,
+  ul,
+  ol,
+  strong,
+  em,
+  b,
+  i,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  blockquote,
+  td,
+  th,
+  table,
+  button,
+  label,
+  [class*="Paragraph-"]
+):not(
+  pre,
+  pre *,
+  code,
+  code *,
+  [class*="code"],
+  [class*="Code"]
+) {
   font-family: var(--fontara-font),
+    var(--fontara-chatgpt-font-sans-child-fallback) !important;
+}
+
+.writing-block-editor,
+[class*="editor-"],
+.ProseMirror {
+  --oai-wb-font-sans: var(--fontara-font),
     var(--fontara-chatgpt-font-sans-child-fallback) !important;
 }
 

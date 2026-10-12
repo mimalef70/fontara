@@ -267,7 +267,16 @@ function createChatGptAdapter(): RtlSiteAdapter {
     "[data-message-author-role]",
     '[data-testid="assistant-turn"]',
     '[data-testid="user-turn"]',
-    '[data-testid="message-text"]'
+    '[data-testid="message-text"]',
+    '[data-dil-message-id]',
+    '[class*="DilRenderer-"]',
+    '[class*="DilResponseRoot-"]',
+    '[data-testid*="canvas"]',
+    '[class*="canvas"]',
+    '[class*="Canvas"]',
+    '[class*="editor-"]',
+    ".writing-block-editor",
+    ".ProseMirror"
   ]
   const codeGuardSelectors = [
     ...COMMON_CODE_GUARD_SELECTORS,
@@ -282,7 +291,12 @@ function createChatGptAdapter(): RtlSiteAdapter {
   const textSelector = joinSelectors([
     ...DEFAULT_TEXTUAL_DESCENDANTS,
     "strong",
-    "em"
+    "em",
+    '[class*="Paragraph-"]',
+    '[class*="TextBase-"]',
+    '[class*="Title-"]',
+    '[class*="RadioLabel-"]',
+    '[data-d-component]'
   ])
 
   return createStandardAdapter({

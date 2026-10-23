@@ -5,6 +5,7 @@ import {
   createStoredSiteURL,
   getActiveWebsiteSitePatterns,
   getSitePatternScope,
+  isURLMatched,
   normalizeEnabledByDefault,
   normalizeEnabledSiteList,
   normalizeSiteList
@@ -242,6 +243,26 @@ export async function normalizeStorageValues(
   const websiteList = normalizeWebsiteListForStorage(
     values[STORAGE_KEYS.WEBSITE_LIST]
   )
+  const enabledFor = normalizeEnabledSiteList(values[STORAGE_KEYS.ENABLED_FOR])
+  const disabledFor = normalizeSiteList(values[STORAGE_KEYS.DISABLED_FOR])
+  const previousWebsiteList = values[STORAGE_KEYS.WEBSITE_LIST]
+  // An upgrade adds Keep to the popular sites, but an already stored include
+  // list otherwise leaves the new site off. Only extend untouched defaults.
+  const oldDefaultIncludes = getActiveWebsiteSitePatterns(
+    websiteList.filter((site) => site.url !== "https://keep.google.com")
+  )
+  const addKeepToExistingDefaults =
+    Array.isArray(previousWebsiteList) &&
+    !previousWebsiteList.some(
+      (site: WebsiteItem) => site?.url === "https://keep.google.com"
+    ) &&
+    values[STORAGE_KEYS.ENABLED_FOR] !== undefined &&
+    !normalizeEnabledByDefault(values[STORAGE_KEYS.ENABLED_BY_DEFAULT]) &&
+    enabledFor.length === oldDefaultIncludes.length &&
+    oldDefaultIncludes.every((pattern) => enabledFor.includes(pattern)) &&
+    !disabledFor.some((pattern) =>
+      isURLMatched("https://keep.google.com/#home", pattern)
+    )
   const customFontList = await normalizeCustomFontList(
     values[STORAGE_KEYS.CUSTOM_FONT_LIST]
   )
@@ -279,7 +300,9 @@ export async function normalizeStorageValues(
     [STORAGE_KEYS.ENABLED_FOR]:
       values[STORAGE_KEYS.ENABLED_FOR] === undefined
         ? getActiveWebsiteSitePatterns(websiteList)
-        : normalizeEnabledSiteList(values[STORAGE_KEYS.ENABLED_FOR]),
+        : addKeepToExistingDefaults
+          ? [...enabledFor, "keep.google.com"]
+          : enabledFor,
     [STORAGE_KEYS.DISABLED_FOR]:
       values[STORAGE_KEYS.DISABLED_FOR] === undefined
         ? DEFAULT_VALUES.DISABLED_FOR

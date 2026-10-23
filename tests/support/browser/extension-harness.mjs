@@ -562,13 +562,30 @@ async function inspectChromeBinary(candidate, requiredMajor, explicit = false) {
     // existing instance or exit without output. Read its bundle metadata;
     // standalone executables and minimal test fixtures still use --version.
     // Brave's bundle version is its product version (1.x), not Chromium's.
+    // Windows GUI executables may hand off --version to an existing Chrome
+    // instance, so read the executable's own version metadata instead.
     const { stdout, stderr } = await execFileAsync(
-      hasMacBundleMetadata ? "/usr/libexec/PlistBuddy" : executablePath,
-      hasMacBundleMetadata
-        ? ["-c", "Print :CFBundleShortVersionString", bundleInfoPath]
-        : ["--version"],
+      process.platform === "win32"
+        ? "powershell.exe"
+        : hasMacBundleMetadata
+          ? "/usr/libexec/PlistBuddy"
+          : executablePath,
+      process.platform === "win32"
+        ? [
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "(Get-Item -LiteralPath $env:FONTARA_CHROME_BINARY).VersionInfo.ProductVersion"
+          ]
+        : hasMacBundleMetadata
+          ? ["-c", "Print :CFBundleShortVersionString", bundleInfoPath]
+          : ["--version"],
       {
         encoding: "utf8",
+        env:
+          process.platform === "win32"
+            ? { ...process.env, FONTARA_CHROME_BINARY: executablePath }
+            : process.env,
         maxBuffer: 16_384,
         timeout: 5_000,
         windowsHide: true

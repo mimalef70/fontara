@@ -106,6 +106,15 @@ test("automatic Chrome discovery chooses the newest supported version instead of
   assert.equal(await findChromeBinary(), newest)
 })
 
+test("Windows Chrome discovery reads executable version without launching Chrome", {
+  skip: process.platform !== "win32" || !process.env.CHROME_PATH
+}, async () => {
+  const { findChromeBinary } = await import(harnessUrl.href)
+  const chromePath = process.env.CHROME_PATH
+  assert.ok(chromePath)
+  assert.equal(await findChromeBinary(), path.resolve(chromePath))
+})
+
 test("macOS Chrome discovery reads bundle metadata without launching the browser", {
   skip: process.platform !== "darwin"
 }, async (context) => {

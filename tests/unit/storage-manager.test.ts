@@ -1342,6 +1342,66 @@ test("ensureStorageValues migrates active website settings into the include site
   assert.deepEqual(values[STORAGE_KEYS.DISABLED_FOR], [])
 })
 
+test("existing default site selections gain Keep without overriding custom site choices", async () => {
+  const oldSites = DEFAULT_VALUES.WEBSITE_LIST.filter(
+    (site) => site.url !== "https://keep.google.com"
+  )
+  const oldIncludes = getActiveWebsiteSitePatterns(oldSites)
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.WEBSITE_LIST]: oldSites,
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+    [STORAGE_KEYS.ENABLED_FOR]: oldIncludes,
+    [STORAGE_KEYS.SYNC_SETTINGS]: false
+  }
+  mockLocalStorage(values)
+  await ensureStorageValues()
+  assert.ok(
+    (values[STORAGE_KEYS.ENABLED_FOR] as string[]).includes("keep.google.com")
+  )
+  assert.ok(
+    (values[STORAGE_KEYS.WEBSITE_LIST] as WebsiteItem[]).some(
+      (site) => site.url === "https://keep.google.com"
+    )
+  )
+})
+
+test("existing custom site selections do not silently enable Keep", async () => {
+  const oldSites = DEFAULT_VALUES.WEBSITE_LIST.filter(
+    (site) => site.url !== "https://keep.google.com"
+  )
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.WEBSITE_LIST]: oldSites,
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+    [STORAGE_KEYS.ENABLED_FOR]: ["chatgpt.com"],
+    [STORAGE_KEYS.SYNC_SETTINGS]: false
+  }
+  mockLocalStorage(values)
+  await ensureStorageValues()
+  assert.deepEqual(values[STORAGE_KEYS.ENABLED_FOR], ["chatgpt.com"])
+})
+
+test("an explicit Keep exclusion survives the site catalog upgrade", async () => {
+  const oldSites = DEFAULT_VALUES.WEBSITE_LIST.filter(
+    (site) => site.url !== "https://keep.google.com"
+  )
+  const values: Record<string, unknown> = {
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.WEBSITE_LIST]: oldSites,
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: false,
+    [STORAGE_KEYS.ENABLED_FOR]: getActiveWebsiteSitePatterns(oldSites),
+    [STORAGE_KEYS.DISABLED_FOR]: ["keep.google.com"],
+    [STORAGE_KEYS.SYNC_SETTINGS]: false
+  }
+  mockLocalStorage(values)
+  await ensureStorageValues()
+  assert.ok(
+    !(values[STORAGE_KEYS.ENABLED_FOR] as string[]).includes("keep.google.com")
+  )
+  assert.deepEqual(values[STORAGE_KEYS.DISABLED_FOR], ["keep.google.com"])
+})
+
 test("ensureStorageValues normalizes stored site list settings", async () => {
   const values: Record<string, unknown> = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],

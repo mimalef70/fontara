@@ -237,6 +237,37 @@ test("X uses the X brand instead of Twitter assets", () => {
   assert.equal(website?.icon, "assets/logos/x-active.svg")
 })
 
+test("Google Keep notes are active by default only on the Keep host", () => {
+  const keepUrl = "https://keep.google.com/#home"
+  const keep = POPULAR_WEBSITES.find(
+    (site) => site.url === "https://keep.google.com"
+  )
+  assert.ok(keep, "Google Keep must be available as a default site")
+  assert.equal(keep.pattern, "https://keep.google.com/*")
+  assert.equal(
+    getMatchingWebsite(keepUrl, DEFAULT_VALUES.WEBSITE_LIST)?.url,
+    keep.url
+  )
+  assert.equal(resolveFontaraSiteConfig(keepUrl, {}).font.active, true)
+  assert.equal(
+    resolveFontaraSiteConfig("https://keep.google.com/#archive", {}).font
+      .active,
+    true
+  )
+  assert.equal(
+    resolveFontaraSiteConfig("https://notkeep.google.com/#home", {}).font
+      .active,
+    false
+  )
+  assert.equal(
+    resolveFontaraSiteConfig(keepUrl, {
+      [STORAGE_KEYS.DISABLED_FOR]: ["keep.google.com"],
+      [STORAGE_KEYS.ENABLED_FOR]: []
+    }).font.active,
+    false
+  )
+})
+
 test("popular websites are ordered by priority and category", () => {
   assert.deepEqual(
     POPULAR_WEBSITES.map((site) => site.siteName),
@@ -254,6 +285,7 @@ test("popular websites are ordered by priority and category", () => {
       "AI Studio",
       "Arena",
       "Google",
+      "Google Keep",
       "YouTube",
       "Gmail",
       "X",

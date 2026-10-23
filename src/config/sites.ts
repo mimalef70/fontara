@@ -119,6 +119,13 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     version: "5.0.0"
   },
   {
+    url: "https://keep.google.com",
+    regex: "^https://keep\\.google\\.com/.*$",
+    icon: "assets/logos/GoogleKeep.svg",
+    pattern: "https://keep.google.com/*",
+    siteName: "Google Keep"
+  },
+  {
     url: "https://www.youtube.com",
     regex: "^https://www\\.youtube\\.com/.*$",
     icon: "assets/logos/youtube-active.png",

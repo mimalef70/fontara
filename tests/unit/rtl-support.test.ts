@@ -423,6 +423,14 @@ test("RTL adapters preserve sample platform coverage without font injection", ()
   assert.match(siteAdaptersSource, /fontara-gemini-rtl-list/)
   assert.match(siteAdaptersSource, /immersive-entry-chip/)
   assert.match(siteAdaptersSource, /inline-preview-container/)
+  assert.match(
+    siteAdaptersSource,
+    /response-element:has\(immersive-entry-chip\)/
+  )
+  assert.doesNotMatch(
+    siteAdaptersSource,
+    /response-element,\s*immersive-entry-chip/
+  )
   assert.match(siteAdaptersSource, /createTextWalkerAdapter/)
   assert.match(siteAdaptersSource, /ms-chat-session/)
   assert.match(siteAdaptersSource, /const DIRECTION_SAMPLE_CHAR_LIMIT = 1000/)

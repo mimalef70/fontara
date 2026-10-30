@@ -262,6 +262,8 @@ function createStandardAdapter(config: StandardAdapterConfig): RtlSiteAdapter {
 }
 
 function createChatGptAdapter(): RtlSiteAdapter {
+  const wbSel =
+    '.writing-block-editor,.ProseMirror,[data-client-defined-widget="writing_block"]'
   const messageSelectors = [
     '[data-testid="conversation-turn"]',
     "[data-message-author-role]",
@@ -275,8 +277,7 @@ function createChatGptAdapter(): RtlSiteAdapter {
     '[class*="canvas"]',
     '[class*="Canvas"]',
     '[class*="editor-"]',
-    ".writing-block-editor",
-    ".ProseMirror"
+    wbSel
   ]
   const codeGuardSelectors = [
     ...COMMON_CODE_GUARD_SELECTORS,
@@ -308,13 +309,38 @@ function createChatGptAdapter(): RtlSiteAdapter {
       '[data-type="unified-composer"]',
       '[data-type="unified-composer"] *',
       'form[data-type="unified-composer"]',
+      '[data-composer-body] [contenteditable]',
+      '[data-composer-input] [contenteditable]',
+      '[data-composer-markdown]',
+      '#prompt-textarea',
       "input",
-      "textarea",
-      '[contenteditable="true"]'
+      "textarea"
     ],
+    extraCss: `
+      :is([dir="rtl"],.writing-block-editor) :is(ul,ol) {
+        padding-inline: 1.5rem 0 !important;
+      }
+      :is([dir="rtl"],.writing-block-editor,[data-client-defined-widget="writing_block"])[dir="rtl"] :is(.ProseMirror,p,h1,h2,h3,h4,h5,h6,li,ul,ol) {
+        direction: rtl !important;
+        text-align: right !important;
+      }
+    `,
     applyToMessage: (element, engine) => {
       const messageText = getTextWithoutSelector(element, mathGuard)
       if (!engine.needsRTL(messageText) || !engine.textSelector) return true
+
+      if (element instanceof HTMLElement && element.matches(wbSel)) {
+        engine.applyRTL(element)
+      }
+
+      element.querySelectorAll(wbSel).forEach((wb) => {
+        if (
+          !engine.isExcluded(wb) &&
+          engine.needsRTL(getTextWithoutSelector(wb, mathGuard))
+        ) {
+          engine.applyRTL(wb)
+        }
+      })
 
       element.querySelectorAll(textSelector).forEach((child) => {
         if (engine.isExcluded(child)) return
@@ -727,7 +753,8 @@ function createGeminiAdapter(): RtlSiteAdapter {
           direction: rtl;
         }
 
-        response-element,
+        response-element:has(immersive-entry-chip),
+        response-element:has(.inline-preview-container),
         immersive-entry-chip {
           display: flex !important;
           justify-content: center !important;

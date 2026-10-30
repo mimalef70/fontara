@@ -137,3 +137,18 @@ kbd {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-header-wordmark-fallback) !important;
 }
+
+[data-composer-body] {
+  --composer-editor-line-height: 26px;
+}
+[data-composer-layout="single-line"] :is([class*="ComposerLayoutInput"],[class*="RichTextInput"]) {
+  margin-block: auto !important;
+}
+:is([data-composer-layout="single-line"],[data-rich-text-layout="single-line"]) .ProseMirror {
+  height: 26px !important;
+  overflow: hidden !important;
+}
+:is([data-composer-layout="single-line"],[data-rich-text-layout="single-line"]) :is(.ProseMirror,.ProseMirror p) {
+  line-height: 24px !important;
+  margin: 0 !important;
+}

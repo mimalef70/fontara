@@ -322,13 +322,20 @@ function createClaudeAdapter(): RtlSiteAdapter {
     "article",
     '[role="article"]'
   ]
-  const ignoreSelectors = [
+  const codeGuardSelectors = [
     ...COMMON_CODE_GUARD_SELECTORS,
     ".code-block",
-    '[data-test-id="code-block"]',
+    '[data-test-id="code-block"]'
+  ]
+  const mathGuardSelectors = [
     ".katex",
     ".katex-html",
-    ".katex-mathml"
+    ".katex-mathml",
+    '[role="math"]'
+  ]
+  const ignoreSelectors = [
+    ...codeGuardSelectors,
+    ...mathGuardSelectors
   ]
   const ignoreSelector = joinSelectors(ignoreSelectors)
   const mathSelector = '.katex, [role="math"].katex'
@@ -364,22 +371,24 @@ function createClaudeAdapter(): RtlSiteAdapter {
       if (!(mathElement instanceof HTMLElement)) return
       engine.rememberStyle(mathElement, [
         "direction",
-        "text-align",
         "unicode-bidi"
       ])
       mathElement.setAttribute("dir", "ltr")
       engine.setStyle(mathElement, "direction", "ltr", "important")
-      engine.setStyle(mathElement, "text-align", "left", "important")
       engine.setStyle(mathElement, "unicode-bidi", "isolate", "important")
     })
   }
 
   const applyLtrGuard = (element: HTMLElement) => {
     if (elementDirections.get(element) === "ltr") return
-    engine.rememberStyle(element, ["direction", "text-align"])
     element.setAttribute("dir", "ltr")
     engine.setStyle(element, "direction", "ltr", "important")
-    engine.setStyle(element, "text-align", "left", "important")
+    if (!element.matches(".katex, .katex *")) {
+      engine.rememberStyle(element, ["direction", "text-align"])
+      engine.setStyle(element, "text-align", "left", "important")
+    } else {
+      engine.rememberStyle(element, ["direction"])
+    }
     elementDirections.set(element, "ltr")
   }
 
@@ -470,14 +479,24 @@ function createClaudeAdapter(): RtlSiteAdapter {
 
   const ensureGlobalStyle = () => {
     if (globalStyle) return
+    const codeScope = joinSelectors(codeGuardSelectors)
+    const mathScope = joinSelectors(mathGuardSelectors)
     globalStyle = createStyle(
       `
-        ${ignoreSelector},
+        ${codeScope} {
+          direction: ltr !important;
+          text-align: left !important;
+        }
+
+        ${mathScope},
         [dir="rtl"] .katex,
         [dir="rtl"] .katex-html {
           direction: ltr !important;
-          text-align: left !important;
           unicode-bidi: isolate;
+        }
+
+        [dir="rtl"] .katex-display {
+          text-align: center !important;
         }
       `,
       "claude"
@@ -635,94 +654,64 @@ function createGeminiAdapter(): RtlSiteAdapter {
     const codeScope = `:is(${codeGuardSelectors.join(", ")})`
     globalStyle = createStyle(
       `
-        ${messageScope} ${codeScope} {
-          direction: ltr !important;
-          text-align: left !important;
-          unicode-bidi: embed;
-        }
+${messageScope} ${codeScope} {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: embed;
+}
 
-        ${messageScope} :is(ul, ol)[dir="rtl"] {
-          direction: rtl !important;
-          text-align: right !important;
-          list-style: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
+/* fontara-gemini-rtl-list */
+${messageScope} :is(ul, ol)[dir="rtl"],
+${messageScope} [dir="rtl"] :is(ul, ol) {
+  direction: rtl !important;
+  text-align: right !important;
+  padding-right: 2rem !important;
+  padding-left: 0 !important;
+}
 
-        ${messageScope} :is(ul, ol):is([dir="rtl"] > li, > li[dir="rtl"]) {
-          direction: rtl !important;
-          text-align: right !important;
-          list-style: none !important;
-          position: relative !important;
-          padding: 0 1.55rem 0 0 !important;
-        }
+${messageScope} :is(ul, ol)[dir="rtl"] > li,
+${messageScope} :is(ul, ol) > li[dir="rtl"] {
+  direction: rtl !important;
+  text-align: right !important;
+  list-style-position: outside !important;
+}
 
-        ${messageScope} ol[dir="rtl"] {
-          counter-reset: fontara-gemini-rtl-list;
-        }
+${messageScope} :is(table[dir="rtl"], [dir="rtl"] table, table:has(th[dir="rtl"], td[dir="rtl"])) {
+  direction: rtl !important;
+  text-align: right !important;
+}
 
-        ${messageScope} ol:is([dir="rtl"] > li, > li[dir="rtl"]) {
-          counter-increment: fontara-gemini-rtl-list;
-        }
+${messageScope} :is(table[dir="rtl"], table:has(th[dir="rtl"], td[dir="rtl"])) :is(th, td) {
+  text-align: right !important;
+}
 
-        ${messageScope} :is(ul, ol):is([dir="rtl"] > li, > li[dir="rtl"])::before {
-          display: block !important;
-          position: absolute !important;
-          right: 0 !important;
-          left: auto !important;
-          top: 0.72em !important;
-          transform: translateY(-50%) !important;
-          line-height: 1 !important;
-          text-align: right !important;
-          direction: rtl !important;
-        }
+:is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"])[dir="rtl"],
+[dir="rtl"] :is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"]) {
+  direction: rtl !important;
+  text-align: right !important;
+  unicode-bidi: isolate;
+}
 
-        ${messageScope} ul:is([dir="rtl"] > li, > li[dir="rtl"])::before {
-          content: "\\25E6" !important;
-          width: 1rem !important;
-        }
+:is([dir="rtl"] .item-container, .item-container[dir="rtl"]) {
+  direction: rtl !important;
+}
 
-        ${messageScope} ol:is([dir="rtl"] > li, > li[dir="rtl"])::before {
-          content: counter(fontara-gemini-rtl-list) "." !important;
-          width: 1.15rem !important;
-        }
+:is(.caption, .hero-caption)[dir="rtl"] span,
+[dir="rtl"] :is(.caption, .hero-caption) span {
+  unicode-bidi: isolate !important;
+  direction: ltr !important;
+  display: inline-block;
+}
 
-        ${messageScope} :is(table[dir="rtl"], [dir="rtl"] table, table:has(th[dir="rtl"], td[dir="rtl"])) {
-          direction: rtl !important;
-          text-align: right !important;
-        }
+.elicitation-item[dir="rtl"],
+[dir="rtl"] .elicitation-item {
+  direction: rtl !important;
+  text-align: right !important;
+}
 
-        ${messageScope} :is(table[dir="rtl"], table:has(th[dir="rtl"], td[dir="rtl"])) :is(th, td) {
-          text-align: right !important;
-        }
-
-        :is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"])[dir="rtl"],
-        [dir="rtl"] :is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"]) {
-          direction: rtl !important;
-          text-align: right !important;
-          unicode-bidi: isolate;
-        }
-
-        :is([dir="rtl"] .item-container, .item-container[dir="rtl"]) {
-          direction: rtl !important;
-        }
-
-        :is(.caption, .hero-caption)[dir="rtl"] span,
-        [dir="rtl"] :is(.caption, .hero-caption) span {
-          unicode-bidi: isolate !important;
-          direction: ltr !important;
-          display: inline-block;
-        }
-
-        .elicitation-item[dir="rtl"],
-        [dir="rtl"] .elicitation-item {
-          direction: rtl !important;
-          text-align: right !important;
-        }
-
-        :is([dir="rtl"], .elicitation-item[dir="rtl"]) .elicitation-button-icon {
-          transform: scaleX(-1);
-        }
+:is([dir="rtl"], .elicitation-item[dir="rtl"]) .elicitation-button-icon {
+  transform: scaleX(-1);
+}
       `,
       "gemini"
     )

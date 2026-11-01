@@ -145,8 +145,8 @@ kbd {
   [class*="fa-"] *,
   mat-icon,
   mat-icon *,
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
   :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
   :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
 ) {
@@ -226,8 +226,8 @@ body :where(
   [class*="fa-"] *,
   mat-icon,
   mat-icon *,
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
   :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
   :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
 ) {

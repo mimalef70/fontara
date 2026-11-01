@@ -364,6 +364,7 @@ test("Chrome AI site font rules preserve code, math, and icon subtrees", async (
             <span class="material-symbols-outlined" data-sourcepos="2"><span id="icon" class="Paragraph-icon">home</span></span>
             <mat-icon><span id="mat-icon" data-row-label="icon">home</span></mat-icon>
             <span class="fas"><span id="fa-icon">home</span></span>
+            <span class="icofont"><span id="icofont-icon">home</span></span>
             <div class="cm-editor"><span id="editor-code" data-sourcepos="3">const x = 1</span></div>
             <math><mi id="mathml">x</mi></math>
             <mjx-container><span id="mathjax">x</span></mjx-container>
@@ -376,7 +377,7 @@ test("Chrome AI site font rules preserve code, math, and icon subtrees", async (
             :root { --fontara-font: "FontaraTest"; }
             code, .cm-editor { font-family: monospace; }
             .katex, math, mjx-container { font-family: "MathTest"; }
-            .material-symbols-outlined, mat-icon, .fas { font-family: "IconTest"; }
+            .material-symbols-outlined, mat-icon, .fas, .icofont { font-family: "IconTest"; }
           `
           document.head.append(siteStyle)
           const read = () =>
@@ -388,6 +389,7 @@ test("Chrome AI site font rules preserve code, math, and icon subtrees", async (
                 "icon",
                 "mat-icon",
                 "fa-icon",
+                "icofont-icon",
                 "editor-code",
                 "mathml",
                 "mathjax"

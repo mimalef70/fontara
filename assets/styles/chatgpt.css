@@ -44,6 +44,7 @@ kbd {
 }
 
 :is(.\*\:font-sans > *),
+form[data-mobile-composer],
 [class*="Paragraph-"],
 [class*="TextBase-"],
 [class*="Text-"],

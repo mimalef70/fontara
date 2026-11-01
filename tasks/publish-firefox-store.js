@@ -19,6 +19,71 @@ const REQUIRED_JOBS = [
   "Publish verified packages"
 ]
 
+// The first release source omitted one build-input file. This reviewed supplement
+// is additive: never replace the original release assets or accept a free-form
+// source override. All later releases include .gitignore in their CI artifact.
+const SOURCE_SUPPLEMENT = Object.freeze({
+  tag: "v5.1.0",
+  sha: "9e5770ca8272035d7fd453c776f2571b7b7a6b83",
+  productionSha256:
+    "14e8aba1e286ce012da831de59c487a407c6b334a74762e77419dec42742909a",
+  originalSha256:
+    "b21b28defd81df92c5597eb5622507501b3668758bb8a0d7c5067040c0dafbb8",
+  name: "firefox-mv3-source-5.1.0-review.zip",
+  sha256: "9d9f6df548148261fa1666b7917acced2525ea34aff85c50365addb604d80bf2",
+  gitignoreSha256:
+    "507d7d0794bbfaf770cd9a3e7ece7d6e943ece2b0ab89655356f6a7c5f128684"
+})
+
+function sourceSupplementFor(release) {
+  if (release.tag !== SOURCE_SUPPLEMENT.tag) return null
+  if (
+    release.sha !== SOURCE_SUPPLEMENT.sha ||
+    release.assets["firefox-mv3-prod.zip"]?.sha256 !==
+      SOURCE_SUPPLEMENT.productionSha256 ||
+    release.assets["firefox-mv3-source-5.1.0.zip"]?.sha256 !==
+      SOURCE_SUPPLEMENT.originalSha256
+  ) {
+    throw new Error(
+      "The reviewed source supplement does not match this release."
+    )
+  }
+  return SOURCE_SUPPLEMENT
+}
+
+function verifySourceSupplement(original, corrected, gitignoreSha256) {
+  try {
+    execFileSync(
+      "python3",
+      [
+        "-c",
+        [
+          "import hashlib,io,sys,zipfile",
+          "data=sys.stdin.buffer.read(); split=int(sys.argv[1])",
+          "a=zipfile.ZipFile(io.BytesIO(data[:split])); b=zipfile.ZipFile(io.BytesIO(data[split:]))",
+          "an=a.namelist(); bn=b.namelist()",
+          "assert len(an)==len(set(an)) and len(bn)==len(set(bn)), 'Duplicate source entry'",
+          "assert '.gitignore' not in an and set(bn)==set(an)|{'.gitignore'}, 'Unexpected source entry changes'",
+          "assert all(i.file_size<50*1024*1024 for z in (a,b) for i in z.infolist()), 'Oversized source entry'",
+          "assert all(sum(i.file_size for i in z.infolist())<200*1024*1024 for z in (a,b)), 'Oversized source contents'",
+          "assert all(a.read(n)==b.read(n) for n in an), 'Original source entry changed'",
+          "assert hashlib.sha256(b.read('.gitignore')).hexdigest()==sys.argv[2], 'Unexpected ignore rules'"
+        ].join("\n"),
+        String(original.length),
+        gitignoreSha256
+      ],
+      {
+        input: Buffer.concat([original, corrected]),
+        stdio: ["pipe", "pipe", "pipe"]
+      }
+    )
+  } catch {
+    throw new Error(
+      "Reviewed source supplement must preserve every original entry and add only the pinned .gitignore."
+    )
+  }
+}
+
 function releaseVersion(tag) {
   if (!/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag || "")) {
     throw new Error("Select a release tag in vMAJOR.MINOR.PATCH format.")
@@ -113,7 +178,7 @@ function createGitHubClient(token, fetchImpl = fetch) {
   }
 }
 
-async function prepareRelease({ tag, runId, github }) {
+async function prepareRelease({ tag, runId, github, requireSource = true }) {
   const version = releaseVersion(tag)
   const repository = await github("")
   if (
@@ -211,7 +276,34 @@ async function prepareRelease({ tag, runId, github }) {
     }
     assets[name] = { sha256: found[0].digest.slice(7), size: found[0].size }
   }
-  return { tag, version, sha, runId: run.id, artifactId: matches[0].id, assets }
+  const prepared = {
+    tag,
+    version,
+    sha,
+    runId: run.id,
+    artifactId: matches[0].id,
+    assets
+  }
+  const correction = requireSource ? sourceSupplementFor(prepared) : null
+  if (correction) {
+    const found =
+      release.assets?.filter((asset) => asset.name === correction.name) || []
+    if (
+      found.length !== 1 ||
+      found[0].state !== "uploaded" ||
+      found[0].digest !== `sha256:${correction.sha256}` ||
+      !Number.isInteger(found[0].size) ||
+      found[0].size <= 0 ||
+      found[0].size > 50 * 1024 * 1024
+    ) {
+      throw new Error(
+        "The uniquely named, pinned reviewer source supplement is missing or mismatched."
+      )
+    }
+    assets[correction.name] = { sha256: correction.sha256, size: found[0].size }
+    prepared.sourceSupplement = correction.name
+  }
+  return prepared
 }
 
 function readVerifiedPackages(
@@ -285,9 +377,29 @@ function readVerifiedPackages(
     )
   }
   if (!requireSource) return { archive, version: release.version }
-  const source = read(`firefox-mv3-source-${release.version}.zip`)
-  if (source.length > 50 * 1024 * 1024)
+  const originalSource = read(`firefox-mv3-source-${release.version}.zip`)
+  if (originalSource.length > 50 * 1024 * 1024)
     throw new Error("Firefox source ZIP exceeds the expected size budget.")
+  let source = originalSource
+  let reviewSourceNote =
+    "Source and production ZIPs are the exact artifacts from the verified GitHub release."
+  if (release.sourceSupplement) {
+    const correction = sourceSupplementFor(release)
+    if (
+      !correction ||
+      release.sourceSupplement !== correction.name ||
+      release.assets[correction.name]?.sha256 !== correction.sha256
+    )
+      throw new Error("Unexpected reviewer source supplement metadata.")
+    source = read(correction.name)
+    if (source.length > 50 * 1024 * 1024)
+      throw new Error(
+        "Firefox source supplement exceeds the expected size budget."
+      )
+    verifySourceSupplement(originalSource, source, correction.gitignoreSha256)
+    reviewSourceNote =
+      "The production ZIP is the unchanged verified v5.1.0 artifact. The reviewed source supplement preserves every original source entry and adds only .gitignore from that exact tag, restoring Tailwind scan exclusions. An isolated rebuild matched all 152 production file contents; ZIP timestamps can differ outside Git."
+  }
   const files = inspect(source, [
     ".gitignore",
     "package.json",
@@ -328,7 +440,13 @@ function readVerifiedPackages(
     .join("\n")
     .trim()
   if (!releaseNotes) throw new Error("Version release notes are empty.")
-  return { archive, source, releaseNotes, version: release.version }
+  return {
+    archive,
+    source,
+    releaseNotes,
+    reviewSourceNote,
+    version: release.version
+  }
 }
 
 function createAmoClient({
@@ -421,7 +539,13 @@ function createAmoClient({
       sourceAttached: true
     }
   }
-  async function submit({ archive, source, version, releaseNotes }) {
+  async function submit({
+    archive,
+    source,
+    version,
+    releaseNotes,
+    reviewSourceNote = "Source and production ZIPs are the exact artifacts from the verified GitHub release."
+  }) {
     const existing = await status(version)
     const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
     if (existing) {
@@ -511,7 +635,7 @@ function createAmoClient({
     submission.set("license", "MIT")
     submission.set(
       "approval_notes",
-      `${marker} Source and production ZIPs are the exact artifacts from the verified GitHub release. See FIREFOX_SOURCE_README.md for Node.js/pnpm versions and build commands. No login is required. Google Fonts is optional and off by default; Firefox data consent is requested before its network access. No remote executable code is loaded.`
+      `${marker} ${reviewSourceNote} See FIREFOX_SOURCE_README.md for Node.js/pnpm versions and build commands. No login is required. Google Fonts is optional and off by default; Firefox data consent is requested before its network access. No remote executable code is loaded.`
     )
     const created = await request(`${addonPath}versions/`, "POST", submission)
     if (
@@ -570,13 +694,14 @@ async function main(args = process.argv.slice(2), env = process.env) {
     const release = await prepareRelease({
       tag: values.tag,
       runId,
-      github: createGitHubClient(env.GITHUB_TOKEN)
+      github: createGitHubClient(env.GITHUB_TOKEN),
+      requireSource: env.AMO_ACTION !== "status"
     })
     fs.writeFileSync(values.metadata, `${JSON.stringify(release, null, 2)}\n`)
     if (env.GITHUB_OUTPUT)
       fs.appendFileSync(
         env.GITHUB_OUTPUT,
-        `run_id=${release.runId}\nartifact_id=${release.artifactId}\n`
+        `run_id=${release.runId}\nartifact_id=${release.artifactId}\nsource_supplement=${release.sourceSupplement || ""}\n`
       )
     console.log(
       `Verified original Release run ${release.runId} for ${values.tag} (${release.sha}).`
@@ -594,7 +719,7 @@ async function main(args = process.argv.slice(2), env = process.env) {
   )
   if (action !== "status")
     console.log(
-      `Verified matching source SHA-256: ${release.assets[`firefox-mv3-source-${version}.zip`].sha256}`
+      `Verified submission source SHA-256: ${createHash("sha256").update(packages.source).digest("hex")}${release.sourceSupplement ? " (reviewed additive supplement)" : ""}`
     )
   if (action === "validate") return
   const client = createAmoClient({
@@ -632,6 +757,9 @@ module.exports = {
   readVerifiedPackages,
   createAmoClient,
   createGitHubClient,
+  SOURCE_SUPPLEMENT,
+  sourceSupplementFor,
+  verifySourceSupplement,
   main
 }
 if (require.main === module)

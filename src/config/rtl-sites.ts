@@ -79,7 +79,7 @@ export const RTL_SUPPORTED_SITES: RtlSiteConfig[] = [
   {
     id: "notebooklm",
     url: "https://notebooklm.google.com",
-    matches: ["notebooklm.google.com"],
+    matches: ["notebooklm.google.com", "notebook.google.com"],
     icon: "assets/logos/NotebookLM.svg",
     siteName: "NotebookLM"
   },

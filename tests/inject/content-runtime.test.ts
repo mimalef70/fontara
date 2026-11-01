@@ -5,7 +5,11 @@ import test, { afterEach } from "node:test"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
 import type { CustomFontFamily } from "../../src/custom-font-types"
-import type { SiteProfile, WebsiteItem } from "../../src/definitions"
+import type {
+  FontaraPageThemeCommandData,
+  SiteProfile,
+  WebsiteItem
+} from "../../src/definitions"
 import { CUSTOM_FONT_FACE_STORAGE_PREFIX } from "../../src/utils/custom-font-storage"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { MESSAGE_TYPES_BG_TO_CS } from "../../src/utils/message"
@@ -141,7 +145,9 @@ class FakeElement {
   }
 
   appendChild(child: FakeElement): FakeElement {
+    child.remove()
     child.parentElement = this
+    child.isConnected = true
     this.children.push(child)
     if (child.id) {
       this.elementsById.set(child.id, child)
@@ -178,7 +184,18 @@ class FakeElement {
     }
   }
 
+  removeAttribute(attributeName: string): void {
+    this.attributes.delete(attributeName)
+  }
+
   remove(): void {
+    if (this.parentElement) {
+      const siblings = this.parentElement.children
+      const index = siblings.indexOf(this)
+      if (index !== -1) siblings.splice(index, 1)
+      this.parentElement = null
+    }
+    this.isConnected = false
     if (this.id) {
       this.elementsById.delete(this.id)
     }
@@ -209,6 +226,7 @@ afterEach(() => {
 
 function createRuntimeMocks(): {
   dispatchWindowEvent: (type: string, event: { persisted?: boolean }) => void
+  deferStorageReads: () => () => void
   dispatchStorageChange: StorageListener
   getStorageGetCount: (key: string) => number
   getRegisteredFontFamilies: () => string[]
@@ -241,6 +259,8 @@ function createRuntimeMocks(): {
   const windowTimeouts = new Set<ReturnType<typeof setTimeout>>()
   const windowListeners = new Map<string, Array<(event: unknown) => void>>()
   let runtimeRemoveError: unknown = null
+  let storageReadsDeferred = false
+  const deferredStorageReads: Array<() => void> = []
   let treeWalkerCount = 0
   const matchingWebsite: WebsiteItem = {
     isActive: true,
@@ -507,7 +527,12 @@ function createRuntimeMocks(): {
           for (const key of Object.keys(keys)) {
             storageGetCounts.set(key, (storageGetCounts.get(key) ?? 0) + 1)
           }
-          callback({ ...keys, ...values })
+          const snapshot = { ...keys, ...values }
+          if (storageReadsDeferred) {
+            deferredStorageReads.push(() => callback(snapshot))
+          } else {
+            callback(snapshot)
+          }
         },
         set(items: Record<string, unknown>, callback: () => void) {
           Object.assign(values, items)
@@ -538,6 +563,13 @@ function createRuntimeMocks(): {
   }
 
   return {
+    deferStorageReads() {
+      storageReadsDeferred = true
+      return () => {
+        storageReadsDeferred = false
+        for (const read of deferredStorageReads.splice(0)) read()
+      }
+    },
     dispatchWindowEvent(type, event) {
       for (const listener of windowListeners.get(type) ?? []) {
         listener(event)
@@ -1053,5 +1085,118 @@ test("selected custom font changes load its FontFace without a reload", async ()
     assert.equal(warnCalls, 0)
   } finally {
     console.warn = originalWarn
+  }
+})
+
+function resolvedTheme(fontName: string): FontaraPageThemeCommandData {
+  return {
+    font: {
+      active: true,
+      applyMode: "font-styles",
+      customCSS: null,
+      customFontFamilyRevision: null,
+      customFontFamilyValue: null,
+      fontFaceCSS: "@font-face { font-family: Test; src: local(Test) }",
+      fontName,
+      googleFontCSS: null,
+      textStrokeCSS: ""
+    },
+    rtl: { active: false, siteId: null }
+  }
+}
+
+async function flushThemeWork(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+test("ordered cleanup removes active styles even when local storage is stale", async () => {
+  const runtime = createRuntimeMocks()
+  const { createContentThemeScheduler } = await import(
+    "../../src/inject/content-theme-scheduler"
+  )
+  const { cleanupResolvedPageTheme } = await import(
+    "../../src/inject/theme-applier"
+  )
+  cleanupResolvedPageTheme()
+  const warnings: unknown[] = []
+  const scheduler = createContentThemeScheduler({
+    isDisposed: () => false,
+    onExtensionContextInvalidated: () => assert.fail("unexpected invalidation"),
+    sendDocumentLifecycleMessage: () => true,
+    warn: (_message, error) => warnings.push(error)
+  })
+  const order = (sequence: number) => ({
+    dispatcherId: "worker",
+    sequence,
+    settingsRevision: sequence
+  })
+  try {
+    scheduler.scheduleLocalThemeApply("font-styles")
+    await flushThemeWork()
+    assert.match(runtime.getStyleText("fontara-font-styles"), /@font-face/)
+    scheduler.cleanUpThemeCommand(order(1))
+    assert.equal(runtime.getStyleText("fontara-font-styles"), "")
+    assert.equal(runtime.getStyleText("fontara-dynamic-font"), "")
+    await flushThemeWork()
+    assert.equal(
+      runtime.getStyleText("fontara-dynamic-font"),
+      "",
+      "stale active storage must not re-enable an ordered cleanup"
+    )
+    assert.deepEqual(warnings, [])
+  } finally {
+    scheduler.dispose()
+    cleanupResolvedPageTheme()
+  }
+})
+
+test("delayed inactive storage cannot clear a newer font after a quick off/on", async () => {
+  const runtime = createRuntimeMocks()
+  const { createContentThemeScheduler } = await import(
+    "../../src/inject/content-theme-scheduler"
+  )
+  const { cleanupResolvedPageTheme } = await import(
+    "../../src/inject/theme-applier"
+  )
+  cleanupResolvedPageTheme()
+  const warnings: unknown[] = []
+  const scheduler = createContentThemeScheduler({
+    isDisposed: () => false,
+    onExtensionContextInvalidated: () => assert.fail("unexpected invalidation"),
+    sendDocumentLifecycleMessage: () => true,
+    warn: (_message, error) => warnings.push(error)
+  })
+  const order = (sequence: number) => ({
+    dispatcherId: "worker",
+    sequence,
+    settingsRevision: sequence
+  })
+  runtime.values[STORAGE_KEYS.EXTENSION_ENABLED] = false
+  const finishReads = runtime.deferStorageReads()
+  try {
+    scheduler.scheduleLocalThemeApply("font-styles")
+    await flushThemeWork()
+    scheduler.cleanUpThemeCommand(order(1))
+    scheduler.applyThemeCommand(resolvedTheme("New Font"), order(2))
+    await flushThemeWork()
+    assert.match(runtime.getStyleText("fontara-dynamic-font"), /"New Font"/)
+    finishReads()
+    await flushThemeWork()
+    assert.match(
+      runtime.getStyleText("fontara-dynamic-font"),
+      /"New Font"/,
+      "the old storage snapshot must not undo the latest apply"
+    )
+    scheduler.cleanUpThemeCommand(order(1))
+    assert.match(
+      runtime.getStyleText("fontara-dynamic-font"),
+      /"New Font"/,
+      "a delayed older cleanup command must be rejected"
+    )
+    assert.deepEqual(warnings, [])
+  } finally {
+    finishReads()
+    scheduler.dispose()
+    cleanupResolvedPageTheme()
   }
 })

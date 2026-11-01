@@ -7,16 +7,66 @@
   --fontara-notebooklm-google-sans-display-fallback: "Google Sans";
 }
 
-.date-separator,
-.label-medium-button,
-.mat-label-medium,
-.mat-mdc-button,
-.mat-mdc-checkbox .mat-internal-form-field,
-.mat-mdc-form-field,
-.mat-mdc-form-field-subscript-wrapper,
-.mat-mdc-outlined-button,
-.mat-tonal-button,
-.query-box-input {
+/* Protect code, math, and icons across every text selector branch. */
+:is(
+  body,
+  html,
+  .to-copy-content,
+  .to-copy-content *,
+  body :where(
+    p,
+    span,
+    div,
+    h1, h2, h3, h4, h5, h6,
+    li,
+    button,
+    input,
+    textarea,
+    a,
+    label
+  ),
+  .date-separator,
+  .label-medium-button,
+  .mat-label-medium,
+  .mat-mdc-button,
+  .mat-mdc-checkbox .mat-internal-form-field,
+  .mat-mdc-form-field,
+  .mat-mdc-form-field-subscript-wrapper,
+  .mat-mdc-outlined-button,
+  .mat-tonal-button,
+  .query-box-input
+):not(
+  [style*="font-"],
+  [style*="font-"] *,
+  pre,
+  pre *,
+  code,
+  code *,
+  [class*="code" i],
+  [class*="code" i] *,
+  .katex,
+  .katex *,
+  math,
+  math *,
+  [role="math"],
+  [role="math"] *,
+  mjx-container,
+  mjx-container *,
+  [class*="icon" i],
+  [class*="icon" i] *,
+  [class*="symbol" i],
+  [class*="symbol" i] *,
+  [aria-hidden="true"],
+  [aria-hidden="true"] *,
+  [class*="fa-"],
+  [class*="fa-"] *,
+  mat-icon,
+  mat-icon *,
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
+) {
   font-family: var(--fontara-font),
     var(--fontara-notebooklm-google-sans-text-fallback) !important;
 }

@@ -10,6 +10,7 @@
     "Microsoft JhengHei", "Noto Sans CJK TC", "PingFang SC",
     "Microsoft YaHei", "Noto Sans CJK SC", "Apple SD Gothic Neo",
     "Malgun Gothic", "Noto Sans CJK KR", serif;
+  --fontara-claude-message-fallback: var(--fontara-claude-anthropic-serif-display-fallback);
 }
 
 .cds-root[data-font],
@@ -18,14 +19,83 @@
     var(--fontara-claude-anthropic-sans-root-fallback) !important;
 }
 
-.font-base,
-.font-base-bold,
-.font-large,
-.font-small,
-.font-ui,
-.sm\:font-base,
-body,
-html {
+/* Protect code, math, and icons across every text selector branch. */
+:is(
+  .font-base,
+  .font-base-bold,
+  .font-large,
+  .font-small,
+  .font-ui,
+  .sm\:font-base,
+  .font-claude-response-body,
+  .font-claude-message,
+  .font-user-message,
+  [class*="font-claude-"],
+  [class*="font-tiempos"],
+  .font-serif,
+  [data-sourcepos],
+  [data-row-label],
+  [data-row-label] *,
+  .dframe-fade-label,
+  [class*="dframe-"],
+  [data-cds="Prose"],
+  .prose,
+  .standard-markdown,
+  .standard-markdown :where(
+    p,
+    span,
+    div,
+    li,
+    ul,
+    ol,
+    strong,
+    em,
+    b,
+    i,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    blockquote,
+    td,
+    th
+  ),
+  body,
+  html
+):not(
+  [style*="font-"],
+  [style*="font-"] *,
+  pre,
+  pre *,
+  code,
+  code *,
+  [class*="code" i],
+  [class*="code" i] *,
+  .katex,
+  .katex *,
+  math,
+  math *,
+  [role="math"],
+  [role="math"] *,
+  mjx-container,
+  mjx-container *,
+  [class*="icon" i],
+  [class*="icon" i] *,
+  [class*="symbol" i],
+  [class*="symbol" i] *,
+  [aria-hidden="true"],
+  [aria-hidden="true"] *,
+  [class*="fa-"],
+  [class*="fa-"] *,
+  mat-icon,
+  mat-icon *,
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
+) {
   font-family: var(--fontara-font),
     var(--fontara-claude-anthropic-sans-ui-fallback) !important;
 }
@@ -33,4 +103,60 @@ html {
 .font-display {
   font-family: var(--fontara-font),
     var(--fontara-claude-anthropic-serif-display-fallback) !important;
+}
+
+[class*="font-user-message"] {
+  --fontara-claude-message-fallback: var(--fontara-claude-anthropic-sans-ui-fallback);
+}
+
+:is(article, [data-test-render-count], .font-claude-message, [role="article"], [class*="font-user-message"]) :where(
+  p,
+  span,
+  div,
+  mark,
+  a,
+  h1, h2, h3, h4, h5, h6,
+  li,
+  label,
+  blockquote,
+  figcaption,
+  summary,
+  dt, dd,
+  th, td, caption,
+  legend,
+  [role="heading"]
+):not(
+  [style*="font-"],
+  [style*="font-"] *,
+  pre,
+  pre *,
+  code,
+  code *,
+  [class*="code" i],
+  [class*="code" i] *,
+  .katex,
+  .katex *,
+  math,
+  math *,
+  [role="math"],
+  [role="math"] *,
+  mjx-container,
+  mjx-container *,
+  [class*="icon" i],
+  [class*="icon" i] *,
+  [class*="symbol" i],
+  [class*="symbol" i] *,
+  [aria-hidden="true"],
+  [aria-hidden="true"] *,
+  [class*="fa-"],
+  [class*="fa-"] *,
+  mat-icon,
+  mat-icon *,
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
+) {
+  font-family: var(--fontara-font),
+    var(--fontara-claude-message-fallback) !important;
 }

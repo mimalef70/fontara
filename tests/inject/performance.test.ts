@@ -277,7 +277,7 @@ test("content messaging helpers own runtime messaging and teardown errors", () =
     /export function isExpectedRuntimeTeardownError/
   )
   assert.match(messagingSource, /runtime\.sendMessage\(message/)
-  assert.match(messagingSource, /chrome\.runtime\?\.lastError/)
+  assert.match(messagingSource, /runtime\.lastError/)
   assert.match(messagingSource, /onExtensionContextInvalidated/)
   assert.match(runtimeSource, /from "\.\/content-messaging"/)
   assert.match(runtimeSource, /sendDocumentLifecycleMessage/)

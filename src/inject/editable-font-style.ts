@@ -31,7 +31,10 @@ const CODE_EDITABLE_GUARD_SELECTORS = [
   '[class*="code-editor" i]',
   '[class*="code_editor" i]',
   '[class*="codemirror" i]',
-  '[class*="monaco" i]'
+  '[class*="monaco" i]',
+  "#waffle-rich-text-editor",
+  ".cell-input",
+  ".docs-texteventtarget-iframe"
 ]
 const CODE_EDITABLE_GUARD_SELECTOR = `:is(${CODE_EDITABLE_GUARD_SELECTORS.join(", ")})`
 const EDITABLE_CODE_SCOPE_GUARD = `:not(${CODE_EDITABLE_GUARD_SELECTOR}):not(${CODE_EDITABLE_GUARD_SELECTOR} *)`
@@ -182,6 +185,13 @@ export function isContentEditableElement(element: HTMLElement): boolean {
 }
 
 function isCodeEditableElement(element: HTMLElement): boolean {
+  if (
+    element.closest?.(
+      ".docos-input-textarea, .docos-input-contenteditable, [class*='docos-']"
+    )
+  ) {
+    return false
+  }
   return Boolean(element.closest?.(CODE_EDITABLE_GUARD_SELECTOR))
 }
 

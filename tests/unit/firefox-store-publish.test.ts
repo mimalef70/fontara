@@ -30,7 +30,8 @@ const packages = { archive, source, version, releaseNotes: "Release notes" }
 const issuer = "user:1234:5678"
 const secret = "test-amo-secret-never-print"
 const addon = { guid: GUID, status: "public", is_disabled: false }
-const uploadId = "abcdef12-1234-1234-1234-123456789abc"
+// FileUploadSerializer returns uuid.hex, without hyphens.
+const uploadId = "abcdef12123442348234123456789abc"
 const uploaded = {
   uuid: uploadId,
   channel: "listed",
@@ -44,7 +45,8 @@ const detail = {
   version,
   channel: "listed",
   file: { status: "unreviewed" },
-  source: "https://addons.mozilla.org/source.zip"
+  source: "https://addons.mozilla.org/source.zip",
+  release_notes: { "en-US": packages.releaseNotes }
 }
 const missing = () => Response.json({ detail: "Not found" }, { status: 404 })
 type Reply = Record<string, unknown> | Response
@@ -263,7 +265,7 @@ test("release provenance rejects forks, wrong tags, unrelated workflows, and inc
   )
 })
 
-test("AMO submission sends original ZIP bytes and attaches source atomically", async () => {
+test("AMO compact UUID submission polls the exact upload and attaches source atomically", async () => {
   const { client, requests } = harness([
     addon,
     missing(),
@@ -278,6 +280,11 @@ test("AMO submission sends original ZIP bytes and attaches source atomically", a
   const result = await client.submit(packages)
   assert.equal(result.state, "unreviewed")
   assert.equal(result.unchanged, false)
+  assert.equal(result.uploadId, uploadId)
+  assert.equal(
+    requests[4].url,
+    `https://addons.mozilla.org/api/v5/addons/upload/${uploadId}/`
+  )
   const upload = requests[3].init.body as FormData
   assert.equal(upload.get("channel"), "listed")
   assert.deepEqual(
@@ -294,6 +301,7 @@ test("AMO submission sends original ZIP bytes and attaches source atomically", a
   assert.deepEqual(JSON.parse(String(requests[6].init.body)), {
     release_notes: { "en-US": "Release notes" }
   })
+  assert.ok(requests[8].url.endsWith(`/versions/${version}/?show_source=true`))
   assert.ok(
     requests.every(
       ({ url, init }) =>
@@ -303,8 +311,72 @@ test("AMO submission sends original ZIP bytes and attaches source atomically", a
   )
 })
 
+test("hyphenated upload UUIDs remain supported without rewriting the identifier", async () => {
+  const uuid = "abcdef12-1234-4234-8234-123456789abc"
+  const { client, requests } = harness([
+    addon,
+    missing(),
+    { results: [] },
+    { ...uploaded, uuid, processed: false },
+    { ...uploaded, uuid },
+    detail,
+    detail,
+    addon,
+    detail
+  ])
+  assert.equal((await client.submit(packages)).uploadId, uuid)
+  assert.equal(
+    requests[4].url,
+    `https://addons.mozilla.org/api/v5/addons/upload/${uuid}/`
+  )
+  assert.equal((requests[5].init.body as FormData).get("upload"), uuid)
+})
+
+test("malformed upload identifiers cannot trigger polling or version creation", async () => {
+  for (const uuid of [
+    "",
+    null,
+    123,
+    [uploadId],
+    { value: uploadId },
+    "a".repeat(31),
+    "a".repeat(33),
+    uploadId.toUpperCase(),
+    "abcdef12-1234-4234-8234123456789abc",
+    `${uploadId}/../addon`,
+    `${uploadId}?channel=unlisted`,
+    `${uploadId}\n`,
+    `https://example.com/${uploadId}`
+  ]) {
+    const { client, requests } = harness([
+      addon,
+      missing(),
+      { results: [] },
+      { ...uploaded, uuid, processed: false }
+    ])
+    await assert.rejects(client.submit(packages), /invalid identifier/)
+    assert.equal(requests.length, 4)
+  }
+})
+
+test("polling a different valid UUID never submits a version", async () => {
+  const { client, requests } = harness([
+    addon,
+    missing(),
+    { results: [] },
+    { ...uploaded, processed: false },
+    { ...uploaded, uuid: "bbcdef12123442348234123456789abc" }
+  ])
+  await assert.rejects(client.submit(packages), /validation did not succeed/)
+  assert.equal(requests.length, 5)
+  assert.equal(requests.filter(({ init }) => init.method === "POST").length, 1)
+})
+
 test("same-version submission is read-only and does not overwrite dashboard metadata", async () => {
-  const { client, requests } = harness([addon, detail])
+  const { client, requests } = harness([
+    addon,
+    { ...detail, release_notes: { "en-US": "Dashboard notes" } }
+  ])
   const result = await client.submit(packages)
   assert.equal(result.unchanged, true)
   assert.ok(requests.every(({ init }) => init.method === "GET"))
@@ -312,12 +384,35 @@ test("same-version submission is read-only and does not overwrite dashboard meta
 
 test("retries repair metadata only for an interrupted submission with matching artifact markers", async () => {
   const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
-  const owned = { ...detail, approval_notes: marker }
+  const owned = { ...detail, approval_notes: marker, release_notes: null }
   const { client, requests } = harness([addon, owned, detail, addon, detail])
   const result = await client.submit(packages)
   assert.equal(result.metadataUpdated, true)
   assert.equal(result.unchanged, true)
   assert.equal(requests.filter(({ init }) => init.method === "POST").length, 0)
+})
+
+test("new submissions and metadata repairs require release-note readback confirmation", async () => {
+  const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
+  const owned = { ...detail, approval_notes: marker, release_notes: null }
+  for (const staleNotes of [null, { "en-US": "Old release notes" }]) {
+    for (const replies of [
+      [addon, missing(), { results: [] }, uploaded, detail],
+      [addon, owned]
+    ]) {
+      const { client, requests } = harness([
+        ...replies,
+        detail,
+        addon,
+        { ...detail, release_notes: staleNotes }
+      ])
+      await assert.rejects(client.submit(packages), /intended release notes/)
+      assert.equal(
+        requests.filter(({ init }) => init.method === "PATCH").length,
+        1
+      )
+    }
+  }
 })
 
 test("missing sources, disabled versions, and conflicting pending releases stop submission", async () => {

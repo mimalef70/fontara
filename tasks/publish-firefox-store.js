@@ -510,7 +510,7 @@ function createAmoClient({
     releaseVersion(`v${version}`)
     await addon()
     const detail = await request(
-      `${addonPath}versions/${encodeURIComponent(version)}/`,
+      `${addonPath}versions/${encodeURIComponent(version)}/?show_source=true`,
       "GET",
       undefined,
       true
@@ -520,7 +520,7 @@ function createAmoClient({
     }
     return detail
   }
-  function accepted(detail, version) {
+  function accepted(detail, version, releaseNotes) {
     if (
       detail?.version !== version ||
       detail.channel !== "listed" ||
@@ -530,6 +530,14 @@ function createAmoClient({
     ) {
       throw new Error(
         "AMO version is not an accepted listed submission with source attached; inspect its dashboard."
+      )
+    }
+    if (
+      releaseNotes !== undefined &&
+      detail.release_notes?.["en-US"] !== releaseNotes
+    ) {
+      throw new Error(
+        "AMO did not confirm the intended release notes; check status before retrying submission."
       )
     }
     return {
@@ -560,7 +568,7 @@ function createAmoClient({
           release_notes: { "en-US": releaseNotes }
         })
         return {
-          ...accepted(await status(version), version),
+          ...accepted(await status(version), version, releaseNotes),
           unchanged: true,
           metadataUpdated: true
         }
@@ -598,13 +606,16 @@ function createAmoClient({
       "firefox-mv3-prod.zip"
     )
     let upload = await request("upload/", "POST", form)
+    const uploadId = upload?.uuid
+    // AMO's FileUploadSerializer uses UUIDField(format='hex'). Retain the
+    // hyphenated UUID form for compatibility without accepting arbitrary paths.
     if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
-        upload.uuid || ""
+      typeof uploadId !== "string" ||
+      !/^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.test(
+        uploadId
       )
     )
       throw new Error("AMO upload returned an invalid identifier.")
-    const uploadId = upload.uuid
     for (
       let attempt = 0;
       !upload.processed && attempt < pollAttempts;
@@ -651,7 +662,11 @@ function createAmoClient({
       release_notes: { "en-US": releaseNotes }
     })
     const confirmed = await status(version)
-    return { ...accepted(confirmed, version), unchanged: false, uploadId }
+    return {
+      ...accepted(confirmed, version, releaseNotes),
+      unchanged: false,
+      uploadId
+    }
   }
   return { status, submit }
 }

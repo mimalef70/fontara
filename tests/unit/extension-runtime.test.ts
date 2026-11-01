@@ -40,8 +40,9 @@ function createStorageChange(
 function installChromeRuntimeMock(
   localValues: Record<string, unknown>,
   syncValues: Record<string, unknown>
-): void {
+): { getUninstallURL: () => string } {
   let runtimeError: { message?: string } | undefined
+  let uninstallURL = "https://legacy-survey.example/uninstall"
   const storageListeners: Array<
     (
       changes: Record<string, chrome.storage.StorageChange>,
@@ -98,7 +99,10 @@ function installChromeRuntimeMock(
         addListener() {}
       },
       sendMessage() {},
-      setUninstallURL() {}
+      setUninstallURL(url: string, callback?: () => void) {
+        uninstallURL = url
+        callback?.()
+      }
     },
     storage: {
       local: {
@@ -187,7 +191,18 @@ function installChromeRuntimeMock(
       }
     }
   })
+  return { getUninstallURL: () => uninstallURL }
 }
+
+test("startup clears a previously registered third-party uninstall page", async () => {
+  const mock = installChromeRuntimeMock(
+    { [STORAGE_KEYS.SYNC_SETTINGS]: false },
+    {}
+  )
+  await ExtensionRuntime.start()
+  assert.equal(mock.getUninstallURL(), "")
+  await new Promise((resolve) => setTimeout(resolve, 40))
+})
 
 test("runtime collect does not re-apply stale sync values after a local settings change", async () => {
   const localValues: Record<string, unknown> = {

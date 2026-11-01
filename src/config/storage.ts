@@ -38,8 +38,7 @@ export const DEFAULT_VALUES = {
 
 export const URLS = {
   WELCOME_PAGE: "https://mimalef70.github.io/fontara",
-  CHANGELOG: "https://mimalef70.github.io/fontara#changelogs",
-  UNINSTALL_FORM: "https://app.mu.chat/forms/cm7x2dyjo0ajl01lfci211xev"
+  CHANGELOG: "https://mimalef70.github.io/fontara#changelogs"
 }
 
 export const ICON_PATHS = {

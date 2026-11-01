@@ -241,11 +241,50 @@ class FakeTextAreaElement extends FakeHTMLElement {
 }
 
 class FakeMutationObserver {
-  disconnect(): void {}
-  observe(): void {}
+  static instances: FakeMutationObserver[] = []
+  private options: MutationObserverInit | null = null
+
+  constructor(private callback: MutationCallback) {
+    FakeMutationObserver.instances.push(this)
+  }
+
+  disconnect(): void {
+    this.options = null
+  }
+
+  observe(_target: Node, options: MutationObserverInit): void {
+    this.options = options
+  }
+
+  static notifyAttributeMutation(
+    target: FakeHTMLElement,
+    attributeName: string
+  ): void {
+    for (const observer of FakeMutationObserver.instances) {
+      if (
+        !observer.options?.attributes ||
+        !observer.options.attributeFilter?.includes(attributeName)
+      ) {
+        continue
+      }
+      observer.callback(
+        [
+          {
+            addedNodes: [],
+            attributeName,
+            removedNodes: [],
+            target,
+            type: "attributes"
+          } as unknown as MutationRecord
+        ],
+        observer as unknown as MutationObserver
+      )
+    }
+  }
 }
 
 afterEach(() => {
+  FakeMutationObserver.instances = []
   for (const { exists, key, value } of ORIGINAL_GLOBALS) {
     if (exists) {
       Reflect.set(globalThis, key, value)
@@ -603,6 +642,140 @@ test("RTL auto direction cleans up disconnected tracked inputs", () => {
   assert.equal(input.listenerCount("input"), 0)
 
   autoDirection.disable()
+})
+
+function forbidValueReads(element: FakeInputElement | FakeTextAreaElement) {
+  Object.defineProperty(element, "value", {
+    configurable: true,
+    get() {
+      throw new Error("Sensitive field value must not be read")
+    }
+  })
+}
+
+test("RTL auto direction never reads password, verification, or payment fields", () => {
+  const password = new FakeInputElement()
+  password.type = "password"
+  const sensitive: Array<FakeInputElement | FakeTextAreaElement> = [password]
+  for (const autocomplete of [
+    "current-password",
+    "new-password",
+    "one-time-code",
+    "section-checkout billing cc-number",
+    "section-checkout CC-CSC",
+    "cc-exp-month",
+    "cc-exp-year",
+    "cc-name"
+  ]) {
+    const input = new FakeInputElement()
+    input.setAttribute("autocomplete", autocomplete)
+    sensitive.push(input)
+  }
+  const textarea = new FakeTextAreaElement()
+  textarea.setAttribute("autocomplete", "one-time-code")
+  sensitive.push(textarea)
+  for (const field of sensitive) {
+    field.dir = "ltr"
+    field.style.textAlign = "center"
+    forbidValueReads(field)
+  }
+  installRtlDom(sensitive)
+  const autoDirection = new RtlAutoDirection()
+
+  assert.doesNotThrow(() => autoDirection.enable())
+  for (const field of sensitive) {
+    assert.equal(field.listenerCount("input"), 0)
+    assert.equal(field.listenerCount("change"), 0)
+    assert.equal(field.listenerCount("compositionend"), 0)
+    assert.equal(field.dir, "ltr")
+    assert.equal(field.style.textAlign, "center")
+  }
+  autoDirection.disable()
+})
+
+test("RTL auto direction stops before a password input event can read its value", () => {
+  const input = new FakeInputElement()
+  input.value = "سلام"
+  input.dir = "ltr"
+  input.style.direction = "ltr"
+  input.style.textAlign = "center"
+  installRtlDom([input])
+  const autoDirection = new RtlAutoDirection()
+  autoDirection.enable()
+  assert.equal(input.dir, "rtl")
+  assert.equal(input.listenerCount("input"), 1)
+
+  input.type = "password"
+  forbidValueReads(input)
+  // Input dispatch can precede delivery of the type attribute mutation.
+  assert.doesNotThrow(() => input.dispatchEvent("input"))
+  assert.equal(input.listenerCount("input"), 0)
+  assert.equal(input.listenerCount("change"), 0)
+  assert.equal(input.listenerCount("compositionend"), 0)
+  assert.equal(input.dir, "ltr")
+  assert.equal(input.style.direction, "ltr")
+  assert.equal(input.style.textAlign, "center")
+  FakeMutationObserver.notifyAttributeMutation(input, "type")
+  input.type = "text"
+  FakeMutationObserver.notifyAttributeMutation(input, "type")
+  assert.equal(input.listenerCount("input"), 0)
+  assert.doesNotThrow(() => input.dispatchEvent("input"))
+  autoDirection.disable()
+})
+
+test("RTL auto direction responds to sensitive autocomplete attribute changes", () => {
+  const input = new FakeInputElement()
+  input.value = "سلام"
+  input.dir = "ltr"
+  installRtlDom([input])
+  const autoDirection = new RtlAutoDirection()
+  autoDirection.enable()
+  assert.equal(input.dir, "rtl")
+
+  input.setAttribute("autocomplete", "section-account one-time-code")
+  forbidValueReads(input)
+  assert.doesNotThrow(() =>
+    FakeMutationObserver.notifyAttributeMutation(input, "autocomplete")
+  )
+  assert.equal(input.listenerCount("input"), 0)
+  assert.equal(input.dir, "ltr")
+
+  Object.defineProperty(input, "value", {
+    configurable: true,
+    value: "سلام دوباره",
+    writable: true
+  })
+  input.setAttribute("autocomplete", "off")
+  FakeMutationObserver.notifyAttributeMutation(input, "autocomplete")
+  assert.equal(input.listenerCount("input"), 1)
+  assert.equal(input.dir, "rtl")
+
+  // The immediate event guard also covers autocomplete changes, before the
+  // asynchronous MutationObserver callback is delivered.
+  input.setAttribute("autocomplete", "cc-number")
+  forbidValueReads(input)
+  assert.doesNotThrow(() => input.dispatchEvent("change"))
+  assert.equal(input.listenerCount("input"), 0)
+  assert.equal(input.dir, "ltr")
+  autoDirection.disable()
+})
+
+test("RTL auto direction lets native bidi fields work without reading values", () => {
+  const input = new FakeInputElement()
+  const textarea = new FakeTextAreaElement()
+  textarea.dir = "auto"
+  for (const field of [input, textarea]) forbidValueReads(field)
+  installRtlDom([input, textarea])
+  const autoDirection = new RtlAutoDirection()
+
+  assert.doesNotThrow(() => autoDirection.enable())
+  assert.equal(input.dir, "auto")
+  assert.equal(textarea.dir, "auto")
+  assert.doesNotThrow(() => input.dispatchEvent("input"))
+  assert.doesNotThrow(() => textarea.dispatchEvent("input"))
+  autoDirection.disable()
+  assert.equal(input.dir, "")
+  assert.equal(textarea.dir, "auto")
 })
 
 test("RTL engine reads textContent without forcing innerText layout", () => {

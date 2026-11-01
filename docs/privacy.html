@@ -1,62 +1,127 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>سیاست حریم خصوصی FontARA</title>
-    <meta name="description" content="سیاست حریم خصوصی افزونه FontARA">
+    <title>FontAra Privacy Policy · حریم خصوصی · سياسة الخصوصية</title>
+    <meta name="description" content="How FontAra handles page text, site settings, custom fonts, browser sync, and optional Google Fonts. English, فارسی, العربية.">
     <style>
       :root { color-scheme: light; font-family: system-ui, sans-serif; line-height: 1.8; }
       body { margin: 0; color: #172033; background: #f7f9fc; }
-      main { max-width: 780px; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+      main { max-width: 820px; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
       article { padding: clamp(1.25rem, 4vw, 3rem); background: white; border: 1px solid #dbe3ef; border-radius: 1rem; box-shadow: 0 12px 36px rgb(25 50 90 / 8%); }
-      h1, h2 { line-height: 1.4; color: #101828; }
+      h1, h2, h3 { line-height: 1.4; color: #101828; }
       h1 { margin-top: 0; }
-      h2 { margin-top: 2rem; font-size: 1.15rem; }
-      a { color: #175cd3; }
+      h2 { margin-top: 2rem; }
+      h3 { margin-top: 1.75rem; font-size: 1.15rem; }
+      a { color: #175cd3; overflow-wrap: anywhere; }
+      a:focus-visible { outline: 3px solid #175cd3; outline-offset: 4px; border-radius: 2px; }
+      nav { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin-block: 1rem 2rem; }
       .summary { padding: 1rem; background: #eef5ff; border-radius: .75rem; }
       .meta { color: #526074; font-size: .9rem; }
-      [lang="en"] { direction: ltr; text-align: left; }
+      section { scroll-margin-top: 1.5rem; }
+      section + section { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #dbe3ef; }
+      code { overflow-wrap: anywhere; }
+      [dir="rtl"] { text-align: start; }
     </style>
   </head>
   <body>
     <main>
       <article>
-        <h1>سیاست حریم خصوصی FontARA</h1>
-        <p class="meta">تاریخ اجرا: ۲۰ تیر ۱۴۰۵ (۱۱ ژوئیهٔ ۲۰۲۶) · نسخهٔ سیاست: ۱٫۰</p>
+        <h1>FontAra Privacy Policy</h1>
+        <nav aria-label="Policy language">
+          <a href="#en" lang="en">English</a>
+          <a href="#fa" lang="fa" dir="rtl">فارسی</a>
+          <a href="#ar" lang="ar" dir="rtl">العربية</a>
+        </nav>
 
-        <p class="summary"><strong>خلاصه:</strong> FontARA دادهٔ مرور، محتوای صفحه یا فایل فونت شما را برای سازندهٔ افزونه ارسال نمی‌کند. پردازش در مرورگر انجام می‌شود. تنها درخواست شبکهٔ اختیاری افزونه مربوط به Google Fonts است و فقط پس از فعال‌کردن آن توسط کاربر انجام می‌شود.</p>
+        <section id="en" lang="en" dir="ltr" aria-labelledby="en-title">
+          <h2 id="en-title">English</h2>
+          <p class="meta">Updated November 1, 2026 · Policy 1.1 · Describes FontAra 5.1.0 and later. Older versions may handle fonts differently; update to receive the privacy improvements described here.</p>
+          <p class="summary">FontAra changes website fonts and right-to-left text presentation. It processes page addresses and text in your browser. It has no analytics, advertising, or FontAra data-collection server. Browser settings sync and optional Google Fonts have the external data flows explained below.</p>
 
-        <h2>داده‌هایی که FontARA پردازش می‌کند</h2>
-        <p>برای اعمال فونت و تنظیمات هر سایت، افزونه باید آدرس و محتوای قابل‌نمایش همان صفحه را داخل مرورگر پردازش کند. آدرس کامل تب و فریم فقط به‌صورت موقت در حافظهٔ runtime استفاده می‌شود. نام میزبان به حروف کوچک برای قوانین دامنه ذخیره می‌شود؛ path فقط وقتی نگه‌داری می‌شود که کاربر صریحاً scope مسیر را انتخاب کند. نام کاربری، گذرواژه، query و hash در تنظیمات، sync یا فایل پشتیبان ذخیره نمی‌شوند.</p>
+          <h3>Page addresses and text</h3>
+          <p>FontAra uses the current page and frame addresses to match your site rules. Its content script inspects visible text and editable text, including messages or email text displayed on a page, to determine writing direction and apply typography. This processing is local and temporary: FontAra does not keep a browsing-history log, record keystrokes, retain message contents, or send page addresses or contents to the developer or Google Fonts. Smart RTL skips password fields and fields marked for passwords, payment-card details, or one-time codes.</p>
+          <p>Saved site rules contain a hostname and, when you explicitly choose a path-based rule, a path. The extension removes URL credentials, query strings, and fragments when it creates these rules. Review rules you enter yourself before syncing or exporting them.</p>
 
-        <h2>ذخیره‌سازی محلی و همگام‌سازی</h2>
-        <p>تنظیمات در storage افزونهٔ مرورگر ذخیره می‌شوند. اگر همگام‌سازی فعال باشد، تنظیمات قابل‌همگام‌سازی از طریق سرویس sync خود مرورگر و مطابق حساب و سیاست حریم خصوصی ارائه‌دهندهٔ مرورگر منتقل می‌شوند. FontARA سرور sync مستقلی ندارد.</p>
-        <p>فایل‌های Custom Font به‌صورت blobهای جداگانه و content-addressed فقط در storage محلی افزونه نگه‌داری می‌شوند؛ باینری آن‌ها وارد browser sync، پیام‌های عمومی UI یا DOM صفحه نمی‌شود و به سرور FontARA ارسال نمی‌شود. فقط وقتی کاربر خودش خروجی پشتیبان می‌گیرد، باینری فونت در فایل پشتیبان دانلودشده روی دستگاه او قرار می‌گیرد.</p>
+          <h3>Settings, fonts, and browser sync</h3>
+          <p>Preferences, saved site rules, and per-site profiles are stored in browser extension storage. Settings sync is enabled by default in FontAra, but transfer depends on your browser account and its sync settings. You can disable it in FontAra Settings. While sync is enabled, eligible preferences and saved site rules are handled by your browser provider under its privacy policy; FontAra operates no separate sync server.</p>
+          <p>Custom-font files and cached Google font binaries stay in local extension storage. Custom-font files and installed-system-font selections are excluded from settings sync. Font files are not exposed as base64 text in the page DOM. An exported backup can include your custom fonts and saved site rules; export happens only at your request, so keep that file private.</p>
 
-        <h2>Google Fonts اختیاری</h2>
-        <p>Google Fonts در نصب اولیه خاموش است. پس از opt-in کاربر، خود افزونه در پس‌زمینه CSS و فایل‌های WOFF2 فونت انتخاب‌شده را از <code>fonts.googleapis.com</code> و <code>fonts.gstatic.com</code> دریافت، اعتبارسنجی و در storage محلی کش می‌کند. درخواست از داخل صفحهٔ وب انجام نمی‌شود و مبدأ صفحه برای Google ارسال نمی‌شود. Google همچنان می‌تواند نشانی IP، user agent، فرادادهٔ معمول درخواست و منبع فونت درخواستی را ببیند که ممکن است انتخاب فونت را مشخص کند. خاموش‌کردن قابلیت یا پس‌گرفتن مجوز فایرفاکس درخواست‌های در حال اجرا را متوقف می‌کند.</p>
+          <h3>Optional Google Fonts</h3>
+          <p>Google Fonts is off by default. If you enable it and select a Google font, the extension background requests font CSS and WOFF2 files over HTTPS from <code>fonts.googleapis.com</code> and <code>fonts.gstatic.com</code>. It validates and caches the font files locally. The requests omit credentials and referrers and do not send the visited page address or content. Google still receives your IP address, ordinary request metadata, and the requested font resource, which can reveal your font choice. FontAra does not request GPS coordinates or infer your location.</p>
+          <p>Disable Google Fonts to stop new requests and cancel pending downloads. You can clear its cache in Settings. Supported Firefox versions also request an optional data-consent permission; revoking it stops Google Fonts requests.</p>
 
-        <h2>مجوزهای مرورگر</h2>
-        <p>دسترسی سایت‌ها برای اعمال فونت روی صفحه‌های وب استفاده می‌شود. <code>storage</code> و <code>unlimitedStorage</code> برای تنظیمات و کتابخانهٔ محلی فونت لازم‌اند. <code>fontSettings</code> فقط در Chromium برای فهرست‌کردن نام فونت‌های نصب‌شده به‌کار می‌رود؛ Firefox فقط خانواده‌های عمومی CSS مانند <code>system-ui</code> را ارائه می‌کند. <code>contextMenus</code> اختیاری است. در Firefoxهای پشتیبانی‌شده، مجوز اختیاری <code>technicalAndInteraction</code> فقط هنگام روشن‌کردن Google Fonts درخواست می‌شود و با پس‌گرفتن آن شبکهٔ Google Fonts فوراً متوقف می‌شود.</p>
+          <h3>Permissions and external pages</h3>
+          <p>Website access lets the bundled content script apply fonts and direction on HTTP(S) pages you enable. <code>storage</code> and <code>unlimitedStorage</code> support preferences and the local font library. Chromium's <code>fontSettings</code> lists installed font names when you enable system fonts; it does not change Chrome's global font settings. <code>contextMenus</code> is requested only when you enable right-click shortcuts. All executable code is bundled with the extension.</p>
+          <p>FontAra opens its GitHub Pages welcome page on installation and its changelog on update. Help and source links open external websites when selected. Those sites receive normal browser navigation data and have their own privacy practices. This version clears the older third-party uninstall survey, so uninstalling does not open it. The FontAra website contains no analytics or advertising SDK.</p>
 
-        <h2>جمع‌آوری، فروش و تحلیل آماری</h2>
-        <p>FontARA هیچ analytics، تبلیغ، fingerprinting یا سازوکار فروش و اشتراک داده ندارد. وب‌سایت معرفی FontARA نیز اسکریپت Google Analytics ندارد.</p>
+          <h3>Retention, deletion, and limited use</h3>
+          <p>You can delete fonts, site rules, and settings inside FontAra, clear downloaded-font caches, or reset the extension. Uninstalling removes its local storage according to the browser's behavior; synced copies are subject to your browser provider's controls. Incomplete imports are cleaned up during startup or later font operations; interrupted commits may retain local recovery data until they can be safely completed or cleared. Files you exported remain on your device until you delete them.</p>
+          <p>FontAra uses data only to provide its font and text-direction features. It does not sell user data, use it for advertising, or use or transfer it for creditworthiness or lending decisions. Any transfer described here serves the extension's single purpose or your explicit action.</p>
 
-        <h2>حذف و نگه‌داری</h2>
-        <p>کاربر می‌تواند هر خانوادهٔ فونت، تنظیمات سایت یا همهٔ تنظیمات را از داخل افزونه حذف کند. حذف افزونه نیز storage محلی آن را مطابق رفتار مرورگر پاک می‌کند. transactionهای ناتمام فونت حداکثر ۳۰ دقیقه نگه‌داری و سپس garbage-collect می‌شوند.</p>
-
-        <h2>تغییرات و تماس</h2>
-        <p>تغییر مهم این سیاست در همین صفحه و یادداشت انتشار اعلام می‌شود. برای پرسش حریم خصوصی یا درخواست امنیتی از <a href="mailto:mostafa.a.aut@gmail.com">mostafa.a.aut@gmail.com</a> یا <a href="https://github.com/mimalef70/fontara/issues">مخزن FontARA</a> استفاده کنید.</p>
-
-        <hr>
-
-        <section lang="en">
-          <h2>English summary</h2>
-          <p>FontARA does not send browsing data, page content, or locally uploaded font files to a FontARA server. Settings stay in browser extension storage; optional sync is provided by the browser. Custom-font binaries remain local. Google Fonts is disabled by default; after explicit opt-in, the extension background downloads and locally caches only the selected font without sending the visited page origin. Google can still receive the IP address, request metadata, and requested font resource. FontARA and this website contain no analytics or advertising SDK.</p>
+          <h3>Contact and changes</h3>
+          <p>Material changes are published here and in release notes. For privacy or security questions, contact Mostafa Alahyari at <a href="mailto:mostafa.a.aut@gmail.com">mostafa.a.aut@gmail.com</a>. General issue reports can be filed on <a href="https://github.com/mimalef70/fontara/issues">GitHub</a>; do not include private page contents, passwords, or backup files in public reports.</p>
         </section>
 
-        <p><a href="index.html">بازگشت به وب‌سایت FontARA</a></p>
+        <section id="fa" lang="fa" dir="rtl" aria-labelledby="fa-title">
+          <h2 id="fa-title">سیاست حریم خصوصی فونت‌آرا</h2>
+          <p class="meta">به‌روزرسانی: ۱ نوامبر ۲۰۲۶ · نسخهٔ سیاست: ۱٫۱ · مربوط به فونت‌آرا ۵٫۱٫۰ و نسخه‌های بعدی. نسخه‌های قدیمی ممکن است فونت‌ها را به روش دیگری پردازش کنند؛ برای دریافت این بهبودها افزونه را به‌روز کنید.</p>
+          <p class="summary">فونت‌آرا فونت سایت‌ها و نمایش متن راست‌به‌چپ را تغییر می‌دهد. آدرس و متن صفحه در مرورگر شما پردازش می‌شوند. افزونه ابزار تحلیل رفتار، تبلیغات یا سرور جمع‌آوری داده ندارد. همگام‌سازی مرورگر و Google Fonts اختیاری، جریان‌های انتقال داده‌ای دارند که در ادامه توضیح داده شده‌اند.</p>
+
+          <h3>آدرس و متن صفحه</h3>
+          <p>فونت‌آرا از آدرس صفحه و فریم برای تطبیق قوانین سایت استفاده می‌کند. اسکریپت افزونه، متن قابل‌نمایش و متن کادرهای ویرایش، از جمله پیام یا ایمیل نمایش‌داده‌شده در صفحه را برای تشخیص جهت نوشتار و اعمال فونت بررسی می‌کند. این پردازش محلی و موقت است؛ افزونه تاریخچهٔ مرور یا کلیدهای فشرده‌شده را ثبت نمی‌کند، محتوای پیام‌ها را نگه نمی‌دارد و آدرس یا متن صفحه را برای سازنده یا Google Fonts نمی‌فرستد. راست‌به‌چپ هوشمند، فیلدهای گذرواژه و فیلدهایی را که برای گذرواژه، اطلاعات کارت پرداخت یا رمز یک‌بارمصرف علامت‌گذاری شده‌اند نادیده می‌گیرد.</p>
+          <p>قانون ذخیره‌شدهٔ سایت شامل نام میزبان و، در صورت انتخاب صریح قانون مبتنی بر مسیر، مسیر صفحه است. هنگام ساخت این قوانین، اطلاعات ورود داخل URL، رشتهٔ پرس‌وجو و بخش پس از # حذف می‌شوند. قوانینی را که خودتان وارد می‌کنید پیش از همگام‌سازی یا خروجی‌گرفتن بررسی کنید.</p>
+
+          <h3>تنظیمات، فونت‌ها و همگام‌سازی</h3>
+          <p>ترجیحات، قوانین سایت‌ها و پروفایل‌ها در حافظهٔ افزونه ذخیره می‌شوند. همگام‌سازی در فونت‌آرا به‌صورت پیش‌فرض روشن است، اما انتقال به حساب و تنظیمات همگام‌سازی مرورگر شما وابسته است. می‌توانید آن را از تنظیمات فونت‌آرا خاموش کنید. ترجیحات قابل‌همگام‌سازی و قوانین ذخیره‌شده از طریق ارائه‌دهندهٔ مرورگر و طبق سیاست حریم خصوصی او منتقل می‌شوند؛ فونت‌آرا سرور همگام‌سازی جداگانه ندارد.</p>
+          <p>فایل‌های فونت دلخواه و فایل‌های کش‌شدهٔ Google Fonts در حافظهٔ محلی افزونه می‌مانند. فایل فونت دلخواه و انتخاب فونت نصب‌شدهٔ سیستم همگام نمی‌شوند. فایل فونت به‌شکل متن base64 در DOM صفحه قرار نمی‌گیرد. نسخهٔ پشتیبان می‌تواند شامل فونت‌های دلخواه و قوانین سایت باشد؛ تنها با درخواست شما ساخته می‌شود و باید آن را خصوصی نگه دارید.</p>
+
+          <h3>Google Fonts اختیاری</h3>
+          <p>Google Fonts به‌صورت پیش‌فرض خاموش است. پس از فعال‌کردن آن و انتخاب فونت، بخش پس‌زمینهٔ افزونه CSS و فایل WOFF2 را با HTTPS از <code>fonts.googleapis.com</code> و <code>fonts.gstatic.com</code> دریافت، اعتبارسنجی و در حافظهٔ محلی کش می‌کند. درخواست‌ها بدون اطلاعات ورود و referrer ارسال می‌شوند و آدرس یا محتوای صفحهٔ بازشده را شامل نمی‌شوند. Google همچنان نشانی IP، اطلاعات معمول درخواست و منبع فونت درخواستی را دریافت می‌کند؛ این اطلاعات ممکن است انتخاب فونت شما را مشخص کنند. فونت‌آرا مختصات GPS درخواست نمی‌کند و موقعیت شما را تخمین نمی‌زند.</p>
+          <p>با خاموش‌کردن این قابلیت، درخواست تازه و دانلود در حال اجرا متوقف می‌شوند. کش فونت را می‌توانید در تنظیمات پاک کنید. نسخه‌های پشتیبانی‌شدهٔ Firefox مجوز اختیاری پردازش داده نیز درخواست می‌کنند؛ لغو آن درخواست‌های Google Fonts را متوقف می‌کند.</p>
+
+          <h3>مجوزها و صفحه‌های بیرونی</h3>
+          <p>دسترسی سایت‌ها برای اعمال فونت و جهت متن با اسکریپت داخلی روی صفحه‌های HTTP(S) فعال‌شده است. <code>storage</code> و <code>unlimitedStorage</code> برای تنظیمات و کتابخانهٔ محلی فونت استفاده می‌شوند. <code>fontSettings</code> در Chromium نام فونت‌های نصب‌شده را پس از فعال‌کردن فونت سیستم فهرست می‌کند و تنظیم سراسری فونت Chrome را تغییر نمی‌دهد. <code>contextMenus</code> فقط هنگام فعال‌کردن میان‌برهای راست‌کلیک درخواست می‌شود. همهٔ کدهای اجرایی داخل بستهٔ افزونه هستند.</p>
+          <p>هنگام نصب، صفحهٔ خوش‌آمدگویی GitHub Pages و هنگام به‌روزرسانی، صفحهٔ تغییرات فونت‌آرا باز می‌شود. لینک‌های راهنما و کد منبع نیز با انتخاب شما سایت بیرونی را باز می‌کنند. این سایت‌ها اطلاعات معمول پیمایش مرورگر را دریافت می‌کنند و سیاست حریم خصوصی خود را دارند. این نسخه آدرس فرم قدیمی شخص ثالث را پاک می‌کند تا با حذف افزونه باز نشود. وب‌سایت فونت‌آرا ابزار تحلیل رفتار یا تبلیغات ندارد.</p>
+
+          <h3>نگه‌داری، حذف و استفادهٔ محدود</h3>
+          <p>می‌توانید فونت‌ها، قوانین سایت و تنظیمات را حذف کنید، کش فونت‌ها را پاک کنید یا افزونه را بازنشانی کنید. حذف افزونه، حافظهٔ محلی آن را مطابق رفتار مرورگر پاک می‌کند؛ نسخه‌های همگام‌شده تابع کنترل‌های ارائه‌دهندهٔ مرورگر هستند. ورود ناقص فونت هنگام راه‌اندازی یا عملیات بعدی فونت پاک‌سازی می‌شود؛ ذخیره‌سازی نیمه‌تمام ممکن است تا تکمیل یا پاک‌سازی امن، دادهٔ بازیابی را در حافظهٔ محلی نگه دارد. فایل پشتیبان خروجی‌گرفته‌شده تا زمان حذف دستی روی دستگاه می‌ماند.</p>
+          <p>فونت‌آرا داده را فقط برای قابلیت‌های فونت و جهت متن استفاده می‌کند. دادهٔ کاربر فروخته نمی‌شود، برای تبلیغات استفاده نمی‌شود و برای تصمیم‌های اعتبارسنجی یا وام‌دهی به کار نمی‌رود یا منتقل نمی‌شود. انتقال‌های توضیح‌داده‌شده در این سیاست برای عملکرد اصلی افزونه یا اقدام صریح شما هستند.</p>
+
+          <h3>تماس و تغییرات</h3>
+          <p>تغییرات مهم در همین صفحه و یادداشت انتشار اعلام می‌شوند. برای پرسش حریم خصوصی یا امنیتی با مصطفی الهیاری از طریق <a href="mailto:mostafa.a.aut@gmail.com">mostafa.a.aut@gmail.com</a> تماس بگیرید. مشکلات عمومی را در <a href="https://github.com/mimalef70/fontara/issues">GitHub</a> گزارش کنید؛ متن خصوصی صفحه، گذرواژه یا فایل پشتیبان را در گزارش عمومی قرار ندهید.</p>
+        </section>
+
+        <section id="ar" lang="ar" dir="rtl" aria-labelledby="ar-title">
+          <h2 id="ar-title">سياسة خصوصية FontAra</h2>
+          <p class="meta">آخر تحديث: ١ نوفمبر ٢٠٢٦ · إصدار السياسة: ١٫١ · تصف FontAra ٥٫١٫٠ وما بعدها. قد تتعامل الإصدارات القديمة مع الخطوط بصورة مختلفة؛ حدّث الإضافة للاستفادة من تحسينات الخصوصية الموضّحة هنا.</p>
+          <p class="summary">تغيّر FontAra خطوط المواقع وطريقة عرض النص من اليمين إلى اليسار. تُعالج عناوين الصفحات ونصوصها داخل متصفحك. لا تتضمن الإضافة تحليلات أو إعلانات أو خادمًا لجمع بيانات المستخدمين. تُوضّح الأقسام التالية نقل البيانات المرتبط بمزامنة المتصفح وGoogle Fonts الاختيارية.</p>
+
+          <h3>عناوين الصفحات والنصوص</h3>
+          <p>تستخدم FontAra عنوان الصفحة والإطارات لمطابقة قواعد المواقع. يفحص سكربت الإضافة النص الظاهر والقابل للتحرير، بما فيه الرسائل أو البريد الإلكتروني المعروض في الصفحة، لتحديد اتجاه الكتابة وتطبيق الخطوط. تتم هذه المعالجة محليًا وبصورة مؤقتة: لا تحتفظ الإضافة بسجل تصفح أو ضغطات مفاتيح أو محتوى الرسائل، ولا ترسل عناوين الصفحات أو محتوياتها إلى المطوّر أو Google Fonts. تتجاوز ميزة RTL الذكية حقول كلمات المرور والحقول المحددة لكلمات المرور أو بطاقات الدفع أو رموز الاستخدام لمرة واحدة.</p>
+          <p>تتضمن قواعد المواقع المحفوظة اسم المضيف، ومسار الصفحة عند اختيار قاعدة تعتمد على المسار صراحةً. تحذف الإضافة بيانات الدخول في عنوان URL وسلاسل الاستعلام والأجزاء التي تلي # عند إنشاء هذه القواعد. راجع القواعد التي تدخلها بنفسك قبل مزامنتها أو تصديرها.</p>
+
+          <h3>الإعدادات والخطوط والمزامنة</h3>
+          <p>تُحفظ التفضيلات وقواعد المواقع وملفات إعداداتها في تخزين الإضافة. تكون مزامنة الإعدادات مفعّلة افتراضيًا في FontAra، لكن النقل يعتمد على حساب المتصفح وإعدادات مزامنته. يمكنك تعطيلها من إعدادات FontAra. يتعامل مزوّد المتصفح مع التفضيلات القابلة للمزامنة وقواعد المواقع وفق سياسة خصوصيته؛ ولا تشغّل FontAra خادم مزامنة مستقلًا.</p>
+          <p>تبقى ملفات الخطوط المخصصة وملفات Google Fonts المخزنة مؤقتًا في التخزين المحلي. لا تُزامَن ملفات الخطوط المخصصة أو اختيارات خطوط النظام. لا تُدرَج ملفات الخطوط كنص base64 في DOM الصفحة. قد تتضمن النسخة الاحتياطية خطوطك المخصصة وقواعد المواقع؛ لا تُصدّر إلا بطلب منك، ولذلك احفظها بصورة خاصة.</p>
+
+          <h3>Google Fonts الاختيارية</h3>
+          <p>تكون Google Fonts معطّلة افتراضيًا. عند تفعيلها واختيار خط، تطلب خلفية الإضافة ملفات CSS وWOFF2 عبر HTTPS من <code>fonts.googleapis.com</code> و<code>fonts.gstatic.com</code>، وتتحقق منها وتخزّنها محليًا. تُرسل الطلبات من دون بيانات اعتماد أو referrer، ولا تتضمن عنوان الصفحة التي تزورها أو محتواها. تتلقى Google عنوان IP وبيانات الطلب المعتادة ومورد الخط المطلوب، مما قد يكشف اختيارك للخط. لا تطلب FontAra إحداثيات GPS ولا تستنتج موقعك.</p>
+          <p>يؤدي تعطيل Google Fonts إلى إيقاف الطلبات الجديدة وإلغاء التنزيلات الجارية. يمكنك مسح ذاكرة الخطوط المؤقتة من الإعدادات. تطلب إصدارات Firefox المدعومة أيضًا إذنًا اختياريًا لمعالجة البيانات؛ ويؤدي سحبه إلى إيقاف طلبات Google Fonts.</p>
+
+          <h3>الأذونات والصفحات الخارجية</h3>
+          <p>يتيح الوصول إلى المواقع تطبيق الخطوط والاتجاه بواسطة السكربت المضمّن على صفحات HTTP(S) التي تفعّلها. يدعم إذنا <code>storage</code> و<code>unlimitedStorage</code> الإعدادات ومكتبة الخطوط المحلية. يسرد إذن <code>fontSettings</code> في Chromium أسماء الخطوط المثبتة بعد تفعيل خطوط النظام، ولا يغيّر إعدادات الخط العامة في Chrome. يُطلب <code>contextMenus</code> فقط عند تفعيل اختصارات النقر بزر الفأرة الأيمن. جميع الأكواد التنفيذية مضمّنة في حزمة الإضافة.</p>
+          <p>تفتح FontAra صفحة الترحيب على GitHub Pages عند التثبيت وصفحة التغييرات عند التحديث. تفتح روابط المساعدة والكود المصدري مواقع خارجية عندما تختارها. تتلقى تلك المواقع بيانات التنقل المعتادة ولها سياسات خصوصيتها الخاصة. يمسح هذا الإصدار عنوان استبيان الطرف الثالث القديم، فلا يفتح عند إزالة الإضافة. لا يتضمن موقع FontAra أدوات تحليلات أو إعلانات.</p>
+
+          <h3>الاحتفاظ والحذف والاستخدام المحدود</h3>
+          <p>يمكنك حذف الخطوط وقواعد المواقع والإعدادات، ومسح ذاكرة الخطوط المؤقتة أو إعادة ضبط الإضافة. تؤدي إزالة الإضافة إلى حذف تخزينها المحلي وفق سلوك المتصفح؛ وتخضع النسخ المتزامنة لتحكم مزوّد المتصفح. تُنظّف عمليات الاستيراد غير المكتملة عند بدء التشغيل أو أثناء عمليات الخطوط اللاحقة؛ وقد تبقى بيانات الاسترداد المحلية للعمليات المتوقفة حتى يمكن إكمالها أو مسحها بأمان. تبقى ملفات النسخ الاحتياطية المصدّرة على جهازك حتى تحذفها.</p>
+          <p>تستخدم FontAra البيانات فقط لتوفير ميزات الخطوط واتجاه النص. لا تبيع بيانات المستخدمين ولا تستخدمها للإعلانات، ولا تستخدمها أو تنقلها لاتخاذ قرارات الجدارة الائتمانية أو الإقراض. تخدم عمليات النقل الموضّحة هنا الغرض الأساسي للإضافة أو إجراءً صريحًا منك.</p>
+
+          <h3>التواصل والتغييرات</h3>
+          <p>تُنشر التغييرات الجوهرية هنا وفي ملاحظات الإصدار. لأسئلة الخصوصية أو الأمان، تواصل مع Mostafa Alahyari على <a href="mailto:mostafa.a.aut@gmail.com">mostafa.a.aut@gmail.com</a>. يمكن الإبلاغ عن المشكلات العامة على <a href="https://github.com/mimalef70/fontara/issues">GitHub</a>؛ لا تُدرج محتويات صفحات خاصة أو كلمات مرور أو ملفات نسخ احتياطية في البلاغات العامة.</p>
+        </section>
+        <p><a href="index.html">FontAra website · وب‌سایت فونت‌آرا · موقع FontAra</a></p>
       </article>
     </main>
   </body>

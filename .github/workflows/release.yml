@@ -2,69 +2,34 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
-    name: Build release packages
+  verification:
+    uses: ./.github/workflows/verify.yml
+
+  publish:
+    name: Publish verified packages
+    needs: verification
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
+      - name: Download the packages tested by verification
+        uses: actions/download-artifact@v8
         with:
-          version: 11.5.0
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check source
-        run: pnpm check
-
-      - name: Enforce coverage budgets
-        run: pnpm test:coverage
-
-      - name: Build all browser targets
-        run: pnpm build:all
-
-      - name: Validate Firefox package
-        run: pnpm lint:extension
-
-      - name: Validate release version and dependencies
-        run: pnpm check:release-version && pnpm audit --prod && pnpm audit
-
-      - name: Check reproducible ZIP
-        run: pnpm check:reproducible-zip
-
+          name: fontara-verified-packages
+          path: build
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
+          fail_on_unmatched_files: true
           files: |
             build/*-prod.zip
             build/firefox-mv3-source-*.zip
-
-      - name: Upload release packages
-        uses: actions/upload-artifact@v7
-        with:
-          name: fontara-release-packages
-          path: |
-            build/*-prod.zip
-            build/firefox-mv3-source-*.zip
-          retention-days: 30

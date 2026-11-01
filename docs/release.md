@@ -50,7 +50,25 @@ pnpm test:browser:production:chrome
 FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 pnpm test:browser:production:firefox
 ```
 
-Nightly/manual CI also runs the browser version matrix.
+Run these with desktop Chrome/Chromium 130 or newer and Firefox 140 ESR or newer;
+`CHROME_PATH` and `FIREFOX_PATH` select a particular installed binary. Firefox
+tests also require geckodriver on `PATH` or at `GECKODRIVER_PATH`; see
+[browser test setup](testing.md#browser-tests). The required CI matrix covers
+both minimum versions and current stable releases.
+The separate nightly/manual matrix adds beta and current ESR coverage.
+
+Firefox for Android has an installation minimum of 142. Android device
+validation is outside the current matrix, so desktop results do not establish
+Android compatibility.
+
+The `test:browser:production:*` scripts rebuild packages for local convenience.
+To validate an existing distributable, unpack its ZIP into the matching
+`build/<browser>-mv3-prod` directory and run the smoke test directly:
+
+```sh
+node --test --test-timeout=120000 --test-name-pattern='Chrome production artifact' tests/browser/production-artifacts.test.mjs
+FONTARA_FIREFOX_BROWSER_TESTS=1 FONTARA_FIREFOX_HEADLESS=1 node --test --test-timeout=120000 --test-name-pattern='Firefox production artifact' tests/browser/production-artifacts.test.mjs
+```
 
 ## Build Packages
 
@@ -104,19 +122,28 @@ Known warning category:
 
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
-| CI | push, pull request, manual | Lint, typecheck, unit, inject, build, extension lint, upload packages. |
+| CI | push, pull request, manual | Calls the shared verification workflow. |
+| Verify release packages | reusable workflow call | Runs `pnpm verify`, uploads production/source ZIPs, then runs stable/minimum browser suites and production smoke tests. |
 | Browser Tests | manual, nightly | Browser matrix across Chrome and Firefox channels. |
-| Release | tags, manual | Release package build, extension lint, GitHub release upload. |
+| Release | tags, manual | Calls shared verification; publishes verified packages only for tags. |
+
+[verify.yml](../.github/workflows/verify.yml) is the common gate for
+[ci.yml](../.github/workflows/ci.yml) and
+[release.yml](../.github/workflows/release.yml). Its browser jobs cover Chrome
+stable/130 and Firefox stable/140 ESR. They download the
+`fontara-verified-packages` artifact and smoke-test its unpacked production ZIPs.
+The publish job waits for verification, downloads that same artifact, and
+uploads it to GitHub Releases without another build. Manual runs on branches
+perform verification without publishing a release.
 
 ## Release Checklist
 
 - `pnpm check` passes.
 - `pnpm build:all` passes and creates the Firefox source review package.
 - `pnpm lint:extension` passes with no errors.
-- Chrome browser smoke passes.
-- Firefox browser smoke passes when Firefox behavior changed.
-- Browser matrix is green or reviewed if a browser channel has a known external
-  failure.
+- Shared verification passes, including Chrome stable/130 and Firefox
+  stable/140 ESR runtime and production smoke tests.
+- Review the separate nightly matrix for beta/current-ESR compatibility issues.
 - Store-facing text and screenshots are current.
 - `LICENSE`, `THIRD_PARTY_NOTICES.md`, the OFL text, and
   `assets/fonts/provenance.json` are present in both production ZIPs.

@@ -4,6 +4,7 @@ import test, { afterEach, beforeEach } from "node:test"
 import {
   getBackgroundSettings,
   resetBackgroundSettingsCacheForTesting,
+  runBackgroundSettingsStorageOperation,
   syncBackgroundSettingsCacheFromLocalChanges,
   writeBackgroundSettings
 } from "../../src/background/settings-manager"
@@ -209,4 +210,50 @@ test("background settings manager writes normalized local storage changes", asyn
       [FONTARA_SETTINGS_REVISION_KEY]: 1
     }
   ])
+})
+
+test("a delayed storage echo cannot roll back a newer committed setting", async () => {
+  installChromeStorageMock({
+    [STORAGE_KEYS.SELECTED_FONT]: "Estedad-Fontara"
+  })
+  await writeBackgroundSettings({
+    [STORAGE_KEYS.SELECTED_FONT]: "Vazirmatn-Fontara"
+  })
+  await writeBackgroundSettings({
+    [STORAGE_KEYS.SELECTED_FONT]: "Sahel-Fontara"
+  })
+
+  const changed = await syncBackgroundSettingsCacheFromLocalChanges({
+    [STORAGE_KEYS.SELECTED_FONT]: { newValue: "Vazirmatn-Fontara" },
+    [FONTARA_SETTINGS_REVISION_KEY]: { newValue: 1 }
+  })
+
+  assert.equal(changed, null)
+  assert.equal(
+    (await getBackgroundSettings())[STORAGE_KEYS.SELECTED_FONT],
+    "Sahel-Fontara"
+  )
+})
+
+test("a partially failed raw sync invalidates the cache and releases the settings queue", async () => {
+  const storage = installChromeStorageMock({
+    [STORAGE_KEYS.SELECTED_FONT]: "Estedad-Fontara"
+  })
+  await getBackgroundSettings()
+
+  await assert.rejects(
+    runBackgroundSettingsStorageOperation(async () => {
+      storage.localValues[STORAGE_KEYS.SELECTED_FONT] = "Vazirmatn-Fontara"
+      throw new Error("sync-follow-up-failed")
+    }),
+    /sync-follow-up-failed/
+  )
+  assert.equal(
+    (await getBackgroundSettings())[STORAGE_KEYS.SELECTED_FONT],
+    "Vazirmatn-Fontara"
+  )
+  await writeBackgroundSettings({
+    [STORAGE_KEYS.SELECTED_FONT]: "Sahel-Fontara"
+  })
+  assert.equal(storage.localValues[STORAGE_KEYS.SELECTED_FONT], "Sahel-Fontara")
 })

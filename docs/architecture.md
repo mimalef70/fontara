@@ -45,6 +45,17 @@ Key folders:
 - `src/utils/storage.ts`
 - `src/config/storage.ts`
 
+`settings-manager.ts` owns the settings operation queue. UI writes, startup
+migration, sync repair/writes, and permission-driven settings changes use that
+queue so a delayed normalization snapshot cannot overwrite a newer mutation.
+Raw storage operations enter through `runBackgroundSettingsStorageOperation`,
+invalidate the cached snapshot afterward, and must not call queued settings
+APIs from inside their callback.
+
+Changes are broadcast to open extension pages without a worker-local subscriber
+list. An options page can therefore keep receiving updates after the MV3 worker
+that first served it has been suspended and restarted.
+
 ## Content Script Runtime
 
 Main responsibilities:
@@ -74,6 +85,13 @@ face is loaded from extension storage and registered before the CSS variable is
 changed; the previous family remains active on a cache miss, race, corrupt
 asset, or parse failure. Remote Google URLs are never inserted into page DOM.
 
+RTL work is queued in bounded discovery/application batches. Reconciliation
+restores styles when reused message nodes become English or empty, handles
+nested message scopes, and follows a replaced document body. Disabling an
+adapter cancels pending work. Text-stroke CSS explicitly resets protected
+code/icon subtrees because excluding a selector alone does not stop inherited
+stroke.
+
 ## Extension UI
 
 Main responsibilities:
@@ -94,6 +112,21 @@ Key folders:
 
 All user-facing strings should go through `src/i18n/messages.json`.
 
+The options page delegates its profile workflow to:
+
+| Module | Responsibility |
+| --- | --- |
+| [use-site-profiles.ts](../src/ui/options/use-site-profiles.ts) | Form state, target selection, validation, and profile mutations. The hook stays mounted with Options so section navigation preserves drafts. |
+| [SiteProfilesSection.tsx](../src/ui/options/SiteProfilesSection.tsx) | Profile form/list rendering with shared shadcn components and i18n. |
+| [use-font-catalogs.ts](../src/ui/options/use-font-catalogs.ts) | Lazy external-font catalogs, grouped choices, and saved-font/fallback labels used by profiles and the overview. |
+
+A saved profile font remains selectable before its catalog loads, including
+dormant system-font choices while that source is paused. Only the explicit
+global-font option removes that override.
+Google preparation completes before a new selection is saved; the subsequent
+mutation merges into the latest profile snapshot. Preview styles cover both
+Dialog portals outside the app root and Drawers mounted inside it.
+
 ## Configuration Layer
 
 The config layer is the main difference between a simple font replacer and a
@@ -111,6 +144,14 @@ maintainable browser extension.
 Site matching and profile resolution should stay centralized. UI, background,
 and content code should consume resolved decisions instead of re-implementing
 URL logic locally.
+
+The matched-selector generator in [tasks/site-css.js](../tasks/site-css.js)
+normalizes captured Angular scope attributes and readable CSS Modules hashes.
+When captured rules collapse to the same normalized selector, it selects the
+fallback using declaration importance, original selector specificity, then
+capture order. Specificity is calculated before normalization and separately
+for each selector-list member. Equal fallbacks are grouped only after these
+collisions are resolved; no semantic selectors are invented.
 
 ## Storage Model
 
@@ -142,6 +183,17 @@ zip packages. The pipeline:
 3. Copies assets, fonts, styles, locales, and HTML.
 4. Generates release archives with reproducible metadata.
 5. Produces review source packages where needed.
+
+Chrome/Chromium 130 and desktop Firefox 140 ESR are the manifest baselines.
+JavaScript targets derive from those manifest values through `tasks/platform.js`.
+UI CSS transforms stay enabled in `tasks/bundle-css.js` for every build,
+including browser tests; debug mode only disables CSS minification. Firefox
+for Android has a separate installation minimum of 142, without Android device
+coverage in the current test matrix.
+The reusable [verify.yml](../.github/workflows/verify.yml) preserves production
+packages after source/build verification, then downloads and smoke-tests them
+on stable and minimum browser versions. The release workflow publishes that
+same artifact without rebuilding.
 
 ## Testing Strategy
 

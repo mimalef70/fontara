@@ -26,6 +26,7 @@ const SOURCE_PACKAGE_FILES = [
 ]
 
 const SOURCE_PACKAGE_DIRECTORIES = [
+  ".github/actions",
   ".github/workflows",
   "FONT_LICENSES",
   "assets",

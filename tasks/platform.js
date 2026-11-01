@@ -1,3 +1,6 @@
+const fs = require("node:fs")
+const path = require("node:path")
+
 const PLATFORM = {
   CHROME_MV3: "chrome-mv3",
   FIREFOX_MV3: "firefox-mv3",
@@ -26,9 +29,30 @@ function supportsFontSettings(platform) {
   return FONT_SETTINGS_PLATFORMS.has(platform)
 }
 
+function getBrowserTarget(platform) {
+  if (platform === PLATFORM.SAFARI_MV3) return "safari16.4"
+  const firefox = platform === PLATFORM.FIREFOX_MV3
+  const manifest = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        __dirname,
+        "..",
+        "src",
+        `manifest-${firefox ? "firefox" : "chrome"}-mv3.json`
+      ),
+      "utf8"
+    )
+  )
+  const minimumVersion = firefox
+    ? manifest.browser_specific_settings.gecko.strict_min_version
+    : manifest.minimum_chrome_version
+  return `${firefox ? "firefox" : "chrome"}${minimumVersion.split(".")[0]}`
+}
+
 module.exports = {
   PLATFORM,
   ALL_PLATFORMS,
+  getBrowserTarget,
   isChromiumMV3Platform,
   supportsFontSettings
 }

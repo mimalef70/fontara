@@ -43,7 +43,8 @@ kbd {
     var(--fontara-chatgpt-kbd-fallback) !important;
 }
 
-:is(.\*\:font-sans > *) {
+:is(.\*\:font-sans > *),
+form[data-mobile-composer] {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-font-sans-child-fallback) !important;
 }
@@ -98,29 +99,43 @@ body :where(
   math,
   math *,
   [aria-hidden="true"],
+  [aria-hidden="true"] *,
   [class*="fa-"],
+  [class*="fa-"] *,
   .fa,
+  .fa *,
   .fab,
+  .fab *,
   .fad,
+  .fad *,
   .fal,
+  .fal *,
   .far,
+  .far *,
   .fas,
+  .fas *,
   .fass,
+  .fass *,
   .fasr,
+  .fasr *,
   .fat,
+  .fat *,
   .icofont,
+  .icofont *,
   [style*="font-"],
-  [class*="icon"],
-  [class*="Icon"],
-  [class*="symbol"],
-  [class*="Symbol"],
-  .glyphicon,
-  [class*="material-symbol"],
-  [class*="material-icon"],
+  [style*="font-"] *,
+  [class*="icon" i],
+  [class*="icon" i] *,
+  [class*="symbol" i],
+  [class*="symbol" i] *,
   mu,
+  mu *,
   [class*="mu-"],
+  [class*="mu-"] *,
   .typcn,
-  [class*="vjs-"]
+  .typcn *,
+  [class*="vjs-"],
+  [class*="vjs-"] *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-font-sans-child-fallback) !important;

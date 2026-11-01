@@ -47,7 +47,7 @@ body {
   margin: 24px auto;
   padding: 24px 30px;
   border-radius: 16px;
-  background-color: #ff7a00;
+  background-color: #b94b00;
   color: white;
   text-align: center;
   font-size: 30px;
@@ -97,6 +97,7 @@ p {
   line-height: 25px;
 }
 .lead {
+  color: #536272;
   font-weight: normal;
   line-height: 29px;
 }

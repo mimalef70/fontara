@@ -2,6 +2,11 @@
 
 const fs = require("node:fs")
 const path = require("node:path")
+const {
+  compare,
+  selectorSpecificity
+} = require("@csstools/selector-specificity")
+const selectorParser = require("postcss-selector-parser")
 
 const ICON_PATTERN =
   /(?:^|[-_\s"'=])(icon|icons|symbol|symbols|glyph|pictogram|material-symbols?|material-icons?|google-symbols|lumi-symbols)(?:$|[-_\s"'])/i
@@ -29,16 +34,21 @@ function extractFontFamilyFromShorthand(value) {
 }
 
 function getDeclaration(record, property) {
+  const declarationValue = (value, important = false) => ({
+    value: value.replace(/\s*!important\s*$/i, ""),
+    important: important || /!important\s*$/i.test(value)
+  })
   const directKeys =
     property === "font-family" ? ["font-family", "fontFamily"] : [property]
   for (const key of directKeys) {
-    if (typeof record[key] === "string") return record[key]
+    if (typeof record[key] === "string") return declarationValue(record[key])
     if (isRecord(record.style) && typeof record.style[key] === "string") {
-      return record.style[key]
+      return declarationValue(record.style[key])
     }
   }
 
   if (Array.isArray(record.declarations)) {
+    let winner = null
     for (let index = record.declarations.length - 1; index >= 0; index -= 1) {
       const declaration = record.declarations[index]
       if (!isRecord(declaration)) continue
@@ -48,9 +58,17 @@ function getDeclaration(record, property) {
         name.toLowerCase() === property &&
         typeof declaration.value === "string"
       ) {
-        return declaration.value
+        const candidate = declarationValue(
+          declaration.value,
+          declaration.important === true || declaration.priority === "important"
+        )
+        // Reverse traversal finds the last declaration of each priority.
+        // An earlier !important still outranks every later normal value.
+        if (candidate.important) return candidate
+        winner ??= candidate
       }
     }
+    return winner
   }
 
   return null
@@ -69,13 +87,18 @@ function collectCapturedRules(value, rules = []) {
   const fontFamily = getDeclaration(value, "font-family")
   const fontShorthand = fontFamily ? null : getDeclaration(value, "font")
   const fallback =
-    fontFamily ||
-    (fontShorthand ? extractFontFamilyFromShorthand(fontShorthand) : null)
+    fontFamily?.value ||
+    (fontShorthand ? extractFontFamilyFromShorthand(fontShorthand.value) : null)
 
   if (fallback) {
     for (const selector of selectors) {
       if (typeof selector === "string" && selector.trim()) {
-        rules.push({ fallback, selector, sourceIndex: rules.length })
+        rules.push({
+          fallback,
+          important: (fontFamily || fontShorthand).important,
+          selector,
+          sourceIndex: rules.length
+        })
       }
     }
   }
@@ -151,10 +174,28 @@ function buildSiteCSS(payload) {
   const winningRuleBySelector = new Map()
 
   for (const rule of capturedRules) {
-    const selector = normalizeSelector(rule.selector)
     const fallback = normalizeWhitespace(rule.fallback)
-    if (!selector || !fallback || shouldSkipRule(selector, fallback)) continue
-    winningRuleBySelector.set(selector, { ...rule, fallback, selector })
+    // Calculate specificity before removing scope attributes. Parse each list
+    // member independently, preserving commas inside :is(), :not(), etc.
+    const selectorList = selectorParser().astSync(rule.selector)
+    for (const capturedSelector of selectorList.nodes) {
+      const selector = normalizeSelector(capturedSelector.toString())
+      if (!selector || !fallback || shouldSkipRule(selector, fallback)) continue
+      const specificity = selectorSpecificity(capturedSelector)
+      const previous = winningRuleBySelector.get(selector)
+      const precedence = previous
+        ? Number(rule.important) - Number(previous.important) ||
+          compare(specificity, previous.specificity)
+        : 1
+      if (precedence >= 0) {
+        winningRuleBySelector.set(selector, {
+          ...rule,
+          fallback,
+          selector,
+          specificity
+        })
+      }
+    }
   }
 
   const groups = new Map()

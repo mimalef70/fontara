@@ -550,6 +550,62 @@ test("site list URL matching supports wildcard and path behavior", () => {
   assert.equal(isURLMatched("https://mu.chat/pricing", homepagePattern), false)
 })
 
+test("path patterns preserve case and normalize equivalent URL escapes", () => {
+  const url = "https://EXAMPLE.com/MyAccount/%D9%81/%7Euser"
+  const pattern = createSitePathPatternFromUrl(url)
+  assert.equal(pattern, "example.com/MyAccount/%D9%81/~user")
+  assert.ok(pattern)
+  assert.equal(isURLMatched(url, pattern), true)
+  assert.equal(
+    isURLMatched("https://example.com/MyAccount/ف/~user", pattern),
+    true
+  )
+  assert.equal(
+    isURLMatched("https://example.com/MyAccount/%d9%81/%7euser", pattern),
+    true
+  )
+  assert.equal(
+    isURLMatched("https://example.com/myaccount/ف/~user", pattern),
+    false
+  )
+  assert.equal(
+    isURLMatched("https://example.com/one/two", "example.com/one%2Ftwo"),
+    false
+  )
+  assert.equal(
+    isURLMatched("https://example.com/one%2ftwo", "example.com/one%2Ftwo"),
+    true
+  )
+
+  const wildcard = normalizeSitePattern("https://*.EXAMPLE.com/MyAccount/ف/*")
+  assert.equal(wildcard, "*.example.com/MyAccount/%D9%81/*")
+  assert.ok(wildcard)
+  assert.equal(
+    isURLMatched("https://app.example.com/MyAccount/ف/edit", wildcard),
+    true
+  )
+  assert.equal(
+    isURLMatched("https://app.example.com/myaccount/ف/edit", wildcard),
+    false
+  )
+})
+
+test("path-specific exceptions and font profiles match the path they were created from", () => {
+  const url = "https://example.com/Settings/فارسی"
+  const pattern = createSitePathPatternFromUrl(url)
+  assert.ok(pattern)
+  const profile = { font: "Vazirmatn", pattern }
+  assert.deepEqual(getSiteProfileForUrl(url, [profile]), profile)
+  assert.equal(
+    isSiteListUrlEnabled(url, {
+      disabledFor: [pattern],
+      enabledByDefault: true,
+      enabledFor: []
+    }),
+    false
+  )
+})
+
 test("site list pattern caches are capped with LRU eviction", () => {
   const siteListSource = fs.readFileSync(
     path.resolve("src/config/site-list.ts"),

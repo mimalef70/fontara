@@ -333,12 +333,9 @@ function createClaudeAdapter(): RtlSiteAdapter {
     ".katex-mathml",
     '[role="math"]'
   ]
-  const ignoreSelectors = [
-    ...codeGuardSelectors,
-    ...mathGuardSelectors
-  ]
+  const ignoreSelectors = [...codeGuardSelectors, ...mathGuardSelectors]
   const ignoreSelector = joinSelectors(ignoreSelectors)
-  const mathSelector = '.katex, [role="math"].katex'
+  const mathSelector = joinSelectors(mathGuardSelectors)
   const targetTags = new Set([
     "P",
     "LI",
@@ -353,7 +350,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
     "BLOCKQUOTE"
   ])
   let globalStyle: HTMLStyleElement | null = null
-  let elementDirections = new WeakMap<Element, "ltr" | "rtl">()
 
   const engine = new RtlEngine({
     messageSelectors,
@@ -369,10 +365,7 @@ function createClaudeAdapter(): RtlSiteAdapter {
   const isolateMathInRtl = (container: Element) => {
     container.querySelectorAll(mathSelector).forEach((mathElement) => {
       if (!(mathElement instanceof HTMLElement)) return
-      engine.rememberStyle(mathElement, [
-        "direction",
-        "unicode-bidi"
-      ])
+      engine.rememberStyle(mathElement, ["direction", "unicode-bidi"])
       mathElement.setAttribute("dir", "ltr")
       engine.setStyle(mathElement, "direction", "ltr", "important")
       engine.setStyle(mathElement, "unicode-bidi", "isolate", "important")
@@ -380,16 +373,14 @@ function createClaudeAdapter(): RtlSiteAdapter {
   }
 
   const applyLtrGuard = (element: HTMLElement) => {
-    if (elementDirections.get(element) === "ltr") return
+    const isMath = Boolean(element.closest(mathSelector))
+    engine.rememberStyle(
+      element,
+      isMath ? ["direction"] : ["direction", "text-align"]
+    )
     element.setAttribute("dir", "ltr")
     engine.setStyle(element, "direction", "ltr", "important")
-    if (!element.matches(".katex, .katex *")) {
-      engine.rememberStyle(element, ["direction", "text-align"])
-      engine.setStyle(element, "text-align", "left", "important")
-    } else {
-      engine.rememberStyle(element, ["direction"])
-    }
-    elementDirections.set(element, "ltr")
+    if (!isMath) engine.setStyle(element, "text-align", "left", "important")
   }
 
   const applyRtlText = (element: HTMLElement) => {
@@ -433,7 +424,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
       })
 
       const finalDirection = rtlCount > ltrCount ? "rtl" : "ltr"
-      if (elementDirections.get(element) === finalDirection) return
 
       if (finalDirection === "rtl") {
         engine.rememberStyle(
@@ -451,7 +441,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
       } else {
         restoreIfModified(element)
       }
-      elementDirections.set(element, finalDirection)
       return
     }
 
@@ -460,14 +449,12 @@ function createClaudeAdapter(): RtlSiteAdapter {
       if (!text) return
 
       const direction = detectDominantDirection(text) ?? "ltr"
-      if (elementDirections.get(element) === direction) return
 
       if (direction === "rtl") {
         applyRtlText(element)
       } else {
         restoreIfModified(element)
       }
-      elementDirections.set(element, direction)
     }
 
     if (["DIV", "SECTION", "ARTICLE"].includes(element.tagName)) {
@@ -509,7 +496,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
     engine.restoreStyles()
     globalStyle?.remove()
     globalStyle = null
-    elementDirections = new WeakMap()
   }
 
   return {
@@ -600,7 +586,6 @@ function createGeminiAdapter(): RtlSiteAdapter {
   const uiExclude = joinSelectors(uiExcludeSelectors)
   const codeGuard = joinSelectors(codeGuardSelectors)
   let globalStyle: HTMLStyleElement | null = null
-  let elementDirections = new WeakMap<Element, "rtl">()
 
   const engine = new RtlEngine({
     messageSelectors,
@@ -631,17 +616,8 @@ function createGeminiAdapter(): RtlSiteAdapter {
 
       candidates.forEach((node) => {
         const direction = detectDominantDirection(getElementText(node))
-        if (direction !== "rtl") {
-          if (elementDirections.has(node)) {
-            currentEngine.restoreElement(node)
-            elementDirections.delete(node)
-          }
-          return
-        }
-
-        if (elementDirections.get(node) === "rtl") return
+        if (direction !== "rtl") return
         currentEngine.applyRTL(node)
-        elementDirections.set(node, "rtl")
       })
 
       return true
@@ -654,64 +630,72 @@ function createGeminiAdapter(): RtlSiteAdapter {
     const codeScope = `:is(${codeGuardSelectors.join(", ")})`
     globalStyle = createStyle(
       `
-${messageScope} ${codeScope} {
-  direction: ltr !important;
-  text-align: left !important;
-  unicode-bidi: embed;
-}
+        ${messageScope} ${codeScope} {
+          direction: ltr !important;
+          text-align: left !important;
+          unicode-bidi: embed;
+        }
 
-/* fontara-gemini-rtl-list */
-${messageScope} :is(ul, ol)[dir="rtl"],
-${messageScope} [dir="rtl"] :is(ul, ol) {
-  direction: rtl !important;
-  text-align: right !important;
-  padding-right: 2rem !important;
-  padding-left: 0 !important;
-}
+        ${messageScope} :is(ul, ol)[dir="rtl"] {
+          direction: rtl !important;
+          text-align: right !important;
+          padding-inline-start: 2rem !important;
+          padding-inline-end: 0 !important;
+        }
 
-${messageScope} :is(ul, ol)[dir="rtl"] > li,
-${messageScope} :is(ul, ol) > li[dir="rtl"] {
-  direction: rtl !important;
-  text-align: right !important;
-  list-style-position: outside !important;
-}
+        ${messageScope} :is(ul, ol)[dir="rtl"],
+        ${messageScope} :is(ul, ol):has(> li[dir="rtl"]) {
+          list-style-type: revert !important;
+        }
 
-${messageScope} :is(table[dir="rtl"], [dir="rtl"] table, table:has(th[dir="rtl"], td[dir="rtl"])) {
-  direction: rtl !important;
-  text-align: right !important;
-}
+        ${messageScope} :is(ul, ol)[dir="rtl"] > li,
+        ${messageScope} :is(ul, ol) > li[dir="rtl"] {
+          list-style-type: inherit !important;
+          list-style-position: outside !important;
+        }
 
-${messageScope} :is(table[dir="rtl"], table:has(th[dir="rtl"], td[dir="rtl"])) :is(th, td) {
-  text-align: right !important;
-}
+        ${messageScope} :is(ul, ol)[dir="rtl"] > li:not([dir="ltr"]),
+        ${messageScope} :is(ul, ol) > li[dir="rtl"] {
+          direction: rtl !important;
+          text-align: right !important;
+        }
 
-:is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"])[dir="rtl"],
-[dir="rtl"] :is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"]) {
-  direction: rtl !important;
-  text-align: right !important;
-  unicode-bidi: isolate;
-}
+        ${messageScope} :is(table[dir="rtl"], [dir="rtl"] table, table:has(th[dir="rtl"], td[dir="rtl"])) {
+          direction: rtl !important;
+          text-align: right !important;
+        }
 
-:is([dir="rtl"] .item-container, .item-container[dir="rtl"]) {
-  direction: rtl !important;
-}
+        ${messageScope} :is(table[dir="rtl"], table:has(th[dir="rtl"], td[dir="rtl"])) :is(th, td) {
+          text-align: right !important;
+        }
 
-:is(.caption, .hero-caption)[dir="rtl"] span,
-[dir="rtl"] :is(.caption, .hero-caption) span {
-  unicode-bidi: isolate !important;
-  direction: ltr !important;
-  display: inline-block;
-}
+        :is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"])[dir="rtl"],
+        [dir="rtl"] :is(.elicitations-message, .elicitation-label, .caption, .hero-caption, .thought-header, [data-test-id*="thought"]) {
+          direction: rtl !important;
+          text-align: right !important;
+          unicode-bidi: isolate;
+        }
 
-.elicitation-item[dir="rtl"],
-[dir="rtl"] .elicitation-item {
-  direction: rtl !important;
-  text-align: right !important;
-}
+        :is([dir="rtl"] .item-container, .item-container[dir="rtl"]) {
+          direction: rtl !important;
+        }
 
-:is([dir="rtl"], .elicitation-item[dir="rtl"]) .elicitation-button-icon {
-  transform: scaleX(-1);
-}
+        :is(.caption, .hero-caption)[dir="rtl"] span,
+        [dir="rtl"] :is(.caption, .hero-caption) span {
+          unicode-bidi: isolate !important;
+          direction: ltr !important;
+          display: inline-block;
+        }
+
+        .elicitation-item[dir="rtl"],
+        [dir="rtl"] .elicitation-item {
+          direction: rtl !important;
+          text-align: right !important;
+        }
+
+        :is([dir="rtl"], .elicitation-item[dir="rtl"]) .elicitation-button-icon {
+          transform: scaleX(-1);
+        }
       `,
       "gemini"
     )
@@ -723,7 +707,6 @@ ${messageScope} :is(table[dir="rtl"], table:has(th[dir="rtl"], td[dir="rtl"])) :
     engine.restoreStyles()
     globalStyle?.remove()
     globalStyle = null
-    elementDirections = new WeakMap()
   }
 
   return {

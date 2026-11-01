@@ -20,7 +20,7 @@ function waitForAsyncCommand(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-test("context menu manager registers menus and toggles the current site", async () => {
+test("context menu clicks are registered synchronously before loading settings", async () => {
   const localValues: Record<string, unknown> = {
     [STORAGE_KEYS.CONTEXT_MENUS_ENABLED]: true,
     [STORAGE_KEYS.DISABLED_FOR]: [],
@@ -33,6 +33,7 @@ test("context menu manager registers menus and toggles the current site", async 
     (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => void
   > = []
   const commandCalls: Array<{ command: string; url?: string | null }> = []
+  let finishStorageRead: (() => void) | undefined
 
   setFontaraCommandRunner(async (command, details) => {
     commandCalls.push({
@@ -105,7 +106,7 @@ test("context menu manager registers menus and toggles the current site", async 
             return
           }
 
-          callback({ ...key, ...localValues })
+          finishStorageRead = () => callback({ ...key, ...localValues })
         },
         set(items: Record<string, unknown>, callback: () => void) {
           Object.assign(localValues, items)
@@ -119,7 +120,12 @@ test("context menu manager registers menus and toggles the current site", async 
     }
   })
 
-  await ensureContextMenus()
+  registerContextMenuListeners()
+  assert.equal(clickListeners.length, 1)
+  assert.equal(createdMenus.length, 0)
+  assert.ok(finishStorageRead)
+  finishStorageRead()
+  await waitForAsyncCommand()
 
   assert.deepEqual(
     createdMenus.map((menu) => menu.id),

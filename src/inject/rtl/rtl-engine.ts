@@ -29,6 +29,17 @@ type StyleSnapshot = {
 
 type StyleableElement = Element & ElementCSSInlineStyle
 
+type CandidateScan = {
+  iterator: Generator<Element | null>
+  repeatRequested: boolean
+  started: boolean
+}
+
+const QUEUE_OPERATIONS_PER_FRAME = 200
+const MESSAGES_PER_FRAME = 8
+const QUEUE_BUDGET_MS = 8
+const QUEUE_TIMEOUT_MS = 100
+
 export type RtlEngineConfig = {
   applyToMessage?: (element: Element, engine: RtlEngine) => boolean | undefined
   excludeSelectors?: string[]
@@ -55,9 +66,15 @@ export class RtlEngine {
   messageSelector: string
   observeCharacterData: boolean
   observer: MutationObserver | null = null
-  observeRetryScheduled = false
   pendingNodes = new Set<Node>()
   rafId: number | null = null
+  private timeoutId: ReturnType<typeof setTimeout> | null = null
+  private candidateScans = new Map<Node, CandidateScan>()
+  private pendingCandidates = new Set<Element>()
+  private detachedCleanupIterator: Iterator<Element> | null = null
+  private detachedCleanupRequested = false
+  private messageTargets = new WeakMap<Element, Set<Element>>()
+  private currentMessageTargets: Set<Element> | null = null
   rtlClass: string | null
   rtlRegex: RegExp
   rtlStyle: {
@@ -98,7 +115,6 @@ export class RtlEngine {
     if (this.initialized) return
 
     this.initialized = true
-    this.observeRetryScheduled = false
     this.observe()
     if (this.enabled) {
       this.scheduleScan(document.body || document.documentElement || document)
@@ -106,39 +122,29 @@ export class RtlEngine {
   }
 
   dispose(): void {
-    this.enabled = false
+    this.setEnabled(false)
     this.initialized = false
-    this.observeRetryScheduled = false
     this.observer?.disconnect()
     this.observer = null
-    if (this.rafId !== null) {
-      cancelAnimationFrame(this.rafId)
-      this.rafId = null
-    }
-    this.pendingNodes.clear()
     this.restoreStyles()
   }
 
   observe(): void {
     if (!this.initialized || this.observer) return
-    const target = document.body || document.documentElement
-    if (!target) {
-      this.scheduleObserveRetry()
-      return
-    }
-
-    this.observeRetryScheduled = false
-
     this.observer = new MutationObserver((mutations) => {
       if (!this.enabled) return
 
+      let removedNodes = false
       for (const mutation of mutations) {
         if (mutation.type === "childList") {
           mutation.addedNodes.forEach((node) => {
             this.scheduleScan(node)
           })
           if (mutation.removedNodes.length > 0) {
-            this.cleanupDetached()
+            // Removing the final RTL text must reconcile its surviving
+            // message too; there may be no added node to trigger a scan.
+            this.scheduleScan(mutation.target)
+            removedNodes = true
           }
           continue
         }
@@ -147,152 +153,217 @@ export class RtlEngine {
           this.scheduleScan(mutation.target.parentElement ?? mutation.target)
         }
       }
+      if (removedNodes) this.cleanupDetached()
     })
 
-    this.observer.observe(target, {
+    // Document remains stable when an SPA replaces body/documentElement.
+    this.observer.observe(document, {
       childList: true,
       subtree: true,
       characterData: this.observeCharacterData
     })
   }
 
-  private scheduleObserveRetry(): void {
-    if (this.observeRetryScheduled) return
-
-    this.observeRetryScheduled = true
-    queueMicrotask(() => {
-      this.observeRetryScheduled = false
-      this.observe()
-    })
-  }
-
   scheduleScan(node: Node | null | undefined): void {
     if (!node || !this.enabled) return
 
+    const existing = this.candidateScans.get(node)
+    if (existing) {
+      existing.repeatRequested ||= existing.started
+      return
+    }
     this.pendingNodes.add(node)
-    if (this.rafId !== null) return
+    this.candidateScans.set(node, {
+      iterator: this.iterateCandidates(node),
+      repeatRequested: false,
+      started: false
+    })
+    this.scheduleQueue()
+  }
 
+  private scheduleQueue(): void {
+    if (!this.enabled || this.rafId !== null || this.timeoutId !== null) return
     this.rafId = requestAnimationFrame(() => this.processQueue())
+    // Hidden pages may not receive animation frames. Keep progress bounded
+    // there too, and cancel the alternate callback when either one runs.
+    this.timeoutId = setTimeout(() => this.processQueue(), QUEUE_TIMEOUT_MS)
+  }
+
+  private cancelQueueCallback(): void {
+    if (this.rafId !== null) cancelAnimationFrame(this.rafId)
+    if (this.timeoutId !== null) clearTimeout(this.timeoutId)
+    this.rafId = null
+    this.timeoutId = null
+  }
+
+  private clearQueue(): void {
+    this.cancelQueueCallback()
+    this.pendingNodes.clear()
+    this.candidateScans.clear()
+    this.pendingCandidates.clear()
+    this.detachedCleanupIterator = null
+    this.detachedCleanupRequested = false
+  }
+
+  private processDetachedCleanupStep(): void {
+    if (!this.detachedCleanupIterator) return
+    const next = this.detachedCleanupIterator.next()
+    if (next.done) {
+      this.detachedCleanupIterator = this.detachedCleanupRequested
+        ? this.styledElements.keys()
+        : null
+      this.detachedCleanupRequested = false
+    } else if (!next.value.isConnected) {
+      this.restoreElement(next.value)
+    }
   }
 
   processQueue(): void {
-    this.rafId = null
+    this.cancelQueueCallback()
 
     if (!this.enabled) {
-      this.pendingNodes.clear()
+      this.clearQueue()
       return
     }
 
-    const nodes = Array.from(this.pendingNodes)
-    this.pendingNodes.clear()
+    const startedAt = performance.now()
+    let operations = 0
+    let messages = 0
+    while (
+      this.enabled &&
+      operations < QUEUE_OPERATIONS_PER_FRAME &&
+      performance.now() - startedAt < QUEUE_BUDGET_MS
+    ) {
+      operations += 1
+      // Streaming messages can keep the scan queues nonempty indefinitely.
+      // Reserve progress for detached nodes instead of retaining their styles
+      // until the page becomes idle.
+      if (this.detachedCleanupIterator && operations % 8 === 1) {
+        this.processDetachedCleanupStep()
+        continue
+      }
+      const candidate = this.pendingCandidates.values().next().value
+      if (candidate) {
+        if (messages >= MESSAGES_PER_FRAME) break
+        this.pendingCandidates.delete(candidate)
+        this.applyToMessage(candidate)
+        messages += 1
+        continue
+      }
 
-    const candidates = new Set<Element>()
-    nodes.forEach((node) => {
-      this.collectCandidates(node, candidates)
-    })
-    candidates.forEach((element) => {
-      this.applyToMessage(element)
-    })
-    this.cleanupDetached()
+      const entry = this.candidateScans.entries().next().value
+      if (entry) {
+        const [node, scan] = entry
+        scan.started = true
+        const next = scan.iterator.next()
+        this.candidateScans.delete(node)
+        if (next.done) {
+          this.pendingNodes.delete(node)
+          if (scan.repeatRequested) this.scheduleScan(node)
+        } else {
+          // Rotate scans so new streamed text need not wait for an earlier
+          // whole-document traversal to finish.
+          this.candidateScans.set(node, scan)
+          if (next.value) this.pendingCandidates.add(next.value)
+        }
+        continue
+      }
+
+      if (this.detachedCleanupIterator) {
+        this.processDetachedCleanupStep()
+        continue
+      }
+      break
+    }
+
+    if (
+      this.candidateScans.size > 0 ||
+      this.pendingCandidates.size > 0 ||
+      this.detachedCleanupIterator
+    ) {
+      this.scheduleQueue()
+    }
   }
 
   collectCandidates(node: Node, bucket: Set<Element>): void {
-    const selector = this.messageSelector
-    const isMessageElement =
-      typeof this.config.isMessageElement === "function"
-        ? this.config.isMessageElement
-        : null
-
-    const addIfCandidate = (element: Element | null | undefined) => {
-      if (!element || !isDomElement(element)) return
-      if (
-        (selector && element.matches(selector)) ||
-        isMessageElement?.(element)
-      ) {
-        bucket.add(element)
-      }
+    for (const candidate of this.iterateCandidates(node)) {
+      if (candidate) bucket.add(candidate)
     }
+  }
 
-    if (node.nodeType === Node.TEXT_NODE) {
-      const parent = node.parentElement
-      if (!parent || this.isExcluded(parent)) return
+  private isCandidate(element: Element): boolean {
+    return Boolean(
+      (this.messageSelector && element.matches(this.messageSelector)) ||
+        this.config.isMessageElement?.(element)
+    )
+  }
 
-      addIfCandidate(parent)
-      if (selector) {
-        const container = parent.closest(selector)
-        if (container) bucket.add(container)
+  private *iterateCandidates(node: Node): Generator<Element | null> {
+    if (!node.isConnected) return
+    const isText = node.nodeType === Node.TEXT_NODE
+    const root = isText ? node.parentElement : node
+    if (!root) return
+
+    if (isDomElement(root)) {
+      if (this.isExcluded(root)) return
+      // A changed descendant invalidates every containing message scope.
+      // Adapters can match nested containers that were both styled during
+      // initial discovery; updating only the closest leaves the outer RTL.
+      let ancestor: Element | null = root
+      while (ancestor) {
+        if (this.isExcluded(ancestor)) break
+        const candidate = this.isCandidate(ancestor)
+        yield candidate ? ancestor : null
+        ancestor = ancestor.parentElement
       }
-      if (isMessageElement) {
-        let current: Element | null = parent
-        while (current) {
-          if (this.isExcluded(current)) break
-          if (isMessageElement(current)) {
-            bucket.add(current)
-            break
-          }
-          current = current.parentElement
-        }
-      }
+    } else if (!isQueryableRoot(root)) {
       return
     }
+    if (isText) return
 
-    if (isDomElement(node)) {
-      if (this.isExcluded(node)) return
-
-      addIfCandidate(node)
-      if (selector) {
-        const container = node.closest(selector)
-        if (container) bucket.add(container)
-        node.querySelectorAll(selector).forEach((element) => {
-          bucket.add(element)
-        })
-      }
-      if (isMessageElement) {
-        node.querySelectorAll("*").forEach((element) => {
-          if (!this.isExcluded(element) && isMessageElement(element)) {
-            bucket.add(element)
-          }
-        })
-      }
-      return
-    }
-
-    if (isQueryableRoot(node)) {
-      if (selector) {
-        node.querySelectorAll(selector).forEach((element) => {
-          if (!this.isExcluded(element)) bucket.add(element)
-        })
-      }
-      if (isMessageElement) {
-        node.querySelectorAll("*").forEach((element) => {
-          if (!this.isExcluded(element) && isMessageElement(element)) {
-            bucket.add(element)
-          }
-        })
-      }
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: (element) =>
+        isDomElement(element) && this.isExcluded(element)
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT
+    })
+    let child = walker.nextNode()
+    while (child) {
+      yield isDomElement(child) && this.isCandidate(child) ? child : null
+      child = walker.nextNode()
     }
   }
 
   applyToMessage(element: Element): void {
     if (!isDomElement(element) || !element.isConnected) return
-    if (this.isExcluded(element)) return
-
-    if (typeof this.config.applyToMessage === "function") {
-      const handled = this.config.applyToMessage(element, this)
-      if (handled === true) return
-    }
-
-    const text = getElementText(element)
-    if (!this.needsRTL(text)) return
-
-    this.applyRTL(element)
-
-    if (!this.textSelector) return
-    element.querySelectorAll(this.textSelector).forEach((child) => {
-      if (!this.isExcluded(child)) {
-        this.applyRTL(child)
+    const previousTargets = this.messageTargets.get(element)
+    const currentTargets = new Set<Element>()
+    const parentTargets = this.currentMessageTargets
+    this.currentMessageTargets = currentTargets
+    try {
+      if (this.isExcluded(element)) return
+      if (typeof this.config.applyToMessage === "function") {
+        const handled = this.config.applyToMessage(element, this)
+        if (handled === true) return
       }
-    })
+
+      const text = getElementText(element)
+      if (!this.needsRTL(text)) return
+      this.applyRTL(element)
+      if (!this.textSelector) return
+      element.querySelectorAll(this.textSelector).forEach((child) => {
+        if (!this.isExcluded(child)) this.applyRTL(child)
+      })
+    } finally {
+      this.currentMessageTargets = parentTargets
+      // Reconcile a complete message atomically. Adapters declare their
+      // current targets via rememberStyle; an LTR/empty edit releases any
+      // formerly RTL descendants even when the adapter returns early.
+      for (const target of previousTargets ?? []) {
+        if (!currentTargets.has(target)) this.restoreElement(target)
+      }
+      this.messageTargets.set(element, currentTargets)
+    }
   }
 
   needsRTL(text: string): boolean {
@@ -306,6 +377,7 @@ export class RtlEngine {
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled
+    if (!enabled) this.clearQueue()
   }
 
   isExcluded(node: Element): boolean {
@@ -340,6 +412,7 @@ export class RtlEngine {
     classNames: string[] = []
   ): void {
     if (!isDomElement(element)) return
+    this.currentMessageTargets?.add(element)
 
     const snapshot =
       this.styledElements.get(element) ??
@@ -409,19 +482,16 @@ export class RtlEngine {
 
   restoreStyles(): void {
     this.styledElements.forEach((_, element) => {
-      if (element.isConnected) {
-        this.restoreElement(element)
-      }
+      this.restoreElement(element)
     })
     this.styledElements.clear()
+    this.messageTargets = new WeakMap()
   }
 
   cleanupDetached(): void {
-    this.styledElements.forEach((_, element) => {
-      if (!element.isConnected) {
-        this.styledElements.delete(element)
-      }
-    })
+    if (this.detachedCleanupIterator) this.detachedCleanupRequested = true
+    else this.detachedCleanupIterator = this.styledElements.keys()
+    this.scheduleQueue()
   }
 }
 

@@ -11,7 +11,6 @@ type LocalStorageChanges = Record<string, chrome.storage.StorageChange>
 
 let cachedSettings: Record<string, unknown> | null = null
 let cachedRevision = 0
-let settingsReadPromise: Promise<Record<string, unknown>> | null = null
 let settingsOperationQueue: Promise<void> = Promise.resolve()
 
 export type BackgroundSettingsWriteResult = {
@@ -93,34 +92,39 @@ function getStorageChangeValue(
 export function invalidateBackgroundSettingsCache(): void {
   cachedSettings = null
   cachedRevision = 0
-  settingsReadPromise = null
 }
 
-export async function getBackgroundSettings(): Promise<
-  Record<string, unknown>
-> {
-  await settingsOperationQueue
-  if (cachedSettings) return cachedSettings
-  if (settingsReadPromise) return settingsReadPromise
-
-  settingsReadPromise = readSettingsFromStorage()
-    .then((settings) => {
-      cachedSettings = settings
-      return settings
-    })
-    .finally(() => {
-      settingsReadPromise = null
-    })
-
-  return settingsReadPromise
+/**
+ * Serializes raw settings migration/sync with normal UI mutations. The callback
+ * must use storage directly, never queued settings APIs, to avoid reentrancy.
+ */
+export function runBackgroundSettingsStorageOperation<T>(
+  operation: () => Promise<T>
+): Promise<T> {
+  return enqueueSettingsOperation(async () => {
+    try {
+      return await operation()
+    } finally {
+      // Raw writes may have partially succeeded even when an operation rejects.
+      invalidateBackgroundSettingsCache()
+    }
+  })
 }
 
-export async function getBackgroundSettingsSnapshot(): Promise<BackgroundSettingsSnapshot> {
-  const settings = await getBackgroundSettings()
-  return {
-    revision: cachedRevision,
-    settings
-  }
+async function readCachedSettings(): Promise<Record<string, unknown>> {
+  if (!cachedSettings) cachedSettings = await readSettingsFromStorage()
+  return cachedSettings
+}
+
+export function getBackgroundSettings(): Promise<Record<string, unknown>> {
+  return enqueueSettingsOperation(readCachedSettings)
+}
+
+export function getBackgroundSettingsSnapshot(): Promise<BackgroundSettingsSnapshot> {
+  return enqueueSettingsOperation(async () => ({
+    settings: await readCachedSettings(),
+    revision: cachedRevision
+  }))
 }
 
 export async function writeBackgroundSettingsWithSyncSnapshot(
@@ -155,7 +159,6 @@ export async function writeBackgroundSettingsWithSyncSnapshot(
 
     cachedSettings = normalizedValues
     cachedRevision = revision
-    settingsReadPromise = null
 
     if (hasChanges) {
       try {
@@ -203,6 +206,10 @@ export async function syncBackgroundSettingsCacheFromLocalChanges(
       : cachedRevision
     const currentSettings = cachedSettings
 
+    // A delayed storage event from an older queued write must not roll the
+    // cache back after a newer local mutation has already committed.
+    if (revisionChange && incomingRevision < cachedRevision) return null
+
     if (!hasSettingsChange) {
       cachedRevision = Math.max(cachedRevision, incomingRevision)
       return null
@@ -235,7 +242,6 @@ export async function syncBackgroundSettingsCacheFromLocalChanges(
     const revision = Math.max(cachedRevision, incomingRevision) + 1
     cachedSettings = normalizedValues
     cachedRevision = revision
-    settingsReadPromise = null
 
     await setLocalValues({
       ...changedValues,

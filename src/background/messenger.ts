@@ -67,7 +67,6 @@ const ALLOWED_UI_PAGE_PATHS = [
 
 let adapter: FontaraMessengerAdapter | null = null
 let initialized = false
-let subscriberCount = 0
 const pendingMutations = new Map<string, Promise<unknown>>()
 const completedMutations = new Map<string, unknown>()
 const MAX_COMPLETED_MUTATIONS = 128
@@ -134,10 +133,8 @@ async function handleMessage(message: FontaraUIMessage): Promise<unknown> {
     case MESSAGE_TYPES_UI_TO_BG.GET_DATA:
       return adapter.collect()
     case MESSAGE_TYPES_UI_TO_BG.SUBSCRIBE_TO_CHANGES:
-      subscriberCount += 1
       return adapter.collect()
     case MESSAGE_TYPES_UI_TO_BG.UNSUBSCRIBE_FROM_CHANGES:
-      subscriberCount = Math.max(0, subscriberCount - 1)
       return true
     case MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS:
       return adapter.changeSettings(message.data.settings)
@@ -294,7 +291,13 @@ export function initMessenger(nextAdapter: FontaraMessengerAdapter): void {
 }
 
 export function reportChanges(data: FontaraExtensionData): void {
-  if (subscriberCount === 0) return
-
-  chrome.runtime.sendMessage(createFontaraBackgroundChangesMessage(data))
+  // Open extension pages outlive an MV3 worker. Broadcast without relying on
+  // in-memory subscriptions that disappear when that worker is suspended.
+  chrome.runtime.sendMessage(
+    createFontaraBackgroundChangesMessage(data),
+    () => {
+      // No open popup/options page is a normal state, not a messaging failure.
+      void chrome.runtime.lastError
+    }
+  )
 }

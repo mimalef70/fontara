@@ -10,6 +10,7 @@
     "Microsoft JhengHei", "Noto Sans CJK TC", "PingFang SC",
     "Microsoft YaHei", "Noto Sans CJK SC", "Apple SD Gothic Neo",
     "Malgun Gothic", "Noto Sans CJK KR", serif;
+  --fontara-claude-message-fallback: var(--fontara-claude-anthropic-serif-display-fallback);
 }
 
 .cds-root[data-font],
@@ -35,63 +36,11 @@ html {
     var(--fontara-claude-anthropic-serif-display-fallback) !important;
 }
 
-:is(article, [data-test-render-count], .font-claude-message, [role="article"]) :where(
-  p,
-  span,
-  div,
-  mark,
-  a,
-  h1, h2, h3, h4, h5, h6,
-  li,
-  label,
-  blockquote,
-  figcaption,
-  summary,
-  dt, dd,
-  th, td, caption,
-  legend,
-  [role="heading"]
-):not(
-  pre,
-  pre *,
-  code,
-  code *,
-  .katex,
-  .katex *,
-  [role="math"],
-  [role="math"] *,
-  math,
-  math *,
-  [aria-hidden="true"],
-  [class*="fa-"],
-  .fa,
-  .fab,
-  .fad,
-  .fal,
-  .far,
-  .fas,
-  .fass,
-  .fasr,
-  .fat,
-  .icofont,
-  [style*="font-"],
-  [class*="icon"],
-  [class*="Icon"],
-  [class*="symbol"],
-  [class*="Symbol"],
-  .glyphicon,
-  [class*="material-symbol"],
-  [class*="material-icon"],
-  mu,
-  [class*="mu-"],
-  .typcn,
-  [class*="vjs-"]
-) {
-  font-family: var(--fontara-font),
-    var(--fontara-claude-anthropic-serif-display-fallback) !important;
+[class*="font-user-message"] {
+  --fontara-claude-message-fallback: var(--fontara-claude-anthropic-sans-ui-fallback);
 }
 
-:is(.font-user-message, [class*="font-user-message"]) :where(
+:is(article, [data-test-render-count], .font-claude-message, [role="article"], [class*="font-user-message"]) :where(
   p,
   span,
   div,
@@ -119,30 +68,44 @@ html {
   math,
   math *,
   [aria-hidden="true"],
+  [aria-hidden="true"] *,
   [class*="fa-"],
+  [class*="fa-"] *,
   .fa,
+  .fa *,
   .fab,
+  .fab *,
   .fad,
+  .fad *,
   .fal,
+  .fal *,
   .far,
+  .far *,
   .fas,
+  .fas *,
   .fass,
+  .fass *,
   .fasr,
+  .fasr *,
   .fat,
+  .fat *,
   .icofont,
+  .icofont *,
   [style*="font-"],
-  [class*="icon"],
-  [class*="Icon"],
-  [class*="symbol"],
-  [class*="Symbol"],
-  .glyphicon,
-  [class*="material-symbol"],
-  [class*="material-icon"],
+  [style*="font-"] *,
+  [class*="icon" i],
+  [class*="icon" i] *,
+  [class*="symbol" i],
+  [class*="symbol" i] *,
   mu,
+  mu *,
   [class*="mu-"],
+  [class*="mu-"] *,
   .typcn,
-  [class*="vjs-"]
+  .typcn *,
+  [class*="vjs-"],
+  [class*="vjs-"] *
 ) {
   font-family: var(--fontara-font),
-    var(--fontara-claude-anthropic-sans-ui-fallback) !important;
+    var(--fontara-claude-message-fallback) !important;
 }

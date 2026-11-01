@@ -4,7 +4,11 @@ const esbuild = require("esbuild")
 const { minify } = require("terser")
 
 const { absolutePath, getDestDir } = require("./paths")
-const { isChromiumMV3Platform, PLATFORM } = require("./platform")
+const {
+  getBrowserTarget,
+  isChromiumMV3Platform,
+  PLATFORM
+} = require("./platform")
 
 const jsEntries = [
   {
@@ -71,6 +75,7 @@ const textPlugin = {
 
 async function bundleJS({ platform, debug, test = false }) {
   const outDir = getDestDir({ platform, debug, test })
+  const target = getBrowserTarget(platform)
 
   await Promise.all(
     jsEntries.map(async (entry) => {
@@ -81,7 +86,7 @@ async function bundleJS({ platform, debug, test = false }) {
         bundle: true,
         charset: "utf8",
         format: "iife",
-        target: platform === PLATFORM.FIREFOX_MV3 ? "firefox109" : "chrome106",
+        target,
         platform: "browser",
         sourcemap: debug ? "inline" : false,
         minify: !debug,

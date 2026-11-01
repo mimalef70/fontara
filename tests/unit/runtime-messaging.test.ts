@@ -125,6 +125,13 @@ test("background messenger routes UI requests and reports subscribed changes", a
 
   assert.equal(listeners.length, 1)
 
+  // A restarted worker has no SUBSCRIBE request from pages that stayed open.
+  reportChanges(extensionData)
+  assert.deepEqual(sentMessages, [
+    { data: extensionData, type: MESSAGE_TYPES_BG_TO_UI.CHANGES }
+  ])
+  sentMessages.length = 0
+
   let response: unknown
   listeners[0](
     { type: MESSAGE_TYPES_UI_TO_BG.GET_DATA },

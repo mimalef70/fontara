@@ -1,0 +1,117 @@
+name: Verify release packages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Check and build all packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.5.0
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate source, dependencies, packages, and reproducibility
+        run: pnpm verify
+      - name: Preserve the exact packages for browser tests and release
+        uses: actions/upload-artifact@v7
+        with:
+          name: fontara-verified-packages
+          if-no-files-found: error
+          path: |
+            build/*-prod.zip
+            build/firefox-mv3-source-*.zip
+          retention-days: 30
+
+  browsers:
+    name: ${{ matrix.label }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Chrome stable
+            browser: chrome
+            version: stable
+          - label: Chrome minimum 130
+            browser: chrome
+            version: "130.0.6723.116"
+          - label: Firefox stable
+            browser: firefox
+            version: latest
+          - label: Firefox minimum 140 ESR
+            browser: firefox
+            version: "140.0esr"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.5.0
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Download production packages
+        uses: actions/download-artifact@v8
+        with:
+          name: fontara-verified-packages
+          path: build
+      - name: Unpack the production artifact without rebuilding it
+        env:
+          BROWSER_TARGET: ${{ matrix.browser }}
+        run: unzip -q "build/${BROWSER_TARGET}-mv3-prod.zip" -d "build/${BROWSER_TARGET}-mv3-prod"
+      - name: Set up Chrome
+        if: matrix.browser == 'chrome'
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: ${{ matrix.version }}
+          install-dependencies: true
+      - name: Set up Firefox
+        if: matrix.browser == 'firefox'
+        id: firefox
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: ${{ matrix.version }}
+      - name: Set up geckodriver
+        if: matrix.browser == 'firefox'
+        uses: ./.github/actions/setup-geckodriver
+      - name: Chrome runtime and accessibility regressions
+        if: matrix.browser == 'chrome'
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: pnpm test:browser:chrome && pnpm test:browser:site
+      - name: Smoke-test the exact Chrome production artifact
+        if: matrix.browser == 'chrome'
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node --test --test-timeout=120000 --test-name-pattern='Chrome production artifact' tests/browser/production-artifacts.test.mjs
+      - name: Firefox runtime regressions
+        if: matrix.browser == 'firefox'
+        env:
+          FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
+          FONTARA_FIREFOX_BROWSER_TESTS: "1"
+          FONTARA_FIREFOX_HEADLESS: "1"
+        run: pnpm test:browser:firefox
+      - name: Smoke-test the exact Firefox production artifact
+        if: matrix.browser == 'firefox'
+        env:
+          FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
+          FONTARA_FIREFOX_BROWSER_TESTS: "1"
+          FONTARA_FIREFOX_HEADLESS: "1"
+        run: node --test --test-timeout=120000 --test-name-pattern='Firefox production artifact' tests/browser/production-artifacts.test.mjs

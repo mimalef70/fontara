@@ -21,9 +21,15 @@ export function getTextStrokeConfig(
 export function createTextStrokeCSS(config: TextStrokeConfig): string {
   if (config.widthPx <= 0) return ""
 
+  const protectedScope = `:is(${GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS.join(", ")})`
   return [
-    `*:not(${GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS.join(", ")}) {`,
+    `*:not(${protectedScope}):not(${protectedScope} *) {`,
     `  -webkit-text-stroke: ${config.widthPx}px !important;`,
+    "}",
+    // Text stroke inherits. Exclusion alone would still pass the body's
+    // stroke to code and icon fonts, including their unmarked descendants.
+    `${protectedScope}, ${protectedScope} * {`,
+    "  -webkit-text-stroke: 0 !important;",
     "}"
   ].join("\n")
 }

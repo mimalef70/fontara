@@ -81,3 +81,101 @@ test("site CSS generator extracts only the family portion of font shorthand", ()
   )
   assert.equal(extractFontFamilyFromShorthand("inherit"), null)
 })
+
+test("normalized duplicate selectors retain original cascade precedence", () => {
+  const result = buildSiteCSS([
+    { matchedSelector: ".title[_ngcontent-ng-c1]", fontFamily: "Arial" },
+    { matchedSelector: ".title", fontFamily: "Georgia" },
+    { matchedSelector: ".body[_ngcontent-ng-c1]", fontFamily: "Arial" },
+    { matchedSelector: ".body[_ngcontent-ng-c2]", fontFamily: "Georgia" }
+  ])
+  assert.equal(result.ruleCount, 2)
+  assert.match(result.css, /\.title \{\s*font-family:.*arial-ui-fallback/)
+  assert.match(result.css, /\.body \{\s*font-family:.*georgia-ui-fallback/)
+})
+
+test("important declarations win before specificity without entering fallbacks", () => {
+  const result = buildSiteCSS([
+    { matchedSelector: ".title", fontFamily: "Georgia !important" },
+    { matchedSelector: ".title[_ngcontent-ng-c1]", fontFamily: "Arial" },
+    {
+      matchedSelector: ".body",
+      declarations: [
+        { property: "font-family", value: "Georgia", important: true }
+      ]
+    },
+    { matchedSelector: ".body[_ngcontent-ng-c2]", fontFamily: "Arial" }
+  ])
+  assert.equal(result.ruleCount, 2)
+  assert.match(result.css, /\.title,\s*\.body \{/)
+  assert.doesNotMatch(result.css, /Arial|fallback:.*!important/)
+})
+
+test("duplicate declarations retain importance before their source order", () => {
+  const result = buildSiteCSS([
+    {
+      matchedSelector: ".important-first",
+      declarations: [
+        { property: "font-family", value: "Arial", important: true },
+        { property: "font-family", value: "Georgia" }
+      ]
+    },
+    {
+      matchedSelector: ".important-last",
+      declarations: [
+        { property: "font-family", value: "Arial !important" },
+        { property: "font-family", value: "Georgia", priority: "important" }
+      ]
+    },
+    {
+      matchedSelector: ".normal-last",
+      declarations: [
+        { property: "font-family", value: "Arial" },
+        { property: "font-family", value: "Georgia" }
+      ]
+    },
+    {
+      matchedSelector: ".shorthand-important-first",
+      declarations: [
+        { property: "font", value: "400 14px Arial !important" },
+        { property: "font", value: "400 14px Georgia" }
+      ]
+    }
+  ])
+
+  assert.equal(result.ruleCount, 4)
+  assert.match(
+    result.css,
+    /\.important-first,\s*\.shorthand-important-first \{\s*font-family:.*arial-ui-fallback/
+  )
+  assert.match(
+    result.css,
+    /\.important-last,\s*\.normal-last \{\s*font-family:.*georgia-ui-fallback/
+  )
+  assert.doesNotMatch(result.css, /fallback:.*!important/)
+})
+
+test("selector lists and functional pseudo classes preserve source specificity", () => {
+  const result = buildSiteCSS([
+    {
+      matchedSelector:
+        ".title[_ngcontent-ng-c1], :where(.body[_ngcontent-ng-c1])",
+      fontFamily: "Arial"
+    },
+    { matchedSelector: ".title, :where(.body)", fontFamily: "Georgia" },
+    {
+      matchedSelector: ":is(.card, #card)[_ngcontent-ng-c1]",
+      fontFamily: "Arial"
+    },
+    { matchedSelector: ":is(.card, #card)", fontFamily: "Georgia" }
+  ])
+  assert.equal(result.ruleCount, 3)
+  assert.match(
+    result.css,
+    /\.title,\s*:is\(\.card, #card\) \{\s*font-family:.*arial-ui-fallback/
+  )
+  assert.match(
+    result.css,
+    /:where\(\.body\) \{\s*font-family:.*georgia-ui-fallback/
+  )
+})

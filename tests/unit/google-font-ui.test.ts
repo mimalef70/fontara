@@ -25,7 +25,7 @@ test("Firefox consent is requested directly from the Google Fonts toggle gesture
 test("global and per-site Google choices commit only after preparation", () => {
   const selector = readSource("src/ui/components/FontSelector.tsx")
   const popupPerSite = readSource("src/ui/components/PerSiteSettings.tsx")
-  const options = readSource("src/ui/options/index.tsx")
+  const options = readSource("src/ui/options/use-site-profiles.ts")
 
   const selectorHandler = selector.slice(
     selector.indexOf("const handleFontSelect"),
@@ -54,7 +54,7 @@ test("global and per-site Google choices commit only after preparation", () => {
   )
   assert.ok(
     optionsHandler.indexOf("prepareGoogleFont(siteProfileFontInput)") <
-      optionsHandler.indexOf("fontaraConnector.changeSettings")
+      optionsHandler.indexOf("setSiteProfiles((current)")
   )
 })
 

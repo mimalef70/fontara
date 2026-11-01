@@ -75,6 +75,10 @@ jobs:
         with:
           firefox-version: ${{ matrix.version }}
 
+      - name: Set up geckodriver
+        if: matrix.browser == 'firefox'
+        uses: ./.github/actions/setup-geckodriver
+
       - name: Run Chrome browser tests
         if: matrix.browser == 'chrome'
         env:

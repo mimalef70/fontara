@@ -89,6 +89,7 @@ The source package includes:
 - `tests/` unit tests.
 - `docs/` public privacy, release, development, and store documentation.
 - `.github/workflows/` CI, browser-matrix, and release workflows.
+- `.github/actions/` checksum-verified Firefox test-driver installation.
 - `LICENSE`, `THIRD_PARTY_NOTICES.md`, `FONT_LICENSES/`, and exact bundled-font
   provenance metadata.
 - `package.json`, `pnpm-lock.yaml`, and `pnpm-workspace.yaml`.

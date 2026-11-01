@@ -12,6 +12,39 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Restored Firefox stable/beta browser tests after extension-page input
+  restrictions changed. The harness uses geckodriver for trusted clicks and
+  uploads, with a checksum-verified driver installation in CI.
+- Stabilized Chrome browser tests around animated mobile font pickers and
+  asynchronously populated font menus while preserving trusted user input.
+- Raised the desktop browser minimums to Chrome/Chromium 130 and Firefox 140
+  ESR and derived JavaScript build targets from the manifests. UI CSS transforms
+  remain enabled in all builds, including browser-test builds. Firefox for
+  Android has a separate installation minimum of 142; Android devices are not
+  included in the current validation.
+- Unified CI and release verification with stable/minimum Chrome and Firefox
+  browser gates. Tagged releases now publish the exact production packages
+  smoke-tested by verification, without rebuilding them before upload.
+- Fixed saved site-profile fonts being cleared during editing before external
+  catalogs load. Profiles retain paused system-font choices, drafts survive
+  section navigation, and delayed Google preparation preserves other profile
+  changes. Split profile state/actions, rendering, and font catalogs into
+  dedicated options modules.
+- Fixed font previews in Dialog portals while preserving Drawer preview styles.
+- Serialized startup/sync storage work with settings mutations, kept open
+  options pages receiving changes after service-worker restarts, and registered
+  context-menu click handling before asynchronous initialization.
+- Kept background notifications paired with the settings revision they describe,
+  preventing a delayed storage event from undoing a newer site exclusion.
+- Fixed case-sensitive and percent-encoded site-path matching. Protected code
+  and icon descendants from inherited text stroke, and restored RTL styles when
+  reused messages become English or empty. RTL reconciliation now handles
+  nested scopes and replaced document bodies with bounded, cancellable work.
+- Fixed matched-selector CSS collisions to respect declaration importance and
+  original selector specificity before capture order and fallback grouping.
+- Added focused browser regressions for background, UI, and injection behavior,
+  plus mobile/desktop accessibility checks for the public website and privacy
+  page.
 - Enabled Google Fonts on supported Firefox versions through a page-private
   binary pipeline: the background downloads and validates CSS/WOFF2 assets,
   publishes them to a bounded local cache, and content scripts register all

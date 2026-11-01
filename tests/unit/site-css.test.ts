@@ -165,3 +165,10 @@ test("site CSS avoids volatile selectors and positive icon font targets", () => 
     }
   }
 })
+
+test("ChatGPT CSS targets the mobile composer without StyleX hashes", () => {
+  const css = fs.readFileSync(path.join(SITE_STYLES_DIR, "chatgpt.css"), "utf8")
+
+  assert.match(css, /(?:^|,\s*)form\[data-mobile-composer\]\s*(?:,|\{)/m)
+  assert.doesNotMatch(css, /(^|[\s,])\.x[a-z\d]+\b/)
+})

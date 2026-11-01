@@ -63,12 +63,26 @@ test("manifest injects FontAra into all frames at document_start", () => {
   assert.equal(contentScript.match_origin_as_fallback, true)
 })
 
-test("chromium manifest retains the existing browser support baseline", () => {
+test("manifests require browsers supporting the shipped CSS and privacy APIs", () => {
   const chromeManifest = readJSON<{ minimum_chrome_version?: string }>(
     "src/manifest-chrome-mv3.json"
   )
 
-  assert.equal(chromeManifest.minimum_chrome_version, "106.0.0.0")
+  const firefoxManifest = readJSON<{
+    browser_specific_settings: {
+      gecko: { strict_min_version: string }
+      gecko_android: { strict_min_version: string }
+    }
+  }>("src/manifest-firefox-mv3.json")
+  assert.equal(chromeManifest.minimum_chrome_version, "130.0.0.0")
+  assert.equal(
+    firefoxManifest.browser_specific_settings.gecko.strict_min_version,
+    "140.0"
+  )
+  assert.equal(
+    firefoxManifest.browser_specific_settings.gecko_android.strict_min_version,
+    "142.0"
+  )
 })
 
 test("manifest grants storage capacity without tabs or activeTab", () => {

@@ -675,7 +675,11 @@ test("selected custom font changes load its FontFace without a reload", async ()
     )
     assert.match(
       runtime.getStyleText("fontara-text-stroke-style"),
-      /^\*:not\(pre, pre \*, code,/
+      /^\*:not\(:is\(pre, pre \*, code,/
+    )
+    assert.match(
+      runtime.getStyleText("fontara-text-stroke-style"),
+      /-webkit-text-stroke: 0 !important;/
     )
     assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
 

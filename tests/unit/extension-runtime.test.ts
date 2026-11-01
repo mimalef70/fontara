@@ -2,7 +2,12 @@ import assert from "node:assert/strict"
 import test, { afterEach, beforeEach } from "node:test"
 
 import { ExtensionRuntime } from "../../src/background/extension"
-import { invalidateBackgroundSettingsCache } from "../../src/background/settings-manager"
+import { BackgroundGoogleFontManager } from "../../src/background/google-font-manager"
+import {
+  getBackgroundSettings,
+  invalidateBackgroundSettingsCache,
+  writeBackgroundSettings
+} from "../../src/background/settings-manager"
 import { flushPendingSettingsSync } from "../../src/background/storage-manager"
 import { STORAGE_KEYS } from "../../src/config/storage"
 import {
@@ -10,6 +15,7 @@ import {
   CUSTOM_FONT_STORAGE_SCHEMA_VERSION,
   CUSTOM_FONT_STORAGE_SCHEMA_VERSION_KEY
 } from "../../src/utils/custom-font-storage"
+import { FONTARA_SETTINGS_REVISION_KEY } from "../../src/utils/settings-sync"
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 const originalDebug = Reflect.get(globalThis, "__DEBUG__") as unknown
@@ -266,4 +272,118 @@ test("partial settings import preserves quarantined custom fonts and their blobs
 
   // Let the deferred change report finish against this test's chrome mock.
   await new Promise((resolve) => setTimeout(resolve, 40))
+})
+
+test("a delayed local change publishes settings and revision from the same snapshot", async () => {
+  const localValues: Record<string, unknown> = {
+    [STORAGE_KEYS.DISABLED_FOR]: ["example.com"],
+    [STORAGE_KEYS.ENABLED_BY_DEFAULT]: true,
+    [STORAGE_KEYS.SYNC_SETTINGS]: false
+  }
+  installChromeRuntimeMock(localValues, {})
+  await ExtensionRuntime.start()
+  await getBackgroundSettings()
+
+  const published: Array<{
+    settings: Record<string, unknown>
+    revision: number
+  }> = []
+  const originalPublish = Reflect.get(ExtensionRuntime, "publishSettingsChange")
+  Reflect.set(
+    ExtensionRuntime,
+    "publishSettingsChange",
+    async (settings: Record<string, unknown>, revision: number) => {
+      published.push({ settings, revision })
+    }
+  )
+  let laterMutation: Promise<Record<string, unknown>> | undefined
+  const originalSet = chrome.storage.local.set
+  chrome.storage.local.set = ((
+    items: Record<string, unknown>,
+    callback: () => void
+  ) => {
+    if (
+      !laterMutation &&
+      Object.keys(items).length === 1 &&
+      FONTARA_SETTINGS_REVISION_KEY in items
+    ) {
+      // The first event reconciles an enabled site. Before its publisher reads
+      // the revision, a newer UI mutation excludes that site again.
+      laterMutation = writeBackgroundSettings({
+        [STORAGE_KEYS.DISABLED_FOR]: ["example.com"]
+      })
+    }
+    originalSet(items, callback)
+  }) as typeof chrome.storage.local.set
+
+  try {
+    localValues[STORAGE_KEYS.DISABLED_FOR] = []
+    const handleChange = Reflect.get(
+      ExtensionRuntime,
+      "handleLocalSettingsChange"
+    ) as (
+      changes: Record<string, chrome.storage.StorageChange>
+    ) => Promise<void>
+    await handleChange({
+      [STORAGE_KEYS.DISABLED_FOR]: { newValue: [], oldValue: ["example.com"] }
+    })
+    assert.ok(laterMutation)
+    await laterMutation
+    assert.equal(published.length, 1)
+    assert.equal(
+      published[0].revision,
+      localValues[FONTARA_SETTINGS_REVISION_KEY]
+    )
+    assert.deepEqual(published[0].settings[STORAGE_KEYS.DISABLED_FOR], [
+      "example.com"
+    ])
+  } finally {
+    Reflect.set(ExtensionRuntime, "publishSettingsChange", originalPublish)
+  }
+})
+
+test("a stale Google Fonts disable event restores the latest network preference", async () => {
+  const localValues: Record<string, unknown> = {
+    [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: true,
+    [STORAGE_KEYS.SYNC_SETTINGS]: false,
+    [FONTARA_SETTINGS_REVISION_KEY]: 3
+  }
+  installChromeRuntimeMock(localValues, {})
+  await ExtensionRuntime.start()
+  await getBackgroundSettings()
+
+  const networkActions: string[] = []
+  const managerPrototype = BackgroundGoogleFontManager.prototype
+  const originalCancel = managerPrototype.cancelPendingNetwork
+  const originalResume = managerPrototype.resumeNetwork
+  managerPrototype.cancelPendingNetwork = () => {
+    networkActions.push("cancel")
+  }
+  managerPrototype.resumeNetwork = () => {
+    networkActions.push("resume")
+  }
+
+  try {
+    const handleChange = Reflect.get(
+      ExtensionRuntime,
+      "handleLocalSettingsChange"
+    ) as (
+      changes: Record<string, chrome.storage.StorageChange>
+    ) => Promise<void>
+    await handleChange({
+      [STORAGE_KEYS.GOOGLE_FONTS_ENABLED]: { newValue: false, oldValue: true },
+      [FONTARA_SETTINGS_REVISION_KEY]: { newValue: 2, oldValue: 1 }
+    })
+
+    // Stop immediately for an opt-out event, then reconcile the newer opt-in.
+    // The stale event is ignored by the cache but must not leave network paused.
+    assert.deepEqual(networkActions, ["cancel", "resume"])
+    assert.equal(
+      (await getBackgroundSettings())[STORAGE_KEYS.GOOGLE_FONTS_ENABLED],
+      true
+    )
+  } finally {
+    managerPrototype.cancelPendingNetwork = originalCancel
+    managerPrototype.resumeNetwork = originalResume
+  }
 })

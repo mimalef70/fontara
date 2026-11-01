@@ -346,7 +346,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
     "BLOCKQUOTE"
   ])
   let globalStyle: HTMLStyleElement | null = null
-  let elementDirections = new WeakMap<Element, "ltr" | "rtl">()
 
   const engine = new RtlEngine({
     messageSelectors,
@@ -375,12 +374,10 @@ function createClaudeAdapter(): RtlSiteAdapter {
   }
 
   const applyLtrGuard = (element: HTMLElement) => {
-    if (elementDirections.get(element) === "ltr") return
     engine.rememberStyle(element, ["direction", "text-align"])
     element.setAttribute("dir", "ltr")
     engine.setStyle(element, "direction", "ltr", "important")
     engine.setStyle(element, "text-align", "left", "important")
-    elementDirections.set(element, "ltr")
   }
 
   const applyRtlText = (element: HTMLElement) => {
@@ -424,7 +421,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
       })
 
       const finalDirection = rtlCount > ltrCount ? "rtl" : "ltr"
-      if (elementDirections.get(element) === finalDirection) return
 
       if (finalDirection === "rtl") {
         engine.rememberStyle(
@@ -442,7 +438,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
       } else {
         restoreIfModified(element)
       }
-      elementDirections.set(element, finalDirection)
       return
     }
 
@@ -451,14 +446,12 @@ function createClaudeAdapter(): RtlSiteAdapter {
       if (!text) return
 
       const direction = detectDominantDirection(text) ?? "ltr"
-      if (elementDirections.get(element) === direction) return
 
       if (direction === "rtl") {
         applyRtlText(element)
       } else {
         restoreIfModified(element)
       }
-      elementDirections.set(element, direction)
     }
 
     if (["DIV", "SECTION", "ARTICLE"].includes(element.tagName)) {
@@ -490,7 +483,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
     engine.restoreStyles()
     globalStyle?.remove()
     globalStyle = null
-    elementDirections = new WeakMap()
   }
 
   return {
@@ -581,7 +573,6 @@ function createGeminiAdapter(): RtlSiteAdapter {
   const uiExclude = joinSelectors(uiExcludeSelectors)
   const codeGuard = joinSelectors(codeGuardSelectors)
   let globalStyle: HTMLStyleElement | null = null
-  let elementDirections = new WeakMap<Element, "rtl">()
 
   const engine = new RtlEngine({
     messageSelectors,
@@ -612,17 +603,8 @@ function createGeminiAdapter(): RtlSiteAdapter {
 
       candidates.forEach((node) => {
         const direction = detectDominantDirection(getElementText(node))
-        if (direction !== "rtl") {
-          if (elementDirections.has(node)) {
-            currentEngine.restoreElement(node)
-            elementDirections.delete(node)
-          }
-          return
-        }
-
-        if (elementDirections.get(node) === "rtl") return
+        if (direction !== "rtl") return
         currentEngine.applyRTL(node)
-        elementDirections.set(node, "rtl")
       })
 
       return true
@@ -644,47 +626,25 @@ function createGeminiAdapter(): RtlSiteAdapter {
         ${messageScope} :is(ul, ol)[dir="rtl"] {
           direction: rtl !important;
           text-align: right !important;
-          list-style: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
+          padding-inline-start: 2rem !important;
+          padding-inline-end: 0 !important;
         }
 
-        ${messageScope} :is(ul, ol):is([dir="rtl"] > li, > li[dir="rtl"]) {
+        ${messageScope} :is(ul, ol)[dir="rtl"],
+        ${messageScope} :is(ul, ol):has(> li[dir="rtl"]) {
+          list-style-type: revert !important;
+        }
+
+        ${messageScope} :is(ul, ol)[dir="rtl"] > li,
+        ${messageScope} :is(ul, ol) > li[dir="rtl"] {
+          list-style-type: inherit !important;
+          list-style-position: outside !important;
+        }
+
+        ${messageScope} :is(ul, ol)[dir="rtl"] > li:not([dir="ltr"]),
+        ${messageScope} :is(ul, ol) > li[dir="rtl"] {
           direction: rtl !important;
           text-align: right !important;
-          list-style: none !important;
-          position: relative !important;
-          padding: 0 1.55rem 0 0 !important;
-        }
-
-        ${messageScope} ol[dir="rtl"] {
-          counter-reset: fontara-gemini-rtl-list;
-        }
-
-        ${messageScope} ol:is([dir="rtl"] > li, > li[dir="rtl"]) {
-          counter-increment: fontara-gemini-rtl-list;
-        }
-
-        ${messageScope} :is(ul, ol):is([dir="rtl"] > li, > li[dir="rtl"])::before {
-          display: block !important;
-          position: absolute !important;
-          right: 0 !important;
-          left: auto !important;
-          top: 0.72em !important;
-          transform: translateY(-50%) !important;
-          line-height: 1 !important;
-          text-align: right !important;
-          direction: rtl !important;
-        }
-
-        ${messageScope} ul:is([dir="rtl"] > li, > li[dir="rtl"])::before {
-          content: "\\25E6" !important;
-          width: 1rem !important;
-        }
-
-        ${messageScope} ol:is([dir="rtl"] > li, > li[dir="rtl"])::before {
-          content: counter(fontara-gemini-rtl-list) "." !important;
-          width: 1.15rem !important;
         }
 
         ${messageScope} :is(table[dir="rtl"], [dir="rtl"] table, table:has(th[dir="rtl"], td[dir="rtl"])) {
@@ -734,7 +694,6 @@ function createGeminiAdapter(): RtlSiteAdapter {
     engine.restoreStyles()
     globalStyle?.remove()
     globalStyle = null
-    elementDirections = new WeakMap()
   }
 
   return {

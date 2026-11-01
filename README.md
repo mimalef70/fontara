@@ -51,8 +51,8 @@ are mainly for testers, reviewers, and contributors.
 
 | Browser | Store | Local release build | Browser automation |
 | --- | --- | --- | --- |
-| Chrome | [Chrome Web Store](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/) | `pnpm build:chrome` | Stable and beta |
-| Firefox | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/) | `pnpm build:firefox` | Latest, beta, and ESR |
+| Chrome | [Chrome Web Store](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/) | `pnpm build:chrome` | Stable and minimum 130; nightly beta |
+| Firefox | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/) | `pnpm build:firefox` | Stable and minimum 140 ESR; nightly beta/ESR |
 | Opera | [Opera Add-ons](https://addons.opera.com/en/extensions/details/fontara-font-changer/) | `pnpm build:opera` | Manual smoke |
 | Edge | Build locally | `pnpm build:edge` | Chromium-compatible package |
 | Brave | Build locally | `pnpm build:brave` | Chromium-compatible package |
@@ -102,6 +102,8 @@ are mainly for testers, reviewers, and contributors.
 - Pure WebExtension build pipeline with browser-specific MV3 targets.
 - Centralized site configuration for activation, CSS fixes, profiles, and RTL.
 - Unit, inject, and real-browser extension tests.
+- Shared CI/release verification on stable and minimum-supported Chrome and
+  Firefox, including smoke tests of the production packages that are published.
 - Manual and nightly browser matrix for Chrome stable/beta and Firefox
   latest/beta/ESR.
 - Firefox review packaging and extension lint support.
@@ -152,10 +154,18 @@ and documented in [docs/site-fixes.md](docs/site-fixes.md).
 
 ## Browser Support
 
+The desktop minimums are Chrome/Chromium 130 and Firefox 140 ESR. Firefox for
+Android has a separate installation minimum of 142; Android device validation
+is not included in the current test coverage.
+
+JavaScript build targets follow the manifest baselines. UI CSS transforms stay
+enabled in every build, including test builds. Desktop browser coverage is
+described in [Testing](docs/testing.md#browser-matrix-in-ci).
+
 | Target | Build command | Test coverage | Notes |
 | --- | --- | --- | --- |
 | Chrome MV3 | `pnpm build:chrome` | Local, CI, and browser workflow | Primary Chromium release target. |
-| Firefox MV3 | `pnpm build:firefox` | Local and browser workflow | Creates the add-on zip, Firefox source review zip, and supports `web-ext lint`. |
+| Firefox MV3 | `pnpm build:firefox` | Local, CI, and browser workflow | Creates the add-on zip, Firefox source review zip, and supports `web-ext lint`. |
 | Edge MV3 | `pnpm build:edge` | Chromium-compatible package | Store release should still be smoke-tested manually. |
 | Brave MV3 | `pnpm build:brave` | Chromium-compatible package | Uses the Chromium extension package path. |
 | Opera MV3 | `pnpm build:opera` | Manual smoke | Store behavior should be checked before publishing. |
@@ -191,9 +201,10 @@ Common commands:
 | `pnpm build:firefox` | Package Firefox MV3 release and source review zips. |
 | `pnpm build:all` | Package all configured MV3 release targets, including Firefox source review zip. |
 | `pnpm check` | Run lint, typecheck, unit tests, and inject tests. |
-| `pnpm verify` | Run check, all release builds, and extension lint. |
+| `pnpm verify` | Run source checks, coverage, all release builds, extension lint, version/dependency audits, and ZIP reproducibility checks. |
 | `pnpm test:browser:chrome` | Run real Chrome extension browser tests. |
 | `FONTARA_FIREFOX_BROWSER_TESTS=1 pnpm test:browser:firefox` | Run real Firefox extension browser tests. |
+| `pnpm test:browser:site` | Check the public website and privacy page with axe on mobile and desktop. |
 
 ## Architecture at a Glance
 
@@ -206,7 +217,10 @@ Popup / Options
   -> Page styles without reload
 ```
 
-For the detailed runtime map, see [docs/architecture.md](docs/architecture.md).
+Background settings, migration, and sync operations share one storage queue.
+The options page separates site-profile state/actions, profile rendering, and
+font catalogs into dedicated modules. For the detailed runtime map, see
+[docs/architecture.md](docs/architecture.md).
 
 ## Privacy and Permissions
 
@@ -265,19 +279,24 @@ custom font records, site lists, backup/import data, and syncable preferences.
 
 ## Quality
 
-- Main CI runs lint, typecheck, unit tests, inject tests, release builds, and
-  extension lint.
+- Main CI and release use the same verification workflow: source checks,
+  dependency audits, reproducible builds, and browser tests on Chrome stable/130
+  and Firefox stable/140 ESR. Release publishes the production ZIPs smoke-tested
+  by that workflow without rebuilding them.
 - Browser automation covers popup flows, options flows, current-site
   include/exclude, backup/import/reset, storage stress, Shadow DOM, iframes,
   SPA updates, lazy DOM, virtualized lists, and viewport rendering.
+- Targeted regressions cover worker restarts, saved profile edits, font preview
+  portals, concurrent profile changes, RTL reconciliation, and text-stroke
+  inheritance into protected subtrees.
 - A separate manual/nightly browser workflow runs Chrome and Firefox channel
   coverage.
 
 ## Roadmap
 
 - Generate built-in site optimization documentation directly from `src/config`.
-- Expand real-browser coverage for more Chromium channels and Firefox ESR
-  release gates.
+- Expand real-browser coverage for additional Chromium derivatives and curated
+  site workflows.
 - Add more curated RTL adapters and per-site profile presets.
 - Improve store-release automation and screenshot freshness checks for the
   website and browser-store listings.
@@ -340,8 +359,8 @@ release work.
 
 ## Google Fonts Catalog
 
-The extension ships one generated JSON catalog and fetches it from its own
-package only when Google Fonts is enabled and a selector opens. It is not
+The extension ships one generated JSON catalog and loads it from its own
+package when needed for Google font selection or saved-font labels. It is not
 bundled into background, inject, popup, or options JavaScript. Normal builds do
 not need a Google API key. To refresh that catalog from Google Fonts Developer
 API v1, provide the key through your shell, a CI secret, or a local gitignored

@@ -1,0 +1,24 @@
+name: Set up geckodriver
+description: Install checksum-verified geckodriver for Linux x64 browser tests
+runs:
+  using: composite
+  steps:
+    - name: Install geckodriver 0.37.1
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ "${RUNNER_OS}/${RUNNER_ARCH}" != "Linux/X64" ]]; then
+          echo "This geckodriver package requires a Linux x64 runner." >&2
+          exit 1
+        fi
+        fontara_driver_dir="${RUNNER_TEMP}/fontara-geckodriver"
+        mkdir -p "${fontara_driver_dir}"
+        curl --fail --silent --show-error --location --retry 3 \
+          https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-linux64.tar.gz \
+          --output "${fontara_driver_dir}/geckodriver.tar.gz"
+        printf '%s  %s\n' \
+          e815130ea95983e162ae91843b48d3a3ce991735635fce83a647afde21e09f7e \
+          "${fontara_driver_dir}/geckodriver.tar.gz" | sha256sum --check --status
+        tar -xzf "${fontara_driver_dir}/geckodriver.tar.gz" -C "${fontara_driver_dir}"
+        "${fontara_driver_dir}/geckodriver" --version
+        printf '%s\n' "${fontara_driver_dir}" >> "${GITHUB_PATH}"

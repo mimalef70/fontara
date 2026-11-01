@@ -55,8 +55,8 @@
     "test:browser": "pnpm run test:browser:chrome",
     "test:browser:matrix": "pnpm test:browser:chrome && pnpm test:browser:firefox",
     "test:browser:chrome:install": "pnpm dlx @puppeteer/browsers install chrome@stable --path .cache/e2e-browsers",
-    "test:browser:chrome": "pnpm build:test:chrome && node --test --test-concurrency=1 tests/browser/chrome-mv3.test.mjs tests/browser/accessibility.test.mjs",
-    "test:browser:firefox": "pnpm build:test:firefox && node --test tests/browser/firefox-mv3.test.mjs",
+    "test:browser:chrome": "pnpm build:test:chrome && node --test --test-concurrency=1 --test-timeout=120000 tests/browser/chrome-mv3.test.mjs tests/browser/accessibility.test.mjs tests/browser/background-regressions.test.mjs tests/browser/ui-regressions.test.mjs tests/browser/injection-regressions.test.mjs",
+    "test:browser:firefox": "pnpm build:test:firefox && node --test --test-timeout=120000 tests/browser/firefox-mv3.test.mjs",
     "test:browser:production": "pnpm build:chrome && pnpm build:firefox && node --test tests/browser/production-artifacts.test.mjs",
     "test:browser:production:chrome": "pnpm build:chrome && node --test --test-name-pattern='Chrome production artifact' tests/browser/production-artifacts.test.mjs",
     "test:browser:production:firefox": "pnpm build:firefox && node --test --test-name-pattern='Firefox production artifact' tests/browser/production-artifacts.test.mjs",
@@ -73,7 +73,8 @@
     "lint:fix": "biome check --write . && node tasks/check-tailwind-canonical-classes.js --write",
     "verify": "pnpm check && pnpm test:coverage && pnpm build:all && pnpm lint:extension && pnpm check:release-version && pnpm audit --prod && pnpm audit && pnpm check:reproducible-zip",
     "format": "biome format --write .",
-    "format:check": "biome format ."
+    "format:check": "biome format .",
+    "test:browser:site": "node --test --test-timeout=60000 tests/browser/site-accessibility.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.16",
@@ -101,6 +102,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
+    "@csstools/selector-specificity": "6.0.0",
     "@tailwindcss/postcss": "4.3.0",
     "@types/chrome": "0.0.258",
     "@types/firefox-webext-browser": "^143.0.0",
@@ -111,7 +113,9 @@
     "axe-core": "4.12.1",
     "chokidar": "^5.0.0",
     "esbuild": "^0.28.1",
+    "js-yaml": "4.3.1",
     "postcss": "8.5.26",
+    "postcss-selector-parser": "7.1.6",
     "puppeteer-core": "^25.1.0",
     "tailwindcss": "^4.3.0",
     "terser": "5.50.0",

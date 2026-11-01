@@ -7,6 +7,7 @@ import {
   activateByTestId,
   addHardFixtureDynamicText,
   clickByTestId,
+  clickSelector,
   createBasicPageStyleExpectation,
   createHardFixtureStyleExpectation,
   createSeededGoogleFontBinaryCache,
@@ -170,7 +171,11 @@ test("Firefox MV3 recognizes the optional contextMenus permission", async (t) =>
       button.style.cssText =
         "position:fixed;inset:8px auto auto 8px;z-index:2147483647;width:120px;height:40px"
       button.textContent = "Permission probe"
-      button.addEventListener("click", () => {
+      button.addEventListener("click", (event) => {
+        window.__fontaraPermissionInput = {
+          trusted: event.isTrusted,
+          active: navigator.userActivation.isActive
+        }
         chrome.permissions.request(
           { permissions: ["contextMenus"] },
           (granted) => {
@@ -183,7 +188,11 @@ test("Firefox MV3 recognizes the optional contextMenus permission", async (t) =>
       })
       document.body.append(button)
     })
-    await optionsPage.click("#fontara-firefox-permission-probe")
+    await clickSelector(optionsPage, "#fontara-firefox-permission-probe")
+    assert.deepEqual(
+      await optionsPage.evaluate(() => window.__fontaraPermissionInput),
+      { trusted: true, active: true }
+    )
     await new Promise((resolve) => setTimeout(resolve, 250))
     const requestState = await optionsPage.evaluate(
       () => window.__fontaraPermissionProbe ?? { pending: true }
@@ -721,9 +730,24 @@ test("Firefox MV3 simple uploader uses one variable Regular file for Regular and
       "fontara-custom-font-name",
       "Firefox Variable Vazirmatn"
     )
+    await optionsPage.$eval(
+      '[data-testid="fontara-custom-font-regular-file"]',
+      (element) => {
+        element.addEventListener("change", (event) => {
+          window.__fontaraUploadInput = {
+            trusted: event.isTrusted,
+            count: element.files.length
+          }
+        })
+      }
+    )
     await uploadFilesByTestId(optionsPage, "fontara-custom-font-regular-file", [
       variableFontPath
     ])
+    assert.deepEqual(
+      await optionsPage.evaluate(() => window.__fontaraUploadInput),
+      { trusted: true, count: 1 }
+    )
     await optionsPage.waitForSelector(
       '[data-testid="fontara-custom-font-regular-ready"]'
     )

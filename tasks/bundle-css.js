@@ -11,7 +11,11 @@ async function bundleCSS({ platform, debug, test = false }) {
     absolutePath("src/style.css"),
     "utf8"
   )
-  const result = await postcss([tailwindcssPostcss()]).process(sourceCSS, {
+  // Keep nesting transforms enabled in every build, including browser tests.
+  // Minification changes with debug mode; supported CSS syntax must not.
+  const result = await postcss([
+    tailwindcssPostcss({ optimize: { minify: !debug } })
+  ]).process(sourceCSS, {
     from: absolutePath("src/style.css"),
     to: path.join(outDir, "ui/style.css")
   })

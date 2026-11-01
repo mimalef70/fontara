@@ -421,7 +421,6 @@ test("RTL adapters preserve sample platform coverage without font injection", ()
     /detectDominantDirection\(childText\) === "rtl"/
   )
   assert.match(siteAdaptersSource, /child\.closest\(protectedSelector\)/)
-  assert.match(siteAdaptersSource, /fontara-gemini-rtl-list/)
   assert.match(siteAdaptersSource, /createTextWalkerAdapter/)
   assert.match(siteAdaptersSource, /ms-chat-session/)
   assert.match(siteAdaptersSource, /const DIRECTION_SAMPLE_CHAR_LIMIT = 1000/)
@@ -509,6 +508,35 @@ test("RTL engine restores original inline style priorities", () => {
   assert.equal(element.style.getPropertyPriority("unicode-bidi"), "important")
 })
 
+test("RTL engine reconciles English and empty edits with the original styles", () => {
+  installRtlDom([])
+  const message = new FakeHTMLElement("article")
+  const paragraph = message.appendChild(new FakeHTMLElement("p"))
+  message.textContent = "سلام دنیا"
+  message.setAttribute("dir", "auto")
+  paragraph.style.setProperty("text-align", "center", "important")
+  const engine = new RtlEngine({ textSelectors: ["p"] })
+
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "rtl")
+  assert.equal(paragraph.dir, "rtl")
+
+  message.textContent = "Hello world"
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "auto")
+  assert.equal(paragraph.dir, "")
+  assert.equal(paragraph.style.getPropertyValue("text-align"), "center")
+  assert.equal(paragraph.style.getPropertyPriority("text-align"), "important")
+
+  message.textContent = "سلام دوباره"
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "rtl")
+  message.textContent = ""
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "auto")
+  assert.equal(engine.styledElements.size, 0)
+})
+
 test("RTL auto direction updates inputs and restores original values", () => {
   const input = new FakeInputElement()
   input.value = "hello"
@@ -578,11 +606,15 @@ test("RTL engine reads textContent without forcing innerText layout", () => {
 
 test("detectDominantDirection correctly identifies Persian lines with long English technical terms", () => {
   assert.equal(
-    detectDominantDirection("مدیریت آزمایش‌ها و مدل: MLflow, Weights & Biases, Comet"),
+    detectDominantDirection(
+      "مدیریت آزمایش‌ها و مدل: MLflow, Weights & Biases, Comet"
+    ),
     "rtl"
   )
   assert.equal(
-    detectDominantDirection("پایپ‌لاین و ارکستراسیون: Kubeflow, Airflow, Prefect"),
+    detectDominantDirection(
+      "پایپ‌لاین و ارکستراسیون: Kubeflow, Airflow, Prefect"
+    ),
     "rtl"
   )
   assert.equal(
@@ -596,12 +628,15 @@ test("detectDominantDirection correctly identifies Persian lines with long Engli
     "rtl"
   )
   assert.equal(
-    detectDominantDirection("چرخه حیات و پایپلاین خودکار MLOps. Source: ML-Ops.org"),
+    detectDominantDirection(
+      "چرخه حیات و پایپلاین خودکار MLOps. Source: ML-Ops.org"
+    ),
     "rtl"
   )
   assert.equal(
-    detectDominantDirection("MLflow is an open source platform for machine learning"),
+    detectDominantDirection(
+      "MLflow is an open source platform for machine learning"
+    ),
     "ltr"
   )
 })
-

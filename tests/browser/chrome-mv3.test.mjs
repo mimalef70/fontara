@@ -52,6 +52,9 @@ async function getCustomFontRuntimeState(
   familyValue,
   binaryMarkers = []
 ) {
+  // FontFaceSet.ready waits for layout as well as font loading. Restore the
+  // fixture after interacting with extension tabs so headless Chrome can paint.
+  await page.bringToFront()
   return evaluate(
     page,
     async (family, sampleText, markers) => {
@@ -1126,6 +1129,7 @@ test("Chrome MV3 manually maps unusual Regular/Bold files, applies them, recover
       }
     )
     assert.equal(family.displayName, "E2E Manual Family")
+    t.diagnostic("Custom font family uploaded and committed")
     assert.equal(family.sourceFamilyKey, "e2e manual family")
     assert.match(family.value, /^[A-Za-z0-9_-]+-Fontara$/)
     assert.ok(family.unicodeRange?.includes("U+0600-06FF"))
@@ -1247,6 +1251,7 @@ test("Chrome MV3 manually maps unusual Regular/Bold files, applies them, recover
       STORAGE_KEYS.SELECTED_FONT,
       family.value
     )
+    t.diagnostic("Custom font selected through the popup")
 
     const appliedState = await waitFor(
       async () => {
@@ -1395,6 +1400,7 @@ test("Chrome MV3 manually maps unusual Regular/Bold files, applies them, recover
     assert.equal(partialState.checked, true)
     assert.equal(partialState.loadedCount >= 1, true)
     assert.deepEqual(partialState.exposedMarkers, [])
+    t.diagnostic("Custom font rendered with a failed secondary face")
 
     await stopChromeExtensionServiceWorkers(optionsPage)
     const previousLoadId = await evaluate(
@@ -1464,6 +1470,7 @@ test("Chrome MV3 manually maps unusual Regular/Bold files, applies them, recover
     assert.equal(reloadedState.checked, true)
     assert.equal(reloadedState.hasDataFont, false)
     assert.deepEqual(reloadedState.exposedMarkers, [])
+    t.diagnostic("Custom font recovered after service-worker restart")
 
     await clickByTestId(
       optionsPage,
@@ -1514,6 +1521,7 @@ test("Chrome MV3 manually maps unusual Regular/Bold files, applies them, recover
     )
     assert.equal(deletedState.hasDataFont, false)
     assert.deepEqual(deletedState.exposedMarkers, [])
+    t.diagnostic("Custom font deleted and default rendering restored")
 
     const finalSyncValues = await getExtensionSyncRawValues(optionsPage)
     assertNoCustomFontBinary(
@@ -2049,6 +2057,11 @@ test("Chrome MV3 popup and options UI update current-site include/exclude lists"
       })
     )
 
+    await waitForInputChecked(
+      popupPage,
+      "fontara-current-site-toggle-input",
+      false
+    )
     await activateByTestId(popupPage, "fontara-current-site-toggle")
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.DISABLED_FOR, [])
     await waitForExtensionLocalValue(popupPage, STORAGE_KEYS.ENABLED_FOR, [

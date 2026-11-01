@@ -1,11 +1,17 @@
 import assert from "node:assert/strict"
+import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
 import http from "node:http"
 import os from "node:os"
 import path from "node:path"
+import { promisify } from "node:util"
 
 import puppeteer from "puppeteer-core"
+
+import { getFirefoxDriver, launchFirefoxDriver } from "./firefox-driver.mjs"
+
+const execFileAsync = promisify(execFile)
 
 export const ROOT_DIR = path.resolve(import.meta.dirname, "../../..")
 export const CHROME_EXTENSION_DIR = path.join(ROOT_DIR, "build/chrome-mv3-test")
@@ -530,9 +536,82 @@ async function findChromeForTestingExecutables(rootPath) {
   return results.sort().reverse()
 }
 
+async function inspectChromeBinary(candidate, requiredMajor, explicit = false) {
+  const executablePath = path.resolve(candidate)
+  const fail = (reason) => {
+    if (explicit) {
+      throw new Error(`CHROME_PATH ${JSON.stringify(candidate)} ${reason}`)
+    }
+    return null
+  }
+  if (!(await pathExists(executablePath))) return fail("does not exist.")
+
+  let versionOutput
+  try {
+    const bundleInfoPath = path.join(
+      path.dirname(path.dirname(executablePath)),
+      "Info.plist"
+    )
+    const hasMacBundleMetadata =
+      process.platform === "darwin" &&
+      /(?:^|\/)(?:Google Chrome(?: for Testing)?|Chromium|Microsoft Edge)\.app\/Contents\/MacOS\/[^/]+$/.test(
+        executablePath
+      ) &&
+      (await pathExists(bundleInfoPath))
+    // Launching an installed macOS Chrome with --version can hand off to an
+    // existing instance or exit without output. Read its bundle metadata;
+    // standalone executables and minimal test fixtures still use --version.
+    // Brave's bundle version is its product version (1.x), not Chromium's.
+    const { stdout, stderr } = await execFileAsync(
+      hasMacBundleMetadata ? "/usr/libexec/PlistBuddy" : executablePath,
+      hasMacBundleMetadata
+        ? ["-c", "Print :CFBundleShortVersionString", bundleInfoPath]
+        : ["--version"],
+      {
+        encoding: "utf8",
+        maxBuffer: 16_384,
+        timeout: 5_000,
+        windowsHide: true
+      }
+    )
+    versionOutput = `${stdout}\n${stderr}`
+  } catch (error) {
+    return fail(`could not report its version: ${error.message}`)
+  }
+  const version = versionOutput.match(/\b\d+\.\d+(?:\.\d+){0,2}\b/)?.[0]
+  if (!version) return fail("did not report a recognizable Chrome version.")
+  const parts = version.split(".").map(Number)
+  if (parts[0] < requiredMajor) {
+    return fail(
+      `is Chrome ${version}; the extension requires Chrome ${requiredMajor} or newer.`
+    )
+  }
+  return { executablePath, parts }
+}
+
 export async function findChromeBinary() {
+  const manifest = JSON.parse(
+    await fs.readFile(
+      path.join(ROOT_DIR, "src/manifest-chrome-mv3.json"),
+      "utf8"
+    )
+  )
+  const requiredMajor = Number.parseInt(manifest.minimum_chrome_version, 10)
+  assert.ok(
+    Number.isInteger(requiredMajor) && requiredMajor > 0,
+    "The Chrome manifest must declare its minimum version."
+  )
+  if (process.env.CHROME_PATH !== undefined) {
+    if (!process.env.CHROME_PATH) throw new Error("CHROME_PATH is empty.")
+    const browser = await inspectChromeBinary(
+      process.env.CHROME_PATH,
+      requiredMajor,
+      true
+    )
+    return browser.executablePath
+  }
+
   const staticChromeCandidates = [
-    process.env.CHROME_PATH,
     "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
     "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
@@ -546,6 +625,7 @@ export async function findChromeBinary() {
   const chromeForTestingRoots = [
     process.env.FONTARA_E2E_BROWSER_DIR,
     path.join(ROOT_DIR, ".cache/e2e-browsers/chrome"),
+    path.join(ROOT_DIR, ".cache/e2e-browsers/baselines/chrome-130"),
     path.join(os.homedir(), ".cache/puppeteer/chrome"),
     path.join(os.homedir(), "Library/Caches/puppeteer/chrome")
   ].filter(Boolean)
@@ -555,20 +635,39 @@ export async function findChromeBinary() {
     )
   ).flat()
 
-  for (const candidate of [
-    process.env.CHROME_PATH,
-    ...chromeForTestingCandidates,
-    ...staticChromeCandidates
-  ].filter(Boolean)) {
-    if (await pathExists(candidate)) return candidate
-  }
-
-  return null
+  const candidates = [
+    ...new Set([...chromeForTestingCandidates, ...staticChromeCandidates])
+  ]
+  const supported = (
+    await Promise.all(
+      candidates.map((candidate) =>
+        inspectChromeBinary(candidate, requiredMajor)
+      )
+    )
+  )
+    .filter(Boolean)
+    .sort((first, second) => {
+      for (let index = 0; index < 4; index += 1) {
+        const difference =
+          (second.parts[index] ?? 0) - (first.parts[index] ?? 0)
+        if (difference) return difference
+      }
+      return first.executablePath.localeCompare(second.executablePath)
+    })
+  return supported[0]?.executablePath ?? null
 }
 
 export async function findFirefoxBinary() {
+  if (process.env.FIREFOX_PATH !== undefined) {
+    const candidate = process.env.FIREFOX_PATH
+    if (!candidate || !(await pathExists(candidate))) {
+      throw new Error(
+        `FIREFOX_PATH ${JSON.stringify(candidate)} does not exist.`
+      )
+    }
+    return path.resolve(candidate)
+  }
   const candidates = [
-    process.env.FIREFOX_PATH,
     "/Applications/Firefox.app/Contents/MacOS/firefox",
     "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox",
     "/usr/bin/firefox",
@@ -858,20 +957,6 @@ export function createTestServer(options = {}) {
   return listenTestServer(server)
 }
 
-async function getFreePort() {
-  const server = http.createServer()
-
-  return new Promise((resolve, reject) => {
-    server.once("error", reject)
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address()
-      assert.equal(typeof address, "object")
-      const port = address.port
-      server.close(() => resolve(port))
-    })
-  })
-}
-
 export async function waitFor(check, options = {}) {
   const {
     interval = 100,
@@ -1056,24 +1141,12 @@ async function launchFirefoxWithExtension(extensionDir) {
     "Run pnpm debug:firefox before this browser test."
   )
 
-  const userDataDir = await fs.mkdtemp(
-    path.join(os.tmpdir(), "fontara-browser-firefox-")
-  )
-  const remoteDebuggingPort = await getFreePort()
-  const browser = await puppeteer.launch({
-    args: [
-      `--remote-debugging-port=${remoteDebuggingPort}`,
-      // Firefox 153+ treats moz-extension:// pages as privileged navigation.
-      // Explicitly grant the local WebDriver BiDi test session access so the
-      // harness can open the installed extension's own options page.
-      "--remote-allow-system-access"
-    ],
-    browser: "firefox",
-    defaultViewport: BROWSER_VIEWPORTS.desktop,
-    executablePath: firefoxPath,
+  // Firefox 155+ disallows BiDi input in extension processes. Share one
+  // geckodriver-owned session: BiDi observes pages, Classic sends trusted input.
+  const { browser, userDataDir, close } = await launchFirefoxDriver({
+    firefoxPath,
     headless: process.env.FONTARA_FIREFOX_HEADLESS === "1",
-    protocol: "webDriverBiDi",
-    userDataDir
+    viewport: BROWSER_VIEWPORTS.desktop
   })
 
   try {
@@ -1087,10 +1160,9 @@ async function launchFirefoxWithExtension(extensionDir) {
       `moz-extension://${extensionId}`
     await delay(1000)
 
-    return { browser, extensionBaseUrl, extensionId, userDataDir }
+    return { browser, extensionBaseUrl, extensionId, userDataDir, close }
   } catch (error) {
-    await browser.close().catch(() => {})
-    await fs.rm(userDataDir, { force: true, recursive: true })
+    await close()
     throw error
   }
 }
@@ -1133,10 +1205,16 @@ async function withExtensionHarness(testContext, launchBrowser, callback) {
       server
     })
   } finally {
-    await browser.close().catch(() => {})
-    await server?.close()
-    await crossOriginServer?.close()
-    await fs.rm(userDataDir, { force: true, recursive: true })
+    try {
+      if (launchResult.close) await launchResult.close()
+      else await browser.close().catch(() => {})
+    } finally {
+      await Promise.all([
+        server?.close(),
+        crossOriginServer?.close(),
+        fs.rm(userDataDir, { force: true, recursive: true })
+      ])
+    }
   }
 }
 
@@ -1977,13 +2055,16 @@ ${JSON.stringify(lastValue, null, 2)}`
 }
 
 export async function clickByTestId(page, testId) {
-  const selector = testIdSelector(testId)
+  await clickSelector(page, testIdSelector(testId))
+}
+
+export async function clickSelector(page, selector) {
   await page.waitForSelector(selector, { visible: true })
   await page.$eval(selector, (element) => {
     element.scrollIntoView({ block: "center", inline: "center" })
   })
 
-  const point = await waitFor(
+  await waitFor(
     () =>
       page.$eval(selector, (element) => {
         const rect = element.getBoundingClientRect()
@@ -2000,11 +2081,20 @@ export async function clickByTestId(page, testId) {
         return { x, y }
       }),
     {
-      message: `Element ${testId} did not become clickable.`
+      message: `Element ${selector} did not become clickable.`
     }
   )
 
-  await page.mouse.click(point.x, point.y)
+  const firefoxDriver = getFirefoxDriver(page)
+  if (firefoxDriver) {
+    await firefoxDriver.click(page, selector)
+  } else {
+    // Drawer animations can move the target after the hit test. The locator
+    // waits for stable bounds and uses the element's current click coordinates.
+    // Foreground the page so its animation frames can run before clicking.
+    await page.bringToFront()
+    await page.locator(selector).setTimeout(10_000).click()
+  }
 }
 
 /**
@@ -2079,6 +2169,11 @@ export async function uploadFileByTestId(page, testId, filePath) {
 export async function uploadFilesByTestId(page, testId, filePaths) {
   const selector = testIdSelector(testId)
   await page.waitForSelector(selector)
+  const firefoxDriver = getFirefoxDriver(page)
+  if (firefoxDriver) {
+    await firefoxDriver.uploadFiles(page, selector, filePaths)
+    return
+  }
   const input = await page.$(selector)
   assert.ok(input, `Input ${testId} was not found.`)
   await input.uploadFile(...filePaths)

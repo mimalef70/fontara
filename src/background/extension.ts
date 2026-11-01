@@ -254,8 +254,8 @@ export class ExtensionRuntime {
     let resolvedRevision = settingsRevision
     if (!resolvedSettings || resolvedRevision === undefined) {
       const snapshot = await getBackgroundSettingsSnapshot()
-      resolvedSettings = resolvedSettings ?? snapshot.settings
-      resolvedRevision = resolvedRevision ?? snapshot.revision
+      resolvedSettings = snapshot.settings
+      resolvedRevision = snapshot.revision
     }
 
     await notifyContentScriptsAboutSettingsChange(async (document) => {
@@ -280,20 +280,31 @@ export class ExtensionRuntime {
     changes: Record<string, chrome.storage.StorageChange>
   ): Promise<void> {
     await ExtensionRuntime.ensureStarted()
-    if (
-      changes[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] &&
-      changes[STORAGE_KEYS.GOOGLE_FONTS_ENABLED].newValue !== true
-    ) {
+    const googleFontsChange = changes[STORAGE_KEYS.GOOGLE_FONTS_ENABLED]
+    if (googleFontsChange && googleFontsChange.newValue !== true) {
       googleFontManager?.cancelPendingNetwork()
     }
     const settings = await syncBackgroundSettingsCacheFromLocalChanges(changes)
-    if (!settings) return
-    if (changes[STORAGE_KEYS.GOOGLE_FONTS_ENABLED]?.newValue === true) {
-      googleFontManager?.resumeNetwork()
-    }
+    if (!settings && !googleFontsChange) return
 
-    const { revision } = await getBackgroundSettingsSnapshot()
-    await ExtensionRuntime.publishSettingsChange(settings, revision)
+    // Another mutation can commit after the event was reconciled. Keep the
+    // settings and revision paired; tagging the older event's settings with a
+    // newer revision can supersede a legitimate cleanup in content scripts.
+    const snapshot = await getBackgroundSettingsSnapshot()
+    if (googleFontsChange) {
+      // Even an ignored stale event may have canceled requests above. Restore
+      // the current preference after reconciliation, including delayed echoes.
+      if (snapshot.settings[STORAGE_KEYS.GOOGLE_FONTS_ENABLED] === true) {
+        googleFontManager?.resumeNetwork()
+      } else {
+        googleFontManager?.cancelPendingNetwork()
+      }
+    }
+    if (!settings) return
+    await ExtensionRuntime.publishSettingsChange(
+      snapshot.settings,
+      snapshot.revision
+    )
   }
 
   private static async publishSettingsChange(

@@ -2,7 +2,6 @@ import {
   AlignRight,
   ArrowUpRight,
   Check,
-  ChevronsUpDown,
   Cloud,
   Download,
   FileDown,
@@ -39,7 +38,6 @@ import {
   getCustomFontUnicodeRangePreset,
   normalizeCustomFontUnicodeRange
 } from "../../config/font-unicode-range"
-import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
 import {
   type SupportedUILanguage,
   UI_LANGUAGE_AUTO,
@@ -72,12 +70,6 @@ import {
   removeSitePatternFromList,
   type SitePatternScope
 } from "../../config/site-list"
-import {
-  isSiteProfileEnabled,
-  normalizeSiteProfiles,
-  removeSiteProfile,
-  upsertSiteProfile
-} from "../../config/site-profiles"
 import { normalizePinnedWebsiteUrls } from "../../config/sites"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../config/storage"
 import {
@@ -92,7 +84,6 @@ import type {
 } from "../../custom-font-types"
 import type {
   FontaraGoogleFontCacheStats,
-  SiteProfile,
   WebsiteItem
 } from "../../definitions"
 import { getExtensionAssetURL } from "../../utils/assets"
@@ -126,13 +117,7 @@ import {
   getGoogleFontDataConsentState,
   requestGoogleFontNetworkConsent
 } from "../../utils/google-font-consent"
-import {
-  decodeGoogleFontValue,
-  type GoogleFontData,
-  getGoogleFontByValue,
-  isGoogleFontFeatureSupported,
-  loadGoogleFontList
-} from "../../utils/google-fonts"
+import { isGoogleFontFeatureSupported } from "../../utils/google-fonts"
 import {
   createSettingsBackup,
   createSettingsBackupFileName,
@@ -145,12 +130,8 @@ import {
 import { getLocalValues } from "../../utils/storage"
 import { normalizeStorageValues } from "../../utils/storage-normalization"
 import {
-  decodeSystemFontValue,
-  isSystemFontAccessSupported,
   isSystemFontFeatureSupported,
-  loadSystemFonts,
-  normalizeSystemFontFamilyKey,
-  type SystemFontData
+  loadSystemFonts
 } from "../../utils/system-fonts"
 import ErrorBoundary from "../components/ErrorBoundary"
 import FontSelector from "../components/FontSelector"
@@ -176,27 +157,12 @@ import {
   CardHeader,
   CardTitle
 } from "../components/ui/card"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from "../components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from "../components/ui/popover"
 import { Progress } from "../components/ui/progress"
 import { Switch } from "../components/ui/Switch"
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue
 } from "../components/ui/select"
@@ -250,7 +216,6 @@ import {
   getPinnedWebsiteUrlsInitialValue,
   getRtlEnabledInitialValue,
   getRtlSiteSettingsInitialValue,
-  getSiteProfilesInitialValue,
   getSyncSettingsInitialValue,
   getSystemFontsEnabledInitialValue,
   getTextStrokeInitialValue
@@ -267,6 +232,10 @@ import {
   type SimpleCustomFontSlot
 } from "./custom-font-upload"
 
+import { SiteProfilesSection } from "./SiteProfilesSection"
+import { useFontCatalogs } from "./use-font-catalogs"
+import { useSiteProfiles } from "./use-site-profiles"
+
 type SettingsSection =
   | "general"
   | "fonts"
@@ -276,8 +245,6 @@ type SettingsSection =
   | "advanced"
 
 type SiteSettingsTab = "access" | "profiles" | "optimized"
-
-const GLOBAL_SITE_PROFILE_FONT_VALUE = "__fontara_global_font__"
 
 const settingsNavigation: Array<{
   id: SettingsSection
@@ -394,24 +361,6 @@ const sitePatternPlaceholderKeys = {
   path: "options.siteList.pathPlaceholder",
   regex: "options.siteList.regexPlaceholder"
 } satisfies Record<SitePatternScope, MessageKey>
-
-type SiteFontOption = {
-  label: string
-  value: string
-}
-
-type SiteFontOptionGroup = {
-  label: string
-  options: SiteFontOption[]
-}
-
-type SiteProfileTargetOption = {
-  iconUrl?: string
-  id: string
-  pattern: string
-  subtitle?: string
-  title: string
-}
 
 type CustomFontUnicodeRangeSelectValue =
   | CustomFontUnicodeRangePresetId
@@ -653,13 +602,6 @@ function formatBytes(
   return `${formatNumber(kilobytes / 1024, {
     maximumFractionDigits: 1
   })} ${megabyteUnit}`
-}
-
-function getDefaultFontLabel(
-  font: DefaultFont,
-  language: SupportedUILanguage
-): string {
-  return font.localizedName[language] || font.name
 }
 
 const CONTEXT_MENU_PERMISSION = "contextMenus"
@@ -916,10 +858,6 @@ function OptionsPage() {
     STORAGE_KEYS.PINNED_WEBSITE_URLS,
     getPinnedWebsiteUrlsInitialValue
   )
-  const [siteProfiles, setSiteProfiles] = useStorageValue<SiteProfile[]>(
-    STORAGE_KEYS.SITE_PROFILES,
-    getSiteProfilesInitialValue
-  )
   const [enabledByDefault, setEnabledByDefault] = useStorageValue<boolean>(
     STORAGE_KEYS.ENABLED_BY_DEFAULT,
     getEnabledByDefaultInitialValue
@@ -960,8 +898,6 @@ function OptionsPage() {
   )
   const ActiveSectionIcon = activeNavigation?.icon ?? Settings
   const sidebarSide = direction === "rtl" ? "right" : "left"
-  const [googleFontList, setGoogleFontList] = useState<GoogleFontData[]>([])
-  const [googleFontListReady, setGoogleFontListReady] = useState(false)
 
   React.useEffect(() => {
     const handleHashChange = () => {
@@ -1018,21 +954,6 @@ function OptionsPage() {
   const [sitePatternScope, setSitePatternScope] =
     useState<SitePatternScope>("domain")
   const [sitePatternInput, setSitePatternInput] = useState("")
-  const [siteProfilePatternInput, setSiteProfilePatternInput] = useState("")
-  const [siteProfileTargetSearch, setSiteProfileTargetSearch] = useState("")
-  const [siteProfileTargetOpen, setSiteProfileTargetOpen] = useState(false)
-  const [siteProfileFontInput, setSiteProfileFontInput] = useState("")
-  const [siteProfileFontPickerOpen, setSiteProfileFontPickerOpen] =
-    useState(false)
-  const [siteProfileGoogleFontStatus, setSiteProfileGoogleFontStatus] =
-    useState<"error" | "idle" | "loading">("idle")
-  const [siteProfileTextStroke, setSiteProfileTextStroke] = useState(
-    DEFAULT_VALUES.TEXT_STROKE
-  )
-  const [siteProfileUsesGlobalStroke, setSiteProfileUsesGlobalStroke] =
-    useState(true)
-  const [systemFontList, setSystemFontList] = useState<SystemFontData[]>([])
-  const [systemFontListReady, setSystemFontListReady] = useState(false)
   const [googleFontConsentState, setGoogleFontConsentState] = useState<
     "checking" | "granted" | "not-granted" | "unsupported"
   >("checking")
@@ -1113,113 +1034,6 @@ function OptionsPage() {
     const frame = requestAnimationFrame(() => setUiReady(true))
     return () => cancelAnimationFrame(frame)
   }, [extensionData])
-
-  React.useEffect(() => {
-    let cancelled = false
-
-    if (!systemFontsSupported || !systemFontsEnabled) {
-      setSystemFontList([])
-      setSystemFontListReady(false)
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const selectedSystemFont = decodeSystemFontValue(selectedFont)
-    const needsSiteProfileFonts =
-      activeSection === "sites" &&
-      siteSettingsTab === "profiles" &&
-      siteProfileFontPickerOpen
-    if (!selectedSystemFont && !needsSiteProfileFonts) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    loadSystemFonts({ forceRefresh: needsSiteProfileFonts })
-      .then((state) => {
-        if (!cancelled) {
-          setSystemFontList(state.fonts)
-          setSystemFontListReady(state.status === "ready")
-        }
-      })
-      .catch((error) => {
-        if (__DEBUG__) {
-          console.warn("Failed to load system fonts for site profiles.", error)
-        }
-        if (!cancelled) {
-          setSystemFontList([])
-          setSystemFontListReady(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    activeSection,
-    siteProfileFontPickerOpen,
-    siteSettingsTab,
-    selectedFont,
-    systemFontsEnabled,
-    systemFontsSupported
-  ])
-
-  React.useEffect(() => {
-    let cancelled = false
-    if (!googleFontsSupported || !googleFontsEnabled) {
-      setGoogleFontList([])
-      setGoogleFontListReady(false)
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const selectedGoogleFont = decodeGoogleFontValue(selectedFont)
-    const needsSiteProfileFonts =
-      activeSection === "sites" &&
-      siteSettingsTab === "profiles" &&
-      siteProfileFontPickerOpen
-    if (!selectedGoogleFont && !needsSiteProfileFonts) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    void loadGoogleFontList()
-      .then((fonts) => {
-        if (!cancelled) {
-          setGoogleFontList(fonts)
-          setGoogleFontListReady(true)
-        }
-      })
-      .catch((error) => {
-        if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
-          console.warn("Failed to load the Google Fonts catalog.", error)
-        }
-        if (!cancelled) {
-          setGoogleFontList([])
-          setGoogleFontListReady(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    activeSection,
-    googleFontsEnabled,
-    googleFontsSupported,
-    siteProfileFontPickerOpen,
-    siteSettingsTab,
-    selectedFont
-  ])
-
-  React.useEffect(() => {
-    if (activeSection !== "sites" || siteSettingsTab !== "profiles") {
-      setSiteProfileFontPickerOpen(false)
-    }
-  }, [activeSection, siteSettingsTab])
 
   const clearPreparedFontSlot = (slot: SimpleCustomFontSlot) => {
     if (slot === "regular") {
@@ -1783,7 +1597,6 @@ function OptionsPage() {
     enabledByDefault: normalizedEnabledByDefault,
     enabledFor: normalizedEnabledFor
   }
-  const normalizedSiteProfiles = normalizeSiteProfiles(siteProfiles)
   const managedSiteList = normalizedEnabledByDefault
     ? normalizedDisabledFor
     : normalizedEnabledFor
@@ -1803,96 +1616,6 @@ function OptionsPage() {
     Boolean(currentTabPathPattern) &&
     Boolean(currentTabDomainPattern) &&
     currentTabPathPattern !== currentTabDomainPattern
-  const selectedSiteProfilePattern = normalizeSitePattern(
-    siteProfilePatternInput
-  )
-  const selectedSiteProfileScope = selectedSiteProfilePattern
-    ? getSitePatternScope(selectedSiteProfilePattern)
-    : null
-  const siteProfileTargetSearchTerm = siteProfileTargetSearch
-    .trim()
-    .toLowerCase()
-  const siteProfileTargetOptions = React.useMemo(() => {
-    const options = new Map<string, SiteProfileTargetOption>()
-    const addTargetOption = (option: SiteProfileTargetOption) => {
-      const currentOption = options.get(option.pattern)
-
-      if (!currentOption) {
-        options.set(option.pattern, option)
-        return
-      }
-
-      const currentPatternTitle = getDisplaySitePattern(currentOption.pattern)
-      const nextPatternTitle = getDisplaySitePattern(option.pattern)
-      options.set(option.pattern, {
-        ...currentOption,
-        iconUrl: currentOption.iconUrl ?? option.iconUrl,
-        subtitle: currentOption.subtitle ?? option.subtitle,
-        title:
-          currentOption.title === currentPatternTitle &&
-          option.title !== nextPatternTitle
-            ? option.title
-            : currentOption.title
-      })
-    }
-    const addPatternTarget = (pattern: string, idPrefix: string) => {
-      const normalizedPattern = normalizeSitePattern(pattern)
-
-      if (!normalizedPattern) return
-
-      addTargetOption({
-        id: `${idPrefix}-${normalizedPattern}`,
-        pattern: normalizedPattern,
-        subtitle: getDisplaySitePattern(normalizedPattern),
-        title: getDisplaySitePattern(normalizedPattern)
-      })
-    }
-
-    for (const profile of normalizeSiteProfiles(siteProfiles)) {
-      addPatternTarget(profile.pattern, "profile")
-    }
-
-    for (const pattern of normalizeSiteList([
-      ...normalizeEnabledSiteList(enabledFor),
-      ...normalizeSiteList(disabledFor)
-    ])) {
-      addPatternTarget(pattern, "rule")
-    }
-
-    for (const website of defaultWebsiteList) {
-      const pattern = getWebsiteSitePattern(website)
-      if (!pattern) continue
-
-      addTargetOption({
-        iconUrl: website.icon ? getExtensionAssetURL(website.icon) : undefined,
-        id: `default-${website.url}`,
-        pattern,
-        subtitle: getDisplaySitePattern(pattern),
-        title: website.siteName || getDisplaySitePattern(pattern)
-      })
-    }
-
-    return [...options.values()]
-  }, [disabledFor, enabledFor, siteProfiles])
-  const selectedSiteProfileTarget = selectedSiteProfilePattern
-    ? (siteProfileTargetOptions.find(
-        (option) => option.pattern === selectedSiteProfilePattern
-      ) ?? null)
-    : null
-  const siteProfileAddTargetScope = inferSitePatternScopeFromInput(
-    siteProfileTargetSearch,
-    "domain"
-  )
-  const siteProfileAddTargetPattern = normalizeSitePatternForScope(
-    siteProfileTargetSearch,
-    siteProfileAddTargetScope
-  )
-  const canAddSiteProfileTarget =
-    Boolean(siteProfileTargetSearchTerm) &&
-    Boolean(siteProfileAddTargetPattern) &&
-    !siteProfileTargetOptions.some(
-      (option) => option.pattern === siteProfileAddTargetPattern
-    )
   const activeWebsiteCount = defaultWebsiteList.filter((website) =>
     isSiteListUrlEnabled(website.url, siteListSettings)
   ).length
@@ -1916,105 +1639,14 @@ function OptionsPage() {
     (total, bytes) => total + bytes,
     0
   )
-  const siteFontOptionGroups = React.useMemo<SiteFontOptionGroup[]>(
-    () => [
-      {
-        label: t("fontSelector.bundledGroup"),
-        options: DEFAULT_FONTS.map((font) => ({
-          label: getDefaultFontLabel(font, language),
-          value: font.value
-        }))
-      },
-      {
-        label: t("fontSelector.customGroup"),
-        options: customFontList.map((font) => ({
-          label: font.displayName,
-          value: font.value
-        }))
-      },
-      {
-        label: t("fontSelector.googleGroup"),
-        options: googleFontList.map((font) => ({
-          label: font.name,
-          value: font.value
-        }))
-      },
-      {
-        label: t("fontSelector.systemGroup"),
-        options: systemFontList.map((font) => ({
-          label: font.name,
-          value: font.value
-        }))
-      }
-    ],
-    [customFontList, googleFontList, language, systemFontList, t]
-  )
-  const siteFontOptions = React.useMemo(
-    () => siteFontOptionGroups.flatMap((group) => group.options),
-    [siteFontOptionGroups]
-  )
-  const fallbackFontLabel = getDefaultFontLabel(DEFAULT_FONTS[0], language)
-
-  const getSiteProfileFontLabel = React.useCallback(
-    (fontValue: string | undefined): string => {
-      if (!fontValue) return t("options.siteProfiles.globalFont")
-
-      const systemFont = decodeSystemFontValue(fontValue)
-      if (systemFont) {
-        if (!systemFontsEnabled) {
-          return t("fontSelector.sourcePaused", {
-            fallback: fallbackFontLabel,
-            font: systemFont
-          })
-        }
-        const selectedFamilyKey = normalizeSystemFontFamilyKey(systemFont)
-        const available = systemFontList.some(
-          (font) =>
-            normalizeSystemFontFamilyKey(font.fontFamily) === selectedFamilyKey
-        )
-        return isSystemFontAccessSupported() &&
-          systemFontListReady &&
-          !available
-          ? t("fontSelector.sourceUnavailable", {
-              fallback: fallbackFontLabel,
-              font: systemFont
-            })
-          : systemFont
-      }
-
-      const googleFontFamily = decodeGoogleFontValue(fontValue)
-      if (googleFontFamily) {
-        const googleFont = getGoogleFontByValue(fontValue)
-        const label = googleFont?.family ?? googleFontFamily
-        if (!googleFontsEnabled) {
-          return t("fontSelector.sourcePaused", {
-            fallback: fallbackFontLabel,
-            font: label
-          })
-        }
-        return googleFontListReady && !googleFont
-          ? t("fontSelector.sourceUnavailable", {
-              fallback: fallbackFontLabel,
-              font: label
-            })
-          : label
-      }
-
-      const option = siteFontOptions.find((font) => font.value === fontValue)
-      if (option) return option.label
-
-      return fontValue
-    },
-    [
-      fallbackFontLabel,
-      googleFontListReady,
-      googleFontsEnabled,
-      siteFontOptions,
-      systemFontList,
-      systemFontListReady,
-      systemFontsEnabled,
-      t
-    ]
+  const { getSiteProfileFontLabel } = useFontCatalogs({
+    selectedFont,
+    customFontList,
+    systemFontsEnabled,
+    googleFontsEnabled
+  })
+  const siteProfilesController = useSiteProfiles(
+    activeSection === "sites" && siteSettingsTab === "profiles"
   )
   const activeFontLabel = getSiteProfileFontLabel(selectedFont)
   const customFontStoragePercent = Math.min(
@@ -2282,156 +1914,6 @@ function OptionsPage() {
     )
   }
 
-  const selectSiteProfileTarget = (pattern: string) => {
-    const normalizedPattern = normalizeSitePattern(pattern)
-    if (!normalizedPattern) return
-
-    setSiteProfilePatternInput(normalizedPattern)
-    setSiteProfileTargetOpen(false)
-    setSiteProfileTargetSearch("")
-  }
-
-  const handleAddSiteProfileTarget = () => {
-    if (siteProfileAddTargetPattern) {
-      selectSiteProfileTarget(siteProfileAddTargetPattern)
-    }
-  }
-
-  const resetSiteProfileForm = () => {
-    setSiteProfilePatternInput("")
-    setSiteProfileTargetSearch("")
-    setSiteProfileTargetOpen(false)
-    setSiteProfileFontInput("")
-    setSiteProfileGoogleFontStatus("idle")
-    setSiteProfileTextStroke(DEFAULT_VALUES.TEXT_STROKE)
-    setSiteProfileUsesGlobalStroke(true)
-  }
-
-  const handleSaveSiteProfile = async () => {
-    const pattern = selectedSiteProfilePattern
-
-    if (!pattern) {
-      toast({ title: t("options.toast.invalidSitePattern") })
-      return
-    }
-
-    if (
-      siteProfileFontInput &&
-      !siteFontOptions.some((font) => font.value === siteProfileFontInput)
-    ) {
-      toast({ title: t("options.toast.unavailableSiteProfileFont") })
-      return
-    }
-
-    if (!siteProfileFontInput && siteProfileUsesGlobalStroke) {
-      toast({ title: t("options.toast.emptySiteProfile") })
-      return
-    }
-
-    const googleFontFamily = decodeGoogleFontValue(siteProfileFontInput)
-    if (googleFontFamily) {
-      setSiteProfileGoogleFontStatus("loading")
-      try {
-        await fontaraConnector.prepareGoogleFont(siteProfileFontInput)
-        setSiteProfileGoogleFontStatus("idle")
-      } catch (error) {
-        setSiteProfileGoogleFontStatus("error")
-        toast({
-          title: t("fontSelector.googleDownloadFailed"),
-          ...(typeof __DEBUG__ !== "undefined" &&
-          __DEBUG__ &&
-          error instanceof Error
-            ? { description: error.message }
-            : {})
-        })
-        return
-      }
-    }
-
-    const existingProfile = normalizedSiteProfiles.find(
-      (profile) => profile.pattern === pattern
-    )
-    const nextProfile: SiteProfile = {
-      pattern,
-      ...(existingProfile?.enabled === false ? { enabled: false } : {}),
-      ...(siteProfileFontInput ? { font: siteProfileFontInput } : {}),
-      ...(siteProfileUsesGlobalStroke
-        ? {}
-        : { textStroke: normalizeTextStrokeValue(siteProfileTextStroke) })
-    }
-    try {
-      await fontaraConnector.changeSettings({
-        [STORAGE_KEYS.SITE_PROFILES]: upsertSiteProfile(
-          normalizedSiteProfiles,
-          nextProfile
-        )
-      })
-      resetSiteProfileForm()
-    } catch (error) {
-      toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : t("options.toast.siteSettingsError")
-      })
-    }
-  }
-
-  const handleSiteProfileSubmit = (
-    event: React.SyntheticEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault()
-    void handleSaveSiteProfile()
-  }
-
-  const handleEditSiteProfile = (profile: SiteProfile) => {
-    selectSiteProfileTarget(profile.pattern)
-    setSiteProfileFontInput(profile.font ?? "")
-    setSiteProfileTextStroke(profile.textStroke ?? textStroke)
-    setSiteProfileUsesGlobalStroke(profile.textStroke === undefined)
-  }
-
-  const handleRemoveSiteProfile = async (pattern: string) => {
-    try {
-      await setSiteProfiles(removeSiteProfile(normalizedSiteProfiles, pattern))
-    } catch (error) {
-      toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : t("options.toast.siteSettingsError")
-      })
-    }
-  }
-
-  const handleSiteProfileEnabledToggle = async (
-    profile: SiteProfile,
-    checked: boolean
-  ) => {
-    const nextProfile = {
-      ...profile
-    }
-
-    if (checked) {
-      delete nextProfile.enabled
-    } else {
-      nextProfile.enabled = false
-    }
-
-    try {
-      await setSiteProfiles(
-        upsertSiteProfile(normalizedSiteProfiles, nextProfile)
-      )
-    } catch (error) {
-      toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : t("options.toast.siteSettingsError")
-      })
-    }
-  }
-
   const handleRtlGlobalToggle = async (checked: boolean) => {
     try {
       await setRtlEnabled(checked)
@@ -2578,54 +2060,6 @@ function OptionsPage() {
     [formatNumber]
   )
   const formattedTextStroke = formatTextStrokeDisplay(textStroke)
-  const formattedSiteProfileTextStroke = formatTextStrokeDisplay(
-    siteProfileTextStroke
-  )
-  const renderSiteProfileTargetItem = (option: SiteProfileTargetOption) => {
-    const selected = selectedSiteProfilePattern === option.pattern
-    const scope = getSitePatternScope(option.pattern)
-    const hasCustomCss = hasCustomCssForSitePattern(option.pattern)
-
-    return (
-      <CommandItem
-        key={option.id}
-        value={`${option.title} ${option.subtitle ?? ""} ${option.pattern}`}
-        data-testid={`fontara-site-profile-target-${option.id}`}
-        className="min-h-11 cursor-pointer gap-3 px-2"
-        onSelect={() => selectSiteProfileTarget(option.pattern)}>
-        {option.iconUrl ? (
-          <img
-            alt=""
-            src={option.iconUrl}
-            className="size-7 shrink-0 rounded-md object-contain"
-          />
-        ) : (
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[#f1f5f9] text-[#64748b]">
-            <Globe2 className="size-4" />
-          </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <bdi
-            className="block truncate text-sm font-bold text-[#111827]"
-            dir="ltr"
-            title={option.title}>
-            {option.title}
-          </bdi>
-          {option.subtitle && (
-            <span className="mt-0.5 block truncate text-xs text-[#64748b]">
-              {option.subtitle}
-            </span>
-          )}
-        </span>
-        <span className="flex shrink-0 items-center gap-1">
-          <SiteScopeBadge scope={scope} />
-          {hasCustomCss && <SiteModeBadge customCss />}
-          {selected && <Check className="size-4 text-[#2374ff]" />}
-        </span>
-      </CommandItem>
-    )
-  }
-
   const handleRtlSiteToggle = async (site: RtlSiteConfig, checked: boolean) => {
     try {
       await setRtlSiteSettings({
@@ -3992,507 +3426,10 @@ function OptionsPage() {
                     </TabsContent>
 
                     <TabsContent value="profiles" className="mt-0">
-                      <section className="fontara-panel p-4 sm:p-5">
-                        <div className="mb-5 flex items-center justify-between gap-3">
-                          <div>
-                            <h3 className="text-base font-bold text-[#111827]">
-                              {t("options.siteProfiles.title")}
-                            </h3>
-                            <p className="mt-1 text-xs text-[#64748b]">
-                              {t("options.siteProfiles.description")}
-                            </p>
-                          </div>
-                          <div className="fontara-icon-tile">
-                            <Settings className="size-5" />
-                          </div>
-                        </div>
-
-                        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                          <form
-                            className="fontara-soft-panel space-y-4 p-4"
-                            onSubmit={handleSiteProfileSubmit}>
-                            <div className="space-y-2">
-                              <label
-                                htmlFor="site-profile-target"
-                                className="block text-sm font-medium text-[#334155]">
-                                {t("options.siteProfiles.targetLabel")}
-                              </label>
-                              <Popover
-                                open={siteProfileTargetOpen}
-                                onOpenChange={setSiteProfileTargetOpen}>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    id="site-profile-target"
-                                    type="button"
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={siteProfileTargetOpen}
-                                    data-testid="fontara-site-profile-target-trigger"
-                                    className="h-auto min-h-11 w-full justify-between border-[#dbe3ef] bg-white px-3 py-2 text-start hover:bg-white">
-                                    <span className="flex min-w-0 flex-1 items-center gap-2">
-                                      {selectedSiteProfileTarget?.iconUrl && (
-                                        <img
-                                          alt=""
-                                          src={
-                                            selectedSiteProfileTarget.iconUrl
-                                          }
-                                          className="size-6 shrink-0 rounded object-contain"
-                                        />
-                                      )}
-                                      <span className="min-w-0 flex-1">
-                                        <bdi
-                                          className={cn(
-                                            "block truncate text-sm font-bold",
-                                            selectedSiteProfilePattern
-                                              ? "text-[#111827]"
-                                              : "text-[#64748b]"
-                                          )}
-                                          dir="ltr">
-                                          {selectedSiteProfilePattern
-                                            ? getDisplaySitePattern(
-                                                selectedSiteProfilePattern
-                                              )
-                                            : t(
-                                                "options.siteProfiles.targetPlaceholder"
-                                              )}
-                                        </bdi>
-                                        {selectedSiteProfileTarget?.title &&
-                                          selectedSiteProfileTarget.title !==
-                                            getDisplaySitePattern(
-                                              selectedSiteProfilePattern ?? ""
-                                            ) && (
-                                            <span className="mt-0.5 block truncate text-xs text-[#64748b]">
-                                              {selectedSiteProfileTarget.title}
-                                            </span>
-                                          )}
-                                      </span>
-                                      {selectedSiteProfileScope && (
-                                        <SiteScopeBadge
-                                          scope={selectedSiteProfileScope}
-                                        />
-                                      )}
-                                    </span>
-                                    <ChevronsUpDown className="ms-2 size-4 shrink-0 text-[#64748b]" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  align="start"
-                                  className="w-(--radix-popover-trigger-width) p-0">
-                                  <Command>
-                                    <CommandInput
-                                      value={siteProfileTargetSearch}
-                                      data-testid="fontara-site-profile-target-search"
-                                      onValueChange={setSiteProfileTargetSearch}
-                                      placeholder={t(
-                                        "options.siteProfiles.targetSearchPlaceholder"
-                                      )}
-                                    />
-                                    <CommandList>
-                                      <CommandEmpty>
-                                        {t("options.siteProfiles.noTargets")}
-                                      </CommandEmpty>
-                                      {canAddSiteProfileTarget &&
-                                        siteProfileAddTargetPattern && (
-                                          <CommandGroup>
-                                            <CommandItem
-                                              value={
-                                                siteProfileAddTargetPattern
-                                              }
-                                              data-testid="fontara-site-profile-target-add"
-                                              className="min-h-11 cursor-pointer gap-3 px-2"
-                                              onSelect={
-                                                handleAddSiteProfileTarget
-                                              }>
-                                              <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2374ff]">
-                                                <Plus className="size-4" />
-                                              </span>
-                                              <span className="min-w-0 flex-1">
-                                                <span className="block text-sm font-bold text-[#111827]">
-                                                  {t(
-                                                    "options.siteProfiles.addTarget",
-                                                    {
-                                                      site: getDisplaySitePattern(
-                                                        siteProfileAddTargetPattern
-                                                      )
-                                                    }
-                                                  )}
-                                                </span>
-                                                <bdi
-                                                  className="mt-0.5 block truncate text-xs text-[#64748b]"
-                                                  dir="ltr">
-                                                  {siteProfileAddTargetPattern}
-                                                </bdi>
-                                              </span>
-                                              <SiteScopeBadge
-                                                scope={getSitePatternScope(
-                                                  siteProfileAddTargetPattern
-                                                )}
-                                              />
-                                            </CommandItem>
-                                          </CommandGroup>
-                                        )}
-                                      <CommandGroup>
-                                        {siteProfileTargetOptions.map(
-                                          renderSiteProfileTargetItem
-                                        )}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                            </div>
-
-                            <div>
-                              <label
-                                htmlFor="site-profile-font"
-                                className="mb-2 block text-sm font-medium text-[#334155]">
-                                {t("options.siteProfiles.fontLabel")}
-                              </label>
-                              <Select
-                                dir={direction}
-                                disabled={
-                                  siteProfileGoogleFontStatus === "loading"
-                                }
-                                open={siteProfileFontPickerOpen}
-                                value={
-                                  siteProfileFontInput ||
-                                  GLOBAL_SITE_PROFILE_FONT_VALUE
-                                }
-                                onOpenChange={setSiteProfileFontPickerOpen}
-                                onValueChange={(value) => {
-                                  setSiteProfileGoogleFontStatus("idle")
-                                  setSiteProfileFontInput(
-                                    value === GLOBAL_SITE_PROFILE_FONT_VALUE
-                                      ? ""
-                                      : value
-                                  )
-                                }}>
-                                <SelectTrigger
-                                  id="site-profile-font"
-                                  data-testid="fontara-site-profile-font-select"
-                                  className="h-10 border-[#dbe3ef] bg-white text-[#111827] shadow-none focus:ring-[#2374ff]/20">
-                                  <SelectValue>
-                                    {getSiteProfileFontLabel(
-                                      siteProfileFontInput
-                                    )}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent
-                                  dir={direction}
-                                  className="max-h-80 border-[#dbe3ef] shadow-xl">
-                                  <SelectItem
-                                    value={GLOBAL_SITE_PROFILE_FONT_VALUE}
-                                    data-testid="fontara-site-profile-font-option-global">
-                                    {t("options.siteProfiles.globalFont")}
-                                  </SelectItem>
-                                  {siteFontOptionGroups.map((group) =>
-                                    group.options.length > 0 ? (
-                                      <SelectGroup key={group.label}>
-                                        <SelectLabel className="text-xs text-slate-500">
-                                          {group.label}
-                                        </SelectLabel>
-                                        {group.options.map((font) => (
-                                          <SelectItem
-                                            key={font.value}
-                                            value={font.value}
-                                            data-testid={`fontara-site-profile-font-option-${font.value}`}>
-                                            {font.label}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectGroup>
-                                    ) : null
-                                  )}
-                                </SelectContent>
-                              </Select>
-                              {siteProfileGoogleFontStatus !== "idle" && (
-                                <div
-                                  aria-live="polite"
-                                  className={cn(
-                                    "mt-2 flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-xs",
-                                    siteProfileGoogleFontStatus === "error"
-                                      ? "border-red-100 bg-red-50 text-red-700"
-                                      : "border-blue-100 bg-blue-50 text-blue-700"
-                                  )}>
-                                  <span>
-                                    {siteProfileGoogleFontStatus === "loading"
-                                      ? t("fontSelector.googleDownloading", {
-                                          font:
-                                            decodeGoogleFontValue(
-                                              siteProfileFontInput
-                                            ) ?? ""
-                                        })
-                                      : t("fontSelector.googleDownloadFailed")}
-                                  </span>
-                                  {siteProfileGoogleFontStatus === "error" && (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className="h-7 shrink-0 px-2 text-[11px]"
-                                      onClick={() =>
-                                        void handleSaveSiteProfile()
-                                      }>
-                                      {t("fontSelector.googleRetry")}
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="space-y-3 rounded-md border border-[#eef2f7] bg-[#f8fafc] p-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <label
-                                    htmlFor="site-profile-stroke-toggle"
-                                    className="text-sm font-medium text-[#334155]">
-                                    {t("options.siteProfiles.strokeLabel")}
-                                  </label>
-                                  <p className="mt-1 text-xs text-[#64748b]">
-                                    {siteProfileUsesGlobalStroke
-                                      ? t("options.siteProfiles.globalStroke")
-                                      : t("options.siteProfiles.customStroke", {
-                                          value: formattedSiteProfileTextStroke
-                                        })}
-                                  </p>
-                                </div>
-                                <Switch
-                                  id="site-profile-stroke-toggle"
-                                  dir="ltr"
-                                  checked={!siteProfileUsesGlobalStroke}
-                                  data-testid="fontara-site-profile-stroke-toggle"
-                                  onCheckedChange={(checked) =>
-                                    setSiteProfileUsesGlobalStroke(!checked)
-                                  }
-                                  aria-label={t(
-                                    "options.siteProfiles.strokeLabel"
-                                  )}
-                                />
-                              </div>
-
-                              <div
-                                dir="ltr"
-                                className={cn(
-                                  "space-y-2 transition",
-                                  siteProfileUsesGlobalStroke && "opacity-50"
-                                )}>
-                                <input
-                                  type="range"
-                                  min={TEXT_STROKE_MIN}
-                                  max={TEXT_STROKE_MAX}
-                                  step={TEXT_STROKE_STEP}
-                                  value={siteProfileTextStroke}
-                                  data-testid="fontara-site-profile-stroke-range"
-                                  disabled={siteProfileUsesGlobalStroke}
-                                  onChange={(event) =>
-                                    setSiteProfileTextStroke(
-                                      normalizeTextStrokeValue(
-                                        Number(event.currentTarget.value)
-                                      )
-                                    )
-                                  }
-                                  aria-label={t(
-                                    "options.siteProfiles.strokeLabel"
-                                  )}
-                                  className="h-2 w-full cursor-pointer accent-[#2374ff] disabled:cursor-not-allowed"
-                                />
-                                <div className="flex items-center justify-between text-[10px] font-semibold text-[#64748b]">
-                                  <span>
-                                    {formatNumber(TEXT_STROKE_MIN, {
-                                      maximumFractionDigits: 1,
-                                      minimumFractionDigits: 1,
-                                      useGrouping: false
-                                    })}
-                                  </span>
-                                  <span>
-                                    {formatNumber(TEXT_STROKE_MAX, {
-                                      maximumFractionDigits: 1,
-                                      minimumFractionDigits: 1,
-                                      useGrouping: false
-                                    })}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                type="submit"
-                                disabled={
-                                  siteProfileGoogleFontStatus === "loading"
-                                }
-                                data-testid="fontara-site-profile-save"
-                                className="h-10 bg-[#2374ff] text-white hover:bg-[#1f66df]">
-                                <Check className="size-4" />
-                                {t("options.siteProfiles.save")}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-10"
-                                onClick={resetSiteProfileForm}>
-                                {t("options.siteProfiles.reset")}
-                              </Button>
-                            </div>
-                          </form>
-
-                          <div className="fontara-soft-panel p-4">
-                            <div className="mb-3">
-                              <h4 className="text-sm font-bold text-[#111827]">
-                                {t("options.siteProfiles.savedTitle")}
-                              </h4>
-                              <p className="mt-1 text-xs text-[#64748b]">
-                                {t("options.siteProfiles.savedDescription", {
-                                  count: formatNumber(
-                                    normalizedSiteProfiles.length
-                                  )
-                                })}
-                              </p>
-                            </div>
-
-                            {normalizedSiteProfiles.length > 0 ? (
-                              <div className="space-y-2">
-                                {normalizedSiteProfiles.map((profile) => {
-                                  const hasCustomCss =
-                                    hasCustomCssForSitePattern(profile.pattern)
-                                  const profileEnabled =
-                                    isSiteProfileEnabled(profile)
-
-                                  return (
-                                    <div
-                                      key={profile.pattern}
-                                      data-testid={`fontara-site-profile-row-${profile.pattern}`}
-                                      className={cn(
-                                        "rounded-md border px-3 py-3 transition",
-                                        profileEnabled
-                                          ? "border-[#eef2f7] bg-[#f8fafc]"
-                                          : "border-slate-200 bg-slate-50 opacity-75"
-                                      )}>
-                                      <div className="mb-3 flex items-start justify-between gap-3">
-                                        <div className="flex min-w-0 items-center gap-2">
-                                          <bdi
-                                            className={cn(
-                                              "min-w-0 truncate text-sm font-bold",
-                                              profileEnabled
-                                                ? "text-[#111827]"
-                                                : "text-[#64748b]"
-                                            )}>
-                                            {getDisplaySitePattern(
-                                              profile.pattern
-                                            )}
-                                          </bdi>
-                                          <span
-                                            className={cn(
-                                              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                                              profileEnabled
-                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                : "border-slate-200 bg-white text-slate-500"
-                                            )}>
-                                            {profileEnabled
-                                              ? t("options.siteProfiles.active")
-                                              : t(
-                                                  "options.siteProfiles.inactive"
-                                                )}
-                                          </span>
-                                          {hasCustomCss && (
-                                            <SiteModeBadge customCss />
-                                          )}
-                                        </div>
-                                        <div className="flex shrink-0 items-center gap-2">
-                                          <Switch
-                                            dir="ltr"
-                                            checked={profileEnabled}
-                                            data-testid={`fontara-site-profile-enabled-${profile.pattern}`}
-                                            onCheckedChange={(checked) =>
-                                              void handleSiteProfileEnabledToggle(
-                                                profile,
-                                                checked
-                                              )
-                                            }
-                                            aria-label={t(
-                                              "options.siteProfiles.applyProfile",
-                                              {
-                                                site: profile.pattern
-                                              }
-                                            )}
-                                          />
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-[#64748b] hover:bg-[#eaf2ff] hover:text-[#2374ff]"
-                                            aria-label={t(
-                                              "options.siteProfiles.edit",
-                                              {
-                                                site: profile.pattern
-                                              }
-                                            )}
-                                            onClick={() =>
-                                              handleEditSiteProfile(profile)
-                                            }>
-                                            <Settings className="size-4" />
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-[#64748b] hover:bg-red-50 hover:text-red-600"
-                                            data-testid={`fontara-site-profile-remove-${profile.pattern}`}
-                                            aria-label={t(
-                                              "options.siteProfiles.remove",
-                                              {
-                                                site: profile.pattern
-                                              }
-                                            )}
-                                            onClick={() =>
-                                              void handleRemoveSiteProfile(
-                                                profile.pattern
-                                              )
-                                            }>
-                                            <Trash2 className="size-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                      <div className="grid gap-2 text-xs text-[#64748b] sm:grid-cols-2">
-                                        <div className="rounded-md bg-white px-3 py-2">
-                                          <span className="font-semibold text-[#334155]">
-                                            {t(
-                                              "options.siteProfiles.fontValue"
-                                            )}
-                                          </span>{" "}
-                                          <span dir="auto">
-                                            {getSiteProfileFontLabel(
-                                              profile.font
-                                            )}
-                                          </span>
-                                        </div>
-                                        <div className="rounded-md bg-white px-3 py-2">
-                                          <span className="font-semibold text-[#334155]">
-                                            {t(
-                                              "options.siteProfiles.strokeValue"
-                                            )}
-                                          </span>{" "}
-                                          <bdi>
-                                            {profile.textStroke === undefined
-                                              ? t(
-                                                  "options.siteProfiles.globalStroke"
-                                                )
-                                              : formatTextStrokeDisplay(
-                                                  profile.textStroke
-                                                )}
-                                          </bdi>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            ) : (
-                              <div className="flex min-h-48 items-center justify-center rounded-md border border-dashed border-[#dbe3ef] px-4 text-center text-sm text-[#64748b]">
-                                {t("options.siteProfiles.empty")}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </section>
+                      <SiteProfilesSection
+                        controller={siteProfilesController}
+                        hasCustomCssForSitePattern={hasCustomCssForSitePattern}
+                      />
                     </TabsContent>
 
                     <TabsContent value="optimized" className="mt-0">

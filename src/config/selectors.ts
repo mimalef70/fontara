@@ -83,6 +83,8 @@ export const GLOBAL_TEXT_EFFECT_EXCLUDED_SELECTORS = [
   "pre",
   "pre *",
   "code",
-  '[style*="font-"]',
+  // The generic font processor owns this marker. Its inline declaration must
+  // remain eligible for text effects, unlike a page-authored inline font.
+  '[style*="font-"]:not([style*="var(--fontara-font)"])',
   ...ICON_EXCLUDED_SELECTORS
 ]

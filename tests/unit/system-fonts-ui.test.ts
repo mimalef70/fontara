@@ -55,7 +55,7 @@ test("popup removes the complete system-font group while the option is off", () 
 
 test("system font failures expose an actionable retry and preserve fallback labels", () => {
   const selectorSource = readSource("src/ui/components/FontSelector.tsx")
-  const optionsSource = readSource("src/ui/options/index.tsx")
+  const optionsSource = readSource("src/ui/options/use-font-catalogs.ts")
   const perSiteSource = readSource("src/ui/components/PerSiteSettings.tsx")
 
   assert.match(selectorSource, /fontSelector\.systemRetry/)

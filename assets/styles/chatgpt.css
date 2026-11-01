@@ -43,7 +43,8 @@ kbd {
     var(--fontara-chatgpt-kbd-fallback) !important;
 }
 
-:is(.\*\:font-sans > *) {
+:is(.\*\:font-sans > *),
+form[data-mobile-composer] {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-font-sans-child-fallback) !important;
 }

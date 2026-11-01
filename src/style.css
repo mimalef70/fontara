@@ -290,6 +290,7 @@ html.fontara-options-document #root {
   box-shadow: inset 0 0 0 1px #bfdbfe;
 }
 
-#root .fontara-font-preview {
+#root .fontara-font-preview,
+.fontara-font-preview {
   font-family: var(--fontara-preview-font), "Vazirmatn-Fontara", sans-serif !important;
 }

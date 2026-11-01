@@ -9,12 +9,17 @@ const { withPlatformCapabilities } = require("../../tasks/bundle-manifest") as {
     platform: string
   ) => Record<string, unknown> & { permissions: string[] }
 }
-const { isChromiumMV3Platform, PLATFORM, supportsFontSettings } =
-  require("../../tasks/platform") as {
-    isChromiumMV3Platform: (platform: string) => boolean
-    PLATFORM: Record<string, string>
-    supportsFontSettings: (platform: string) => boolean
-  }
+const {
+  getBrowserTarget,
+  isChromiumMV3Platform,
+  PLATFORM,
+  supportsFontSettings
+} = require("../../tasks/platform") as {
+  getBrowserTarget: (platform: string) => string
+  isChromiumMV3Platform: (platform: string) => boolean
+  PLATFORM: Record<string, string>
+  supportsFontSettings: (platform: string) => boolean
+}
 
 const chromiumPlatforms = [
   PLATFORM.CHROME_MV3,
@@ -22,6 +27,14 @@ const chromiumPlatforms = [
   PLATFORM.BRAVE_MV3,
   PLATFORM.OPERA_MV3
 ]
+
+test("JavaScript targets follow the minimum supported browser manifests", () => {
+  for (const platform of chromiumPlatforms) {
+    assert.equal(getBrowserTarget(platform), "chrome130")
+  }
+  assert.equal(getBrowserTarget(PLATFORM.FIREFOX_MV3), "firefox140")
+  assert.equal(getBrowserTarget(PLATFORM.SAFARI_MV3), "safari16.4")
+})
 
 test("only Chromium MV3 targets expose Chrome fontSettings capability", () => {
   for (const platform of chromiumPlatforms) {

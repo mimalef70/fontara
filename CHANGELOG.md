@@ -12,6 +12,8 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+## 5.1.0 - 2026-11-01
+
 - Added Chrome Web Store publication from verified release-tag artifacts using
   short-lived GitHub OIDC credentials, explicit rollout controls, and normal
   Google review. Store authentication requires a one-time publisher setup.
@@ -66,8 +68,6 @@ This project follows a practical release-note format:
   transactional cache cleanup, and user-visible download/cache controls.
 - Excluded non-text and oversized sliced font families from the Google picker
   until they can be loaded within the per-document memory budget.
-
-## 5.1.0
 
 - Rebuilt custom-font storage around multi-face family metadata while making
   the user flow intentionally small: enter a display name, add a required

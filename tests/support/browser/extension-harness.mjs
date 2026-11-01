@@ -1,16 +1,31 @@
 import assert from "node:assert/strict"
+import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
 import http from "node:http"
 import os from "node:os"
 import path from "node:path"
+import { promisify } from "node:util"
 
 import puppeteer from "puppeteer-core"
 
+import { getFirefoxDriver, launchFirefoxDriver } from "./firefox-driver.mjs"
+
+const execFileAsync = promisify(execFile)
+
 export const ROOT_DIR = path.resolve(import.meta.dirname, "../../..")
-export const CHROME_EXTENSION_DIR = path.join(ROOT_DIR, "build/chrome-mv3-dev")
+export const CHROME_EXTENSION_DIR = path.join(ROOT_DIR, "build/chrome-mv3-test")
+export const CHROME_PRODUCTION_EXTENSION_DIR = path.join(
+  ROOT_DIR,
+  "build/chrome-mv3-prod"
+)
 export const FIREFOX_EXTENSION_DIR = path.join(
   ROOT_DIR,
-  "build/firefox-mv3-dev"
+  "build/firefox-mv3-test"
+)
+export const FIREFOX_PRODUCTION_EXTENSION_DIR = path.join(
+  ROOT_DIR,
+  "build/firefox-mv3-prod"
 )
 
 export const BROWSER_VIEWPORTS = {
@@ -32,8 +47,10 @@ export const STORAGE_KEYS = {
   ENABLED_BY_DEFAULT: "enabledByDefault",
   ENABLED_FOR: "enabledFor",
   EXTENSION_ENABLED: "isExtensionEnabled",
+  GOOGLE_FONTS_ENABLED: "googleFontsEnabled",
   SITE_PROFILES: "siteProfiles",
   SELECTED_FONT: "selectedFont",
+  SYSTEM_FONTS_ENABLED: "systemFontsEnabled",
   SYNC_SETTINGS: "syncSettings",
   TEXT_STROKE: "textStroke",
   WEBSITE_LIST: "websiteList"
@@ -49,8 +66,370 @@ const HARD_FIXTURE_PATH = "/hard.html"
 const FRAME_FIXTURE_PATH = "/frame.html"
 const CROSS_ORIGIN_FRAME_PATH = "/cross-origin-frame.html"
 const CROSS_ORIGIN_FRAME_NAME = "fontara-cross-origin-frame"
+export const STRICT_FONT_CSP_FIXTURE_PATH = "/strict-font-csp.html"
 const FONTARA_INLINE_FONT_MARKER = "var(--fontara-font)"
 const FONTARA_FONT_FAMILY_PATTERN = /fontara/i
+const STRICT_FONT_CSP =
+  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src 'none'; connect-src 'none'; img-src data:; media-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+let browserMutationSequence = 0
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex")
+}
+
+function createGoogleFontBinaryBlob(bytes, hash) {
+  return {
+    byteLength: bytes.byteLength,
+    data: bytes.toString("base64"),
+    encoding: "base64",
+    hash,
+    mimeType: "font/woff2",
+    schemaVersion: 1
+  }
+}
+
+/**
+ * Builds the exact durable storage transaction used by the Google binary
+ * cache. The fixture uses real WOFF2 bytes already shipped by FontARA, so the
+ * browser must successfully parse and register the faces through FontFace's
+ * ArrayBuffer constructor; no Google endpoint is needed by the test.
+ */
+export async function createSeededGoogleFontBinaryCache(options = {}) {
+  const {
+    boldFontPath = path.join(
+      ROOT_DIR,
+      "assets/fonts/shabnam/Shabnam-Bold.woff2"
+    ),
+    fontFamily = "Roboto",
+    regularFontPath = path.join(ROOT_DIR, "assets/fonts/shabnam/Shabnam.woff2")
+  } = options
+  const [regularBytes, boldBytes] = await Promise.all([
+    fs.readFile(regularFontPath),
+    fs.readFile(boldFontPath)
+  ])
+  for (const [name, bytes] of [
+    ["regular", regularBytes],
+    ["bold", boldBytes]
+  ]) {
+    assert.equal(
+      bytes.subarray(0, 4).toString("ascii"),
+      "wOF2",
+      `The seeded Google ${name} fixture is not a real WOFF2 file.`
+    )
+  }
+
+  const familyKey = sha256(
+    fontFamily.trim().normalize("NFKC").toLocaleLowerCase("en-US")
+  )
+  const regularHash = sha256(regularBytes)
+  const boldHash = sha256(boldBytes)
+  const cssHash = sha256(
+    JSON.stringify({ boldHash, fontFamily, regularHash, schemaVersion: 1 })
+  )
+  const runtimeFamily = `FontAraGoogle-${cssHash.slice(0, 24)}`
+  const selectedValue = `google-font:${encodeURIComponent(fontFamily)}`
+  const requestUrl = new URL("https://fonts.googleapis.com/css2")
+  requestUrl.searchParams.set(
+    "family",
+    `${fontFamily}:ital,wght@0,400;0,700;1,400;1,700`
+  )
+  requestUrl.searchParams.set("display", "swap")
+  const now = Date.now()
+  const faceFixtures = [
+    {
+      assetHash: regularHash,
+      byteLength: regularBytes.byteLength,
+      id: "google-test-normal-400",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/normal-400.woff2",
+      style: "normal",
+      weight: "400"
+    },
+    {
+      assetHash: boldHash,
+      byteLength: boldBytes.byteLength,
+      id: "google-test-normal-700",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/normal-700.woff2",
+      style: "normal",
+      weight: "700"
+    },
+    {
+      assetHash: regularHash,
+      byteLength: regularBytes.byteLength,
+      id: "google-test-italic-400",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/italic-400.woff2",
+      style: "italic",
+      weight: "400"
+    },
+    {
+      assetHash: boldHash,
+      byteLength: boldBytes.byteLength,
+      id: "google-test-italic-700",
+      sourceUrl:
+        "https://fonts.gstatic.com/s/roboto/fontara-test/italic-700.woff2",
+      style: "italic",
+      weight: "700"
+    }
+  ]
+  const faces = faceFixtures.map((face) => ({
+    ...face,
+    stretch: "100%",
+    unicodeRange: null
+  }))
+  const totalBytes = regularBytes.byteLength + boldBytes.byteLength
+  const family = {
+    createdAt: now,
+    cssHash,
+    faces,
+    fontFamily,
+    key: familyKey,
+    lastAccessedAt: now,
+    pinned: false,
+    requestUrl: requestUrl.toString(),
+    revision: 1,
+    runtimeFamily,
+    schemaVersion: 1,
+    totalBytes,
+    updatedAt: now
+  }
+  const assetEntries = [
+    [regularHash, regularBytes],
+    [boldHash, boldBytes]
+  ]
+  const storageValues = {
+    [`googleFontFamily:${familyKey}:1`]: family,
+    __fontara_google_font_binary_catalog__: {
+      assets: Object.fromEntries(
+        assetEntries.map(([hash, bytes]) => [
+          hash,
+          { byteLength: bytes.byteLength, refCount: 1 }
+        ])
+      ),
+      families: {
+        [familyKey]: { latestRevision: 1, revisions: [1] }
+      },
+      schemaVersion: 1,
+      updatedAt: now
+    },
+    __fontara_google_font_binary_index__: {
+      families: { [familyKey]: family },
+      schemaVersion: 1,
+      totalBytes,
+      updatedAt: now
+    },
+    ...Object.fromEntries(
+      assetEntries.map(([hash, bytes]) => [
+        `googleFontFace:${hash}`,
+        createGoogleFontBinaryBlob(bytes, hash)
+      ])
+    )
+  }
+
+  return {
+    assetHashes: [regularHash, boldHash],
+    family,
+    forbiddenDocumentMarkers: [
+      requestUrl.toString(),
+      ...faces.map((face) => face.sourceUrl),
+      ...assetEntries.map(([, bytes]) => bytes.toString("base64").slice(0, 64))
+    ],
+    runtimeFamily,
+    selectedValue,
+    storageValues
+  }
+}
+
+export function observeDocumentGoogleFontRequests(page) {
+  const requests = []
+  const listener = (request) => {
+    try {
+      const { hostname } = new URL(request.url())
+      if (
+        hostname === "fonts.googleapis.com" ||
+        hostname === "fonts.gstatic.com"
+      ) {
+        requests.push(request.url())
+      }
+    } catch {
+      // Ignore non-URL protocol requests emitted by the browser target.
+    }
+  }
+  page.on("request", listener)
+  return {
+    requests,
+    stop() {
+      page.off("request", listener)
+    }
+  }
+}
+
+export async function getGoogleFontBinaryRuntimeState(
+  page,
+  runtimeFamily,
+  forbiddenDocumentMarkers = []
+) {
+  return page.evaluate(
+    async (family, markers) => {
+      const sampleText = "سلام فارسی آزمایش فونت گوگل پندار گسترش قلم"
+      const escapedFamily = family
+        .replaceAll("\\", "\\\\")
+        .replaceAll('"', '\\"')
+      const quotedFamily = `"${escapedFamily}"`
+      const specs = [
+        { style: "normal", weight: "400" },
+        { style: "normal", weight: "700" },
+        { style: "italic", weight: "400" },
+        { style: "italic", weight: "700" }
+      ]
+      const queries = specs.map(
+        ({ style, weight }) => `${style} ${weight} 32px ${quotedFamily}`
+      )
+      const loadedByQuery = await Promise.all(
+        queries.map((query) => document.fonts.load(query, sampleText))
+      )
+      await document.fonts.ready
+
+      const normalizeFamily = (value) => value.replace(/^['"]|['"]$/g, "")
+      const familyFaces = Array.from(
+        new Set(
+          [...Array.from(document.fonts), ...loadedByQuery.flat()].filter(
+            (fontFace) => normalizeFamily(fontFace.family) === family
+          )
+        )
+      )
+      const canvas = document.createElement("canvas")
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("Canvas 2D context is unavailable.")
+      const measure = (font) => {
+        context.font = font
+        return context.measureText(sampleText).width
+      }
+      const html = document.documentElement.outerHTML
+      const dynamicStyleText =
+        document.getElementById("fontara-dynamic-font")?.textContent ?? ""
+      const legacyGoogleStyleText =
+        document.getElementById("fontara-google-font-styles")?.textContent ?? ""
+      const target = document.getElementById("fontara-text")
+
+      return {
+        checkedQueries: queries.map((query) =>
+          document.fonts.check(query, sampleText)
+        ),
+        computedFamily: target ? getComputedStyle(target).fontFamily : "",
+        csp:
+          document
+            .querySelector('meta[http-equiv="Content-Security-Policy"]')
+            ?.getAttribute("content") ?? "",
+        dynamicStyleText,
+        exposedMarkers: markers.filter(
+          (marker) => marker.length > 0 && html.includes(marker)
+        ),
+        faceDescriptors: familyFaces
+          .map((fontFace) => ({
+            status: fontFace.status,
+            stretch: fontFace.stretch,
+            style: fontFace.style,
+            weight: fontFace.weight
+          }))
+          .sort((first, second) =>
+            `${first.style}:${first.weight}`.localeCompare(
+              `${second.style}:${second.weight}`
+            )
+          ),
+        googleResourceUrls: performance
+          .getEntriesByType("resource")
+          .map((entry) => entry.name)
+          .filter((url) => {
+            try {
+              const { hostname } = new URL(url)
+              return (
+                hostname === "fonts.googleapis.com" ||
+                hostname === "fonts.gstatic.com"
+              )
+            } catch {
+              return false
+            }
+          }),
+        hasDataFont: /data:font/i.test(html),
+        hasRemoteFontUrl: /https:\/\/fonts\.(?:googleapis|gstatic)\.com/i.test(
+          html
+        ),
+        legacyGoogleStyleText,
+        loadId: window.__fontaraLoadId,
+        loadedCounts: loadedByQuery.map((faces) => faces.length),
+        widths: queries.map((query) => ({
+          font: measure(query),
+          monospace: measure(query.replace(quotedFamily, "monospace")),
+          serif: measure(query.replace(quotedFamily, "serif"))
+        }))
+      }
+    },
+    runtimeFamily,
+    forbiddenDocumentMarkers
+  )
+}
+
+export async function waitForGoogleFontBinaryRuntimeState(
+  page,
+  fixture,
+  options = {}
+) {
+  const {
+    loadId,
+    message = "The seeded Google binary faces did not become active under strict CSP."
+  } = options
+  const expectedDescriptors = [
+    "italic:400",
+    "italic:700",
+    "normal:400",
+    "normal:700"
+  ]
+  let lastState = null
+
+  try {
+    return await waitFor(
+      async () => {
+        const state = await getGoogleFontBinaryRuntimeState(
+          page,
+          fixture.runtimeFamily,
+          fixture.forbiddenDocumentMarkers
+        )
+        lastState = state
+        const descriptors = state.faceDescriptors.map(
+          (face) => `${face.style}:${face.weight}`
+        )
+        return (loadId === undefined || state.loadId === loadId) &&
+          state.computedFamily.includes(fixture.runtimeFamily) &&
+          state.dynamicStyleText.includes(fixture.runtimeFamily) &&
+          /font-src\s+'none'/i.test(state.csp) &&
+          state.checkedQueries.every(Boolean) &&
+          state.loadedCounts.every((count) => count > 0) &&
+          state.faceDescriptors.every((face) => face.status === "loaded") &&
+          JSON.stringify(descriptors) === JSON.stringify(expectedDescriptors) &&
+          state.exposedMarkers.length === 0 &&
+          state.googleResourceUrls.length === 0 &&
+          !state.hasDataFont &&
+          !state.hasRemoteFontUrl &&
+          state.legacyGoogleStyleText === ""
+          ? state
+          : false
+      },
+      { message, timeout: 20_000 }
+    )
+  } catch (error) {
+    if (error instanceof Error) {
+      error.message += `\n\nLast Google binary runtime state:\n${JSON.stringify(lastState, null, 2)}`
+    }
+    throw error
+  }
+}
+
+function createBrowserMutationId() {
+  browserMutationSequence += 1
+  return `browser-${Date.now().toString(36)}-${browserMutationSequence.toString(36)}`
+}
 
 export function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -157,9 +536,82 @@ async function findChromeForTestingExecutables(rootPath) {
   return results.sort().reverse()
 }
 
+async function inspectChromeBinary(candidate, requiredMajor, explicit = false) {
+  const executablePath = path.resolve(candidate)
+  const fail = (reason) => {
+    if (explicit) {
+      throw new Error(`CHROME_PATH ${JSON.stringify(candidate)} ${reason}`)
+    }
+    return null
+  }
+  if (!(await pathExists(executablePath))) return fail("does not exist.")
+
+  let versionOutput
+  try {
+    const bundleInfoPath = path.join(
+      path.dirname(path.dirname(executablePath)),
+      "Info.plist"
+    )
+    const hasMacBundleMetadata =
+      process.platform === "darwin" &&
+      /(?:^|\/)(?:Google Chrome(?: for Testing)?|Chromium|Microsoft Edge)\.app\/Contents\/MacOS\/[^/]+$/.test(
+        executablePath
+      ) &&
+      (await pathExists(bundleInfoPath))
+    // Launching an installed macOS Chrome with --version can hand off to an
+    // existing instance or exit without output. Read its bundle metadata;
+    // standalone executables and minimal test fixtures still use --version.
+    // Brave's bundle version is its product version (1.x), not Chromium's.
+    const { stdout, stderr } = await execFileAsync(
+      hasMacBundleMetadata ? "/usr/libexec/PlistBuddy" : executablePath,
+      hasMacBundleMetadata
+        ? ["-c", "Print :CFBundleShortVersionString", bundleInfoPath]
+        : ["--version"],
+      {
+        encoding: "utf8",
+        maxBuffer: 16_384,
+        timeout: 5_000,
+        windowsHide: true
+      }
+    )
+    versionOutput = `${stdout}\n${stderr}`
+  } catch (error) {
+    return fail(`could not report its version: ${error.message}`)
+  }
+  const version = versionOutput.match(/\b\d+\.\d+(?:\.\d+){0,2}\b/)?.[0]
+  if (!version) return fail("did not report a recognizable Chrome version.")
+  const parts = version.split(".").map(Number)
+  if (parts[0] < requiredMajor) {
+    return fail(
+      `is Chrome ${version}; the extension requires Chrome ${requiredMajor} or newer.`
+    )
+  }
+  return { executablePath, parts }
+}
+
 export async function findChromeBinary() {
+  const manifest = JSON.parse(
+    await fs.readFile(
+      path.join(ROOT_DIR, "src/manifest-chrome-mv3.json"),
+      "utf8"
+    )
+  )
+  const requiredMajor = Number.parseInt(manifest.minimum_chrome_version, 10)
+  assert.ok(
+    Number.isInteger(requiredMajor) && requiredMajor > 0,
+    "The Chrome manifest must declare its minimum version."
+  )
+  if (process.env.CHROME_PATH !== undefined) {
+    if (!process.env.CHROME_PATH) throw new Error("CHROME_PATH is empty.")
+    const browser = await inspectChromeBinary(
+      process.env.CHROME_PATH,
+      requiredMajor,
+      true
+    )
+    return browser.executablePath
+  }
+
   const staticChromeCandidates = [
-    process.env.CHROME_PATH,
     "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
     "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
@@ -173,6 +625,7 @@ export async function findChromeBinary() {
   const chromeForTestingRoots = [
     process.env.FONTARA_E2E_BROWSER_DIR,
     path.join(ROOT_DIR, ".cache/e2e-browsers/chrome"),
+    path.join(ROOT_DIR, ".cache/e2e-browsers/baselines/chrome-130"),
     path.join(os.homedir(), ".cache/puppeteer/chrome"),
     path.join(os.homedir(), "Library/Caches/puppeteer/chrome")
   ].filter(Boolean)
@@ -182,20 +635,39 @@ export async function findChromeBinary() {
     )
   ).flat()
 
-  for (const candidate of [
-    process.env.CHROME_PATH,
-    ...chromeForTestingCandidates,
-    ...staticChromeCandidates
-  ].filter(Boolean)) {
-    if (await pathExists(candidate)) return candidate
-  }
-
-  return null
+  const candidates = [
+    ...new Set([...chromeForTestingCandidates, ...staticChromeCandidates])
+  ]
+  const supported = (
+    await Promise.all(
+      candidates.map((candidate) =>
+        inspectChromeBinary(candidate, requiredMajor)
+      )
+    )
+  )
+    .filter(Boolean)
+    .sort((first, second) => {
+      for (let index = 0; index < 4; index += 1) {
+        const difference =
+          (second.parts[index] ?? 0) - (first.parts[index] ?? 0)
+        if (difference) return difference
+      }
+      return first.executablePath.localeCompare(second.executablePath)
+    })
+  return supported[0]?.executablePath ?? null
 }
 
 export async function findFirefoxBinary() {
+  if (process.env.FIREFOX_PATH !== undefined) {
+    const candidate = process.env.FIREFOX_PATH
+    if (!candidate || !(await pathExists(candidate))) {
+      throw new Error(
+        `FIREFOX_PATH ${JSON.stringify(candidate)} does not exist.`
+      )
+    }
+    return path.resolve(candidate)
+  }
   const candidates = [
-    process.env.FIREFOX_PATH,
     "/Applications/Firefox.app/Contents/MacOS/firefox",
     "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox",
     "/usr/bin/firefox",
@@ -275,9 +747,13 @@ export function createTestServer(options = {}) {
     }
 
     const url = new URL(request.url ?? "/", "http://127.0.0.1")
+    const isStrictFontCspFixture = url.pathname === STRICT_FONT_CSP_FIXTURE_PATH
     response.writeHead(200, {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      ...(isStrictFontCspFixture
+        ? { "content-security-policy": STRICT_FONT_CSP }
+        : {})
     })
 
     if (url.pathname === HARD_FIXTURE_PATH) {
@@ -460,6 +936,11 @@ export function createTestServer(options = {}) {
       <html>
         <head>
           <meta charset="utf-8">
+          ${
+            isStrictFontCspFixture
+              ? `<meta http-equiv="Content-Security-Policy" content="${STRICT_FONT_CSP}">`
+              : ""
+          }
           <title>FontARA MV3 Browser Test</title>
           <script>
             window.__fontaraLoadId = String(Date.now()) + "-" + Math.random();
@@ -474,20 +955,6 @@ export function createTestServer(options = {}) {
   })
 
   return listenTestServer(server)
-}
-
-async function getFreePort() {
-  const server = http.createServer()
-
-  return new Promise((resolve, reject) => {
-    server.once("error", reject)
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address()
-      assert.equal(typeof address, "object")
-      const port = address.port
-      server.close(() => resolve(port))
-    })
-  })
 }
 
 export async function waitFor(check, options = {}) {
@@ -544,17 +1011,50 @@ function getChromeLaunchArgs() {
 
 async function createPage(browser, url, options = {}) {
   const page = await browser.newPage()
+  const isFirefoxExtensionPage = url.startsWith("moz-extension://")
+  const activePage = options.keepPageActive
+  if (activePage) await activePage.bringToFront().catch(() => {})
+  if (options.onConsole) page.on("console", options.onConsole)
+  if (options.onPageError) page.on("pageerror", options.onPageError)
   if (options.viewport) {
-    await page.setViewport(options.viewport)
+    try {
+      await page.setViewport(options.viewport)
+    } catch (error) {
+      const isUnsupportedFirefoxEsrOrientationOverride =
+        page.browser().protocol === "webDriverBiDi" &&
+        error instanceof Error &&
+        error.message.includes("emulation.setScreenOrientationOverride") &&
+        (error.message.includes("unknown command") ||
+          error.message.includes("unsupported operation"))
+
+      if (!isUnsupportedFirefoxEsrOrientationOverride) throw error
+
+      // Puppeteer 25 couples the standard viewport command to a newer screen
+      // orientation command that Firefox ESR 140 does not implement. Retry the
+      // supported WebDriver BiDi operation directly; these tests only need the
+      // viewport dimensions and do not emulate device orientation.
+      await page.mainFrame().browsingContext.setViewport({
+        devicePixelRatio: options.viewport.deviceScaleFactor ?? null,
+        viewport: {
+          height: options.viewport.height,
+          width: options.viewport.width
+        }
+      })
+    }
   }
   try {
-    await page.goto(url, { waitUntil: "load" })
-    await page.bringToFront().catch(() => {})
+    await page.goto(url, {
+      timeout: isFirefoxExtensionPage ? 5000 : 30_000,
+      waitUntil: isFirefoxExtensionPage ? "domcontentloaded" : "load"
+    })
+    if (activePage) await activePage.bringToFront().catch(() => {})
+    else await page.bringToFront().catch(() => {})
   } catch (error) {
     const isExpectedFirefoxExtensionNavigationError =
-      url.startsWith("moz-extension://") &&
+      isFirefoxExtensionPage &&
       error instanceof Error &&
-      error.message.includes("NS_ERROR_NOT_AVAILABLE")
+      (error.message.includes("NS_ERROR_NOT_AVAILABLE") ||
+        error.name === "TimeoutError")
 
     if (!isExpectedFirefoxExtensionNavigationError) {
       throw error
@@ -562,11 +1062,13 @@ async function createPage(browser, url, options = {}) {
 
     await waitFor(
       async () => {
-        const currentUrl = page.url()
-        if (!currentUrl.startsWith(url)) return false
-
         return page
-          .evaluate(() => document.readyState !== "loading")
+          .evaluate(
+            (expectedUrl) =>
+              window.location.href.startsWith(expectedUrl) &&
+              document.readyState !== "loading",
+            url
+          )
           .catch(() => false)
       },
       {
@@ -639,31 +1141,28 @@ async function launchFirefoxWithExtension(extensionDir) {
     "Run pnpm debug:firefox before this browser test."
   )
 
-  const userDataDir = await fs.mkdtemp(
-    path.join(os.tmpdir(), "fontara-browser-firefox-")
-  )
-  const remoteDebuggingPort = await getFreePort()
-  const browser = await puppeteer.launch({
-    args: [`--remote-debugging-port=${remoteDebuggingPort}`],
-    browser: "firefox",
-    defaultViewport: BROWSER_VIEWPORTS.desktop,
-    executablePath: firefoxPath,
+  // Firefox 155+ disallows BiDi input in extension processes. Share one
+  // geckodriver-owned session: BiDi observes pages, Classic sends trusted input.
+  const { browser, userDataDir, close } = await launchFirefoxDriver({
+    firefoxPath,
     headless: process.env.FONTARA_FIREFOX_HEADLESS === "1",
-    protocol: "webDriverBiDi",
-    userDataDir
+    viewport: BROWSER_VIEWPORTS.desktop
   })
 
   try {
     const extensionId = await browser.installExtension(extensionDir)
     const extensionBaseUrl =
+      (await findFirefoxExtensionBaseUrlFromProfile(
+        userDataDir,
+        extensionId
+      )) ??
       (await findExtensionBaseUrl(browser, "moz-extension://")) ??
       `moz-extension://${extensionId}`
     await delay(1000)
 
-    return { browser, extensionBaseUrl, extensionId, userDataDir }
+    return { browser, extensionBaseUrl, extensionId, userDataDir, close }
   } catch (error) {
-    await browser.close().catch(() => {})
-    await fs.rm(userDataDir, { force: true, recursive: true })
+    await close()
     throw error
   }
 }
@@ -706,10 +1205,16 @@ async function withExtensionHarness(testContext, launchBrowser, callback) {
       server
     })
   } finally {
-    await browser.close().catch(() => {})
-    await server?.close()
-    await crossOriginServer?.close()
-    await fs.rm(userDataDir, { force: true, recursive: true })
+    try {
+      if (launchResult.close) await launchResult.close()
+      else await browser.close().catch(() => {})
+    } finally {
+      await Promise.all([
+        server?.close(),
+        crossOriginServer?.close(),
+        fs.rm(userDataDir, { force: true, recursive: true })
+      ])
+    }
   }
 }
 
@@ -721,10 +1226,32 @@ export async function withChromeMv3ExtensionHarness(testContext, callback) {
   )
 }
 
+export async function withChromeProductionExtensionHarness(
+  testContext,
+  callback
+) {
+  await withExtensionHarness(
+    testContext,
+    () => launchChromeWithExtension(CHROME_PRODUCTION_EXTENSION_DIR),
+    callback
+  )
+}
+
 export async function withFirefoxMv3ExtensionHarness(testContext, callback) {
   await withExtensionHarness(
     testContext,
     () => launchFirefoxWithExtension(FIREFOX_EXTENSION_DIR),
+    callback
+  )
+}
+
+export async function withFirefoxProductionExtensionHarness(
+  testContext,
+  callback
+) {
+  await withExtensionHarness(
+    testContext,
+    () => launchFirefoxWithExtension(FIREFOX_PRODUCTION_EXTENSION_DIR),
     callback
   )
 }
@@ -751,18 +1278,53 @@ async function findExtensionBaseUrl(browser, protocol) {
   ).catch(() => null)
 }
 
+async function findFirefoxExtensionBaseUrlFromProfile(
+  userDataDir,
+  extensionId
+) {
+  return waitFor(
+    async () => {
+      const preferences = await fs
+        .readFile(path.join(userDataDir, "prefs.js"), "utf8")
+        .catch(() => "")
+      const match = preferences.match(
+        /^user_pref\("extensions\.webextensions\.uuids", (".*")\);$/m
+      )
+      if (!match) return false
+
+      try {
+        const extensionUUIDs = JSON.parse(JSON.parse(match[1]))
+        const extensionUUID = extensionUUIDs[extensionId]
+        return typeof extensionUUID === "string" && extensionUUID.length > 0
+          ? `moz-extension://${extensionUUID}`
+          : false
+      } catch {
+        return false
+      }
+    },
+    {
+      message: `Could not resolve the Firefox UUID for ${extensionId}.`,
+      timeout: 5000
+    }
+  ).catch(() => null)
+}
+
 export async function evaluate(page, pageFunction, ...args) {
   assert.equal(typeof pageFunction, "function")
   return page.evaluate(pageFunction, ...args)
 }
 
 export async function sendSettingsFromOptions(optionsPage, settings) {
+  const clientMutationId = createBrowserMutationId()
   const response = await optionsPage.evaluate(
-    (messageType, nextSettings) =>
+    (messageType, mutationId, nextSettings) =>
       new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
           {
-            data: nextSettings,
+            data: {
+              clientMutationId: mutationId,
+              settings: nextSettings
+            },
             type: messageType
           },
           (messageResponse) => {
@@ -776,6 +1338,7 @@ export async function sendSettingsFromOptions(optionsPage, settings) {
         )
       }),
     MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS,
+    clientMutationId,
     settings
   )
 
@@ -902,9 +1465,34 @@ export async function waitForContentBridge(page) {
 
 export async function sendSettingsFromContentBridge(page, settings) {
   return sendUIMessageFromContentBridge(page, {
-    data: settings,
+    data: {
+      clientMutationId: createBrowserMutationId(),
+      settings
+    },
     type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
   })
+}
+
+export async function stopChromeExtensionServiceWorkers(extensionPage) {
+  const browser = extensionPage.browser()
+  const extensionOrigin = new URL(extensionPage.url()).origin
+  const previousBackgroundTarget = browser.targets().find((target) => {
+    const url = target.url()
+    return url.startsWith(extensionOrigin) && url.includes("/background/")
+  })
+  const session = await extensionPage.target().createCDPSession()
+  try {
+    await session.send("ServiceWorker.enable")
+    await session.send("ServiceWorker.stopAllWorkers")
+  } finally {
+    await session.detach().catch(() => {})
+  }
+
+  if (previousBackgroundTarget) {
+    await waitFor(() => !browser.targets().includes(previousBackgroundTarget), {
+      message: "Chrome extension service worker did not stop."
+    })
+  }
 }
 
 export async function getPageFontState(page) {
@@ -1467,13 +2055,16 @@ ${JSON.stringify(lastValue, null, 2)}`
 }
 
 export async function clickByTestId(page, testId) {
-  const selector = testIdSelector(testId)
+  await clickSelector(page, testIdSelector(testId))
+}
+
+export async function clickSelector(page, selector) {
   await page.waitForSelector(selector, { visible: true })
   await page.$eval(selector, (element) => {
     element.scrollIntoView({ block: "center", inline: "center" })
   })
 
-  const point = await waitFor(
+  await waitFor(
     () =>
       page.$eval(selector, (element) => {
         const rect = element.getBoundingClientRect()
@@ -1490,11 +2081,54 @@ export async function clickByTestId(page, testId) {
         return { x, y }
       }),
     {
-      message: `Element ${testId} did not become clickable.`
+      message: `Element ${selector} did not become clickable.`
     }
   )
 
-  await page.mouse.click(point.x, point.y)
+  const firefoxDriver = getFirefoxDriver(page)
+  if (firefoxDriver) {
+    await firefoxDriver.click(page, selector)
+  } else {
+    // Drawer animations can move the target after the hit test. The locator
+    // waits for stable bounds and uses the element's current click coordinates.
+    // Foreground the page so its animation frames can run before clicking.
+    await page.bringToFront()
+    await page.locator(selector).setTimeout(10_000).click()
+  }
+}
+
+/**
+ * Activates a control without foregrounding its Puppeteer page.
+ *
+ * Browser tests render the toolbar popup in a regular extension tab. Making
+ * that tab active would replace the website returned by chrome.tabs.query(),
+ * unlike a real toolbar popup, and can unmount current-site controls between
+ * locating and clicking them. Dispatching the element activation in its own
+ * document keeps the fixture tab active while exercising the same UI handler.
+ */
+export async function activateByTestId(page, testId) {
+  const selector = testIdSelector(testId)
+  await page.waitForSelector(selector, { visible: true })
+  await page.$eval(selector, (element) => {
+    element.scrollIntoView({ block: "center", inline: "center" })
+    element.click()
+  })
+}
+
+/**
+ * Lets a tab-rendered popup capture the website as Chrome's active tab, then
+ * briefly foregrounds the popup so its requestAnimationFrame readiness gate
+ * can paint. A real toolbar popup gets both properties without becoming a tab.
+ */
+export async function settleBackgroundExtensionPage(
+  page,
+  activePage,
+  readyTestId
+) {
+  const selector = testIdSelector(readyTestId)
+  await page.bringToFront()
+  await page.waitForSelector(selector, { visible: true })
+  await activePage.bringToFront()
 }
 
 export async function setValueByTestId(page, testId, value) {
@@ -1529,11 +2163,20 @@ export async function setValueByTestId(page, testId, value) {
 }
 
 export async function uploadFileByTestId(page, testId, filePath) {
+  return uploadFilesByTestId(page, testId, [filePath])
+}
+
+export async function uploadFilesByTestId(page, testId, filePaths) {
   const selector = testIdSelector(testId)
   await page.waitForSelector(selector)
+  const firefoxDriver = getFirefoxDriver(page)
+  if (firefoxDriver) {
+    await firefoxDriver.uploadFiles(page, selector, filePaths)
+    return
+  }
   const input = await page.$(selector)
   assert.ok(input, `Input ${testId} was not found.`)
-  await input.uploadFile(filePath)
+  await input.uploadFile(...filePaths)
 }
 
 export async function chooseFileByTestId(page, testId, filePath) {

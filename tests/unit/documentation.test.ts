@@ -21,6 +21,9 @@ test("project documentation exposes contributor and maintainer guides", () => {
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "FONT_LICENSES/OFL-1.1.txt",
+    "assets/fonts/provenance.json",
     "SECURITY.md",
     "CODE_OF_CONDUCT.md",
     "docs/development.md",
@@ -29,6 +32,7 @@ test("project documentation exposes contributor and maintainer guides", () => {
     "docs/testing.md",
     "docs/release.md",
     "docs/index.html",
+    "docs/privacy.html",
     "docs/images/demo/logo.svg",
     "docs/images/demo/browsers/chrome.svg",
     "docs/images/demo/browsers/firefox.svg",
@@ -36,6 +40,11 @@ test("project documentation exposes contributor and maintainer guides", () => {
     "docs/images/demo/browsers/opera.svg",
     "docs/images/demo/browsers/safari.svg",
     "docs/images/sponsors/muchat-logo-type.svg",
+    "docs/images/store/5.1.0/fa/fontara-5.1-popup.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1-general.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1-custom-fonts.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1-site-profiles.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1-smart-rtl.png",
     ".github/PULL_REQUEST_TEMPLATE.md"
   ]
 
@@ -73,21 +82,24 @@ test("project documentation exposes contributor and maintainer guides", () => {
   assert.match(readme, /Roadmap/)
   assert.match(readme, /CHANGELOG\.md/)
   assert.match(readme, /cross-browser WebExtension/)
-  assert.match(readme, /Version 5\.0\.0/)
+  assert.match(readme, /Version 5\.1\.0/)
   assert.match(readme, /Font replacement across the web/)
   assert.match(readme, /Smart RTL support/)
   assert.match(readme, /English, Persian, and Arabic/)
   assert.match(readme, /docs\/images\/demo\/logo\.svg/)
   assert.match(readme, /docs\/images\/demo\/browsers\/chrome\.svg/)
-  assert.match(readme, /FontARA screenshot/)
+  assert.match(readme, /FontARA 5\.1 popup/)
   assert.match(readme, /31 site entries/)
   assert.match(readme, /27 bundled site CSS files/)
   assert.match(readme, /11 smart RTL site\s+adapters/)
   assert.match(readme, /20 high-priority sites/)
   assert.match(readme, /Google Fonts network access/)
   assert.match(readme, /Browser-restricted pages/)
-  assert.match(readme, /docs\/images\/demo\/screens\/Version4\.jpg/)
-  assert.match(readme, /docs\/images\/demo\/screens\/Banner5\.jpg/)
+  assert.match(
+    readme,
+    /docs\/images\/store\/5\.1\.0\/fa\/fontara-5\.1-popup\.png/
+  )
+  assert.match(readme, /fontara-5\.1-smart-rtl\.png/)
   assert.match(readme, /github\.com\/mimalef70\/fontara\/graphs\/contributors/)
   assert.match(readme, /## Sponsors/)
   assert.match(readme, /docs\/images\/sponsors\/muchat-logo-type\.svg/)
@@ -106,13 +118,13 @@ test("project documentation exposes contributor and maintainer guides", () => {
 
   const changelog = readText("CHANGELOG.md")
   assert.match(changelog, /## Unreleased/)
+  assert.match(changelog, /## 5\.1\.0/)
   assert.match(changelog, /## 5\.0\.0/)
   assert.match(changelog, /## 4\.3\.0/)
   assert.match(changelog, /Known issues/)
 
   const docsPage = readText("docs/index.html")
-  assert.match(docsPage, /نسخه جدید ۵\.۰\.۰/)
-  assert.match(docsPage, /تغییرات نسخه جدید ۵\.۰\.۰/)
+  assert.match(docsPage, /۵\.۱\.۰/)
   assert.match(docsPage, /رابط چندزبانه و RTL هوشمند/)
   assert.match(docsPage, /۲۰ مورد مهم‌تر/)
 
@@ -128,6 +140,22 @@ test("project documentation exposes contributor and maintainer guides", () => {
   assert.match(firefoxSourceReadme, /system fonts feature stays disabled/)
   assert.match(firefoxSourceReadme, /No remote executable code/)
   assert.match(firefoxSourceReadme, /Google Fonts endpoints/)
+  assert.match(firefoxSourceReadme, /THIRD_PARTY_NOTICES/)
+
+  const privacyPolicy = readText("docs/privacy.html")
+  assert.match(privacyPolicy, /Custom.?font/i)
+  assert.match(privacyPolicy, /Google Fonts/)
+  assert.match(privacyPolicy, /fontSettings/)
+  assert.doesNotMatch(docsPage, /googletagmanager|gtag\(/)
+
+  for (const filePath of requiredFiles.filter((filePath) =>
+    filePath.startsWith("docs/images/store/5.1.0/")
+  )) {
+    const png = fs.readFileSync(path.resolve(filePath))
+    assert.equal(png.subarray(1, 4).toString("ascii"), "PNG")
+    assert.equal(png.readUInt32BE(16), 1280)
+    assert.equal(png.readUInt32BE(20), 800)
+  }
 
   const packageJSON = readJSON<{
     bugs?: { url?: string }

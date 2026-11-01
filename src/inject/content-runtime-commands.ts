@@ -23,7 +23,7 @@ export function handleContentRuntimeCommandMessage(
     isMessageForScript(message, options.scriptId) &&
     message.data
   ) {
-    options.scheduler.applyThemeCommand(message.data)
+    options.scheduler.applyThemeCommand(message.data, message.commandOrder)
     return
   }
 
@@ -31,7 +31,7 @@ export function handleContentRuntimeCommandMessage(
     message?.type === MESSAGE_TYPES_BG_TO_CS.CLEAN_UP &&
     isMessageForScript(message, options.scriptId)
   ) {
-    options.scheduler.cleanUpThemeCommand()
+    options.scheduler.cleanUpThemeCommand(message.commandOrder)
     return
   }
 

@@ -31,12 +31,46 @@ test("UI message catalogs cover the same keys for every supported language", () 
     UI_MESSAGES.en["options.googleFonts.privacyNotice"],
     /Google Fonts/
   )
+  assert.match(
+    UI_MESSAGES.en["options.googleFonts.privacyNotice"],
+    /page origin is not sent/i
+  )
+  assert.match(
+    UI_MESSAGES.en["options.googleFonts.privacyNotice"],
+    /IP address.*browser request metadata.*font resource.*font choice/i
+  )
+  assert.match(
+    UI_MESSAGES.en["options.googleFonts.privacyNotice"],
+    /local extension storage/i
+  )
   assert.match(UI_MESSAGES.fa["options.googleFonts.privacyNotice"], /IP/)
   assert.match(
     UI_MESSAGES.ar["options.googleFonts.privacyNotice"],
     /Google Fonts/
   )
   assert.equal(UI_MESSAGES.fa["footer.sponsoredBy"], "با حمایت")
+})
+
+test("font source fallback messages keep interpolation placeholders in every language", () => {
+  const messageKeys = [
+    "fontSelector.sourcePaused",
+    "fontSelector.sourceUnavailable"
+  ] as const
+  const getPlaceholders = (message: string) =>
+    [...message.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]).sort()
+
+  for (const messageKey of messageKeys) {
+    const expectedPlaceholders = getPlaceholders(UI_MESSAGES.en[messageKey])
+    assert.deepEqual(expectedPlaceholders, ["fallback", "font"])
+    assert.deepEqual(
+      getPlaceholders(UI_MESSAGES.fa[messageKey]),
+      expectedPlaceholders
+    )
+    assert.deepEqual(
+      getPlaceholders(UI_MESSAGES.ar[messageKey]),
+      expectedPlaceholders
+    )
+  }
 })
 
 test("UI language preferences normalize and resolve safely", () => {

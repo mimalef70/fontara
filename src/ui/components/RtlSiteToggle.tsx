@@ -92,7 +92,7 @@ const RtlSiteToggle = () => {
               {t("popup.rtl.currentSite", { site: matchingSite.siteName })}
             </span>
             {!rtlEnabled && (
-              <span className="shrink-0 text-[10px] text-gray-400">
+              <span className="shrink-0 text-[10px] text-gray-600">
                 {t("popup.rtl.globallyDisabled")}
               </span>
             )}

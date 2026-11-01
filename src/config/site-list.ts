@@ -148,13 +148,26 @@ function unescapeRegExpLiteral(value: string): string {
   return value.replace(/\\(.)/g, "$1")
 }
 
+function normalizePathEscapes(pathname: string): string {
+  // URL paths are case-sensitive. Only escape spelling is interchangeable;
+  // decode unreserved bytes, while keeping encoded separators such as %2F.
+  return pathname.replace(/%[a-f\d]{2}/gi, (encodedByte) => {
+    const character = String.fromCharCode(
+      Number.parseInt(encodedByte.slice(1), 16)
+    )
+    return /^[a-z\d._~-]$/i.test(character)
+      ? character
+      : encodedByte.toUpperCase()
+  })
+}
+
 function prepareURL(url: string): PreparedURL | null {
   const cached = getCacheEntry(preparedURLCache, url)
   if (cached !== undefined) return cached
 
   try {
     const parsed = new URL(url)
-    const pathParts = parsed.pathname.split("/").slice(1)
+    const pathParts = normalizePathEscapes(parsed.pathname).split("/").slice(1)
     if (!pathParts[pathParts.length - 1]) {
       pathParts.pop()
     }
@@ -381,6 +394,29 @@ export function getURLHostOrProtocol(url: string): string {
   }
 }
 
+export function createStoredSiteURL(
+  url: string,
+  scope: Extract<SitePatternScope, "domain" | "path"> = "domain"
+): string | null {
+  try {
+    const parsed = new URL(
+      PROTOCOL_PATTERN.test(url) ? url : `https://${url.trim()}`
+    )
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null
+    }
+
+    const host = parsed.host.toLowerCase()
+    if (!host) return null
+    if (scope !== "path") return host
+
+    const pathname = parsed.pathname.replace(/\/{2,}/g, "/").replace(/\/+$/, "")
+    return pathname && pathname !== "/" ? `${host}${pathname}` : host
+  } catch {
+    return null
+  }
+}
+
 export function getDisplaySitePattern(pattern: string): string {
   const homepagePathHost = getHomepagePathPatternHost(pattern)
   if (homepagePathHost) {
@@ -500,7 +536,7 @@ export function normalizeSitePattern(value: unknown): string | null {
       parsed.pathname && parsed.pathname !== "/"
         ? parsed.pathname.replace(/\/+$/, "")
         : ""
-    const normalized = `${host}${pathname}`.toLowerCase()
+    const normalized = `${host.toLowerCase()}${normalizePathEscapes(pathname)}`
     return normalized || null
   } catch {
     return null
@@ -627,8 +663,11 @@ function normalizeWildcardSitePattern(pattern: string): string | null {
   if (!normalizedHost) return null
 
   const path = slashIndex < 0 ? "" : withoutProtocol.slice(slashIndex)
-  const normalizedPath = path && path !== "/" ? path.replace(/\/+$/, "") : ""
-  const normalized = `${normalizedHost}${normalizedPath}`.toLowerCase()
+  // Parse the path with URL too, so literal Unicode and its encoded spelling
+  // have the same representation as the URL being matched.
+  const pathname = new URL(`https://fontara.invalid${path || "/"}`).pathname
+  const normalizedPath = pathname !== "/" ? pathname.replace(/\/+$/, "") : ""
+  const normalized = `${normalizedHost}${normalizePathEscapes(normalizedPath)}`
 
   return normalized || null
 }

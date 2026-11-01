@@ -8,8 +8,20 @@ import {
 
 let started = false
 
-function isDebugBuild(): boolean {
-  return typeof __DEBUG__ !== "undefined" && __DEBUG__
+function isTestBuild(): boolean {
+  return typeof __TEST__ !== "undefined" && __TEST__
+}
+
+function isLocalTestPage(): boolean {
+  if (typeof window === "undefined") return false
+
+  return (
+    (window.location.protocol === "http:" ||
+      window.location.protocol === "https:") &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1")
+  )
 }
 
 function postBridgeResponse(response: unknown): void {
@@ -20,6 +32,7 @@ function postBridgeResponse(response: unknown): void {
 
 function handleBridgeMessage(event: MessageEvent): void {
   if (event.source && event.source !== window) return
+  if (event.origin !== window.location.origin) return
 
   if (isFontaraBrowserTestPagePing(event.data)) {
     postBridgeResponse(
@@ -63,7 +76,7 @@ function handleBridgeMessage(event: MessageEvent): void {
 }
 
 export function startContentTestBridge(): void {
-  if (!isDebugBuild() || started) return
+  if (!isTestBuild() || !isLocalTestPage() || started) return
   if (
     typeof window === "undefined" ||
     typeof window.addEventListener !== "function" ||

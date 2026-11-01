@@ -1,5 +1,6 @@
 import type {
   FontaraContentCommandMessage,
+  FontaraContentCommandOrder,
   FontaraContentScriptMessage
 } from "../definitions"
 import {
@@ -7,7 +8,7 @@ import {
   MESSAGE_TYPES_BG_TO_CS,
   MESSAGE_TYPES_CS_TO_BG
 } from "../utils/message"
-import { RuntimeStateManager } from "./runtime-state-manager"
+import { sanitizeRuntimePageURL } from "../utils/runtime-url"
 
 export type FontaraTrackedDocument = {
   documentId: string | null
@@ -19,228 +20,75 @@ export type FontaraTrackedDocument = {
 
 type DocumentMessageFactory = (
   document: FontaraTrackedDocument
-) => FontaraContentCommandMessage | Promise<FontaraContentCommandMessage>
+) => DocumentMessageFactoryResult | Promise<DocumentMessageFactoryResult>
+
+export type FontaraResolvedDocumentMessage = {
+  keepAlive?: Promise<unknown>
+  message: FontaraContentCommandMessage
+  settingsRevision: number
+}
+
+type DocumentMessageFactoryResult =
+  | FontaraContentCommandMessage
+  | FontaraResolvedDocumentMessage
 
 type TabManagerOptions = {
   createDocumentMessage?: DocumentMessageFactory
 }
 
-type PersistedDocumentsByTab = Record<string, FontaraTrackedDocument[]>
-
-type TabManagerRuntimeState = {
-  documentsByTab: PersistedDocumentsByTab
-  savedAt: number
-  version: number
-}
-
-export const TAB_MANAGER_RUNTIME_STATE_KEY = "__fontara_tab_manager_state__"
-export const TAB_MANAGER_RUNTIME_STATE_VERSION = 1
-export const TAB_MANAGER_RUNTIME_STATE_MAX_AGE_MS = 24 * 60 * 60 * 1000
-const DEFAULT_TAB_MANAGER_RUNTIME_STATE: TabManagerRuntimeState = {
-  documentsByTab: {},
-  savedAt: 0,
-  version: TAB_MANAGER_RUNTIME_STATE_VERSION
-}
-
 const documentsByTab = new Map<number, Map<number, FontaraTrackedDocument>>()
+const LEGACY_TAB_MANAGER_RUNTIME_STATE_KEY = "__fontara_tab_manager_state__"
+const MAX_COMMAND_SEQUENCE = Number.MAX_SAFE_INTEGER
+
+type PendingDocumentDelivery = {
+  message: FontaraContentCommandMessage
+  onDeliveryFailure?: () => void
+  requestId: number
+  settingsRevision: number
+}
+
+type DocumentDispatchState = {
+  deliveryRunning: boolean
+  latestRequestId: number
+  nextSequence: number
+  pendingDelivery: PendingDocumentDelivery | null
+}
 
 let initialized = false
 let createDocumentMessage: DocumentMessageFactory | null = null
-let runtimeStateManager = createRuntimeStateManager()
-let restoreDocumentsPromise: Promise<void> | null = null
-let documentsRestored = false
-let pendingRuntimeState: TabManagerRuntimeState | null = null
-let persistScheduled = false
-let persistGeneration = 0
+let dispatchStates = new WeakMap<
+  FontaraTrackedDocument,
+  DocumentDispatchState
+>()
+let commandDispatcherId = createCommandDispatcherId()
 
-function debugWarn(message: string, error: unknown): void {
-  if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
-    console.warn(message, error)
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
-function isTrackedDocument(value: unknown): value is FontaraTrackedDocument {
-  return (
-    isRecord(value) &&
-    (typeof value.documentId === "string" || value.documentId === null) &&
-    typeof value.frameId === "number" &&
-    typeof value.isTopFrame === "boolean" &&
-    typeof value.scriptId === "string" &&
-    typeof value.url === "string"
-  )
-}
-
-function normalizeTabManagerRuntimeState(
-  value: unknown
-): TabManagerRuntimeState {
-  if (!isRecord(value)) return DEFAULT_TAB_MANAGER_RUNTIME_STATE
-  if (
-    value.version !== undefined &&
-    value.version !== TAB_MANAGER_RUNTIME_STATE_VERSION
-  ) {
-    return DEFAULT_TAB_MANAGER_RUNTIME_STATE
-  }
-
-  const savedAt = typeof value.savedAt === "number" ? value.savedAt : 0
-  if (
-    savedAt <= 0 ||
-    Date.now() - savedAt > TAB_MANAGER_RUNTIME_STATE_MAX_AGE_MS
-  ) {
-    return DEFAULT_TAB_MANAGER_RUNTIME_STATE
-  }
-
-  const documentsByTabValue = isRecord(value.documentsByTab)
-    ? value.documentsByTab
-    : {}
-  const documentsByTab: PersistedDocumentsByTab = {}
-
-  for (const [tabId, documents] of Object.entries(documentsByTabValue)) {
-    if (!/^\d+$/.test(tabId) || !Array.isArray(documents)) continue
-
-    const normalizedDocuments = documents.filter(isTrackedDocument)
-    if (normalizedDocuments.length > 0) {
-      documentsByTab[tabId] = normalizedDocuments
+function createCommandDispatcherId(): string {
+  try {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      return crypto.randomUUID()
     }
-  }
+  } catch {}
 
-  return {
-    documentsByTab,
-    savedAt,
-    version: TAB_MANAGER_RUNTIME_STATE_VERSION
-  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 }
 
-function createRuntimeStateManager(): RuntimeStateManager<TabManagerRuntimeState> {
-  return new RuntimeStateManager<TabManagerRuntimeState>({
-    defaults: DEFAULT_TAB_MANAGER_RUNTIME_STATE,
-    key: TAB_MANAGER_RUNTIME_STATE_KEY,
-    normalize: normalizeTabManagerRuntimeState,
-    warn: debugWarn
-  })
-}
-
-function serializeTrackedDocuments(): TabManagerRuntimeState {
-  const persistedDocuments: PersistedDocumentsByTab = {}
-
-  for (const [tabId, documents] of documentsByTab) {
-    if (documents.size === 0) continue
-
-    persistedDocuments[String(tabId)] = [...documents.values()]
-  }
-
-  return {
-    documentsByTab: persistedDocuments,
-    savedAt: Date.now(),
-    version: TAB_MANAGER_RUNTIME_STATE_VERSION
-  }
-}
-
-function flushPendingRuntimeState(): Promise<void> {
-  if (!pendingRuntimeState) return Promise.resolve()
-
-  const state = pendingRuntimeState
-  pendingRuntimeState = null
-  persistScheduled = false
-
-  return runtimeStateManager.save(state)
-}
-
-function persistTrackedDocuments(options: { immediate?: boolean } = {}): void {
-  pendingRuntimeState = serializeTrackedDocuments()
-
-  if (options.immediate) {
-    void flushPendingRuntimeState()
-    return
-  }
-
-  if (persistScheduled) return
-
-  persistScheduled = true
-  const generation = persistGeneration
-  void Promise.resolve().then(() => {
-    if (generation !== persistGeneration) return
-    void flushPendingRuntimeState()
-  })
-}
-
-function getOpenTabIds(): Promise<Set<number> | null> {
-  if (typeof chrome === "undefined" || !chrome.tabs?.query) {
-    return Promise.resolve(null)
-  }
-
-  return new Promise((resolve) => {
-    try {
-      chrome.tabs.query({}, (tabs) => {
-        resolve(
-          new Set(
-            (tabs ?? [])
-              .map((tab) => tab.id)
-              .filter((tabId): tabId is number => typeof tabId === "number")
-          )
-        )
-      })
-    } catch {
-      resolve(null)
-    }
-  })
-}
-
-async function restoreTrackedDocuments(): Promise<void> {
-  if (documentsRestored) return
-  if (restoreDocumentsPromise) return restoreDocumentsPromise
-
-  restoreDocumentsPromise = Promise.all([
-    runtimeStateManager.load(),
-    getOpenTabIds()
-  ])
-    .then(([state, openTabIds]) => {
-      let prunedStaleDocuments = false
-
-      for (const [tabIdValue, documents] of Object.entries(
-        state.documentsByTab
-      )) {
-        const tabId = Number(tabIdValue)
-        if (!Number.isInteger(tabId)) continue
-        if (openTabIds && !openTabIds.has(tabId)) {
-          prunedStaleDocuments = true
-          continue
-        }
-
-        let trackedDocuments = documentsByTab.get(tabId)
-        if (!trackedDocuments) {
-          trackedDocuments = new Map()
-          documentsByTab.set(tabId, trackedDocuments)
-        }
-
-        for (const document of documents) {
-          if (!trackedDocuments.has(document.frameId)) {
-            trackedDocuments.set(document.frameId, document)
-          }
-        }
-      }
-
-      documentsRestored = true
-      if (prunedStaleDocuments) {
-        persistTrackedDocuments()
-      }
+function clearLegacyPersistedState(): void {
+  try {
+    chrome.storage?.local?.remove(LEGACY_TAB_MANAGER_RUNTIME_STATE_KEY, () => {
+      void chrome.runtime?.lastError
     })
-    .finally(() => {
-      restoreDocumentsPromise = null
-    })
-
-  return restoreDocumentsPromise
+  } catch {}
 }
 
 function getSenderTabId(sender: chrome.runtime.MessageSender): number | null {
   return typeof sender.tab?.id === "number" ? sender.tab.id : null
 }
 
-function getSenderFrameId(sender: chrome.runtime.MessageSender): number {
-  return typeof sender.frameId === "number" ? sender.frameId : 0
+function getSenderFrameId(sender: chrome.runtime.MessageSender): number | null {
+  return typeof sender.frameId === "number" ? sender.frameId : null
 }
 
 function getSenderDocumentId(
@@ -249,26 +97,98 @@ function getSenderDocumentId(
   return typeof sender.documentId === "string" ? sender.documentId : null
 }
 
-function upsertDocument(
-  tabId: number,
-  frameId: number,
-  documentId: string | null,
+function getPreviouslyTrackedDocumentURL(
+  sender: chrome.runtime.MessageSender,
   message: FontaraContentScriptMessage
-): void {
+): string | null {
+  const tabId = getSenderTabId(sender)
+  const frameId = getSenderFrameId(sender)
+  if (tabId === null || frameId === null) return null
+
+  const existingDocument = documentsByTab.get(tabId)?.get(frameId)
+  if (!existingDocument || existingDocument.scriptId !== message.scriptId) {
+    return null
+  }
+
+  if (existingDocument.documentId !== getSenderDocumentId(sender)) return null
+  return sanitizeRuntimePageURL(existingDocument.url)
+}
+
+function getSenderURL(
+  sender: chrome.runtime.MessageSender,
+  message: FontaraContentScriptMessage
+): string | null {
+  const senderURL = sanitizeRuntimePageURL(sender.url)
+  if (senderURL) return senderURL
+
+  // A resume/update from the exact same document can safely retain its
+  // previously sanitized path when a browser temporarily omits the URL. Do
+  // not reuse another frame or another document's URL.
+  const trackedDocumentURL = getPreviouslyTrackedDocumentURL(sender, message)
+  if (trackedDocumentURL) return trackedDocumentURL
+
+  // `about:blank` and `about:srcdoc` frames have a non-HTTP sender URL, but
+  // Chromium exposes their effective HTTP(S) origin separately. Using that
+  // browser-provided origin keeps these inherited frames covered without ever
+  // trusting URL-like data from the content-script message itself.
+  const senderOrigin = sanitizeRuntimePageURL(sender.origin)
+  if (senderOrigin) {
+    const relatedPageURL = sanitizeRuntimePageURL(message.pageURL)
+    if (relatedPageURL) {
+      try {
+        if (new URL(relatedPageURL).origin === new URL(senderOrigin).origin) {
+          return relatedPageURL
+        }
+      } catch {}
+    }
+    return senderOrigin
+  }
+
+  // For a top-level sender only, sender.tab.url describes the same document.
+  // It must never be used for a child frame: doing so could incorrectly apply
+  // the top site's settings to an opaque or cross-origin subframe.
+  if (getSenderFrameId(sender) === 0) {
+    return sanitizeRuntimePageURL(sender.tab?.url)
+  }
+
+  return null
+}
+
+function upsertDocument(
+  sender: chrome.runtime.MessageSender,
+  message: FontaraContentScriptMessage
+): FontaraTrackedDocument | null {
+  const tabId = getSenderTabId(sender)
+  const url = getSenderURL(sender, message)
+  const frameId = getSenderFrameId(sender)
+  if (tabId === null || frameId === null || !url) return null
+
   let documents = documentsByTab.get(tabId)
   if (!documents) {
     documents = new Map()
     documentsByTab.set(tabId, documents)
   }
 
-  documents.set(frameId, {
+  const documentId = getSenderDocumentId(sender)
+  const existingDocument = documents.get(frameId)
+  if (
+    existingDocument?.scriptId === message.scriptId &&
+    existingDocument.documentId === documentId
+  ) {
+    existingDocument.isTopFrame = frameId === 0
+    existingDocument.url = url
+    return existingDocument
+  }
+
+  const document: FontaraTrackedDocument = {
     documentId,
     frameId,
-    isTopFrame: message.data.isTopFrame,
+    isTopFrame: frameId === 0,
     scriptId: message.scriptId,
-    url: message.data.url
-  })
-  persistTrackedDocuments()
+    url
+  }
+  documents.set(frameId, document)
+  return document
 }
 
 function removeDocument(tabId: number, frameId: number): void {
@@ -279,43 +199,23 @@ function removeDocument(tabId: number, frameId: number): void {
   if (documents.size === 0) {
     documentsByTab.delete(tabId)
   }
-  persistTrackedDocuments({ immediate: true })
 }
 
-function messageListener(
-  message: unknown,
-  sender: chrome.runtime.MessageSender
+function removeDocumentIfCurrent(
+  tabId: number,
+  document: Pick<FontaraTrackedDocument, "frameId" | "scriptId">
+): void {
+  const currentDocument = documentsByTab.get(tabId)?.get(document.frameId)
+  if (currentDocument?.scriptId !== document.scriptId) return
+
+  removeDocument(tabId, document.frameId)
+}
+
+function isCurrentDocument(
+  tabId: number,
+  document: FontaraTrackedDocument
 ): boolean {
-  if (!isFontaraContentScriptMessage(message)) {
-    return false
-  }
-
-  const tabId = getSenderTabId(sender)
-  if (tabId === null) {
-    return false
-  }
-
-  const frameId = getSenderFrameId(sender)
-  const documentId = getSenderDocumentId(sender)
-  switch (message.type) {
-    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT:
-    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME:
-    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE:
-      upsertDocument(tabId, frameId, documentId, message)
-      if (createDocumentMessage) {
-        const documents = documentsByTab.get(tabId)
-        const document = documents?.get(frameId)
-        if (document) {
-          sendDocumentMessageFromFactory(tabId, document, createDocumentMessage)
-        }
-      }
-      break
-    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET:
-      removeDocument(tabId, frameId)
-      break
-  }
-
-  return false
+  return documentsByTab.get(tabId)?.get(document.frameId) === document
 }
 
 function sendDocumentMessage(
@@ -323,7 +223,7 @@ function sendDocumentMessage(
   document: FontaraTrackedDocument,
   message: FontaraContentCommandMessage,
   onDeliveryFailure?: () => void
-): void {
+): Promise<void> {
   const sendOptions: chrome.tabs.MessageSendOptions[] = document.documentId
     ? [
         { documentId: document.documentId },
@@ -333,36 +233,272 @@ function sendDocumentMessage(
     : [{ frameId: document.frameId }]
   let optionIndex = 0
 
-  const sendNext = (): void => {
-    const options = sendOptions[optionIndex]
+  return new Promise((resolve) => {
+    const sendNext = (): void => {
+      if (!isCurrentDocument(tabId, document)) {
+        resolve()
+        return
+      }
 
-    if (!options) {
-      removeDocument(tabId, document.frameId)
-      onDeliveryFailure?.()
-      return
-    }
+      const options = sendOptions[optionIndex]
+      if (!options) {
+        removeDocumentIfCurrent(tabId, document)
+        onDeliveryFailure?.()
+        resolve()
+        return
+      }
 
-    try {
-      chrome.tabs.sendMessage(tabId, message, options, () => {
-        const error = chrome.runtime?.lastError
-        if (!error) return
-
+      try {
+        chrome.tabs.sendMessage(tabId, message, options, () => {
+          if (!chrome.runtime?.lastError) {
+            resolve()
+            return
+          }
+          optionIndex += 1
+          sendNext()
+        })
+      } catch {
         optionIndex += 1
         sendNext()
-      })
-    } catch {
-      optionIndex += 1
-      sendNext()
+      }
     }
-  }
 
-  sendNext()
+    sendNext()
+  })
 }
 
 function createSettingsChangedMessage(): FontaraContentCommandMessage {
   return {
     type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
   }
+}
+
+function isPromiseLikeMessage(
+  message: DocumentMessageFactoryResult | Promise<DocumentMessageFactoryResult>
+): message is Promise<DocumentMessageFactoryResult> {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    "then" in message &&
+    typeof message.then === "function"
+  )
+}
+
+function isResolvedDocumentMessage(
+  result: DocumentMessageFactoryResult
+): result is FontaraResolvedDocumentMessage {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    "message" in result &&
+    "settingsRevision" in result
+  )
+}
+
+function normalizeSettingsRevision(value: number): number {
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0
+}
+
+function getDocumentDispatchState(
+  document: FontaraTrackedDocument
+): DocumentDispatchState {
+  const existingState = dispatchStates.get(document)
+  if (existingState) return existingState
+
+  const state: DocumentDispatchState = {
+    deliveryRunning: false,
+    latestRequestId: 0,
+    nextSequence: 1,
+    pendingDelivery: null
+  }
+  dispatchStates.set(document, state)
+  return state
+}
+
+function attachCommandOrder(
+  message: FontaraContentCommandMessage,
+  sequence: number,
+  settingsRevision: number
+): FontaraContentCommandMessage {
+  if (
+    message.type !== MESSAGE_TYPES_BG_TO_CS.APPLY_THEME &&
+    message.type !== MESSAGE_TYPES_BG_TO_CS.CLEAN_UP
+  ) {
+    return message
+  }
+
+  const commandOrder: FontaraContentCommandOrder = {
+    dispatcherId: commandDispatcherId,
+    sequence,
+    settingsRevision
+  }
+  return { ...message, commandOrder }
+}
+
+function takeNextSequence(state: DocumentDispatchState): number {
+  const sequence = state.nextSequence
+  state.nextSequence =
+    sequence >= MAX_COMMAND_SEQUENCE ? MAX_COMMAND_SEQUENCE : sequence + 1
+  return sequence
+}
+
+function drainDocumentDeliveries(
+  tabId: number,
+  document: FontaraTrackedDocument,
+  state: DocumentDispatchState
+): void {
+  if (state.deliveryRunning) return
+
+  const delivery = state.pendingDelivery
+  state.pendingDelivery = null
+  if (!delivery || !isCurrentDocument(tabId, document)) return
+  if (delivery.requestId !== state.latestRequestId) {
+    drainDocumentDeliveries(tabId, document, state)
+    return
+  }
+
+  const orderedMessage = attachCommandOrder(
+    delivery.message,
+    takeNextSequence(state),
+    delivery.settingsRevision
+  )
+  state.deliveryRunning = true
+  void sendDocumentMessage(
+    tabId,
+    document,
+    { ...orderedMessage, scriptId: document.scriptId },
+    delivery.onDeliveryFailure
+  ).finally(() => {
+    state.deliveryRunning = false
+    drainDocumentDeliveries(tabId, document, state)
+  })
+}
+
+function queueResolvedDocumentMessage(
+  tabId: number,
+  document: FontaraTrackedDocument,
+  state: DocumentDispatchState,
+  requestId: number,
+  result: DocumentMessageFactoryResult,
+  onDeliveryFailure?: () => void
+): void {
+  if (
+    requestId !== state.latestRequestId ||
+    !isCurrentDocument(tabId, document)
+  ) {
+    return
+  }
+
+  const { message, settingsRevision } = isResolvedDocumentMessage(result)
+    ? result
+    : { message: result, settingsRevision: 0 }
+  // A document needs only the newest not-yet-delivered resolution. This keeps
+  // settings bursts and slow font/theme generation from building a stale queue.
+  state.pendingDelivery = {
+    message,
+    onDeliveryFailure,
+    requestId,
+    settingsRevision: normalizeSettingsRevision(settingsRevision)
+  }
+  drainDocumentDeliveries(tabId, document, state)
+}
+
+function sendDocumentMessageFromFactory(
+  tabId: number,
+  document: FontaraTrackedDocument,
+  factory: DocumentMessageFactory,
+  onDeliveryFailure?: () => void
+): Promise<void> {
+  const state = getDocumentDispatchState(document)
+  const requestId = ++state.latestRequestId
+
+  try {
+    const result = factory(document)
+    if (isPromiseLikeMessage(result)) {
+      return result
+        .catch(() => createSettingsChangedMessage())
+        .then(async (resolvedMessage) => {
+          queueResolvedDocumentMessage(
+            tabId,
+            document,
+            state,
+            requestId,
+            resolvedMessage,
+            onDeliveryFailure
+          )
+          if (isResolvedDocumentMessage(resolvedMessage)) {
+            await resolvedMessage.keepAlive
+          }
+        })
+    }
+
+    queueResolvedDocumentMessage(
+      tabId,
+      document,
+      state,
+      requestId,
+      result,
+      onDeliveryFailure
+    )
+    if (isResolvedDocumentMessage(result)) {
+      return Promise.resolve(result.keepAlive).then(() => undefined)
+    }
+  } catch {
+    queueResolvedDocumentMessage(
+      tabId,
+      document,
+      state,
+      requestId,
+      createSettingsChangedMessage(),
+      onDeliveryFailure
+    )
+  }
+
+  return Promise.resolve()
+}
+
+function messageListener(
+  message: unknown,
+  sender: chrome.runtime.MessageSender,
+  sendResponse?: (response?: unknown) => void
+): boolean {
+  if (!isFontaraContentScriptMessage(message)) return false
+
+  const tabId = getSenderTabId(sender)
+  if (tabId === null) return false
+
+  const frameId = getSenderFrameId(sender)
+  if (frameId === null) return false
+  switch (message.type) {
+    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT:
+    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME:
+    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE: {
+      const document = upsertDocument(sender, message)
+      if (document && createDocumentMessage) {
+        void sendDocumentMessageFromFactory(
+          tabId,
+          document,
+          createDocumentMessage
+        ).then(
+          () => sendResponse?.(),
+          () => sendResponse?.()
+        )
+        // Keep the MV3 event alive until async settings/font resolution has
+        // completed and the resulting delivery has entered the per-document
+        // queue. Otherwise Chrome may suspend the worker mid-resolution.
+        return true
+      }
+      break
+    }
+    case MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET:
+      removeDocumentIfCurrent(tabId, {
+        frameId,
+        scriptId: message.scriptId
+      })
+      break
+  }
+
+  return false
 }
 
 function isSupportedTabURL(url: unknown): url is string {
@@ -372,7 +508,7 @@ function isSupportedTabURL(url: unknown): url is string {
 function sendSettingsChangedMessageToTab(tabId: number): void {
   try {
     chrome.tabs.sendMessage(tabId, createSettingsChangedMessage(), () => {
-      // Missing content scripts are expected on tabs where FontAra is not injected.
+      // Tabs without an active content script are expected.
       void chrome.runtime?.lastError
     })
   } catch {}
@@ -380,95 +516,33 @@ function sendSettingsChangedMessageToTab(tabId: number): void {
 
 function notifyUntrackedTabsAboutSettingsChange(
   trackedTabIds: Set<number>
-): void {
-  try {
-    chrome.tabs.query({}, (tabs) => {
-      for (const tab of tabs) {
-        if (typeof tab.id !== "number") continue
-        if (trackedTabIds.has(tab.id)) continue
-        if (!isSupportedTabURL(tab.url)) continue
-
-        sendSettingsChangedMessageToTab(tab.id)
-      }
-    })
-  } catch {}
-}
-
-function isPromiseLikeMessage(
-  message: FontaraContentCommandMessage | Promise<FontaraContentCommandMessage>
-): message is Promise<FontaraContentCommandMessage> {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    "then" in message &&
-    typeof message.then === "function"
-  )
-}
-
-function sendResolvedDocumentMessage(
-  tabId: number,
-  document: FontaraTrackedDocument,
-  message: FontaraContentCommandMessage,
-  onDeliveryFailure?: () => void
-): void {
-  sendDocumentMessage(
-    tabId,
-    document,
-    {
-      ...message,
-      scriptId: document.scriptId
-    },
-    onDeliveryFailure
-  )
-}
-
-function sendDocumentMessageFromFactory(
-  tabId: number,
-  document: FontaraTrackedDocument,
-  factory: DocumentMessageFactory,
-  onDeliveryFailure?: () => void
-): void {
-  try {
-    const message = factory(document)
-
-    if (!isPromiseLikeMessage(message)) {
-      sendResolvedDocumentMessage(tabId, document, message, onDeliveryFailure)
-      return
-    }
-
-    void message
-      .catch(() => createSettingsChangedMessage())
-      .then((resolvedMessage) => {
-        sendResolvedDocumentMessage(
-          tabId,
-          document,
-          resolvedMessage,
-          onDeliveryFailure
-        )
+): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      chrome.tabs.query({}, (tabs) => {
+        for (const tab of tabs) {
+          if (typeof tab.id !== "number" || trackedTabIds.has(tab.id)) continue
+          if (!isSupportedTabURL(tab.url)) continue
+          sendSettingsChangedMessageToTab(tab.id)
+        }
+        resolve()
       })
-  } catch {
-    sendResolvedDocumentMessage(
-      tabId,
-      document,
-      createSettingsChangedMessage(),
-      onDeliveryFailure
-    )
-  }
+    } catch {
+      resolve()
+    }
+  })
 }
 
 export function initTabManager(options: TabManagerOptions = {}): void {
   if (options.createDocumentMessage) {
     createDocumentMessage = options.createDocumentMessage
   }
-
-  void restoreTrackedDocuments()
-
   if (initialized) return
 
+  clearLegacyPersistedState()
   chrome.runtime.onMessage.addListener(messageListener)
   chrome.tabs.onRemoved.addListener((tabId) => {
     documentsByTab.delete(tabId)
-    persistTrackedDocuments({ immediate: true })
   })
   initialized = true
 }
@@ -477,28 +551,21 @@ export async function notifyContentScriptsAboutSettingsChange(
   factory: DocumentMessageFactory = createDocumentMessage ??
     createSettingsChangedMessage
 ): Promise<void> {
-  await restoreTrackedDocuments()
-
   const trackedTabIds = new Set<number>()
-  const broadcastedTrackedTabIds = new Set<number>()
-  const broadcastSettingsChangedToTrackedTab = (tabId: number): void => {
-    if (broadcastedTrackedTabIds.has(tabId)) return
-
-    broadcastedTrackedTabIds.add(tabId)
-    sendSettingsChangedMessageToTab(tabId)
-  }
-
+  const pendingResolutions: Promise<void>[] = []
   for (const [tabId, documents] of documentsByTab) {
     trackedTabIds.add(tabId)
     for (const document of documents.values()) {
-      sendDocumentMessageFromFactory(tabId, document, factory, () => {
-        broadcastSettingsChangedToTrackedTab(tabId)
-      })
+      pendingResolutions.push(
+        sendDocumentMessageFromFactory(tabId, document, factory, () => {
+          sendSettingsChangedMessageToTab(tabId)
+        })
+      )
     }
-    broadcastSettingsChangedToTrackedTab(tabId)
   }
 
-  notifyUntrackedTabsAboutSettingsChange(trackedTabIds)
+  await Promise.allSettled(pendingResolutions)
+  await notifyUntrackedTabsAboutSettingsChange(trackedTabIds)
 }
 
 export function getTrackedDocumentCountForTesting(): number {
@@ -513,10 +580,6 @@ export function resetTabManagerStateForTesting(): void {
   documentsByTab.clear()
   initialized = false
   createDocumentMessage = null
-  runtimeStateManager = createRuntimeStateManager()
-  restoreDocumentsPromise = null
-  documentsRestored = false
-  pendingRuntimeState = null
-  persistScheduled = false
-  persistGeneration += 1
+  dispatchStates = new WeakMap()
+  commandDispatcherId = createCommandDispatcherId()
 }

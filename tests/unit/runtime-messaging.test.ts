@@ -10,10 +10,12 @@ import {
 
 const originalChrome = Reflect.get(globalThis, "chrome") as unknown
 const originalDebug = Reflect.get(globalThis, "__DEBUG__") as unknown
+const originalTest = Reflect.get(globalThis, "__TEST__") as unknown
 
 afterEach(() => {
   Reflect.set(globalThis, "chrome", originalChrome)
   Reflect.set(globalThis, "__DEBUG__", originalDebug)
+  Reflect.set(globalThis, "__TEST__", originalTest)
 })
 
 function waitForMessageResponse(): Promise<void> {
@@ -35,7 +37,6 @@ test("background messenger routes UI requests and reports subscribed changes", a
   const sentMessages: unknown[] = []
   const extensionData: FontaraExtensionData = {
     activeTab: {
-      favIconUrl: "https://example.com/favicon.ico",
       id: 1,
       isActive: true,
       isSupported: true,
@@ -45,11 +46,14 @@ test("background messenger routes UI requests and reports subscribed changes", a
     settings: {
       selectedFont: "Vazirmatn-Fontara"
     },
+    settingsRevision: 1,
     shortcuts: {
       toggle: "Alt+Shift+F"
     }
   }
   const changedSettings: unknown[] = []
+  const begunFontTransactions: unknown[] = []
+  const preparedGoogleFonts: string[] = []
 
   Reflect.set(globalThis, "chrome", {
     runtime: {
@@ -68,8 +72,14 @@ test("background messenger routes UI requests and reports subscribed changes", a
   })
 
   initMessenger({
+    async abortCustomFontTransaction() {},
+    async beginCustomFontTransaction(family, mode) {
+      begunFontTransactions.push({ family, mode })
+      return { expiresAt: 1, transactionId: "replacement-transaction" }
+    },
     async changeSettings(settings) {
       changedSettings.push(settings)
+      return { revision: 2 }
     },
     async collect() {
       return extensionData
@@ -78,14 +88,49 @@ test("background messenger routes UI requests and reports subscribed changes", a
       changedSettings.push(settings)
       return {
         ignoredKeyCount: 0,
-        importedKeyCount: Object.keys(settings).length
+        importedKeyCount: Object.keys(settings).length,
+        revision: 3
       }
     },
-    async resetSettings() {},
+    async commitCustomFontTransaction() {
+      throw new Error("unused")
+    },
+    async deleteCustomFont() {
+      return { revision: 4 }
+    },
+    async clearGoogleFontCache() {
+      return { familyCount: 0, pinnedFamilyCount: 0, totalBytes: 0 }
+    },
+    async getGoogleFontCacheStats() {
+      return { familyCount: 1, pinnedFamilyCount: 0, totalBytes: 1024 }
+    },
+    async importCustomFontBatch() {
+      throw new Error("unused")
+    },
+    async putCustomFontFace() {},
+    async prepareGoogleFont(selectedValue) {
+      preparedGoogleFonts.push(selectedValue)
+      return {
+        faceCount: 2,
+        fontFamily: "Inter",
+        reference: { key: "a".repeat(64), revision: 1 },
+        totalBytes: 1024
+      }
+    },
+    async resetSettings() {
+      return { revision: 5 }
+    },
     async runCommand() {}
   })
 
   assert.equal(listeners.length, 1)
+
+  // A restarted worker has no SUBSCRIBE request from pages that stayed open.
+  reportChanges(extensionData)
+  assert.deepEqual(sentMessages, [
+    { data: extensionData, type: MESSAGE_TYPES_BG_TO_UI.CHANGES }
+  ])
+  sentMessages.length = 0
 
   let response: unknown
   listeners[0](
@@ -101,7 +146,61 @@ test("background messenger routes UI requests and reports subscribed changes", a
 
   listeners[0](
     {
-      data: { selectedFont: "Estedad-Fontara" },
+      data: {
+        clientMutationId: "mutation-google-prepare",
+        selectedValue: "google-font:Inter"
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE
+    },
+    allowedSender,
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.deepEqual(preparedGoogleFonts, ["google-font:Inter"])
+  assert.deepEqual(response, {
+    data: {
+      faceCount: 2,
+      fontFamily: "Inter",
+      reference: { key: "a".repeat(64), revision: 1 },
+      totalBytes: 1024
+    }
+  })
+
+  listeners[0](
+    {
+      data: {
+        clientMutationId: "mutation-font-begin",
+        family: { value: "Imported-Fontara" },
+        mode: "replace-library"
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
+    },
+    allowedSender,
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.deepEqual(begunFontTransactions, [
+    {
+      family: { value: "Imported-Fontara" },
+      mode: "replace-library"
+    }
+  ])
+  assert.deepEqual(response, {
+    data: { expiresAt: 1, transactionId: "replacement-transaction" }
+  })
+
+  listeners[0](
+    {
+      data: {
+        clientMutationId: "mutation-1",
+        settings: { selectedFont: "Estedad-Fontara" }
+      },
       type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
     },
     allowedSender,
@@ -112,7 +211,25 @@ test("background messenger routes UI requests and reports subscribed changes", a
   await waitForMessageResponse()
 
   assert.deepEqual(changedSettings, [{ selectedFont: "Estedad-Fontara" }])
-  assert.deepEqual(response, { data: true })
+  assert.deepEqual(response, { data: { revision: 2 } })
+
+  listeners[0](
+    {
+      data: {
+        clientMutationId: "mutation-1",
+        settings: { selectedFont: "Must-Not-Run-Twice-Fontara" }
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
+    },
+    allowedSender,
+    (nextResponse) => {
+      response = nextResponse
+    }
+  )
+  await waitForMessageResponse()
+
+  assert.deepEqual(changedSettings, [{ selectedFont: "Estedad-Fontara" }])
+  assert.deepEqual(response, { data: { revision: 2 } })
 
   listeners[0](
     { type: MESSAGE_TYPES_UI_TO_BG.SUBSCRIBE_TO_CHANGES },
@@ -136,7 +253,10 @@ test("background messenger routes UI requests and reports subscribed changes", a
 
   const handled = listeners[0](
     {
-      data: { selectedFont: "Ignored-Fontara" },
+      data: {
+        clientMutationId: "mutation-2",
+        settings: { selectedFont: "Ignored-Fontara" }
+      },
       type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
     },
     { url: "https://example.com/page" },
@@ -150,10 +270,13 @@ test("background messenger routes UI requests and reports subscribed changes", a
   assert.deepEqual(changedSettings, [{ selectedFont: "Estedad-Fontara" }])
 
   response = undefined
-  Reflect.set(globalThis, "__DEBUG__", false)
+  Reflect.set(globalThis, "__TEST__", false)
   const disabledBridgeHandled = listeners[0](
     createFontaraBrowserTestRelayMessage({
-      data: { selectedFont: "Ignored-Bridge-Fontara" },
+      data: {
+        clientMutationId: "mutation-3",
+        settings: { selectedFont: "Ignored-Bridge-Fontara" }
+      },
       type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
     }),
     {
@@ -171,14 +294,18 @@ test("background messenger routes UI requests and reports subscribed changes", a
   assert.deepEqual(changedSettings, [{ selectedFont: "Estedad-Fontara" }])
 
   Reflect.set(globalThis, "__DEBUG__", true)
+  Reflect.set(globalThis, "__TEST__", true)
   const enabledBridgeHandled = listeners[0](
     createFontaraBrowserTestRelayMessage({
-      data: { selectedFont: "Bridge-Fontara" },
+      data: {
+        clientMutationId: "mutation-4",
+        settings: { selectedFont: "Bridge-Fontara" }
+      },
       type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
     }),
     {
       tab: { id: 2 } as chrome.tabs.Tab,
-      url: "https://example.com/page"
+      url: "http://127.0.0.1:4317/page"
     },
     (nextResponse) => {
       response = nextResponse
@@ -191,5 +318,5 @@ test("background messenger routes UI requests and reports subscribed changes", a
     { selectedFont: "Estedad-Fontara" },
     { selectedFont: "Bridge-Fontara" }
   ])
-  assert.deepEqual(response, { data: true })
+  assert.deepEqual(response, { data: { revision: 2 } })
 })

@@ -1,26 +1,42 @@
 import { DEFAULT_FONTS } from "../config/fonts"
 import { DEFAULT_VALUES } from "../config/storage"
-import type { FontData } from "../definitions"
+import type { CustomFontFamily } from "../custom-font-types"
+import {
+  createGoogleFontBinaryFamilyKey,
+  type GoogleFontBinaryFamily
+} from "../google-font-binary-types"
+import type { FontaraLocalFontCommand } from "../local-font-types"
+import { getLatestGoogleFontBinaryFamily } from "../utils/google-font-binary-storage"
 import {
   decodeGoogleFontValue,
-  loadGoogleFontFaceCSS
-} from "../utils/google-font-runtime"
-import { decodeSystemFontValue } from "../utils/system-fonts"
-import { createCustomFontFaces } from "./custom-font-face"
+  isGoogleFontFeatureSupported
+} from "../utils/google-fonts"
+import {
+  decodeSystemFontValue,
+  isSystemFontAccessSupported,
+  loadSystemFonts,
+  normalizeSystemFontFamilyKey
+} from "../utils/system-fonts"
 
 export type FontaraResolvedFontSelection = {
-  customFontCSS: string
+  customFontFamilyRevision: number | null
+  customFontFamilyValue: string | null
   fontName: string
   googleFontCSS: string | null
+  localFont: FontaraLocalFontCommand
 }
 
 export type GoogleFontCSSLoadMode = "allow-network" | "cache-only"
 
 export type FontaraFontSelectionOptions = {
-  customFontList?: FontData[] | null
+  customFontList?: CustomFontFamily[] | null
   googleFontCSSLoadMode?: GoogleFontCSSLoadMode
   googleFontsEnabled?: boolean | null
-  readCustomFontList?: () => Promise<FontData[] | null | undefined>
+  resolveGoogleFontBinary?: (
+    selectedFont: string,
+    options: { allowNetwork: boolean }
+  ) => Promise<GoogleFontBinaryFamily | null>
+  readCustomFontList?: () => Promise<CustomFontFamily[] | null | undefined>
   readGoogleFontsEnabled?: () => Promise<boolean | null | undefined>
   readSystemFontsEnabled?: () => Promise<boolean | null | undefined>
   systemFontsEnabled?: boolean | null
@@ -28,13 +44,15 @@ export type FontaraFontSelectionOptions = {
 
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
 const DEFAULT_FONT_SELECTION: FontaraResolvedFontSelection = {
-  customFontCSS: "",
+  customFontFamilyRevision: null,
+  customFontFamilyValue: null,
   fontName: DEFAULT_VALUES.SELECTED_FONT,
-  googleFontCSS: null
+  googleFontCSS: null,
+  localFont: null
 }
 
-function normalizeCustomFontList(value: unknown): FontData[] {
-  return Array.isArray(value) ? (value as FontData[]) : []
+function normalizeCustomFontList(value: unknown): CustomFontFamily[] {
+  return Array.isArray(value) ? (value as CustomFontFamily[]) : []
 }
 
 async function resolveBooleanOption(
@@ -48,7 +66,7 @@ async function resolveBooleanOption(
 
 async function resolveCustomFontList(
   options: FontaraFontSelectionOptions
-): Promise<FontData[]> {
+): Promise<CustomFontFamily[]> {
   if (options.customFontList) {
     return normalizeCustomFontList(options.customFontList)
   }
@@ -60,11 +78,11 @@ function createDefaultFontSelection(): FontaraResolvedFontSelection {
   return { ...DEFAULT_FONT_SELECTION }
 }
 
-function getSelectedCustomFonts(
-  customFontList: FontData[],
+function getSelectedCustomFont(
+  customFontList: CustomFontFamily[],
   selectedFont: string
-): FontData[] {
-  return customFontList.filter((font) => font.value === selectedFont)
+): CustomFontFamily | null {
+  return customFontList.find((font) => font.value === selectedFont) ?? null
 }
 
 export function isBundledFontValue(value: string | undefined): boolean {
@@ -81,9 +99,11 @@ export async function resolveFontSelection(
 
   if (isBundledFontValue(selectedFont)) {
     return {
-      customFontCSS: "",
+      customFontFamilyRevision: null,
+      customFontFamilyValue: null,
       fontName: selectedFont,
-      googleFontCSS: null
+      googleFontCSS: null,
+      localFont: null
     }
   }
 
@@ -93,16 +113,40 @@ export async function resolveFontSelection(
       options.googleFontsEnabled,
       options.readGoogleFontsEnabled
     )
+    if (!googleFontsEnabled) return createDefaultFontSelection()
 
-    return googleFontsEnabled
+    if (!isGoogleFontFeatureSupported()) return createDefaultFontSelection()
+
+    const allowNetwork = options.googleFontCSSLoadMode !== "cache-only"
+    const family = options.resolveGoogleFontBinary
+      ? await options.resolveGoogleFontBinary(selectedFont, { allowNetwork })
+      : await getLatestGoogleFontBinaryFamily(
+          await createGoogleFontBinaryFamilyKey(googleFontFamily),
+          { touch: false }
+        )
+    return family
       ? {
-          customFontCSS: "",
-          fontName: googleFontFamily,
-          googleFontCSS: await loadGoogleFontFaceCSS(selectedFont, {
-            allowNetwork: options.googleFontCSSLoadMode !== "cache-only"
-          })
+          customFontFamilyRevision: null,
+          customFontFamilyValue: null,
+          fontName: family.runtimeFamily,
+          googleFontCSS: null,
+          localFont: {
+            reference: {
+              key: family.key,
+              revision: family.revision,
+              source: "google"
+            },
+            state: "ready"
+          }
         }
-      : createDefaultFontSelection()
+      : {
+          ...createDefaultFontSelection(),
+          localFont: {
+            selectedValue: selectedFont,
+            source: "google",
+            state: "pending"
+          }
+        }
   }
 
   const systemFontFamily = decodeSystemFontValue(selectedFont)
@@ -112,26 +156,49 @@ export async function resolveFontSelection(
       options.readSystemFontsEnabled
     )
 
-    return systemFontsEnabled
-      ? {
-          customFontCSS: "",
-          fontName: systemFontFamily,
-          googleFontCSS: null
-        }
-      : createDefaultFontSelection()
+    if (!systemFontsEnabled) return createDefaultFontSelection()
+
+    if (isSystemFontAccessSupported()) {
+      const state = await loadSystemFonts()
+      const selectedFamilyKey = normalizeSystemFontFamilyKey(systemFontFamily)
+      const installed = state.fonts.some(
+        (font) =>
+          normalizeSystemFontFamilyKey(font.fontFamily) === selectedFamilyKey
+      )
+      if (state.status === "ready" && !installed) {
+        return createDefaultFontSelection()
+      }
+    }
+
+    return {
+      customFontFamilyRevision: null,
+      customFontFamilyValue: null,
+      fontName: systemFontFamily,
+      googleFontCSS: null,
+      localFont: null
+    }
   }
 
-  const selectedCustomFonts = getSelectedCustomFonts(
+  const selectedCustomFont = getSelectedCustomFont(
     await resolveCustomFontList(options),
     selectedFont
   )
-  if (selectedCustomFonts.length === 0) {
+  if (!selectedCustomFont) {
     return createDefaultFontSelection()
   }
 
   return {
-    customFontCSS: createCustomFontFaces(selectedCustomFonts),
+    customFontFamilyRevision: selectedCustomFont.revision,
+    customFontFamilyValue: selectedCustomFont.value,
     fontName: selectedFont,
-    googleFontCSS: null
+    googleFontCSS: null,
+    localFont: {
+      reference: {
+        revision: selectedCustomFont.revision,
+        source: "custom",
+        value: selectedCustomFont.value
+      },
+      state: "ready"
+    }
   }
 }

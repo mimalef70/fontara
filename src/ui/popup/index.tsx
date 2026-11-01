@@ -1,5 +1,5 @@
 import { Settings } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
 
 import { STORAGE_KEYS } from "../../config/storage"
@@ -14,30 +14,49 @@ import PerSiteSettings from "../components/PerSiteSettings"
 import PopularSection from "../components/PopularSection"
 import RtlSiteToggle from "../components/RtlSiteToggle"
 import TextStrokeToggle from "../components/TextStrokeToggle"
+import { Skeleton } from "../components/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
 } from "../components/ui/tooltip"
-import { ExtensionDataProvider } from "../hooks/use-extension-data"
+import {
+  ExtensionDataProvider,
+  useExtensionData
+} from "../hooks/use-extension-data"
 import { useSelectedUIFont } from "../hooks/use-selected-ui-font"
-import { useStorageValue } from "../hooks/use-storage"
 import { I18nProvider, useI18n, waitForI18nBootstrap } from "../i18n"
 import { getExtensionEnabledInitialValue } from "../storage-defaults"
+
+const POPUP_LOADING_TILE_IDS = ["one", "two", "three", "four", "five"]
 
 function IndexPopup() {
   useSelectedUIFont()
   const { direction, language, t } = useI18n()
-
-  const [extensionActive] = useStorageValue<boolean>(
-    STORAGE_KEYS.EXTENSION_ENABLED,
-    getExtensionEnabledInitialValue
-  )
+  const extensionData = useExtensionData()
+  const [uiReady, setUiReady] = useState(false)
+  const extensionActive = extensionData
+    ? getExtensionEnabledInitialValue(
+        extensionData.settings[STORAGE_KEYS.EXTENSION_ENABLED] as
+          | boolean
+          | undefined
+      )
+    : false
 
   useEffect(() => {
     document.title = t("common.appName")
   }, [t])
+
+  useEffect(() => {
+    if (!extensionData) {
+      setUiReady(false)
+      return
+    }
+
+    const frame = requestAnimationFrame(() => setUiReady(true))
+    return () => cancelAnimationFrame(frame)
+  }, [extensionData])
 
   return (
     <div
@@ -45,23 +64,48 @@ function IndexPopup() {
       dir={direction}
       lang={language}>
       <section className="flex max-h-[calc(600px-2rem)] min-h-0 flex-col overflow-hidden">
-        <Header />
+        <Header disabled={!uiReady} />
+
+        {!uiReady && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex min-h-0 flex-auto flex-col gap-3 py-3">
+            <span className="sr-only">{t("common.loading")}</span>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-12 min-w-0 flex-1" />
+              <Skeleton className="size-12 shrink-0" />
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {POPUP_LOADING_TILE_IDS.map((id) => (
+                <Skeleton key={id} className="size-12" />
+              ))}
+            </div>
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        )}
 
         <div
+          aria-hidden={!uiReady}
           className={cn(
             "min-h-0 flex-auto overflow-y-auto overscroll-contain py-3 transition-opacity duration-200",
-            {
-              "opacity-50 pointer-events-none": !extensionActive,
-              "opacity-100": extensionActive
-            }
+            !uiReady && "hidden"
           )}>
           <div className="relative z-20">
             <div className="relative">
               <div className="flex flex-col gap-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="min-w-0 flex-1">
+                  <fieldset
+                    disabled={!extensionActive}
+                    aria-disabled={!extensionActive}
+                    className={cn(
+                      "m-0 min-w-0 flex-1 border-0 p-0 transition-opacity",
+                      !extensionActive && "opacity-50"
+                    )}>
                     <FontSelector />
-                  </div>
+                  </fieldset>
                   <TooltipProvider delayDuration={90}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -93,7 +137,13 @@ function IndexPopup() {
             </div>
           </div>
 
-          <div>
+          <fieldset
+            disabled={!extensionActive}
+            aria-disabled={!extensionActive}
+            className={cn(
+              "m-0 min-w-0 border-0 p-0 transition-opacity",
+              !extensionActive && "opacity-50"
+            )}>
             <div dir={direction}>
               <div>
                 <PopularSection />
@@ -104,7 +154,7 @@ function IndexPopup() {
               <TextStrokeToggle />
               <RtlSiteToggle />
             </div>
-          </div>
+          </fieldset>
         </div>
 
         <Footer />

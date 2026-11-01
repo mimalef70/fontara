@@ -6,8 +6,9 @@ function absolutePath(...parts) {
   return path.join(rootDir, ...parts)
 }
 
-function getDestDir({ platform, debug }) {
-  return absolutePath("build", `${platform}-${debug ? "dev" : "prod"}`)
+function getDestDir({ platform, debug, test = false }) {
+  const mode = test ? "test" : debug ? "dev" : "prod"
+  return absolutePath("build", `${platform}-${mode}`)
 }
 
 function getZipPath({ platform }) {

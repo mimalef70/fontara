@@ -45,7 +45,7 @@ test("UI follows the selected extension font", () => {
   assert.match(optionsSource, /useSelectedUIFont\(\)/)
   assert.match(
     styleCSS,
-    /#root \.fontara-font-preview \{[\s\S]*font-family: var\(--fontara-preview-font\)[\s\S]*!important;/
+    /\.fontara-font-preview \{[\s\S]*font-family: var\(--fontara-preview-font\)[\s\S]*!important;/
   )
   assert.match(fontSelectorSource, /"--fontara-preview-font"/)
   assert.match(fontSelectorSource, /fontSelector\.previewText/)
@@ -63,13 +63,16 @@ test("UI follows the selected extension font", () => {
     fontSelectorSource,
     /style=\{\{ height: "100%", width: "100%" \}\}/
   )
-  assert.match(fontSelectorSource, /getGoogleFontList\(\)/)
+  assert.match(fontSelectorSource, /loadGoogleFontList\(\)/)
   assert.doesNotMatch(fontSelectorSource, /GOOGLE_FONT_SEARCH_RESULT_LIMIT/)
   assert.doesNotMatch(fontSelectorSource, /GOOGLE_FONT_RECOMMENDED_LIMIT/)
-  assert.match(fontSelectorSource, /getSystemFontList/)
+  assert.match(fontSelectorSource, /loadSystemFonts/)
   assert.match(fontSelectorSource, /decodeSystemFontValue/)
   assert.match(fontSelectorSource, /getFontFamily/)
-  assert.match(fontSelectorSource, /<DrawerContent dir=\{direction\}/)
+  assert.match(
+    fontSelectorSource,
+    /<DrawerContent[\s\S]{0,180}dir=\{direction\}/
+  )
   assert.match(fontSelectorSource, /isFontRowActive/)
   assert.match(fontSelectorSource, /RTL_TEXT_PATTERN/)
   assert.match(fontSelectorSource, /isFontNameRtl/)
@@ -184,6 +187,11 @@ test("options page uses the local shadcn sidebar layout", () => {
     path.resolve("src/ui/options/index.tsx"),
     "utf8"
   )
+  const profilesSource = ["use-site-profiles.ts", "SiteProfilesSection.tsx"]
+    .map((file) =>
+      fs.readFileSync(path.resolve("src/ui/options", file), "utf8")
+    )
+    .join("\n")
   const sidebarSource = fs.readFileSync(
     path.resolve("src/ui/components/ui/sidebar.tsx"),
     "utf8"
@@ -203,10 +211,13 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(styleSource, /--sidebar-background/)
   assert.match(tailwindSource, /sidebar:\s*{[\s\S]*--sidebar-background/)
   assert.match(optionsSource, /from "..\/components\/ui\/sidebar"/)
-  assert.match(optionsSource, /<SidebarProvider>/)
+  assert.match(optionsSource, /<SidebarProvider\b/)
+  assert.match(optionsSource, /from "\.\.\/components\/ui\/card"/)
+  assert.match(optionsSource, /from "\.\.\/components\/ui\/tabs"/)
+  assert.match(optionsSource, /from "\.\.\/components\/ui\/progress"/)
   assert.match(
     optionsSource,
-    /<Sidebar collapsible="icon" dir=\{direction\} side=\{sidebarSide\}>/
+    /<Sidebar[\s\S]{0,180}collapsible="icon"[\s\S]{0,180}dir=\{direction\}[\s\S]{0,180}side=\{sidebarSide\}/
   )
   assert.match(optionsSource, /direction === "rtl" \? "right" : "left"/)
   assert.match(optionsSource, /options\.nav\.general/)
@@ -226,7 +237,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /STORAGE_KEYS\.ENABLED_FOR/)
   assert.match(optionsSource, /STORAGE_KEYS\.DISABLED_FOR/)
   assert.match(optionsSource, /STORAGE_KEYS\.PINNED_WEBSITE_URLS/)
-  assert.match(optionsSource, /STORAGE_KEYS\.SITE_PROFILES/)
+  assert.match(profilesSource, /STORAGE_KEYS\.SITE_PROFILES/)
   assert.match(optionsSource, /STORAGE_KEYS\.SYNC_SETTINGS/)
   assert.match(optionsSource, /STORAGE_KEYS\.CONTEXT_MENUS_ENABLED/)
   assert.match(optionsSource, /options\.systemFonts\.title/)
@@ -237,27 +248,27 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.googleFonts\.privacyNotice/)
   assert.match(optionsSource, /options\.textStroke\.title/)
   assert.match(optionsSource, /options\.siteList\.title/)
-  assert.match(optionsSource, /options\.siteProfiles\.title/)
-  assert.match(optionsSource, /SiteProfileTargetOption/)
-  assert.match(optionsSource, /siteProfileTargetOptions/)
-  assert.match(optionsSource, /new Map<string, SiteProfileTargetOption>/)
-  assert.match(optionsSource, /siteProfileTargetOpen/)
-  assert.match(optionsSource, /<Popover/)
-  assert.match(optionsSource, /<CommandInput/)
-  assert.match(optionsSource, /<CommandGroup/)
-  assert.match(optionsSource, /fontara-site-profile-target-trigger/)
-  assert.match(optionsSource, /fontara-site-profile-target-search/)
-  assert.match(optionsSource, /fontara-site-profile-target-add/)
-  assert.match(optionsSource, /options\.siteProfiles\.targetLabel/)
-  assert.match(optionsSource, /STORAGE_KEYS\.SITE_PROFILES/)
-  assert.doesNotMatch(optionsSource, /siteProfileRuleTargetOptions/)
-  assert.doesNotMatch(optionsSource, /siteProfilePopularTargetOptions/)
-  assert.doesNotMatch(optionsSource, /fontara-site-profile-patterns/)
-  assert.doesNotMatch(optionsSource, /fontara-site-profile-advanced-toggle/)
+  assert.match(profilesSource, /options\.siteProfiles\.title/)
+  assert.match(profilesSource, /SiteProfileTargetOption/)
+  assert.match(profilesSource, /siteProfileTargetOptions/)
+  assert.match(profilesSource, /new Map<string, SiteProfileTargetOption>/)
+  assert.match(profilesSource, /siteProfileTargetOpen/)
+  assert.match(profilesSource, /<Popover/)
+  assert.match(profilesSource, /<CommandInput/)
+  assert.match(profilesSource, /<CommandGroup/)
+  assert.match(profilesSource, /fontara-site-profile-target-trigger/)
+  assert.match(profilesSource, /fontara-site-profile-target-search/)
+  assert.match(profilesSource, /fontara-site-profile-target-add/)
+  assert.match(profilesSource, /options\.siteProfiles\.targetLabel/)
+  assert.match(profilesSource, /STORAGE_KEYS\.SITE_PROFILES/)
+  assert.doesNotMatch(profilesSource, /siteProfileRuleTargetOptions/)
+  assert.doesNotMatch(profilesSource, /siteProfilePopularTargetOptions/)
+  assert.doesNotMatch(profilesSource, /fontara-site-profile-patterns/)
+  assert.doesNotMatch(profilesSource, /fontara-site-profile-advanced-toggle/)
   assert.match(optionsSource, /createSettingsBackup/)
   assert.match(optionsSource, /parseSettingsBackupText/)
   assert.match(optionsSource, /fontaraConnector\.changeSettings/)
-  assert.match(optionsSource, /fontaraConnector\.importSettings/)
+  assert.match(optionsSource, /fontaraConnector\.importCustomFontBatch/)
   assert.match(optionsSource, /fontaraConnector\.resetSettings/)
   assert.match(optionsSource, /FONTARA_SETTINGS_STORAGE_KEYS/)
   assert.match(
@@ -271,6 +282,9 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /handleSyncSettingsToggle/)
   assert.match(optionsSource, /options\.contextMenus\.title/)
   assert.match(optionsSource, /requestContextMenusPermission/)
+  assert.match(optionsSource, /removeContextMenusPermission/)
+  assert.match(optionsSource, /chrome\.permissions\.remove/)
+  assert.doesNotMatch(optionsSource, /isFirefoxBrowser\(\)/)
   assert.match(optionsSource, /handleContextMenusToggle/)
   assert.match(optionsSource, /<HotkeysSettings \/>/)
   assert.match(optionsSource, /from "..\/components\/ui\/alert-dialog"/)
@@ -283,16 +297,21 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /options\.toast\.syncEnabled/)
   assert.match(optionsSource, /createSiteListPatternAddUpdate/)
   assert.match(optionsSource, /createWebsiteSiteListToggleUpdate/)
-  assert.match(optionsSource, /upsertSiteProfile/)
-  assert.match(optionsSource, /isSiteProfileEnabled/)
-  assert.match(optionsSource, /handleSiteProfileEnabledToggle/)
-  assert.match(optionsSource, /fontara-site-profile-enabled-/)
-  assert.match(optionsSource, /options\.siteProfiles\.applyProfile/)
-  assert.match(optionsSource, /options\.siteProfiles\.active/)
-  assert.match(optionsSource, /options\.siteProfiles\.inactive/)
-  assert.match(optionsSource, /removeSiteProfileFontOverrides/)
+  assert.match(profilesSource, /upsertSiteProfile/)
+  assert.match(profilesSource, /isSiteProfileEnabled/)
+  assert.match(profilesSource, /handleSiteProfileEnabledToggle/)
+  assert.match(profilesSource, /fontara-site-profile-enabled-/)
+  assert.match(profilesSource, /options\.siteProfiles\.applyProfile/)
+  assert.match(profilesSource, /options\.siteProfiles\.active/)
+  assert.match(profilesSource, /options\.siteProfiles\.inactive/)
+  const googleToggleHandler = optionsSource.slice(
+    optionsSource.indexOf("const handleGoogleFontsToggle"),
+    optionsSource.indexOf("const handleClearGoogleFontCache")
+  )
+  assert.doesNotMatch(googleToggleHandler, /STORAGE_KEYS\.SELECTED_FONT/)
+  assert.doesNotMatch(googleToggleHandler, /STORAGE_KEYS\.SITE_PROFILES/)
   assert.match(optionsSource, /normalizeSitePattern/)
-  assert.match(optionsSource, /normalizeSiteProfiles/)
+  assert.match(profilesSource, /normalizeSiteProfiles/)
   assert.match(optionsSource, /isSiteListUrlEnabled/)
   assert.match(optionsSource, /isURLMatched/)
   assert.match(
@@ -337,13 +356,14 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.doesNotMatch(optionsSource, /options\.siteList\.customizeRule/)
   assert.match(optionsSource, /getSettingsSectionFromHash/)
   assert.match(optionsSource, /window\.addEventListener\("hashchange"/)
-  assert.match(optionsSource, /handleSectionChange\(item\.id\)/)
+  assert.match(optionsSource, /onSectionChange\(section\)/)
+  assert.match(optionsSource, /selectSection\(item\.id, true\)/)
   assert.match(optionsSource, /aria-live="polite"/)
   assert.match(optionsSource, /options\.siteList\.previewExclude/)
   assert.match(optionsSource, /options\.siteList\.previewInclude/)
   assert.match(optionsSource, /options\.siteList\.previewInvalid/)
-  assert.match(optionsSource, /getGoogleFontList/)
-  assert.match(optionsSource, /getSystemFontList/)
+  assert.match(optionsSource, /useFontCatalogs/)
+  assert.match(optionsSource, /loadSystemFonts/)
   assert.match(optionsSource, /TEXT_STROKE_MIN/)
   assert.match(optionsSource, /TEXT_STROKE_MAX/)
   assert.match(optionsSource, /TEXT_STROKE_STEP/)
@@ -355,7 +375,7 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(optionsSource, /<SidebarInset>/)
   assert.match(
     optionsSource,
-    /<header className="[^"]*fontara-options-header[^"]*gap-3[\s\S]*<SidebarTrigger className="[^"]*shrink-0[^"]*" \/>[\s\S]*<h2/
+    /<header className="[^"]*fontara-options-header[^"]*gap-3[\s\S]*<SidebarTrigger[\s\S]{0,300}className="[^"]*shrink-0[^"]*"[\s\S]{0,40}\/>[\s\S]*<h2/
   )
   assert.match(sidebarSource, /const SidebarProvider = React\.forwardRef/)
   assert.match(sidebarSource, /const SidebarTrigger = React\.forwardRef/)
@@ -363,7 +383,10 @@ test("options page uses the local shadcn sidebar layout", () => {
   assert.match(sidebarSource, /<SheetContent\s+dir={dir}/)
   assert.match(sidebarSource, /data-\[side=right\]:right-0/)
   assert.match(sidebarSource, /after:start-1\/2/)
-  assert.match(sidebarSource, /<PanelLeft className="rtl:rotate-180" \/>/)
+  assert.match(
+    sidebarSource,
+    /<PanelLeft aria-hidden="true" className="rtl:rotate-180" \/>/
+  )
   assert.match(sidebarSource, /text-start/)
   assert.match(
     sidebarSource,
@@ -470,27 +493,29 @@ test("options page exposes extension hotkey controls", () => {
   assert.match(extensionSource, /updateIconStatus\(data\.settings\)/)
   assert.match(
     extensionSource,
-    /private static async publishSettingsChange\([\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*settings\s*\)[\s\S]*?scheduleReportChanges\(\)/
+    /private static async publishSettingsChange\([\s\S]*?notifyContentScriptsAboutSettingsChange\(\s*settings,\s*settingsRevision\s*\)[\s\S]*?scheduleReportChanges\(\)/
   )
   assert.match(
     extensionSource,
-    /private static async writeSettingsChange\([\s\S]*?const \{ settings: updatedSettings, syncSnapshot \} =[\s\S]*?writeBackgroundSettingsWithSyncSnapshot\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings\)[\s\S]*?if \(options\.flushSync\)[\s\S]*?flushPendingSettingsSync\(syncSnapshot\)[\s\S]*?schedulePendingSettingsSync\(syncSnapshot\)/
+    /private static async persistSettingsChange\([\s\S]*?revision,[\s\S]*?settings: updatedSettings,[\s\S]*?syncSnapshot[\s\S]*?writeBackgroundSettingsWithSyncSnapshot\(settings\)[\s\S]*?publishSettingsChange\(updatedSettings, revision\)[\s\S]*?if \(options\.flushSync\)[\s\S]*?flushPendingSettingsSync\(syncSnapshot\)[\s\S]*?schedulePendingSettingsSync\(syncSnapshot\)[\s\S]*?return \{ revision \}/
   )
-  assert.match(
-    extensionSource,
-    /const settings = await syncBackgroundSettingsCacheFromLocalChanges\(changes\)[\s\S]*?publishSettingsChange\(settings\)/
-  )
+  // Settings/revision pairing is exercised with a real interleaving in
+  // extension-runtime.test.ts instead of pinning the publisher's source shape.
   assert.match(
     extensionSource,
     /changeSettings[\s\S]*writeSettingsChange\(settings\)/
   )
   assert.match(
     extensionSource,
-    /importSettings[\s\S]*writeSettingsChange\(normalizedBackup\.settings,\s*\{\s*flushSync: true\s*\}\)/
+    /CUSTOM_FONT_LIST[\s\S]*custom-font-list-requires-transaction/
   )
   assert.match(
     extensionSource,
-    /resetSettings[\s\S]*writeSettingsChange\(\s*await createSettingsResetValues\(\),\s*\{\s*flushSync: true\s*\}\s*\)/
+    /static async importSettings[\s\S]*?normalizedBackup\.settings,[\s\S]*?flushSync: true[\s\S]*?revision: mutation\.revision/
+  )
+  assert.match(
+    extensionSource,
+    /static resetSettings[\s\S]*?createSettingsResetValues\(\),[\s\S]*?flushSync: true[\s\S]*?return result/
   )
   assert.match(extensionDataHookSource, /ExtensionDataContext/)
   assert.match(extensionDataHookSource, /ExtensionDataProvider/)
@@ -539,13 +564,13 @@ test("popup header uses a quieter version badge and green toggle", () => {
 
   assert.match(headerSource, /!bg-gray-100/)
   assert.match(headerSource, /!text-\[9px\]/)
-  assert.match(headerSource, /!text-gray-500/)
+  assert.match(headerSource, /!text-gray-600/)
   assert.match(headerSource, /direction === "ltr" && "flex-row-reverse"/)
   assert.doesNotMatch(headerSource, /chrome\.tabs\.query/)
   assert.doesNotMatch(headerSource, /chrome\.tabs\.sendMessage/)
   assert.doesNotMatch(headerSource, /action: "toggle"/)
   assert.doesNotMatch(headerSource, /!bg-red-500/)
-  assert.match(switchSource, /data-\[state=checked\]:bg-emerald-500/)
+  assert.match(switchSource, /data-\[state=checked\]:bg-emerald-600/)
 })
 
 test("popup footer wraps localized credits cleanly", () => {
@@ -594,7 +619,7 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
     switchSource,
     /data-\[state=checked\]:translate-x-5 data-\[state=unchecked\]:translate-x-0/
   )
-  assert.match(switchSource, /data-\[state=unchecked\]:bg-slate-200/)
+  assert.match(switchSource, /data-\[state=unchecked\]:bg-slate-500/)
   assert.doesNotMatch(switchSource, /data-\[state=unchecked\]:bg-input/)
   assert.match(customUrlToggleSource, /className="peer sr-only"/)
   assert.match(customUrlToggleSource, /peer-focus-visible:ring-2/)
@@ -617,7 +642,10 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
     customUrlToggleSource,
     /inline-flex min-w-0 max-w-full items-center justify-start gap-1/
   )
-  assert.match(customUrlToggleSource, /dir="ltr"[\s\S]*<img[\s\S]*<bdi/)
+  assert.match(
+    customUrlToggleSource,
+    /dir="ltr"[\s\S]*<(?:img|Globe2)[\s\S]*<bdi/
+  )
   assert.match(
     customUrlToggleSource,
     /<bdi className="truncate" dir="ltr" title=\{displaySiteName\}>/
@@ -726,22 +754,54 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
   assert.doesNotMatch(textStrokeToggleSource, /#2b6b7a/)
 })
 
-test("custom font uploads normalize stored names and data URLs", () => {
+test("custom font uploads validate metadata and commit binary transactions", () => {
   const optionsSource = fs.readFileSync(
     path.resolve("src/ui/options/index.tsx"),
     "utf8"
   )
 
-  assert.match(optionsSource, /normalizedFontName = fontName\.trim\(\)/)
   assert.match(
     optionsSource,
-    /isFontFileSignatureSupported\(extension, fileBytes\)/
+    /normalizedFontName = normalizeCustomFontText\(fontName\)/
   )
-  assert.match(optionsSource, /normalizeFontDataURL\(base64Data, extension\)/)
-  assert.match(optionsSource, /parseCustomFontUnicodeRangeInput/)
-  assert.match(optionsSource, /unicodeRange/)
-  assert.match(optionsSource, /options\.addFont\.unicodeRangeLabel/)
-  assert.match(optionsSource, /name: normalizedFontName/)
+  assert.match(
+    optionsSource,
+    /isFontFileSignatureSupported\(extension, byteView\)/
+  )
+  assert.match(optionsSource, /validateCustomFontWithNativeFontFace/)
+  assert.match(optionsSource, /extractCustomFontMetadata/)
+  assert.match(optionsSource, /resolveSimpleCustomFontSlot/)
+  assert.match(optionsSource, /beginCustomFontTransaction/)
+  assert.match(
+    optionsSource,
+    /beginCustomFontTransaction\(\s*preparedFamily\.family,\s*"replace-library"\s*\)/
+  )
+  assert.match(optionsSource, /putCustomFontFace/)
+  assert.match(optionsSource, /commitCustomFontTransaction/)
+  assert.match(
+    optionsSource,
+    /getCustomFontUnicodeRangePreset\(fontUnicodeRangePreset\)/
+  )
+  assert.match(optionsSource, /displayName: normalizedFontName/)
+  assert.match(optionsSource, /fontara-custom-font-\$\{slot\}-file/)
+  assert.match(optionsSource, /!preparedRegularFont/)
+  assert.doesNotMatch(optionsSource, /\bmultiple\b/)
+  assert.match(optionsSource, /options\.addFont\.coverageLabel/)
+  assert.match(optionsSource, /SIMPLE_CUSTOM_FONT_UNICODE_RANGE_PRESETS/)
+  assert.match(optionsSource, /FontaraUploadPreview-/)
+  assert.match(
+    optionsSource,
+    /unicodeRange: previewUnicodeRange \?\? undefined/
+  )
+  assert.match(
+    optionsSource,
+    /\[fontUnicodeRangePreset, preparedBoldFont, preparedRegularFont\]/
+  )
+  assert.match(optionsSource, /readCustomFontFaceBytes/)
+  assert.match(optionsSource, /options\.customFonts\.localOnlyBadge/)
+  assert.match(optionsSource, /fontAddedSelectFromPopup/)
+  assert.doesNotMatch(optionsSource, /normalizeFontDataURL/)
+  assert.doesNotMatch(optionsSource, /readAsDataURL/)
   assert.doesNotMatch(optionsSource, /data: base64Data/)
 })
 
@@ -757,6 +817,22 @@ test("settings export reads the latest local storage snapshot", () => {
   assert.doesNotMatch(
     optionsSource,
     /createSettingsBackup\(extensionData\.settings/
+  )
+})
+
+test("partial settings backups preserve the local custom-font catalog", () => {
+  const optionsSource = fs.readFileSync(
+    path.resolve("src/ui/options/index.tsx"),
+    "utf8"
+  )
+
+  assert.match(
+    optionsSource,
+    /Object\.getOwnPropertyDescriptor\(\s*parsedBackup\.settings,\s*STORAGE_KEYS\.CUSTOM_FONT_LIST\s*\)/
+  )
+  assert.match(
+    optionsSource,
+    /if \(!replacesCustomFonts\) \{[\s\S]*fontaraConnector\.importSettings\(\s*preparedImport\.settings\s*\)/
   )
 })
 

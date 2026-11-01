@@ -39,7 +39,7 @@ test("command settings enable the current site when site lists are opt-in", () =
   assert.deepEqual(update[STORAGE_KEYS.DISABLED_FOR], [])
   assert.deepEqual(update[STORAGE_KEYS.WEBSITE_LIST], [
     {
-      url: "https://example.com/path",
+      url: "example.com",
       regex: "^https?://example\\.com/?.*$",
       isActive: true
     }
@@ -64,7 +64,7 @@ test("command settings disable an already active current site", () => {
   assert.deepEqual(update[STORAGE_KEYS.DISABLED_FOR], [])
   assert.deepEqual(update[STORAGE_KEYS.WEBSITE_LIST], [
     {
-      url: "https://example.com/path",
+      url: "example.com",
       regex: "^https?://example\\.com/?.*$",
       isActive: false
     }

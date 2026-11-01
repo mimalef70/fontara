@@ -15,6 +15,7 @@ import { getExtensionAssetURL } from "../../utils/assets"
 import { cn } from "../../utils/cn"
 import { fontaraConnector } from "../connect/connector"
 import { useStorageValue } from "../hooks/use-storage"
+import { useI18n } from "../i18n"
 import {
   EMPTY_WEBSITE_LIST,
   getDisabledForInitialValue,
@@ -30,6 +31,7 @@ import {
 } from "./ui/tooltip"
 
 function PopularUrl() {
+  const { t } = useI18n()
   const [websiteList] = useStorageValue<WebsiteItem[]>(
     STORAGE_KEYS.WEBSITE_LIST,
     EMPTY_WEBSITE_LIST
@@ -112,17 +114,23 @@ function PopularUrl() {
           enabledByDefault: normalizeEnabledByDefault(enabledByDefault),
           enabledFor: normalizeEnabledSiteList(enabledFor)
         })
+        const siteLabel = website.siteName || website.url
 
         return (
           <TooltipProvider key={website.url} delayDuration={90}>
             <Tooltip>
               <TooltipTrigger
                 type="button"
+                aria-label={t(
+                  active ? "popular.disableSite" : "popular.enableSite",
+                  { site: siteLabel }
+                )}
+                aria-pressed={active}
                 className="flex size-12 cursor-pointer items-center justify-center rounded-md border border-gray-100 p-0 shadow-md transition-all duration-300 hover:!shadow-[0_10px_20px_rgba(0,0,0,0.15)]"
                 onClick={() => void toggleActive(website)}>
                 <img
                   src={website.icon ? getExtensionAssetURL(website.icon) : ""}
-                  alt={`${website.url} Logo`}
+                  alt=""
                   className={cn(
                     "size-8 rounded-md object-contain transition-all duration-300",
                     {
@@ -135,7 +143,7 @@ function PopularUrl() {
                 className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm"
                 side="top"
                 align="center">
-                {website.siteName || website.url}
+                {siteLabel}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

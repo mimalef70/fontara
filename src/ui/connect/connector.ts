@@ -1,8 +1,17 @@
 import type {
+  CustomFontFamilyDraft,
+  CustomFontTransactionBeginResult,
+  CustomFontTransactionCommitResult,
+  CustomFontTransactionMode
+} from "../../custom-font-types"
+import type {
   FontaraExtensionData,
+  FontaraGoogleFontCacheStats,
+  FontaraGoogleFontPrepareResult,
   FontaraImportedSettingsResult,
   FontaraMessageResponse,
   FontaraSettings,
+  FontaraSettingsMutationResult,
   FontaraUIMessage
 } from "../../definitions"
 import {
@@ -15,6 +24,17 @@ type ChangeSubscriber = (data: FontaraExtensionData) => void
 class FontaraConnector {
   private changeSubscribers = new Set<ChangeSubscriber>()
   private latestData: FontaraExtensionData | null = null
+  private mutationSequence = 0
+
+  private createClientMutationId(): string {
+    if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
+
+    // randomUUID is available in supported extension contexts; retain a
+    // collision-resistant fallback for unusual test or embedded runtimes.
+    this.mutationSequence += 1
+    const entropy = crypto.getRandomValues(new Uint32Array(2)).join("-")
+    return `${Date.now().toString(36)}-${this.mutationSequence.toString(36)}-${entropy}`
+  }
 
   private sendRequest<T>(message: FontaraUIMessage): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -85,9 +105,14 @@ class FontaraConnector {
     })
   }
 
-  changeSettings(settings: FontaraSettings): Promise<void> {
-    return this.sendRequest<void>({
-      data: settings,
+  changeSettings(
+    settings: FontaraSettings
+  ): Promise<FontaraSettingsMutationResult> {
+    return this.sendRequest<FontaraSettingsMutationResult>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        settings
+      },
       type: MESSAGE_TYPES_UI_TO_BG.CHANGE_SETTINGS
     })
   }
@@ -96,14 +121,123 @@ class FontaraConnector {
     settings: FontaraSettings
   ): Promise<FontaraImportedSettingsResult> {
     return this.sendRequest<FontaraImportedSettingsResult>({
-      data: settings,
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        settings
+      },
       type: MESSAGE_TYPES_UI_TO_BG.IMPORT_SETTINGS
     })
   }
 
-  resetSettings(): Promise<void> {
-    return this.sendRequest<void>({
+  resetSettings(): Promise<FontaraSettingsMutationResult> {
+    return this.sendRequest<FontaraSettingsMutationResult>({
+      data: {
+        clientMutationId: this.createClientMutationId()
+      },
       type: MESSAGE_TYPES_UI_TO_BG.RESET_SETTINGS
+    })
+  }
+
+  beginCustomFontTransaction(
+    family: CustomFontFamilyDraft,
+    mode?: CustomFontTransactionMode
+  ): Promise<CustomFontTransactionBeginResult> {
+    return this.sendRequest<CustomFontTransactionBeginResult>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        family,
+        ...(mode ? { mode } : {})
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_BEGIN
+    })
+  }
+
+  putCustomFontFace(
+    transactionId: string,
+    faceId: string,
+    base64: string
+  ): Promise<void> {
+    return this.sendRequest<void>({
+      data: {
+        base64,
+        clientMutationId: this.createClientMutationId(),
+        faceId,
+        transactionId
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_PUT_FACE
+    })
+  }
+
+  commitCustomFontTransaction(
+    transactionId: string
+  ): Promise<CustomFontTransactionCommitResult> {
+    return this.sendRequest<CustomFontTransactionCommitResult>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        transactionId
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_COMMIT
+    })
+  }
+
+  importCustomFontBatch(
+    transactionIds: string[],
+    settings: FontaraSettings
+  ): Promise<FontaraImportedSettingsResult> {
+    return this.sendRequest<FontaraImportedSettingsResult>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        settings,
+        transactionIds
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_IMPORT_BATCH
+    })
+  }
+
+  abortCustomFontTransaction(transactionId: string): Promise<void> {
+    return this.sendRequest<void>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        transactionId
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_ABORT
+    })
+  }
+
+  deleteCustomFont(
+    familyValue: string
+  ): Promise<FontaraSettingsMutationResult> {
+    return this.sendRequest<FontaraSettingsMutationResult>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        familyValue
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.CUSTOM_FONT_DELETE
+    })
+  }
+
+  prepareGoogleFont(
+    selectedValue: string
+  ): Promise<FontaraGoogleFontPrepareResult> {
+    return this.sendRequest<FontaraGoogleFontPrepareResult>({
+      data: {
+        clientMutationId: this.createClientMutationId(),
+        selectedValue
+      },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_PREPARE
+    })
+  }
+
+  clearGoogleFontCache(): Promise<FontaraGoogleFontCacheStats> {
+    return this.sendRequest<FontaraGoogleFontCacheStats>({
+      data: { clientMutationId: this.createClientMutationId() },
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_CLEAR
+    })
+  }
+
+  getGoogleFontCacheStats(): Promise<FontaraGoogleFontCacheStats> {
+    return this.sendRequest<FontaraGoogleFontCacheStats>({
+      type: MESSAGE_TYPES_UI_TO_BG.GOOGLE_FONT_CACHE_STATS
     })
   }
 

@@ -9,6 +9,9 @@
 # testing
 /coverage
 
+# Local proprietary font packages used for manual compatibility audits.
+/iranyekan/
+
 #cache
 .turbo
 .cache/

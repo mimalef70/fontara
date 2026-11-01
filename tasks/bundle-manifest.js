@@ -1,5 +1,9 @@
 const { absolutePath, getDestDir } = require("./paths")
-const { isChromiumPlatform, PLATFORM } = require("./platform")
+const {
+  isChromiumMV3Platform,
+  PLATFORM,
+  supportsFontSettings
+} = require("./platform")
 const { readJSON, writeJSON } = require("./utils")
 
 const DYNAMIC_WEB_ACCESSIBLE_RESOURCE_PLATFORMS = new Set([
@@ -10,7 +14,7 @@ const DYNAMIC_WEB_ACCESSIBLE_RESOURCE_PLATFORMS = new Set([
 ])
 
 async function readPatch(platform) {
-  if (isChromiumPlatform(platform)) {
+  if (isChromiumMV3Platform(platform)) {
     return readJSON(absolutePath("src/manifest-chrome-mv3.json"))
   }
 
@@ -19,6 +23,29 @@ async function readPatch(platform) {
   }
 
   return {}
+}
+
+function withPlatformCapabilities(manifest, platform) {
+  const patchedManifest = {
+    ...manifest,
+    permissions: (manifest.permissions || []).filter(
+      (permission) =>
+        permission !== "fontSettings" || supportsFontSettings(platform)
+    )
+  }
+
+  if (!isChromiumMV3Platform(platform)) {
+    delete patchedManifest.minimum_chrome_version
+    patchedManifest.content_security_policy = {
+      ...patchedManifest.content_security_policy,
+      extension_pages:
+        platform === PLATFORM.FIREFOX_MV3
+          ? "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src https://fonts.googleapis.com https://fonts.gstatic.com; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
+          : "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; media-src 'none'; child-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';"
+    }
+  }
+
+  return patchedManifest
 }
 
 function getMessageText(messages, key, fallback) {
@@ -76,7 +103,26 @@ function withDebugCommandDescriptions(manifest, messages) {
   }
 }
 
-async function bundleManifest({ platform, debug }) {
+function withBrowserTestScope(manifest) {
+  const matches = ["http://localhost/*", "http://127.0.0.1/*"]
+
+  return {
+    ...manifest,
+    content_scripts: (manifest.content_scripts || []).map((script) => ({
+      ...script,
+      matches
+    })),
+    host_permissions: matches,
+    web_accessible_resources: (manifest.web_accessible_resources || []).map(
+      (rule) => ({
+        ...rule,
+        matches
+      })
+    )
+  }
+}
+
+async function bundleManifest({ platform, debug, test = false }) {
   const manifest = await readJSON(absolutePath("src/manifest.json"))
   const patch = await readPatch(platform)
   const packageJSON = await readJSON(absolutePath("package.json"))
@@ -85,16 +131,17 @@ async function bundleManifest({ platform, debug }) {
     ...patch,
     version: packageJSON.version
   }
+  patchedManifest = withPlatformCapabilities(patchedManifest, platform)
   patchedManifest = withDynamicWebAccessibleResourceURLs(
     patchedManifest,
     platform
   )
 
-  if (debug) {
+  if (debug || test) {
     const catalog = await readJSON(absolutePath("src/i18n/messages.json"))
     const defaultMessages = catalog.extension?.en
 
-    patchedManifest.name = "FontAra Debug"
+    patchedManifest.name = test ? "FontAra Browser Test" : "FontAra Debug"
     patchedManifest.short_name = getMessageText(
       defaultMessages,
       "extensionShortName",
@@ -109,12 +156,17 @@ async function bundleManifest({ platform, debug }) {
       patchedManifest,
       defaultMessages
     )
-    patchedManifest.version_name = `${packageJSON.version} Debug`
+    patchedManifest.version_name = `${packageJSON.version} ${test ? "Test" : "Debug"}`
     delete patchedManifest.default_locale
   }
 
-  const outDir = getDestDir({ platform, debug })
+  if (test) {
+    patchedManifest = withBrowserTestScope(patchedManifest)
+  }
+
+  const outDir = getDestDir({ platform, debug, test })
   await writeJSON(`${outDir}/manifest.json`, patchedManifest)
 }
 
 module.exports = bundleManifest
+module.exports.withPlatformCapabilities = withPlatformCapabilities

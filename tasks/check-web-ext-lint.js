@@ -6,11 +6,16 @@ const sourceDir = process.argv[2] || "./build/firefox-mv3-prod"
 
 function isAllowedWarning(warning) {
   return (
-    warning?.code === "UNSAFE_VAR_ASSIGNMENT" &&
-    warning?.message === "Unsafe assignment to innerHTML" &&
-    (warning?.file === "ui/options/index.js" ||
-      warning?.file === "ui/popup/index.js") &&
-    warning?.line === 9
+    (warning?.code === "UNSAFE_VAR_ASSIGNMENT" &&
+      warning?.message === "Unsafe assignment to innerHTML" &&
+      (warning?.file === "ui/options/index.js" ||
+        warning?.file === "ui/popup/index.js") &&
+      warning?.line === 9) ||
+    (warning?.code === "MANIFEST_OPTIONAL_PERMISSIONS" &&
+      warning?.file === "manifest.json" &&
+      warning?.message ===
+        '/optional_permissions: Invalid optional_permissions "contextMenus" at 0.' &&
+      warning?.instancePath === "/optional_permissions/0")
   )
 }
 

@@ -5,15 +5,16 @@ import {
   resolveFontaraSiteConfig
 } from "../config/site-manager"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
+import type { CustomFontFamily } from "../custom-font-types"
 import type {
   FontaraApplyMode,
   FontaraFontThemeCommandData,
   FontaraPageThemeCommandData,
-  FontaraRtlThemeCommandData,
-  FontData
+  FontaraRtlThemeCommandData
 } from "../definitions"
 import { getFontFaceCSS } from "./font-face"
 import {
+  type FontaraFontSelectionOptions,
   type GoogleFontCSSLoadMode,
   resolveFontSelection
 } from "./font-selection"
@@ -21,16 +22,19 @@ import { createTextStrokeCSS, getTextStrokeConfig } from "./text-stroke"
 
 export type FontaraPageThemeDataOptions = {
   googleFontCSSLoadMode?: GoogleFontCSSLoadMode
+  resolveGoogleFontBinary?: FontaraFontSelectionOptions["resolveGoogleFontBinary"]
 }
 
 const INACTIVE_FONT_THEME: FontaraFontThemeCommandData = {
   active: false,
   applyMode: "full",
   customCSS: null,
-  customFontCSS: "",
+  customFontFamilyRevision: null,
+  customFontFamilyValue: null,
   fontFaceCSS: "",
   fontName: DEFAULT_VALUES.SELECTED_FONT,
   googleFontCSS: null,
+  localFont: null,
   textStrokeCSS: ""
 }
 
@@ -43,10 +47,12 @@ function getSetting<T>(
   return value === undefined ? fallback : (value as T)
 }
 
-function getCustomFontList(settings: Record<string, unknown>): FontData[] {
+function getCustomFontList(
+  settings: Record<string, unknown>
+): CustomFontFamily[] {
   const value = settings[STORAGE_KEYS.CUSTOM_FONT_LIST]
   return Array.isArray(value)
-    ? (value as FontData[])
+    ? (value as CustomFontFamily[])
     : DEFAULT_VALUES.CUSTOM_FONT_LIST
 }
 
@@ -78,6 +84,7 @@ async function createFontThemeData(
       STORAGE_KEYS.GOOGLE_FONTS_ENABLED,
       DEFAULT_VALUES.GOOGLE_FONTS_ENABLED
     ),
+    resolveGoogleFontBinary: options.resolveGoogleFontBinary,
     systemFontsEnabled: getSetting(
       settings,
       STORAGE_KEYS.SYSTEM_FONTS_ENABLED,
@@ -97,10 +104,12 @@ async function createFontThemeData(
     active: true,
     applyMode,
     customCSS,
-    customFontCSS: selectedFontState.customFontCSS,
+    customFontFamilyRevision: selectedFontState.customFontFamilyRevision,
+    customFontFamilyValue: selectedFontState.customFontFamilyValue,
     fontFaceCSS: getFontFaceCSS(),
     fontName: selectedFontState.fontName,
     googleFontCSS: selectedFontState.googleFontCSS,
+    localFont: selectedFontState.localFont,
     textStrokeCSS
   }
 }

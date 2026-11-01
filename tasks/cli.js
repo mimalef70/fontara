@@ -36,21 +36,24 @@ async function main() {
   }
 
   const debug = args.includes("--debug")
+  const test = args.includes("--test")
   const release = args.includes("--release")
   const watchMode = args.includes("--watch")
   const platforms = getPlatforms(args)
-  const shouldZip = release || args.includes("--zip")
+  const shouldZip = !test && (release || args.includes("--zip"))
 
   await build({
     platforms,
-    debug: debug && !release,
+    debug: debug && !release && !test,
+    test,
     zip: shouldZip
   })
 
   if (watchMode) {
     watch({
       platforms,
-      debug: debug && !release,
+      debug: debug && !release && !test,
+      test,
       zip: shouldZip
     })
   }

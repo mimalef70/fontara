@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
-import test from "node:test"
+import test, { afterEach } from "node:test"
 
 import { FONTARA_TEXT_UNICODE_RANGE } from "../../src/config/font-unicode-range"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
-import type { FontData } from "../../src/definitions"
+import type { CustomFontFamily } from "../../src/custom-font-types"
 import {
   createSyncedSettings,
   FONTARA_SETTINGS_UPDATED_AT_KEY,
@@ -11,14 +11,34 @@ import {
 } from "../../src/utils/settings-sync"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
 
-const localCustomFont: FontData = {
+const originalChrome = Reflect.get(globalThis, "chrome") as unknown
+const originalChromium = Reflect.get(globalThis, "__CHROMIUM_MV3__") as unknown
+
+afterEach(() => {
+  Reflect.set(globalThis, "chrome", originalChrome)
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", originalChromium)
+})
+
+const localCustomFont: CustomFontFamily = {
   value: "LocalCustom-Fontara",
-  name: "Local Custom",
-  data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
-  type: "woff2",
-  fileHash: "a".repeat(64),
-  originalFileName: "LocalCustom.woff2",
-  unicodeRange: FONTARA_TEXT_UNICODE_RANGE
+  displayName: "Local Custom",
+  sourceFamilyKey: "local custom",
+  revision: 1,
+  unicodeRange: FONTARA_TEXT_UNICODE_RANGE,
+  faces: [
+    {
+      id: "local-custom-face",
+      fileHash: "a".repeat(64),
+      fileName: "LocalCustom.woff2",
+      format: "woff2",
+      byteLength: 4,
+      weight: { min: 400, max: 400 },
+      style: "normal",
+      stretch: { min: 100, max: 100 },
+      axes: [],
+      validation: "verified"
+    }
+  ]
 }
 
 test("settings sync excludes local-only font files and font references", async () => {
@@ -77,6 +97,12 @@ test("settings sync excludes local-only font files and font references", async (
 })
 
 test("settings sync merges synced values with local-only custom fonts", async () => {
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", true)
+  Reflect.set(globalThis, "chrome", {
+    fontSettings: {
+      getFontList() {}
+    }
+  })
   const systemFont = createSystemFontValue("Noto Sans Arabic")
   assert.ok(systemFont)
   const mergedSettings = await mergeSyncedSettingsWithLocalOnlyValues(
@@ -172,4 +198,39 @@ test("settings sync carries the newest internal update timestamp", async () => {
   )
 
   assert.equal(mergedSettings[FONTARA_SETTINGS_UPDATED_AT_KEY], updatedAt + 1)
+})
+
+test("disabled system-font selections remain dormant and local-only", async () => {
+  Reflect.set(globalThis, "chrome", {})
+  const systemFont = createSystemFontValue("Noto Sans Arabic")
+  assert.ok(systemFont)
+
+  const mergedSettings = await mergeSyncedSettingsWithLocalOnlyValues(
+    {
+      ...DEFAULT_VALUES,
+      [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+      [STORAGE_KEYS.SELECTED_FONT]: systemFont,
+      [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
+      [STORAGE_KEYS.SITE_PROFILES]: [
+        {
+          font: systemFont,
+          pattern: "local-system.example"
+        }
+      ]
+    },
+    {
+      ...DEFAULT_VALUES,
+      [STORAGE_KEYS.SELECTED_FONT]: "Sahel-Fontara",
+      [STORAGE_KEYS.SITE_PROFILES]: []
+    }
+  )
+
+  assert.equal(mergedSettings[STORAGE_KEYS.SYSTEM_FONTS_ENABLED], false)
+  assert.equal(mergedSettings[STORAGE_KEYS.SELECTED_FONT], systemFont)
+  assert.deepEqual(mergedSettings[STORAGE_KEYS.SITE_PROFILES], [
+    {
+      font: systemFont,
+      pattern: "local-system.example"
+    }
+  ])
 })

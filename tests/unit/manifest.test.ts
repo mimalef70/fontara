@@ -4,6 +4,14 @@ import path from "node:path"
 import test from "node:test"
 
 type Manifest = {
+  browser_specific_settings?: {
+    gecko?: {
+      data_collection_permissions?: {
+        optional?: string[]
+        required?: string[]
+      }
+    }
+  }
   commands?: Record<
     string,
     {
@@ -19,11 +27,14 @@ type Manifest = {
   content_scripts: Array<{
     all_frames?: boolean
     js: string[]
+    matches?: string[]
     match_about_blank?: boolean
+    match_origin_as_fallback?: boolean
     run_at?: string
   }>
   default_locale?: string
   description?: string
+  host_permissions?: string[]
   name?: string
   optional_permissions?: string[]
   permissions: string[]
@@ -49,14 +60,37 @@ test("manifest injects FontAra into all frames at document_start", () => {
   assert.equal(contentScript.run_at, "document_start")
   assert.equal(contentScript.all_frames, true)
   assert.equal(contentScript.match_about_blank, true)
+  assert.equal(contentScript.match_origin_as_fallback, true)
 })
 
-test("manifest grants storage capacity for custom fonts without redundant activeTab", () => {
+test("manifests require browsers supporting the shipped CSS and privacy APIs", () => {
+  const chromeManifest = readJSON<{ minimum_chrome_version?: string }>(
+    "src/manifest-chrome-mv3.json"
+  )
+
+  const firefoxManifest = readJSON<{
+    browser_specific_settings: {
+      gecko: { strict_min_version: string }
+      gecko_android: { strict_min_version: string }
+    }
+  }>("src/manifest-firefox-mv3.json")
+  assert.equal(chromeManifest.minimum_chrome_version, "130.0.0.0")
+  assert.equal(
+    firefoxManifest.browser_specific_settings.gecko.strict_min_version,
+    "140.0"
+  )
+  assert.equal(
+    firefoxManifest.browser_specific_settings.gecko_android.strict_min_version,
+    "142.0"
+  )
+})
+
+test("manifest grants storage capacity without tabs or activeTab", () => {
   const manifest = readJSON<Manifest>("src/manifest.json")
 
   assert.ok(manifest.permissions.includes("storage"))
   assert.ok(manifest.permissions.includes("unlimitedStorage"))
-  assert.ok(manifest.permissions.includes("tabs"))
+  assert.equal(manifest.permissions.includes("tabs"), false)
   assert.equal(manifest.permissions.includes("activeTab"), false)
 })
 
@@ -66,11 +100,8 @@ test("manifest enables context menus for extension commands", () => {
 
   assert.equal(manifest.permissions.includes("contextMenus"), false)
   assert.ok(manifest.optional_permissions?.includes("contextMenus"))
-  assert.ok(firefoxManifest.permissions.includes("contextMenus"))
-  assert.equal(
-    firefoxManifest.optional_permissions?.includes("contextMenus"),
-    false
-  )
+  assert.equal(firefoxManifest.permissions.includes("contextMenus"), false)
+  assert.ok(firefoxManifest.optional_permissions?.includes("contextMenus"))
 })
 
 test("manifest defines browser hotkeys with FontAra-specific defaults", () => {
@@ -113,6 +144,16 @@ test("manifest exposes only font assets to web pages", () => {
   )
 })
 
+test("manifest limits page access to HTTP and HTTPS hosts", () => {
+  const manifest = readJSON<Manifest>("src/manifest.json")
+  const contentScript = manifest.content_scripts.find((script) =>
+    script.js.includes("inject/index.js")
+  )
+
+  assert.deepEqual(manifest.host_permissions, ["*://*/*"])
+  assert.deepEqual(contentScript?.matches, ["*://*/*"])
+})
+
 test("chromium manifest grants system font access while firefox omits it", () => {
   const manifest = readJSON<Manifest>("src/manifest.json")
   const chromeManifest = readJSON<Manifest>("src/manifest-chrome-mv3.json")
@@ -124,6 +165,14 @@ test("chromium manifest grants system font access while firefox omits it", () =>
     true
   )
   assert.equal(firefoxManifest.permissions.includes("fontSettings"), false)
+  assert.deepEqual(
+    firefoxManifest.browser_specific_settings?.gecko
+      ?.data_collection_permissions,
+    {
+      required: ["none"],
+      optional: ["technicalAndInteraction"]
+    }
+  )
 })
 
 test("manifest keeps extension page CSP locked down", () => {
@@ -135,9 +184,17 @@ test("manifest keeps extension page CSP locked down", () => {
   assert.match(csp, /object-src 'none'/)
   assert.match(csp, /base-uri 'none'/)
   assert.match(csp, /form-action 'none'/)
-  assert.match(csp, /font-src 'self' data: https:\/\/fonts\.gstatic\.com/)
-  assert.match(csp, /connect-src https:\/\/fonts\.googleapis\.com/)
+  assert.match(csp, /font-src 'self';/)
+  assert.doesNotMatch(csp, /font-src[^;]*fonts\.gstatic\.com/)
+  assert.doesNotMatch(csp, /font-src[^;]*\bdata:/)
+  assert.match(
+    csp,
+    /connect-src https:\/\/fonts\.googleapis\.com https:\/\/fonts\.gstatic\.com/
+  )
   assert.match(csp, /style-src 'self' 'unsafe-inline'/)
+  assert.match(csp, /img-src 'self' data:/)
+  assert.match(csp, /worker-src 'self'/)
+  assert.doesNotMatch(csp, /img-src \*/)
   assert.doesNotMatch(csp, /object-src 'self'/)
   assert.doesNotMatch(csp, /connect-src 'none'/)
 })

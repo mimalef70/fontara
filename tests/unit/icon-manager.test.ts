@@ -114,8 +114,8 @@ test("icon manager updates tab icon from top-frame content URL changes", async (
   runtimeMessageListeners[0]?.(
     {
       data: {
-        isTopFrame: true,
-        url: "https://chatgpt.com/c/spa-route"
+        isTopFrame: false,
+        url: "https://attacker.invalid/?secret=payload"
       },
       scriptId: "script-1",
       type: "fontara-cs-bg-document-update"

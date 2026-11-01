@@ -259,7 +259,7 @@ injectFontStyles()
 
 ## فونت های داخلی و سفارشی
 
-فونت های داخلی در `src/config/fonts.ts` تعریف شده اند: Vazirmatn, Samim, Shabnam, Arad, Sahel, Parastoo, Gandom, Tanha, Nahid, Azarmehr, Mikhak, Estedad, Behdad, Nika, Ganjname, Shahab.
+فونت های داخلی در `src/config/fonts.ts` تعریف شده اند: Vazirmatn, Samim, Shabnam, Arad, Sahel, Parastoo, Gandom, Tanha, Nahid, Mikhak, Estedad, Behdad, Nika, Ganjname, Shahab.
 
 `src/fonts.css` برای هر فونت `@font-face` دارد و `unicode-range` را به محدوده عربی/فارسی محدود کرده است:
 

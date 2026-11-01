@@ -12,7 +12,7 @@ type ContentPageLifecycleOptions = {
 }
 
 function pauseContentPageTheme(): void {
-  stopObserving()
+  stopObserving({ cancelPendingEditableWork: true })
   pauseRtlSupport()
 }
 

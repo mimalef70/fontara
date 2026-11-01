@@ -1,16 +1,21 @@
-import { GOOGLE_FONTS, type GoogleFontMetadata } from "../config/google-fonts"
+import type { GoogleFontMetadata } from "../config/google-fonts"
 import {
   buildGoogleFontsCSS2URLFromFamily,
   createGoogleFontValue,
   decodeGoogleFontValue,
-  isSafeGoogleFontFamily
+  type GoogleFontFaceCSSLoadOptions,
+  isGoogleFontCSSLoadingSupported,
+  isSafeGoogleFontFamily,
+  isSelectableGoogleFontFamily,
+  loadGoogleFontFaceCSS as loadGoogleFontFaceCSSFromRuntime,
+  resetGoogleFontRuntimeForTesting
 } from "./google-font-runtime"
 
 export {
   createGoogleFontValue,
   decodeGoogleFontValue,
+  isGoogleFontFeatureSupported,
   isGoogleFontValue,
-  loadGoogleFontFaceCSS,
   sanitizeGoogleFontFaceCSS
 } from "./google-font-runtime"
 
@@ -20,22 +25,36 @@ export type GoogleFontData = GoogleFontMetadata & {
   value: string
 }
 
-const NON_TEXT_GOOGLE_FONT_FAMILY_PATTERNS = [
-  /^material icons(?:\b|$)/i,
-  /^material symbols(?:\b|$)/i,
-  /^libre barcode\b/i
-]
+const GOOGLE_FONTS_CATALOG_PATH = "assets/data/google-fonts.json"
 
-export function isSelectableGoogleFont(font: GoogleFontMetadata): boolean {
-  return !NON_TEXT_GOOGLE_FONT_FAMILY_PATTERNS.some((pattern) =>
-    pattern.test(font.family)
-  )
+type GoogleFontsCatalogPayload = {
+  fonts: GoogleFontMetadata[]
+  source: string
 }
 
-const SELECTABLE_GOOGLE_FONTS = GOOGLE_FONTS.filter(isSelectableGoogleFont)
-const GOOGLE_FONT_FAMILIES = new Map(
-  SELECTABLE_GOOGLE_FONTS.map((font) => [font.family.toLowerCase(), font])
-)
+let cachedGoogleFonts: GoogleFontData[] | null = null
+let googleFontsLoadPromise: Promise<GoogleFontData[]> | null = null
+
+// Google serves CJK families as hundreds of unicode-range slices even for a
+// single weight. Registering all of them in every document/frame would exceed
+// the bounded binary loader and create disproportionate memory use. Keep them
+// out of the picker until a dedicated subset-on-demand design exists.
+const GOOGLE_FONT_OVERSIZED_SUBSETS = new Set([
+  "chinese-hongkong",
+  "chinese-simplified",
+  "chinese-traditional",
+  "japanese",
+  "korean"
+])
+const GOOGLE_FONT_OVERSIZED_FAMILIES = new Set(["Google Sans"])
+
+export function isSelectableGoogleFont(font: GoogleFontMetadata): boolean {
+  return (
+    isSelectableGoogleFontFamily(font.family) &&
+    !GOOGLE_FONT_OVERSIZED_FAMILIES.has(font.family) &&
+    !font.subsets.some((subset) => GOOGLE_FONT_OVERSIZED_SUBSETS.has(subset))
+  )
+}
 
 function createGoogleFontData(font: GoogleFontMetadata): GoogleFontData {
   return {
@@ -46,12 +65,86 @@ function createGoogleFontData(font: GoogleFontMetadata): GoogleFontData {
   }
 }
 
+function isGoogleFontMetadata(value: unknown): value is GoogleFontMetadata {
+  if (typeof value !== "object" || value === null) return false
+
+  const font = value as Partial<GoogleFontMetadata>
+  return (
+    isSafeGoogleFontFamily(font.family) &&
+    typeof font.category === "string" &&
+    typeof font.fallback === "string" &&
+    typeof font.recommended === "boolean" &&
+    Array.isArray(font.subsets) &&
+    Array.isArray(font.variants)
+  )
+}
+
+function parseGoogleFontsCatalog(value: unknown): GoogleFontData[] {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("google-fonts-catalog-invalid")
+  }
+
+  const payload = value as Partial<GoogleFontsCatalogPayload>
+  if (
+    payload.source !== "google-fonts-developer-api-v1" ||
+    !Array.isArray(payload.fonts)
+  ) {
+    throw new Error("google-fonts-catalog-invalid")
+  }
+
+  const fonts = payload.fonts
+    .filter(isGoogleFontMetadata)
+    .filter(isSelectableGoogleFont)
+    .map(createGoogleFontData)
+  if (fonts.length === 0) {
+    throw new Error("google-fonts-catalog-empty")
+  }
+
+  return fonts
+}
+
+function getCatalogURL(): string {
+  if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
+    return chrome.runtime.getURL(GOOGLE_FONTS_CATALOG_PATH)
+  }
+
+  return `/${GOOGLE_FONTS_CATALOG_PATH}`
+}
+
+export function loadGoogleFontList(): Promise<GoogleFontData[]> {
+  if (cachedGoogleFonts) return Promise.resolve(cachedGoogleFonts)
+  if (googleFontsLoadPromise) return googleFontsLoadPromise
+
+  googleFontsLoadPromise = fetch(getCatalogURL(), {
+    cache: "force-cache",
+    credentials: "omit"
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error("google-fonts-catalog-load-failed")
+      return response.json() as Promise<unknown>
+    })
+    .then(parseGoogleFontsCatalog)
+    .then((fonts) => {
+      cachedGoogleFonts = fonts
+      return fonts
+    })
+    .finally(() => {
+      googleFontsLoadPromise = null
+    })
+
+  return googleFontsLoadPromise
+}
+
 export function getGoogleFontByFamily(
   fontFamily: unknown
 ): GoogleFontMetadata | null {
   if (!isSafeGoogleFontFamily(fontFamily)) return null
 
-  return GOOGLE_FONT_FAMILIES.get(fontFamily.trim().toLowerCase()) ?? null
+  return (
+    cachedGoogleFonts?.find(
+      (font) => font.family.toLowerCase() === fontFamily.trim().toLowerCase()
+    ) ?? null
+  )
 }
 
 export function getGoogleFontByValue(
@@ -62,9 +155,49 @@ export function getGoogleFontByValue(
 }
 
 export function getGoogleFontList(): GoogleFontData[] {
-  return SELECTABLE_GOOGLE_FONTS.map(createGoogleFontData)
+  return cachedGoogleFonts ?? []
+}
+
+export async function loadGoogleFontFaceCSS(
+  selectedFont: unknown,
+  options: GoogleFontFaceCSSLoadOptions = {}
+): Promise<string | null> {
+  if (!isGoogleFontCSSLoadingSupported()) return null
+
+  const fontFamily = decodeGoogleFontValue(selectedFont)
+  if (!fontFamily) return null
+  if (options.allowNetwork === false) {
+    return loadGoogleFontFaceCSSFromRuntime(selectedFont, options)
+  }
+
+  try {
+    const font =
+      getGoogleFontByFamily(fontFamily) ??
+      (await loadGoogleFontList()).find(
+        (candidate) =>
+          candidate.family.toLowerCase() === fontFamily.toLowerCase()
+      ) ??
+      null
+    if (!font) return null
+
+    return loadGoogleFontFaceCSSFromRuntime(selectedFont, {
+      ...options,
+      font
+    })
+  } catch {
+    return loadGoogleFontFaceCSSFromRuntime(selectedFont, {
+      ...options,
+      allowNetwork: false
+    })
+  }
+}
+
+export function resetGoogleFontCatalogForTesting(): void {
+  cachedGoogleFonts = null
+  googleFontsLoadPromise = null
+  resetGoogleFontRuntimeForTesting()
 }
 
 export function buildGoogleFontsCSS2URL(font: GoogleFontMetadata): string {
-  return buildGoogleFontsCSS2URLFromFamily(font.family)
+  return buildGoogleFontsCSS2URLFromFamily(font.family, font.variants)
 }

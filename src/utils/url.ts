@@ -16,8 +16,10 @@ function escapeRegex(value: string): string {
 
 export function createRegexFromUrl(url: string): string {
   try {
-    const urlObj = new URL(url)
-    return `^https?://${escapeRegex(urlObj.hostname)}/?.*$`
+    const urlObj = new URL(
+      /^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `https://${url}`
+    )
+    return `^https?://${escapeRegex(urlObj.host.toLowerCase())}/?.*$`
   } catch {
     return url
   }

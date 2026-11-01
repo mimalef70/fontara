@@ -3,26 +3,36 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react"
 import { List } from "react-window"
 
+import {
+  FONTARA_TEXT_UNICODE_RANGE,
+  normalizeCustomFontUnicodeRange
+} from "../../config/font-unicode-range"
 import { DEFAULT_FONTS } from "../../config/fonts"
 import type { SupportedUILanguage } from "../../config/i18n"
 import { STORAGE_KEYS } from "../../config/storage"
-import type { FontData } from "../../definitions"
+import type { CustomFontFamily } from "../../custom-font-types"
 import { cn } from "../../utils/cn"
 import { formatFontFamilyForCSS } from "../../utils/font-data"
 import {
   decodeGoogleFontValue,
+  type GoogleFontData,
   getGoogleFontByValue,
-  getGoogleFontList
+  loadGoogleFontList
 } from "../../utils/google-fonts"
 import {
   decodeSystemFontValue,
-  getSystemFontList,
+  isSystemFontAccessSupported,
+  loadSystemFonts,
+  normalizeSystemFontFamilyKey,
   type SystemFontData
 } from "../../utils/system-fonts"
+import { fontaraConnector } from "../connect/connector"
+import { useIsMobile } from "../hooks/use-mobile"
 import { useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
@@ -32,6 +42,15 @@ import {
 } from "../storage-defaults"
 import { CheckCircle, Circle, FolderFileFont } from "./icons"
 import { Button } from "./ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "./ui/dialog"
 import {
   Drawer,
   DrawerClose,
@@ -49,6 +68,7 @@ type DisplayFont = {
   localizedName?: Partial<Record<SupportedUILanguage, string>>
   localizedAuthor?: Partial<Record<SupportedUILanguage, string>>
   fontFamily?: string
+  coverageLabel?: string
   subsets?: string[]
   unicodeRange?: string | null
 }
@@ -75,6 +95,7 @@ type FontListRowProps = {
   getFontDisplayName: (font: DisplayFont) => string
   getFontFamily: (font: DisplayFont) => string
   hoveredFont: string | null
+  isSelectionBusy: boolean
   onFontSelect: (fontValue: string) => void
   onHoveredFontChange: (fontValue: string | null) => void
   rows: FontListRow[]
@@ -136,13 +157,13 @@ function getFontListRowHeight(
 }
 
 function FontListRow({
-  ariaAttributes,
   direction,
   getFontSampleText,
   getFontDisplayName,
   getFontFamily,
   hoveredFont,
   index,
+  isSelectionBusy,
   onFontSelect,
   onHoveredFontChange,
   rows,
@@ -163,11 +184,12 @@ function FontListRow({
   if (row.type === "group") {
     return (
       <div
-        {...ariaAttributes}
+        role="presentation"
+        aria-hidden="true"
         dir={direction}
         style={style}
         className="flex items-end px-1 pb-2 pt-3">
-        <h3 className="text-start text-xs font-semibold text-gray-400">
+        <h3 className="text-start text-xs font-semibold text-[#667085]">
           {row.title}
         </h3>
       </div>
@@ -177,6 +199,10 @@ function FontListRow({
   const font = row.font
   const fontName = getFontDisplayName(font)
   const fontSampleText = getFontSampleText(font)
+  const optionPosition = rows
+    .slice(0, index + 1)
+    .filter((item) => item.type === "font").length
+  const optionCount = rows.filter((item) => item.type === "font").length
   const isFontNameRtl = isRtlText(fontName)
   const isFontRowActive =
     hoveredFont === font.value || selectedFont === font.value
@@ -187,15 +213,19 @@ function FontListRow({
       selectedFont === font.value && <CheckCircle />
     )
   const fontNameSlot = (
-    <span
-      dir="auto"
-      className={cn(
-        "fontara-font-preview min-w-0 truncate text-start text-sm font-medium",
-        {
-          "text-[#0D92F4]": selectedFont === font.value
-        }
-      )}>
-      {fontName}
+    <span className="flex min-w-0 flex-col text-start">
+      <span
+        dir="auto"
+        className={cn("fontara-font-preview truncate text-sm font-medium", {
+          "text-[#073b7a]": selectedFont === font.value
+        })}>
+        {fontName}
+      </span>
+      {font.coverageLabel && (
+        <span className="truncate text-[10px] text-[#667085]">
+          {font.coverageLabel}
+        </span>
+      )}
     </span>
   )
   const sampleSlot = isFontRowActive ? (
@@ -204,8 +234,8 @@ function FontListRow({
       className={cn(
         "fontara-font-preview min-w-0 truncate text-center text-xs",
         {
-          "text-[#0D92F4] opacity-70": selectedFont === font.value,
-          "text-gray-400": selectedFont !== font.value
+          "text-[#073b7a]": selectedFont === font.value,
+          "text-[#667085]": selectedFont !== font.value
         }
       )}>
       {fontSampleText}
@@ -216,28 +246,36 @@ function FontListRow({
   const statusSlot = (
     <div
       className={cn("flex !size-5 items-center justify-center", {
-        "text-gray-400": hoveredFont === font.value,
-        "text-[#0D92F4]": selectedFont === font.value
+        "text-[#667085]": hoveredFont === font.value,
+        "text-[#073b7a]": selectedFont === font.value
       })}>
       {isFontRowActive ? statusIcon : null}
     </div>
   )
 
   return (
-    <div {...ariaAttributes} style={style} className="py-1">
-      <button
-        dir={direction}
-        type="button"
-        onClick={() => onFontSelect(font.value)}
-        onMouseEnter={() => onHoveredFontChange(font.value)}
-        onMouseLeave={() => onHoveredFontChange(null)}
-        data-testid={`fontara-font-option-${font.value}`}
-        style={getFontPreviewStyle(getFontFamily(font))}
+    <button
+      dir={direction}
+      type="button"
+      role="option"
+      aria-posinset={optionPosition}
+      aria-selected={selectedFont === font.value}
+      aria-setsize={optionCount}
+      disabled={isSelectionBusy}
+      onClick={() => onFontSelect(font.value)}
+      onFocus={() => onHoveredFontChange(font.value)}
+      onBlur={() => onHoveredFontChange(null)}
+      onMouseEnter={() => onHoveredFontChange(font.value)}
+      onMouseLeave={() => onHoveredFontChange(null)}
+      data-testid={`fontara-font-option-${font.value}`}
+      style={{ ...style, ...getFontPreviewStyle(getFontFamily(font)) }}
+      className="group w-full cursor-pointer bg-transparent p-1 text-start disabled:cursor-wait disabled:opacity-60">
+      <span
         className={cn(
-          "relative flex h-14 w-full cursor-pointer items-center rounded-md border-0 bg-transparent p-3 text-start",
+          "flex h-full w-full items-center rounded-lg p-3 transition-colors",
           {
             "bg-blue-50": selectedFont === font.value,
-            "hover:bg-gray-50": selectedFont !== font.value
+            "group-hover:bg-slate-50": selectedFont !== font.value
           }
         )}>
         <div
@@ -262,24 +300,32 @@ function FontListRow({
             </>
           )}
         </div>
-      </button>
-    </div>
+      </span>
+    </button>
   )
 }
 
 const FontSelector = () => {
   const { direction, language, t } = useI18n()
+  const isMobile = useIsMobile()
   const [hoveredFont, setHoveredFont] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [googleFonts, setGoogleFonts] = useState<GoogleFontData[]>([])
+  const [googleFontsReady, setGoogleFontsReady] = useState(false)
+  const [googleFontPreparation, setGoogleFontPreparation] = useState<{
+    status: "error" | "loading"
+    value: string
+  } | null>(null)
   const [systemFonts, setSystemFonts] = useState<SystemFontData[]>([])
   const [systemFontsLoading, setSystemFontsLoading] = useState(false)
   const [systemFontsFailed, setSystemFontsFailed] = useState(false)
+  const systemFontLoadGeneration = useRef(0)
   const [selectedFont, setSelectedFont] = useStorageValue<string>(
     STORAGE_KEYS.SELECTED_FONT,
     DEFAULT_FONTS[0].value
   )
-  const [customFontList] = useStorageValue<FontData[]>(
+  const [customFontList] = useStorageValue<CustomFontFamily[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
@@ -295,43 +341,76 @@ const FontSelector = () => {
   useEffect(() => {
     let cancelled = false
 
-    if (!systemFontsEnabled) {
-      setSystemFonts([])
-      setSystemFontsFailed(false)
-      setSystemFontsLoading(false)
+    if (!googleFontsEnabled) {
+      setGoogleFonts([])
+      setGoogleFontsReady(false)
+      return () => {
+        cancelled = true
+      }
+    }
+    if (!isOpen) {
       return () => {
         cancelled = true
       }
     }
 
-    setSystemFontsLoading(true)
-    setSystemFontsFailed(false)
-
-    getSystemFontList()
+    void loadGoogleFontList()
       .then((fonts) => {
-        if (cancelled) return
-        setSystemFonts(fonts)
-        setSystemFontsFailed(fonts.length === 0)
+        if (!cancelled) {
+          setGoogleFonts(fonts)
+          setGoogleFontsReady(true)
+        }
       })
       .catch((error) => {
-        if (__DEBUG__) {
-          console.warn("Failed to load system fonts.", error)
-        }
-        if (!cancelled) {
-          setSystemFonts([])
-          setSystemFontsFailed(true)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setSystemFontsLoading(false)
+        if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+          console.warn("Failed to load the Google Fonts catalog.", error)
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [systemFontsEnabled])
+  }, [googleFontsEnabled, isOpen])
+
+  const refreshSystemFonts = useCallback(
+    async (forceRefresh: boolean) => {
+      if (!systemFontsEnabled) return
+
+      const generation = systemFontLoadGeneration.current + 1
+      systemFontLoadGeneration.current = generation
+      setSystemFontsLoading(true)
+      setSystemFontsFailed(false)
+      try {
+        const state = await loadSystemFonts({ forceRefresh })
+        if (generation !== systemFontLoadGeneration.current) return
+        setSystemFonts(state.fonts)
+        setSystemFontsFailed(state.status === "error")
+      } catch (error) {
+        if (generation !== systemFontLoadGeneration.current) return
+        if (__DEBUG__) {
+          console.warn("Failed to load system fonts.", error)
+        }
+        setSystemFontsFailed(true)
+      } finally {
+        if (generation === systemFontLoadGeneration.current) {
+          setSystemFontsLoading(false)
+        }
+      }
+    },
+    [systemFontsEnabled]
+  )
+
+  useEffect(() => {
+    if (!systemFontsEnabled) {
+      systemFontLoadGeneration.current += 1
+      setSystemFonts([])
+      setSystemFontsFailed(false)
+      setSystemFontsLoading(false)
+      return
+    }
+
+    void refreshSystemFonts(isOpen)
+  }, [isOpen, refreshSystemFonts, systemFontsEnabled])
 
   const getFontDisplayName = useCallback(
     (font: DisplayFont) => font.localizedName?.[language] || font.name,
@@ -355,13 +434,26 @@ const FontSelector = () => {
   )
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase()
-  const googleFonts = useMemo(
-    () => (googleFontsEnabled ? getGoogleFontList() : []),
-    [googleFontsEnabled]
+  const customFonts = useMemo<DisplayFont[]>(
+    () =>
+      customFontList.map((font) => ({
+        value: font.value,
+        name: font.displayName,
+        fontFamily: font.value,
+        coverageLabel:
+          normalizeCustomFontUnicodeRange(font.unicodeRange) === null
+            ? t("fontSelector.coverage.all")
+            : normalizeCustomFontUnicodeRange(font.unicodeRange) ===
+                FONTARA_TEXT_UNICODE_RANGE
+              ? t("fontSelector.coverage.arabicPersian")
+              : t("fontSelector.coverage.custom"),
+        unicodeRange: font.unicodeRange
+      })),
+    [customFontList, t]
   )
   const allFonts = useMemo(
-    () => [...DEFAULT_FONTS, ...customFontList, ...googleFonts, ...systemFonts],
-    [customFontList, googleFonts, systemFonts]
+    () => [...DEFAULT_FONTS, ...customFonts, ...googleFonts, ...systemFonts],
+    [customFonts, googleFonts, systemFonts]
   )
   const filteredFonts = useMemo(
     () =>
@@ -418,10 +510,20 @@ const FontSelector = () => {
 
   const handleFontSelect = useCallback(
     async (fontValue: string) => {
+      const googleFontFamily = decodeGoogleFontValue(fontValue)
+
       try {
+        if (googleFontFamily) {
+          setGoogleFontPreparation({ status: "loading", value: fontValue })
+          await fontaraConnector.prepareGoogleFont(fontValue)
+        }
         await setSelectedFont(fontValue)
+        setGoogleFontPreparation(null)
         setIsOpen(false)
       } catch (error) {
+        if (googleFontFamily) {
+          setGoogleFontPreparation({ status: "error", value: fontValue })
+        }
         if (__DEBUG__) {
           console.warn("Failed to save selected font.", error)
         }
@@ -431,19 +533,64 @@ const FontSelector = () => {
   )
 
   const selectedFontItem = allFonts.find((font) => font.value === selectedFont)
+  const decodedSystemFontFamily = decodeSystemFontValue(selectedFont)
   const selectedSystemFontFamily = systemFontsEnabled
-    ? decodeSystemFontValue(selectedFont)
+    ? decodedSystemFontFamily
     : null
   const selectedGoogleFont = googleFontsEnabled
     ? getGoogleFontByValue(selectedFont)
     : null
+  const decodedGoogleFontFamily = decodeGoogleFontValue(selectedFont)
+  const selectedGoogleFontFamily = googleFontsEnabled
+    ? decodedGoogleFontFamily
+    : null
+  const fallbackFontName = getFontDisplayName(DEFAULT_FONTS[0])
+  const selectedSystemFontMissing =
+    Boolean(decodedSystemFontFamily) &&
+    systemFontsEnabled &&
+    isSystemFontAccessSupported() &&
+    !systemFontsLoading &&
+    !systemFontsFailed &&
+    systemFonts.length > 0 &&
+    !systemFonts.some(
+      (font) =>
+        normalizeSystemFontFamilyKey(font.fontFamily) ===
+        normalizeSystemFontFamilyKey(decodedSystemFontFamily ?? "")
+    )
+  const selectedGoogleFontMissing =
+    Boolean(decodedGoogleFontFamily) &&
+    googleFontsEnabled &&
+    googleFontsReady &&
+    !selectedGoogleFont
   const currentFontName = selectedFontItem
     ? getFontDisplayName(selectedFontItem)
-    : selectedSystemFontFamily
-      ? selectedSystemFontFamily
-      : selectedGoogleFont
-        ? selectedGoogleFont.family
-        : t("fontSelector.placeholder")
+    : decodedSystemFontFamily && !systemFontsEnabled
+      ? t("fontSelector.sourcePaused", {
+          fallback: fallbackFontName,
+          font: decodedSystemFontFamily
+        })
+      : decodedGoogleFontFamily && !googleFontsEnabled
+        ? t("fontSelector.sourcePaused", {
+            fallback: fallbackFontName,
+            font: decodedGoogleFontFamily
+          })
+        : selectedSystemFontMissing
+          ? t("fontSelector.sourceUnavailable", {
+              fallback: fallbackFontName,
+              font: decodedSystemFontFamily ?? ""
+            })
+          : selectedGoogleFontMissing
+            ? t("fontSelector.sourceUnavailable", {
+                fallback: fallbackFontName,
+                font: decodedGoogleFontFamily ?? ""
+              })
+            : selectedSystemFontFamily
+              ? selectedSystemFontFamily
+              : selectedGoogleFont
+                ? selectedGoogleFont.family
+                : selectedGoogleFontFamily
+                  ? selectedGoogleFontFamily
+                  : t("fontSelector.placeholder")
   const fontSampleText = t("fontSelector.previewText")
   const latinFontSampleText = t("fontSelector.previewTextLatin")
   const getFontSampleText = useCallback(
@@ -457,6 +604,16 @@ const FontSelector = () => {
       : systemFontsEnabled && systemFontsFailed && !systemFontsLoading
         ? t("fontSelector.systemUnavailable")
         : null
+  const preparedGoogleFontFamily = googleFontPreparation
+    ? decodeGoogleFontValue(googleFontPreparation.value)
+    : null
+  const googleFontsStatusMessage = googleFontPreparation
+    ? googleFontPreparation.status === "loading"
+      ? t("fontSelector.googleDownloading", {
+          font: preparedGoogleFontFamily ?? ""
+        })
+      : t("fontSelector.googleDownloadFailed")
+    : null
   const fontListRowProps = useMemo<FontListRowProps>(
     () => ({
       direction,
@@ -464,6 +621,7 @@ const FontSelector = () => {
       getFontDisplayName,
       getFontFamily,
       hoveredFont,
+      isSelectionBusy: googleFontPreparation?.status === "loading",
       onFontSelect: handleFontSelect,
       onHoveredFontChange: setHoveredFont,
       rows: fontListRows,
@@ -477,8 +635,80 @@ const FontSelector = () => {
       getFontFamily,
       handleFontSelect,
       hoveredFont,
+      googleFontPreparation?.status,
       selectedFont
     ]
+  )
+
+  const pickerBody = (
+    <div className="flex min-h-0 flex-1 flex-col px-4 py-2 sm:px-6">
+      <div className="sticky top-0 z-10 bg-white pb-3">
+        <input
+          type="search"
+          dir={direction}
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          aria-label={t("fontSelector.searchLabel")}
+          placeholder={t("fontSelector.searchPlaceholder")}
+          data-testid="fontara-font-selector-search"
+          className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-500 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/15"
+        />
+      </div>
+      <div
+        className="relative w-full shrink-0 overflow-hidden"
+        style={{ height: FONT_LIST_HEIGHT }}>
+        {fontListRows.length > 0 ? (
+          <List
+            role="listbox"
+            aria-label={t("fontSelector.title")}
+            className="w-full"
+            defaultHeight={FONT_LIST_DEFAULT_HEIGHT}
+            overscanCount={6}
+            rowComponent={FontListRow}
+            rowCount={fontListRows.length}
+            rowHeight={getFontListRowHeight}
+            rowProps={fontListRowProps}
+            style={{ height: "100%", width: "100%" }}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center px-3 text-center text-xs text-slate-500">
+            {t("fontSelector.noResults")}
+          </div>
+        )}
+        {fontListRows.length > 0 &&
+          (googleFontsStatusMessage || systemFontsStatusMessage) && (
+            <div
+              aria-live="polite"
+              className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-white via-white/95 to-transparent px-3 pb-2 pt-8 text-center text-xs text-slate-500">
+              <span>
+                {googleFontsStatusMessage ?? systemFontsStatusMessage}
+              </span>
+              {googleFontPreparation?.status === "error" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    void handleFontSelect(googleFontPreparation.value)
+                  }
+                  className="h-7 rounded-md px-2 text-[11px]">
+                  {t("fontSelector.googleRetry")}
+                </Button>
+              )}
+              {!googleFontPreparation &&
+                systemFontsFailed &&
+                !systemFontsLoading && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void refreshSystemFonts(true)}
+                    className="h-7 rounded-md px-2 text-[11px]">
+                    {t("fontSelector.systemRetry")}
+                  </Button>
+                )}
+            </div>
+          )}
+      </div>
+    </div>
   )
 
   return (
@@ -486,68 +716,71 @@ const FontSelector = () => {
       <Button
         onClick={() => setIsOpen(!isOpen)}
         variant="outline"
+        aria-controls="fontara-font-selector-dialog"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        aria-label={t("fontSelector.triggerLabel", {
+          font: currentFontName
+        })}
         data-testid="fontara-font-selector-trigger"
-        className="w-full !h-[3rem] !shadow-[0_3px_8px_rgba(0,0,0,0.08)] !transition-all !duration-300  flex justify-between items-center hover:!bg-white">
+        className="flex h-12 w-full items-center justify-between rounded-xl border-slate-200 bg-white shadow-sm transition-all duration-200 hover:border-blue-200 hover:bg-white hover:shadow-md">
         <span className="font-estedad text-sm">{currentFontName}</span>
-        <span className="opacity-70">
+        <span aria-hidden="true" className="opacity-70">
           <FolderFileFont className="!size-6" />
         </span>
       </Button>
-      <Drawer open={isOpen} onOpenChange={setIsOpen} direction="bottom">
-        <DrawerContent dir={direction} className="max-h-[85vh] overflow-hidden">
-          <DrawerHeader>
-            <DrawerTitle className="text-center">
-              {t("fontSelector.title")}
-            </DrawerTitle>
-            <DrawerDescription className="text-center">
-              {t("fontSelector.description")}
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="flex min-h-0 flex-1 flex-col px-4 py-2">
-            <div className="sticky top-0 z-10 bg-white pb-3">
-              <input
-                type="search"
-                dir={direction}
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder={t("fontSelector.searchPlaceholder")}
-                data-testid="fontara-font-selector-search"
-                className="h-11 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15"
-              />
-            </div>
-            <div
-              className="relative w-full shrink-0 overflow-hidden"
-              style={{ height: FONT_LIST_HEIGHT }}>
-              {fontListRows.length > 0 ? (
-                <List
-                  className="w-full"
-                  defaultHeight={FONT_LIST_DEFAULT_HEIGHT}
-                  overscanCount={6}
-                  rowComponent={FontListRow}
-                  rowCount={fontListRows.length}
-                  rowHeight={getFontListRowHeight}
-                  rowProps={fontListRowProps}
-                  style={{ height: "100%", width: "100%" }}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center px-3 text-center text-xs text-gray-400">
-                  {t("fontSelector.noResults")}
-                </div>
-              )}
-              {fontListRows.length > 0 && systemFontsStatusMessage && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white via-white/95 to-transparent px-3 pb-2 pt-8 text-center text-xs text-gray-400">
-                  {systemFontsStatusMessage}
-                </div>
-              )}
-            </div>
-          </div>
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline">{t("common.close")}</Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      {isMobile ? (
+        <Drawer open={isOpen} onOpenChange={setIsOpen} direction="bottom">
+          <DrawerContent
+            id="fontara-font-selector-dialog"
+            dir={direction}
+            className="max-h-[85vh] overflow-hidden">
+            <DrawerHeader>
+              <DrawerTitle className="text-center">
+                {t("fontSelector.title")}
+              </DrawerTitle>
+              <DrawerDescription className="text-center">
+                {t("fontSelector.description")}
+              </DrawerDescription>
+            </DrawerHeader>
+            {pickerBody}
+            <DrawerFooter>
+              <DrawerClose asChild>
+                <Button
+                  variant={null}
+                  className="border border-slate-300 bg-white text-slate-950 shadow-sm hover:bg-slate-50 hover:text-slate-950">
+                  {t("common.close")}
+                </Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogContent
+            id="fontara-font-selector-dialog"
+            dir={direction}
+            closeLabel={t("common.close")}
+            className="max-h-[85vh] max-w-2xl gap-0 overflow-hidden rounded-2xl border-slate-200 p-0 shadow-2xl">
+            <DialogHeader className="border-b border-slate-100 px-6 pb-4 pt-6 text-start sm:text-start">
+              <DialogTitle>{t("fontSelector.title")}</DialogTitle>
+              <DialogDescription className="text-slate-600">
+                {t("fontSelector.description")}
+              </DialogDescription>
+            </DialogHeader>
+            {pickerBody}
+            <DialogFooter className="border-t border-slate-100 px-6 py-4">
+              <DialogClose asChild>
+                <Button
+                  variant={null}
+                  className="border border-slate-300 bg-white text-slate-950 shadow-sm hover:bg-slate-50 hover:text-slate-950">
+                  {t("common.close")}
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

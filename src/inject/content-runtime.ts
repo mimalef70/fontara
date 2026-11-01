@@ -18,7 +18,9 @@ import { cleanupRtlSupport } from "./rtl"
 import { cleanupFontTheme } from "./theme-applier"
 
 export function startContentRuntime(): void {
-  startContentTestBridge()
+  if (typeof __TEST__ !== "undefined" && __TEST__) {
+    startContentTestBridge()
+  }
 
   const scriptId = `${Date.now().toString(36)}-${Math.random()
     .toString(36)
@@ -34,7 +36,7 @@ export function startContentRuntime(): void {
   const documentLifecycleMessageOptions = {
     isDisposed: () => disposed,
     onExtensionContextInvalidated: () =>
-      cleanupRuntimeListeners({ removeStyles: true }),
+      cleanupRuntimeListeners({ preserveAppliedTheme: true }),
     scriptId,
     warn: debugWarn
   }
@@ -49,20 +51,23 @@ export function startContentRuntime(): void {
 
   themeScheduler = createContentThemeScheduler({
     isDisposed: () => disposed,
+    onBackgroundCommandsEnabled: () => {
+      stopWatchingStorage?.()
+      stopWatchingStorage = null
+    },
     onExtensionContextInvalidated: () =>
-      cleanupRuntimeListeners({ removeStyles: true }),
+      cleanupRuntimeListeners({ preserveAppliedTheme: true }),
     onLocalFallbackActivated: ensureStorageFallbackWatcher,
     sendDocumentLifecycleMessage: (type) =>
       sendDocumentLifecycleMessage(type, documentLifecycleMessageOptions),
     warn: debugWarn
   })
 
-  ensureStorageFallbackWatcher()
-
   stopWaitingForBody = runWhenBodyIsReady(() => {
-    themeScheduler.requestResolvedPageThemeOrFallback(
-      MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE
-    )
+    // Font resolution already starts at document_start below. Once body is
+    // available, apply the DOM-dependent part locally; sending a second
+    // background request here would cancel an in-flight cold-start response.
+    themeScheduler.scheduleLocalThemeApply("full")
   })
 
   stopWatchingUrlChanges = watchUrlChanges(
@@ -82,7 +87,7 @@ export function startContentRuntime(): void {
   }
 
   function cleanupRuntimeListeners(
-    options: { removeStyles?: boolean } = {}
+    options: { preserveAppliedTheme?: boolean; removeStyles?: boolean } = {}
   ): void {
     if (disposed) return
 
@@ -90,8 +95,8 @@ export function startContentRuntime(): void {
     themeScheduler.dispose()
     stopWaitingForBody?.()
     stopWaitingForBody = null
-    stopObserving()
-    if (options.removeStyles) {
+    stopObserving({ cancelPendingEditableWork: true })
+    if (options.removeStyles && !options.preserveAppliedTheme) {
       cleanupFontTheme()
     }
     cleanupRtlSupport()
@@ -122,16 +127,19 @@ export function startContentRuntime(): void {
     messageEvent.addListener(handleRuntimeMessage)
     runtimeMessageEvent = messageEvent
   } catch (error) {
-    cleanupRuntimeListeners({ removeStyles: true })
+    cleanupRuntimeListeners({ preserveAppliedTheme: true })
     if (!isExpectedRuntimeTeardownError(error)) {
       debugWarn("Failed to register FontAra runtime message listener.", error)
     }
   }
 
   if (!disposed) {
-    sendDocumentLifecycleMessage(
+    // One ordered CONNECT both tracks the document and starts resolving the
+    // selected font. Avoid a second immediate UPDATE that could supersede a
+    // still-pending cold-service-worker response.
+    themeScheduler.requestResolvedPageThemeOrFallback(
       MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT,
-      documentLifecycleMessageOptions
+      "font-styles"
     )
     stopWatchingPageLifecycle = watchContentPageLifecycle({
       cleanupRuntime: () => cleanupRuntimeListeners(),

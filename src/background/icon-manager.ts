@@ -80,11 +80,13 @@ export async function updateIconStatusForUrl(
 }
 
 function shouldUpdateIconForContentMessage(
-  message: unknown
+  message: unknown,
+  sender: chrome.runtime.MessageSender
 ): message is FontaraContentScriptMessage {
   return (
     isFontaraContentScriptMessage(message) &&
-    message.data.isTopFrame &&
+    sender.frameId === 0 &&
+    typeof sender.url === "string" &&
     (message.type === MESSAGE_TYPES_CS_TO_BG.DOCUMENT_CONNECT ||
       message.type === MESSAGE_TYPES_CS_TO_BG.DOCUMENT_RESUME ||
       message.type === MESSAGE_TYPES_CS_TO_BG.DOCUMENT_UPDATE)
@@ -105,12 +107,12 @@ export function registerIconListeners(): void {
   })
 
   chrome.runtime.onMessage.addListener((message, sender) => {
-    if (!shouldUpdateIconForContentMessage(message)) {
+    if (!shouldUpdateIconForContentMessage(message, sender)) {
       return false
     }
 
     void updateIconStatusForUrl(
-      message.data.url,
+      sender.url as string,
       undefined,
       typeof sender.tab?.id === "number" ? sender.tab.id : null
     )

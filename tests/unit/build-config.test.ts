@@ -12,6 +12,29 @@ test("JS bundler uses React production runtime for extension pages", () => {
   )
   assert.match(bundleJS, /src\/ui\/i18n\/bootstrap\.ts/)
   assert.match(bundleJS, /ui\/i18n\/bootstrap\.js/)
+  assert.match(bundleJS, /charset:\s*["']utf8["']/)
+})
+
+test("background budget includes the local Google font validation pipeline", () => {
+  const validateBuildSource = fs.readFileSync(
+    path.resolve("tasks/validate-build.js"),
+    "utf8"
+  )
+
+  assert.match(validateBuildSource, /"background\/index\.js": 170 \* 1024/)
+  assert.match(validateBuildSource, /Google CSS\/WOFF2 validation/)
+})
+
+test("coverage gates the local Google font pipeline", () => {
+  const coverageSource = fs.readFileSync(
+    path.resolve("tasks/check-coverage.js"),
+    "utf8"
+  )
+
+  assert.match(coverageSource, /name: "google-local-font"/)
+  assert.match(coverageSource, /src\/background\/google-font-\*\.ts/)
+  assert.match(coverageSource, /src\/inject\/local-font-manager\.ts/)
+  assert.match(coverageSource, /src\/utils\/google-font-\*\.ts/)
 })
 
 test("build pipeline generates WebExtension locales from the i18n catalog", () => {
@@ -48,15 +71,15 @@ test("debug manifests use literal strings without WebExtension locale catalogs",
     "utf8"
   )
 
-  assert.match(bundleManifestSource, /if \(debug\)/)
+  assert.match(bundleManifestSource, /if \(debug \|\| test\)/)
   assert.match(bundleManifestSource, /src\/i18n\/messages\.json/)
-  assert.match(bundleManifestSource, /patchedManifest\.name = "FontAra Debug"/)
+  assert.match(bundleManifestSource, /"FontAra Browser Test" : "FontAra Debug"/)
   assert.match(bundleManifestSource, /patchedManifest\.short_name =/)
   assert.match(bundleManifestSource, /patchedManifest\.description =/)
   assert.match(bundleManifestSource, /withDebugCommandDescriptions/)
   assert.match(bundleManifestSource, /command\.description\.match/)
   assert.match(bundleManifestSource, /delete patchedManifest\.default_locale/)
-  assert.match(bundleLocalesSource, /if \(debug\) return/)
+  assert.match(bundleLocalesSource, /if \(debug \|\| test\) return/)
   assert.match(
     validateBuildSource,
     /default_locale is missing while _locales exists/
@@ -100,7 +123,7 @@ test("Google Fonts catalog is generated at build time without shipping API secre
   )
   const packageSource = fs.readFileSync(path.resolve("package.json"), "utf8")
   const generatedSource = fs.readFileSync(
-    path.resolve("src/config/generated/google-fonts.ts"),
+    path.resolve("assets/data/google-fonts.json"),
     "utf8"
   )
   const gitignoreSource = fs.readFileSync(path.resolve(".gitignore"), "utf8")
@@ -152,4 +175,25 @@ test("release archives use reproducible file metadata", () => {
     assert.match(source, /mtime/)
     assert.doesNotMatch(source, /getTimezoneOffset/)
   }
+})
+
+test("Firefox release builds create a reviewer source package", () => {
+  const buildSource = fs.readFileSync(path.resolve("tasks/build.js"), "utf8")
+  const sourcePackageSource = fs.readFileSync(
+    path.resolve("tasks/source-package.js"),
+    "utf8"
+  )
+  const packageSource = fs.readFileSync(path.resolve("package.json"), "utf8")
+
+  assert.match(buildSource, /require\("\.\/source-package"\)/)
+  assert.match(buildSource, /PLATFORM\.FIREFOX_MV3/)
+  assert.match(buildSource, /createFirefoxSourcePackage\(\)/)
+  assert.match(sourcePackageSource, /if \(require\.main === module\)/)
+  assert.match(sourcePackageSource, /module\.exports = createSourcePackage/)
+  assert.match(sourcePackageSource, /"CHANGELOG\.md"/)
+  assert.match(packageSource, /"build:firefox"/)
+  assert.match(
+    packageSource,
+    /"package:firefox:review": "pnpm package:firefox"/
+  )
 })

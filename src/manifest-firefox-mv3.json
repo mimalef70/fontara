@@ -5,11 +5,16 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "{206079c5-9bab-485d-ad12-97298719c3f2}",
+      "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": ["none"],
+        "optional": ["technicalAndInteraction"]
       }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
     }
   },
-  "permissions": ["contextMenus", "storage", "unlimitedStorage", "tabs"],
-  "optional_permissions": []
+  "permissions": ["storage", "unlimitedStorage"],
+  "optional_permissions": ["contextMenus"]
 }

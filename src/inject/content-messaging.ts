@@ -2,8 +2,8 @@ import type {
   FontaraContentCommandMessage,
   FontaraContentScriptMessage
 } from "../definitions"
-import type { MESSAGE_TYPES_CS_TO_BG } from "../utils/message"
-import { isTopFrame } from "./content-lifecycle"
+import { MESSAGE_TYPES_CS_TO_BG } from "../utils/message"
+import { getRelatedFrameRuntimePageURL } from "../utils/runtime-url"
 
 export type RuntimeMessageEvent = typeof chrome.runtime.onMessage
 export type RuntimeControlMessage = Partial<FontaraContentCommandMessage> & {
@@ -29,6 +29,10 @@ type DocumentLifecycleMessageOptions = {
 
 const DOCUMENT_LIFECYCLE_SEND_MAX_RETRIES = 4
 const DOCUMENT_LIFECYCLE_SEND_RETRY_MS = 250
+const latestLifecycleRequests = new WeakMap<
+  DocumentLifecycleMessageOptions,
+  symbol
+>()
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -83,79 +87,59 @@ export function sendDocumentLifecycleMessage(
 ): boolean {
   if (options.isDisposed()) return false
 
+  const request = Symbol()
+  latestLifecycleRequests.set(options, request)
+  const isCurrentRequest = (): boolean =>
+    !options.isDisposed() && latestLifecycleRequests.get(options) === request
+
+  const relatedPageURL = getRelatedFrameRuntimePageURL()
   const message: FontaraContentScriptMessage = {
-    data: {
-      isTopFrame: isTopFrame(),
-      url: window.location.href
-    },
+    ...(relatedPageURL ? { pageURL: relatedPageURL } : {}),
     scriptId: options.scriptId,
     type
   }
 
-  const attemptSend = (attempt = 0): void => {
-    if (options.isDisposed()) return
-
-    try {
-      const runtime = chrome.runtime
-      if (!runtime || typeof runtime.sendMessage !== "function") {
-        return
-      }
-
-      runtime.sendMessage(message, () => {
-        const error = chrome.runtime?.lastError
-        if (!error) return
-
-        if (isExtensionContextInvalidated(error)) {
-          options.onExtensionContextInvalidated()
-          return
-        }
-
-        if (
-          attempt < DOCUMENT_LIFECYCLE_SEND_MAX_RETRIES &&
-          isTransientRuntimeSendError(error)
-        ) {
-          window.setTimeout(
-            () => attemptSend(attempt + 1),
-            DOCUMENT_LIFECYCLE_SEND_RETRY_MS
-          )
-          return
-        }
-
-        if (!isTransientRuntimeSendError(error)) {
-          options.warn?.(
-            "Failed to deliver FontAra document lifecycle message.",
-            error
-          )
-        }
-      })
-    } catch (error) {
-      if (isExtensionContextInvalidated(error)) {
-        options.onExtensionContextInvalidated()
-        return
-      }
-      if (!isTransientRuntimeSendError(error)) {
-        options.warn?.(
-          "Failed to send FontAra document lifecycle message.",
-          error
-        )
-      }
-    }
-  }
-
-  try {
-    attemptSend()
-    return true
-  } catch (error) {
+  function handleSendError(error: unknown, attempt: number): void {
+    if (!isCurrentRequest()) return
     if (isExtensionContextInvalidated(error)) {
       options.onExtensionContextInvalidated()
+      return
+    }
+
+    if (isTransientRuntimeSendError(error)) {
+      // A delayed FORGET could unregister a document that has since resumed.
+      if (
+        type !== MESSAGE_TYPES_CS_TO_BG.DOCUMENT_FORGET &&
+        attempt < DOCUMENT_LIFECYCLE_SEND_MAX_RETRIES
+      ) {
+        window.setTimeout(
+          () => attemptSend(attempt + 1),
+          DOCUMENT_LIFECYCLE_SEND_RETRY_MS
+        )
+      }
+      return
+    }
+
+    options.warn?.("Failed to send FontAra document lifecycle message.", error)
+  }
+
+  function attemptSend(attempt = 0): boolean {
+    if (!isCurrentRequest()) return false
+
+    try {
+      const runtime = typeof chrome === "undefined" ? undefined : chrome.runtime
+      if (!runtime || typeof runtime.sendMessage !== "function") return false
+
+      runtime.sendMessage(message, () => {
+        const error = runtime.lastError
+        if (error) handleSendError(error, attempt)
+      })
+      return true
+    } catch (error) {
+      handleSendError(error, attempt)
       return false
     }
-    if (!isTransientRuntimeSendError(error)) {
-      options.warn?.(
-        "Failed to send FontAra document lifecycle message.",
-        error
-      )
-    }
-    return false
   }
+
+  return attemptSend()
 }

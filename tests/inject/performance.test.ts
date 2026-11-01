@@ -17,14 +17,24 @@ test("font injection keeps computed-style reads separated from writes", () => {
   assert.match(domProcessorSource, /function createFontWorkCollection/)
   assert.match(domProcessorSource, /function writeFontWorkBatch/)
   assert.match(domProcessorSource, /function hasDirectText/)
-  assert.match(domProcessorSource, /NodeFilter\.FILTER_REJECT/)
-  assert.match(domProcessorSource, /new WeakSet<HTMLElement>\(\)/)
+  assert.match(domProcessorSource, /createFontTraversalFrame/)
+  assert.match(domProcessorSource, /collection\.stack\.pop\(\)/)
+  assert.match(
+    domProcessorSource,
+    /new WeakMap<HTMLElement, OwnedFontState>\(\)/
+  )
+  assert.match(domProcessorSource, /stillOwnsFontDeclaration/)
+  assert.match(domProcessorSource, /isOwnedFontStyleMutation/)
+  assert.match(domProcessorSource, /reconcileFontTreesChunked/)
   assert.match(domProcessorSource, /applyFontToTreeChunked/)
   assert.match(domProcessorSource, /applyFontToTreesChunked/)
   assert.match(domProcessorSource, /requestIdleCallback/)
-  assert.match(domProcessorSource, /ROOT_COLLECTIONS_PER_TIMEOUT/)
+  assert.match(domProcessorSource, /IDLE_CALLBACK_TIMEOUT_MS/)
+  assert.match(domProcessorSource, /didTimeout/)
+  assert.match(domProcessorSource, /COLLECTION_OPERATIONS_PER_TURN/)
   assert.match(domProcessorSource, /splitFontFamilies/)
   assert.match(domProcessorSource, /endsWith\("-Fontara"\)/)
+  assert.match(domProcessorSource, /FontAraGoogle-/)
   assert.match(domProcessorSource, /hasContentEditableAncestorOrSelf/)
   assert.match(domProcessorSource, /isContentEditableRoot/)
   assert.doesNotMatch(domProcessorSource, /\.closest\(/)
@@ -96,25 +106,33 @@ test("mutation observer coalesces added nodes before processing", () => {
   const domProcessorSource = readSource("src/inject/dom-processor.ts")
   const fontStyleManagerSource = readSource("src/inject/font-style-manager.ts")
 
-  assert.match(observerSource, /pendingNodes = new Set<HTMLElement>\(\)/)
+  assert.match(observerSource, /pendingNodes = new Set<FontaraFontRoot>\(\)/)
   assert.match(observerSource, /requestAnimationFrame\(flushPendingNodes\)/)
   assert.match(observerSource, /cancelAnimationFrame\(scheduledFrame\)/)
-  assert.match(observerSource, /getTopLevelPendingNodes/)
-  assert.match(observerSource, /node\.isConnected/)
+  assert.match(observerSource, /getTopLevelPendingRoots/)
+  assert.match(observerSource, /isConnectedFontRoot/)
   assert.match(observerSource, /applyFontToTreesChunked\(connectedNodes\)/)
   assert.match(observerSource, /refreshEditableFontStyles/)
   assert.match(observerSource, /editableFontStylesDirty/)
   assert.match(observerSource, /addPendingNodeIfOutsideContentEditable/)
   assert.match(observerSource, /isInsideContentEditableElement/)
-  assert.match(observerSource, /containsContentEditableElement/)
+  assert.doesNotMatch(observerSource, /containsContentEditableElement/)
   assert.match(observerSource, /removedNodes/)
   assert.match(observerSource, /EDITABLE_OBSERVER_ATTRIBUTES/)
-  assert.match(observerSource, /attributeFilter: EDITABLE_OBSERVER_ATTRIBUTES/)
-  assert.match(observerSource, /collectOpenShadowRoots/)
-  assert.match(observerSource, /observedShadowRoots/)
-  assert.match(domProcessorSource, /collectOpenShadowRoots/)
-  assert.match(domProcessorSource, /type FontaraFontRoot/)
-  assert.match(fontStyleManagerSource, /getDocumentAndShadowStyleRoots/)
+  assert.match(observerSource, /characterData: true/)
+  assert.match(observerSource, /"aria-hidden"/)
+  assert.match(observerSource, /"class"/)
+  assert.match(observerSource, /"style"/)
+  assert.match(observerSource, /pendingReconciliationNodes/)
+  assert.match(observerSource, /reconcileFontTreesChunked/)
+  assert.match(observerSource, /isOwnedFontStyleMutation/)
+  assert.match(observerSource, /createOpenShadowRootTracker/)
+  assert.match(observerSource, /shadowRootObservers/)
+  assert.match(observerSource, /LARGE_CHILD_LIST_THRESHOLD = 100/)
+  assert.match(domProcessorSource, /getOpenShadowRoot/)
+  assert.match(domProcessorSource, /FontaraFontRoot/)
+  assert.match(fontStyleManagerSource, /removeAllOwnedFontStyles/)
+  assert.doesNotMatch(fontStyleManagerSource, /querySelectorAll/)
   assert.doesNotMatch(observerSource, /EDITABLE_SELECTOR_ATTRIBUTES/)
   assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*aria-label/)
   assert.doesNotMatch(observerSource, /attributeFilter:[\s\S]*role/)
@@ -141,9 +159,6 @@ test("storage changes schedule the active injection pipeline", () => {
     /requestResolvedPageThemeOrFallback\(\s*MESSAGE_TYPES_CS_TO_BG\.DOCUMENT_UPDATE,\s*scheduledMode\s*\)/
   )
   assert.match(schedulerSource, /BACKGROUND_STORAGE_UPDATE_GRACE_MS/)
-  assert.match(schedulerSource, /BACKGROUND_RESPONSE_RETRY_MS/)
-  assert.match(schedulerSource, /scheduleLocalThemeApply\(mode\)/)
-  assert.match(schedulerSource, /reconcileCleanUpThemeCommand/)
   assert.match(
     schedulerSource,
     /type ContentApplyMode = "font-styles" \| "full"/
@@ -153,6 +168,7 @@ test("storage changes schedule the active injection pipeline", () => {
   assert.match(schedulerSource, /localApplyQueuedMode/)
   assert.match(schedulerSource, /let localFallbackActive = false/)
   assert.match(schedulerSource, /options\.onLocalFallbackActivated/)
+  assert.match(schedulerSource, /options\.onBackgroundCommandsEnabled/)
   assert.match(runtimeSource, /from "\.\/content-theme-scheduler"/)
   assert.match(runtimeSource, /from "\.\/content-storage"/)
   assert.match(runtimeSource, /function ensureStorageFallbackWatcher/)
@@ -164,9 +180,13 @@ test("storage changes schedule the active injection pipeline", () => {
     runtimeSource,
     /watchContentThemeStorageChanges\(themeScheduler\)/
   )
+  assert.doesNotMatch(
+    runtimeSource,
+    /themeScheduler = createContentThemeScheduler[\s\S]*?\n\s*ensureStorageFallbackWatcher\(\)\n[\s\S]*?stopWaitingForBody = runWhenBodyIsReady/
+  )
   assert.match(
     runtimeSource,
-    /themeScheduler = createContentThemeScheduler[\s\S]*?ensureStorageFallbackWatcher\(\)[\s\S]*?stopWaitingForBody = runWhenBodyIsReady/
+    /onBackgroundCommandsEnabled:[\s\S]*?stopWatchingStorage = null/
   )
   assert.match(runtimeSource, /stopWatchingUrlChanges/)
   assert.match(storageSource, /watchLocalStorage/)
@@ -256,10 +276,8 @@ test("content messaging helpers own runtime messaging and teardown errors", () =
     messagingSource,
     /export function isExpectedRuntimeTeardownError/
   )
-  assert.match(messagingSource, /isTransientRuntimeSendError/)
-  assert.match(messagingSource, /DOCUMENT_LIFECYCLE_SEND_MAX_RETRIES/)
   assert.match(messagingSource, /runtime\.sendMessage\(message/)
-  assert.match(messagingSource, /chrome\.runtime\?\.lastError/)
+  assert.match(messagingSource, /runtime\.lastError/)
   assert.match(messagingSource, /onExtensionContextInvalidated/)
   assert.match(runtimeSource, /from "\.\/content-messaging"/)
   assert.match(runtimeSource, /sendDocumentLifecycleMessage/)
@@ -287,17 +305,20 @@ test("content runtime command routing is separated from runtime wiring", () => {
   assert.doesNotMatch(runtimeSource, /cleanUpThemeCommand\(\)/)
 })
 
-test("debug browser test bridge is isolated from production runtime", () => {
+test("browser test bridge is isolated behind the dedicated test build", () => {
   const runtimeSource = readSource("src/inject/content-runtime.ts")
   const bridgeSource = readSource("src/inject/content-test-bridge.ts")
   const messengerSource = readSource("src/background/messenger.ts")
 
   assert.match(runtimeSource, /startContentTestBridge\(\)/)
-  assert.match(bridgeSource, /__DEBUG__/)
+  assert.match(runtimeSource, /__TEST__/)
+  assert.match(bridgeSource, /__TEST__/)
+  assert.match(bridgeSource, /isLocalTestPage/)
   assert.match(bridgeSource, /window\.addEventListener\("message"/)
   assert.match(bridgeSource, /isFontaraBrowserTestPagePing/)
   assert.match(bridgeSource, /createFontaraBrowserTestRelayMessage/)
-  assert.match(messengerSource, /isDebugBuild\(\)/)
+  assert.match(messengerSource, /__TEST__/)
+  assert.match(messengerSource, /127\.0\.0\.1/)
   assert.match(messengerSource, /isContentScriptSender/)
   assert.match(messengerSource, /isFontaraBrowserTestRelayMessage/)
 })
@@ -330,6 +351,21 @@ test("content theme executor is separated from lifecycle wiring", () => {
   assert.match(themeApplierSource, /injectResolvedTextStrokeStyle/)
   assert.match(themeApplierSource, /applyResolvedRtlSupport/)
   assert.match(themeApplierSource, /startObserving/)
+  const shadowOnlyObservationIndex = themeApplierSource.indexOf(
+    'startObserving("shadow-only")'
+  )
+  const genericObservationIndex = themeApplierSource.indexOf(
+    "if (document.body) startObserving()"
+  )
+  const fullTraversalIndex = themeApplierSource.indexOf(
+    "applyFontToTreeChunked(document.body)"
+  )
+  assert.ok(shadowOnlyObservationIndex >= 0)
+  assert.ok(genericObservationIndex > shadowOnlyObservationIndex)
+  assert.ok(
+    fullTraversalIndex > genericObservationIndex,
+    "A live custom-CSS to generic switch must enter all-DOM observation before queuing the full traversal, so the mode reset cannot cancel that work."
+  )
   assert.doesNotMatch(fontStyleManagerSource, /getLocalValue/)
   assert.doesNotMatch(fontStyleManagerSource, /resolveFontSelection/)
   assert.doesNotMatch(fontStyleManagerSource, /export async function/)
@@ -364,19 +400,14 @@ test("hot selector lookups use Sets", () => {
 test("custom font injection only emits the selected custom font", () => {
   const fontSelectionSource = readSource("src/generators/font-selection.ts")
 
-  assert.match(fontSelectionSource, /function getSelectedCustomFonts/)
+  assert.match(fontSelectionSource, /function getSelectedCustomFont/)
   assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES/)
   assert.match(fontSelectionSource, /BUNDLED_FONT_VALUES\.has\(value\)/)
   assert.match(fontSelectionSource, /font\.value === selectedFont/)
   assert.match(fontSelectionSource, /resolveFontSelection/)
-  assert.match(
-    fontSelectionSource,
-    /createCustomFontFaces\(selectedCustomFonts\)/
-  )
-  assert.doesNotMatch(
-    fontSelectionSource,
-    /createCustomFontFaces\(customFontList\)/
-  )
+  assert.match(fontSelectionSource, /selectedCustomFont\.revision/)
+  assert.match(fontSelectionSource, /selectedCustomFont\.value/)
+  assert.doesNotMatch(fontSelectionSource, /createCustomFontFaces/)
 })
 
 test("bundled font face CSS is memoized after URL rewriting", () => {
@@ -390,14 +421,10 @@ test("bundled font face CSS is memoized after URL rewriting", () => {
   assert.match(fontFaceSource, /return cachedFontFaceCSS/)
 })
 
-test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
+test("bundled font faces avoid FOIT and use valid redistributed assets", () => {
   const fontsCSS = readSource("src/fonts.css")
   const fontFaceBlocks = fontsCSS.match(/@font-face \{[\s\S]*?\n\}/g) ?? []
-  const azarmehrPath = path.resolve(
-    "assets/fonts/azarmehr/AzarMehr[wght].woff2"
-  )
   const aradPath = path.resolve("assets/fonts/arad/Arad-VF.woff2")
-  const azarmehrFont = fs.readFileSync(azarmehrPath)
   const aradFont = fs.readFileSync(aradPath)
 
   assert.ok(fontFaceBlocks.length > 0)
@@ -421,8 +448,7 @@ test("bundled font faces avoid FOIT and keep Azarmehr as an asset", () => {
   assert.match(fontsCSS, /U\+0870-089F/)
   assert.match(fontsCSS, /U\+08A0-08FF/)
   assert.doesNotMatch(fontsCSS, /data:font/)
-  assert.match(fontsCSS, /assets\/fonts\/azarmehr\/AzarMehr\[wght\]\.woff2/)
+  assert.doesNotMatch(fontsCSS, /assets\/fonts\/azarmehr\//)
   assert.match(fontsCSS, /assets\/fonts\/arad\/Arad-VF\.woff2/)
-  assert.equal(azarmehrFont.subarray(0, 4).toString("ascii"), "wOF2")
   assert.equal(aradFont.subarray(0, 4).toString("ascii"), "wOF2")
 })

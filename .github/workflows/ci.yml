@@ -2,64 +2,14 @@ name: CI
 
 on:
   push:
-    branches:
-      - master
-      - main
+    branches: [master, main]
   pull_request:
-    branches:
-      - master
-      - main
+    branches: [master, main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  test-build:
-    name: Typecheck, test, and build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.5.0
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Biome lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Unit tests
-        run: pnpm test
-
-      - name: Inject tests
-        run: pnpm test:inject
-
-      - name: Build all browser targets
-        run: pnpm build:all
-
-      - name: Validate Firefox package
-        run: pnpm exec web-ext lint --source-dir ./build/firefox-mv3-prod
-
-      - name: Upload extension packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: fontara-extension-packages
-          path: build/*-prod.zip
-          retention-days: 7
+  verification:
+    uses: ./.github/workflows/verify.yml

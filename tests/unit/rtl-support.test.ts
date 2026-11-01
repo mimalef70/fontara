@@ -508,6 +508,35 @@ test("RTL engine restores original inline style priorities", () => {
   assert.equal(element.style.getPropertyPriority("unicode-bidi"), "important")
 })
 
+test("RTL engine reconciles English and empty edits with the original styles", () => {
+  installRtlDom([])
+  const message = new FakeHTMLElement("article")
+  const paragraph = message.appendChild(new FakeHTMLElement("p"))
+  message.textContent = "سلام دنیا"
+  message.setAttribute("dir", "auto")
+  paragraph.style.setProperty("text-align", "center", "important")
+  const engine = new RtlEngine({ textSelectors: ["p"] })
+
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "rtl")
+  assert.equal(paragraph.dir, "rtl")
+
+  message.textContent = "Hello world"
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "auto")
+  assert.equal(paragraph.dir, "")
+  assert.equal(paragraph.style.getPropertyValue("text-align"), "center")
+  assert.equal(paragraph.style.getPropertyPriority("text-align"), "important")
+
+  message.textContent = "سلام دوباره"
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "rtl")
+  message.textContent = ""
+  engine.applyToMessage(message as unknown as Element)
+  assert.equal(message.dir, "auto")
+  assert.equal(engine.styledElements.size, 0)
+})
+
 test("RTL auto direction updates inputs and restores original values", () => {
   const input = new FakeInputElement()
   input.value = "hello"

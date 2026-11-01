@@ -4,6 +4,7 @@ import {
   FONTARA_SETTINGS_UPDATED_AT_KEY,
   FONTARA_SYNCED_STORAGE_KEYS,
   getLocalStorageReadDefaults,
+  getSettingsRevision,
   getSettingsSyncReadDefaults,
   getSettingsUpdatedAt,
   hasSyncedSettingsValues,
@@ -20,6 +21,8 @@ import {
   normalizeCustomFontList,
   normalizeStorageValues
 } from "../utils/storage-normalization"
+import { migrateLegacyCustomFontStorage } from "./custom-font-migration"
+import { runBackgroundSettingsStorageOperation } from "./settings-manager"
 
 export { mergeWebsiteLists, normalizeCustomFontList }
 
@@ -28,6 +31,15 @@ const SYNC_SAVE_DELAY_MS = 3000
 let syncSaveTimeout: ReturnType<typeof setTimeout> | null = null
 let pendingSyncValues: Record<string, unknown> | null = null
 let applyingSyncToLocal = false
+let latestScheduledSyncRevision = 0
+let syncWriteQueue: Promise<void> = Promise.resolve()
+
+function enqueueSyncWrite(operation: () => Promise<void>): Promise<void> {
+  const run = () => runBackgroundSettingsStorageOperation(operation)
+  const result = syncWriteQueue.then(run, run)
+  syncWriteQueue = result.catch(() => {})
+  return result
+}
 
 function isSyncSettingsEnabled(value: unknown): boolean {
   return value !== false
@@ -58,11 +70,42 @@ function logSyncError(message: string, error: unknown): void {
   }
 }
 
+function preserveRawCustomFontCatalog(
+  currentValues: Record<string, unknown>,
+  nextValues: Record<string, unknown>
+): Record<string, unknown> {
+  const rawCatalog = currentValues[STORAGE_KEYS.CUSTOM_FONT_LIST]
+  if (rawCatalog === undefined) return nextValues
+  if (valuesAreEqual(rawCatalog, nextValues[STORAGE_KEYS.CUSTOM_FONT_LIST])) {
+    return nextValues
+  }
+
+  // Custom fonts are local-only and may contain forward-version or recoverable
+  // metadata that the current normalizer cannot safely interpret. Automatic
+  // startup/sync repair must not rewrite that source catalog with a lossy
+  // normalized view. Keep dependent selections too, so a newer version can
+  // restore the complete relationship. Explicit font mutations still replace
+  // these values through the background settings manager.
+  const preservedValues: Record<string, unknown> = {
+    ...nextValues,
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: rawCatalog
+  }
+  for (const key of [STORAGE_KEYS.SELECTED_FONT, STORAGE_KEYS.SITE_PROFILES]) {
+    if (currentValues[key] !== undefined) {
+      preservedValues[key] = currentValues[key]
+    }
+  }
+  return preservedValues
+}
+
 async function setLocalValuesIfChanged(
   currentValues: Record<string, unknown>,
   nextValues: Record<string, unknown>
 ): Promise<void> {
-  const changedValues = pickChangedValues(currentValues, nextValues)
+  const changedValues = pickChangedValues(
+    currentValues,
+    preserveRawCustomFontCatalog(currentValues, nextValues)
+  )
   if (Object.keys(changedValues).length === 0) {
     return
   }
@@ -113,6 +156,10 @@ export function schedulePendingSettingsSync(
 ): void {
   if (values) {
     pendingSyncValues = values
+    latestScheduledSyncRevision = Math.max(
+      latestScheduledSyncRevision,
+      getSettingsRevision(values)
+    )
   }
 
   if (syncSaveTimeout !== null) {
@@ -123,9 +170,17 @@ export function schedulePendingSettingsSync(
     const valuesToSave = pendingSyncValues
     pendingSyncValues = null
     syncSaveTimeout = null
-    void (valuesToSave
-      ? saveSyncedSettings(valuesToSave)
-      : saveSyncedSettingsFromLocal())
+    void enqueueSyncWrite(async () => {
+      if (
+        valuesToSave &&
+        getSettingsRevision(valuesToSave) < latestScheduledSyncRevision
+      ) {
+        return
+      }
+      await (valuesToSave
+        ? saveSyncedSettings(valuesToSave)
+        : saveSyncedSettingsFromLocal())
+    })
   }, SYNC_SAVE_DELAY_MS)
 }
 
@@ -139,13 +194,31 @@ export async function flushPendingSettingsSync(
 
   const valuesToSave = values ?? pendingSyncValues
   pendingSyncValues = null
+  if (valuesToSave) {
+    latestScheduledSyncRevision = Math.max(
+      latestScheduledSyncRevision,
+      getSettingsRevision(valuesToSave)
+    )
+  }
 
-  await (valuesToSave
-    ? saveSyncedSettings(valuesToSave)
-    : saveSyncedSettingsFromLocal())
+  await enqueueSyncWrite(async () => {
+    if (
+      valuesToSave &&
+      getSettingsRevision(valuesToSave) < latestScheduledSyncRevision
+    ) {
+      return
+    }
+    await (valuesToSave
+      ? saveSyncedSettings(valuesToSave)
+      : saveSyncedSettingsFromLocal())
+  })
 }
 
-async function applySyncStorageToLocal(): Promise<void> {
+function applySyncStorageToLocal(): Promise<void> {
+  return runBackgroundSettingsStorageOperation(applySyncStorageToLocalUnlocked)
+}
+
+async function applySyncStorageToLocalUnlocked(): Promise<void> {
   const localValues = await getLocalValues(getLocalStorageReadDefaults())
   if (!isSyncSettingsEnabled(localValues[STORAGE_KEYS.SYNC_SETTINGS])) {
     return
@@ -216,8 +289,14 @@ async function applySyncStorageToLocal(): Promise<void> {
   }
 }
 
-export async function ensureStorageValues(): Promise<void> {
-  const localValues = await getLocalValues(getLocalStorageReadDefaults())
+export function ensureStorageValues(): Promise<void> {
+  return runBackgroundSettingsStorageOperation(ensureStorageValuesUnlocked)
+}
+
+async function ensureStorageValuesUnlocked(): Promise<void> {
+  const initialLocalValues = await getLocalValues(getLocalStorageReadDefaults())
+  const { values: localValues } =
+    await migrateLegacyCustomFontStorage(initialLocalValues)
   const normalizedLocalValues = await normalizeStorageValues(localValues)
 
   if (
@@ -310,7 +389,9 @@ export async function ensureStorageValues(): Promise<void> {
 export function registerSettingsSyncListeners(): void {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "sync") {
-      void applySyncStorageToLocal()
+      void applySyncStorageToLocal().catch((error) => {
+        logSyncError("Failed to apply synchronized settings.", error)
+      })
       return
     }
 
@@ -319,13 +400,19 @@ export function registerSettingsSyncListeners(): void {
     }
 
     if (changes[STORAGE_KEYS.SYNC_SETTINGS]) {
-      const syncSettings = isSyncSettingsEnabled(
-        changes[STORAGE_KEYS.SYNC_SETTINGS].newValue
-      )
-      void saveSyncSetting(syncSettings).then(() => {
-        if (syncSettings) {
-          schedulePendingSettingsSync()
-        }
+      void runBackgroundSettingsStorageOperation(async () => {
+        // The event can wait behind a newer UI mutation. Mirror the current
+        // preference instead of writing its obsolete newValue back to local.
+        const localValues = await getLocalValues({
+          [STORAGE_KEYS.SYNC_SETTINGS]: undefined
+        })
+        const syncSettings = isSyncSettingsEnabled(
+          localValues[STORAGE_KEYS.SYNC_SETTINGS]
+        )
+        await saveSyncSetting(syncSettings)
+        if (syncSettings) schedulePendingSettingsSync()
+      }).catch((error) => {
+        logSyncError("Failed to synchronize the sync preference.", error)
       })
       return
     }

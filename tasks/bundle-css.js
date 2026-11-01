@@ -5,13 +5,17 @@ const tailwindcssPostcss = require("@tailwindcss/postcss")
 
 const { absolutePath, getDestDir } = require("./paths")
 
-async function bundleCSS({ platform, debug }) {
-  const outDir = getDestDir({ platform, debug })
+async function bundleCSS({ platform, debug, test = false }) {
+  const outDir = getDestDir({ platform, debug, test })
   const sourceCSS = await fs.promises.readFile(
     absolutePath("src/style.css"),
     "utf8"
   )
-  const result = await postcss([tailwindcssPostcss()]).process(sourceCSS, {
+  // Keep nesting transforms enabled in every build, including browser tests.
+  // Minification changes with debug mode; supported CSS syntax must not.
+  const result = await postcss([
+    tailwindcssPostcss({ optimize: { minify: !debug } })
+  ]).process(sourceCSS, {
     from: absolutePath("src/style.css"),
     to: path.join(outDir, "ui/style.css")
   })

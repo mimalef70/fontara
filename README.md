@@ -16,10 +16,12 @@ FontARA is a cross-browser WebExtension for applying your preferred fonts across
 the web. It supports multilingual pages through built-in, Google, custom, and
 Chromium system fonts, with special support for RTL-first workflows: smart RTL
 text detection, editable-field auto-direction, and curated per-site RTL handling.
-Version 5.0.0 adds a multilingual extension UI, per-site profiles, richer font
-sources, compact popup defaults, and broader release tooling across MV3 targets.
+Version 5.1.0 adds a private, deliberately simple custom-font flow (a name,
+required Regular, and optional Bold), reliable opt-in Chromium system fonts,
+revisioned settings writes, stronger privacy and accessibility, and production
+release gates for Chrome and Firefox.
 
-![FontARA screenshot](docs/images/demo/screens/Version4.jpg)
+![FontARA 5.1 popup](docs/images/store/5.1.0/fa/fontara-5.1-popup.png)
 
 ## Contents
 
@@ -49,8 +51,8 @@ are mainly for testers, reviewers, and contributors.
 
 | Browser | Store | Local release build | Browser automation |
 | --- | --- | --- | --- |
-| Chrome | [Chrome Web Store](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/) | `pnpm build:chrome` | Stable and beta |
-| Firefox | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/) | `pnpm build:firefox` | Latest, beta, and ESR |
+| Chrome | [Chrome Web Store](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/) | `pnpm build:chrome` | Stable and minimum 130; nightly beta |
+| Firefox | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/) | `pnpm build:firefox` | Stable and minimum 140 ESR; nightly beta/ESR |
 | Opera | [Opera Add-ons](https://addons.opera.com/en/extensions/details/fontara-font-changer/) | `pnpm build:opera` | Manual smoke |
 | Edge | Build locally | `pnpm build:edge` | Chromium-compatible package |
 | Brave | Build locally | `pnpm build:brave` | Chromium-compatible package |
@@ -84,15 +86,14 @@ are mainly for testers, reviewers, and contributors.
 - Font replacement across the web through built-in, Google, custom, and
   Chromium system font sources.
 - Works on normal websites the user enables, with built-in optimized support for
-  AI tools, search, social, productivity, and publishing sites such as ChatGPT,
-  Claude, Gemini, Copilot, Perplexity, Google, YouTube, Gmail, X, LinkedIn,
-  Instagram, Facebook, GitHub, Telegram, Slack, TickTick, Trello, Wikipedia,
-  DuckDuckGo, Medium, Goodreads, Dropbox, and more.
+  high-traffic AI, search, social, productivity, and publishing surfaces.
 - Per-site font and text-stroke profiles.
 - Smart RTL support for right-to-left scripts, editable text surfaces, and
   curated site adapters.
 - Multilingual extension UI for English, Persian, and Arabic.
-- Custom font uploads with local-only storage.
+- Simple custom-font setup with a required Regular file, an optional Bold file,
+  and one-file Variable Regular support. Binaries stay local and no base64 font
+  data is exposed in the page DOM.
 - Backup, import, export, reset, sync settings, and cross-browser MV3 builds for
   Chrome, Firefox, Edge, Brave, Opera, and Safari-style packages.
 
@@ -101,24 +102,28 @@ are mainly for testers, reviewers, and contributors.
 - Pure WebExtension build pipeline with browser-specific MV3 targets.
 - Centralized site configuration for activation, CSS fixes, profiles, and RTL.
 - Unit, inject, and real-browser extension tests.
+- Shared CI/release verification on stable and minimum-supported Chrome and
+  Firefox, including smoke tests of the production packages that are published.
 - Manual and nightly browser matrix for Chrome stable/beta and Firefox
   latest/beta/ESR.
 - Firefox review packaging and extension lint support.
+- Deterministic artifacts, permission/bundle budgets, and exact bundled-font
+  provenance checks.
 
 ## Preview
 
 The screenshots below show the popup, options page, site controls, and browser
 integration.
 
-![FontARA popup and page preview](docs/images/demo/screens/Banner1.jpg)
+![FontARA popup and page preview](docs/images/store/5.1.0/fa/fontara-5.1-popup.png)
 
-![FontARA built-in site optimizations preview](docs/images/demo/screens/Banner2.jpg)
+![FontARA settings overview](docs/images/store/5.1.0/fa/fontara-5.1-general.png)
 
-![FontARA settings preview](docs/images/demo/screens/Banner3.jpg)
+![FontARA custom-font library](docs/images/store/5.1.0/fa/fontara-5.1-custom-fonts.png)
 
-![FontARA site profiles preview](docs/images/demo/screens/Banner4.jpg)
+![FontARA site profiles preview](docs/images/store/5.1.0/fa/fontara-5.1-site-profiles.png)
 
-![FontARA browser preview](docs/images/demo/screens/Banner5.jpg)
+![FontARA smart RTL settings](docs/images/store/5.1.0/fa/fontara-5.1-smart-rtl.png)
 
 ## Built-in Site Optimizations
 
@@ -135,13 +140,13 @@ RTL behavior where needed. With help from users and contributors, this optimized
 list can keep growing. The popup default grid highlights 20 high-priority sites
 from this built-in list.
 
-| Area | Examples |
+| Area | Optimized coverage |
 | --- | --- |
-| AI tools | ChatGPT, Claude, Gemini, Copilot, Perplexity, Poe, OpenRouter, DeepSeek, Qwen, NotebookLM, AI Studio, Arena |
-| Search and Google apps | Google, Gmail, YouTube, DuckDuckGo |
-| Social and communities | X, LinkedIn, Instagram, Facebook, GitHub |
-| Messaging and productivity | WhatsApp, Telegram, Slack, TickTick, Messages, Trello, Dropbox |
-| Reading and publishing | Wikipedia, Medium, Goodreads |
+| AI tools | Chat interfaces, answer streams, editors, sidebars, and tool navigation. |
+| Search and browser apps | Search results, mail views, video pages, and dense navigation surfaces. |
+| Social and communities | Feeds, posts, comments, profiles, and repository-style text surfaces. |
+| Messaging and productivity | Conversations, task boards, workspace panels, and editable fields. |
+| Reading and publishing | Articles, encyclopedic pages, reviews, and long-form reading views. |
 
 General font injection works across the web. Site matching, optimized CSS fixes,
 profiles, and RTL adapters for the built-in list are maintained in `src/config`
@@ -149,10 +154,18 @@ and documented in [docs/site-fixes.md](docs/site-fixes.md).
 
 ## Browser Support
 
+The desktop minimums are Chrome/Chromium 130 and Firefox 140 ESR. Firefox for
+Android has a separate installation minimum of 142; Android device validation
+is not included in the current test coverage.
+
+JavaScript build targets follow the manifest baselines. UI CSS transforms stay
+enabled in every build, including test builds. Desktop browser coverage is
+described in [Testing](docs/testing.md#browser-matrix-in-ci).
+
 | Target | Build command | Test coverage | Notes |
 | --- | --- | --- | --- |
 | Chrome MV3 | `pnpm build:chrome` | Local, CI, and browser workflow | Primary Chromium release target. |
-| Firefox MV3 | `pnpm build:firefox` | Local and browser workflow | Includes Firefox review packaging and `web-ext lint`. |
+| Firefox MV3 | `pnpm build:firefox` | Local, CI, and browser workflow | Creates the add-on zip, Firefox source review zip, and supports `web-ext lint`. |
 | Edge MV3 | `pnpm build:edge` | Chromium-compatible package | Store release should still be smoke-tested manually. |
 | Brave MV3 | `pnpm build:brave` | Chromium-compatible package | Uses the Chromium extension package path. |
 | Opera MV3 | `pnpm build:opera` | Manual smoke | Store behavior should be checked before publishing. |
@@ -185,11 +198,13 @@ Common commands:
 | `pnpm dev` | Watch Chrome MV3 debug build. |
 | `pnpm dev:firefox` | Watch Firefox MV3 debug build. |
 | `pnpm build` | Package Chrome MV3 release build. |
-| `pnpm build:all` | Package all configured MV3 release targets. |
+| `pnpm build:firefox` | Package Firefox MV3 release and source review zips. |
+| `pnpm build:all` | Package all configured MV3 release targets, including Firefox source review zip. |
 | `pnpm check` | Run lint, typecheck, unit tests, and inject tests. |
-| `pnpm verify` | Run check, all release builds, and extension lint. |
+| `pnpm verify` | Run source checks, coverage, all release builds, extension lint, version/dependency audits, and ZIP reproducibility checks. |
 | `pnpm test:browser:chrome` | Run real Chrome extension browser tests. |
 | `FONTARA_FIREFOX_BROWSER_TESTS=1 pnpm test:browser:firefox` | Run real Firefox extension browser tests. |
+| `pnpm test:browser:site` | Check the public website and privacy page with axe on mobile and desktop. |
 
 ## Architecture at a Glance
 
@@ -202,7 +217,10 @@ Popup / Options
   -> Page styles without reload
 ```
 
-For the detailed runtime map, see [docs/architecture.md](docs/architecture.md).
+Background settings, migration, and sync operations share one storage queue.
+The options page separates site-profile state/actions, profile rendering, and
+font catalogs into dedicated modules. For the detailed runtime map, see
+[docs/architecture.md](docs/architecture.md).
 
 ## Privacy and Permissions
 
@@ -214,23 +232,24 @@ custom font records, site lists, backup/import data, and syncable preferences.
 
 | Permission or capability | Why FontARA needs it | Privacy note |
 | --- | --- | --- |
-| `<all_urls>` content script and host access | Apply fonts and site CSS on pages where the user enables FontARA. | Activation still respects global, include, exclude, and per-site settings. |
+| `*://*/*` content script and host access | Apply fonts and site CSS on HTTP(S) pages where the user enables FontARA. | File and unsupported schemes are excluded; activation still respects global, include, exclude, and per-site settings. |
 | `storage` | Save settings, site lists, profiles, backup/import state, and syncable preferences. | Settings are stored in browser extension storage. |
-| `unlimitedStorage` | Store custom font records and larger local settings safely. | Custom font files stay local and are excluded from sync storage. |
-| `tabs` | Read the current tab URL for popup state, current-site toggles, and tab notifications. | FontARA does not collect browsing history. |
+| `unlimitedStorage` | Store custom-font face blobs within FontARA's own 50 MiB library quota. | Font binaries stay local and are excluded from settings messages and sync storage. |
 | `fontSettings` | List installed system fonts on Chromium-based browsers. | Firefox builds omit this permission and keep system fonts disabled. |
-| `contextMenus` | Provide quick extension actions from the browser context menu. | Optional on Chromium builds and required by Firefox packaging. |
+| `contextMenus` | Provide quick extension actions from the browser context menu. | Optional on both Chromium and Firefox; requested and revoked with the user's toggle. |
 | Web accessible font assets | Let pages load bundled extension font files through injected CSS. | Only bundled font assets are exposed. |
 | Google Fonts network access | Request the selected Google Font CSS and font file when Google Fonts are enabled. | No Google API key is needed at runtime; requests happen for the selected font only. |
 
-- Custom font files and system font choices are local-only and are excluded from
-  sync storage.
+- Custom font binaries and system-font choices are local-only and are excluded
+  from sync storage. Custom binaries are registered with `FontFace` and are not
+  placed in the page DOM.
 - Runtime font loading requests only the selected Google Font CSS when Google
   fonts are enabled.
 - Site-specific CSS is bundled with the extension and mapped through the
   configuration layer.
 - Extension pages use a locked-down content security policy and expose only font
   assets to web pages.
+- The complete policy is published at [docs/privacy.html](docs/privacy.html).
 
 ## Troubleshooting
 
@@ -260,19 +279,24 @@ custom font records, site lists, backup/import data, and syncable preferences.
 
 ## Quality
 
-- Main CI runs lint, typecheck, unit tests, inject tests, release builds, and
-  extension lint.
+- Main CI and release use the same verification workflow: source checks,
+  dependency audits, reproducible builds, and browser tests on Chrome stable/130
+  and Firefox stable/140 ESR. Release publishes the production ZIPs smoke-tested
+  by that workflow without rebuilding them.
 - Browser automation covers popup flows, options flows, current-site
   include/exclude, backup/import/reset, storage stress, Shadow DOM, iframes,
   SPA updates, lazy DOM, virtualized lists, and viewport rendering.
+- Targeted regressions cover worker restarts, saved profile edits, font preview
+  portals, concurrent profile changes, RTL reconciliation, and text-stroke
+  inheritance into protected subtrees.
 - A separate manual/nightly browser workflow runs Chrome and Firefox channel
   coverage.
 
 ## Roadmap
 
 - Generate built-in site optimization documentation directly from `src/config`.
-- Expand real-browser coverage for more Chromium channels and Firefox ESR
-  release gates.
+- Expand real-browser coverage for additional Chromium derivatives and curated
+  site workflows.
 - Add more curated RTL adapters and per-site profile presets.
 - Improve store-release automation and screenshot freshness checks for the
   website and browser-store listings.
@@ -285,6 +309,7 @@ custom font records, site lists, backup/import data, and syncable preferences.
 - [Site fixes and configuration](docs/site-fixes.md)
 - [Testing](docs/testing.md)
 - [Release process](docs/release.md)
+- [Dark Reader comparative audit (Persian)](docs/dark-reader-review-fa.md)
 - [Test layers](tests/README.md)
 - [Static website](docs/index.html)
 
@@ -334,9 +359,11 @@ release work.
 
 ## Google Fonts Catalog
 
-The extension ships a generated Google Fonts catalog, so normal builds do not
-need a Google API key. To refresh that catalog from Google Fonts Developer API
-v1, provide the key through your shell, a CI secret, or a local gitignored
+The extension ships one generated JSON catalog and loads it from its own
+package when needed for Google font selection or saved-font labels. It is not
+bundled into background, inject, popup, or options JavaScript. Normal builds do
+not need a Google API key. To refresh that catalog from Google Fonts Developer
+API v1, provide the key through your shell, a CI secret, or a local gitignored
 `.env.local` file:
 
 ```sh

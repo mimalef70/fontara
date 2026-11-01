@@ -1,4 +1,31 @@
 import type { RtlSiteId } from "./config/rtl-sites"
+import type {
+  CustomFontFamilyDraft,
+  CustomFontLoadResult,
+  CustomFontTransactionBatchCommitData,
+  CustomFontTransactionBeginData,
+  CustomFontTransactionIdData,
+  CustomFontTransactionPutFaceData
+} from "./custom-font-types"
+import type {
+  GoogleFontBinaryCacheStats,
+  GoogleFontBinaryPrepareResult
+} from "./google-font-binary-types"
+import type { FontaraLocalFontCommand } from "./local-font-types"
+
+export type {
+  CustomFontFaceMeta,
+  CustomFontFamily
+} from "./custom-font-types"
+
+export type {
+  GoogleFontBinaryCacheStats,
+  GoogleFontBinaryPrepareResult
+} from "./google-font-binary-types"
+export type {
+  FontaraLocalFontCommand,
+  LocalFontFamilyReference
+} from "./local-font-types"
 
 export interface WebsiteItem {
   url: string
@@ -9,16 +36,6 @@ export interface WebsiteItem {
   siteName?: string
   version?: string
   customCss?: boolean
-}
-
-export interface FontData {
-  value: string
-  name: string
-  data: string
-  type: string
-  fileHash: string
-  originalFileName: string
-  unicodeRange?: string | null
 }
 
 export interface SiteProfile {
@@ -33,7 +50,6 @@ export type FontaraSettings = Record<string, unknown>
 export type FontaraShortcuts = Partial<Record<"addSite" | "toggle", string>>
 
 export interface FontaraTabInfo {
-  favIconUrl: string | null
   id: number | null
   isActive: boolean
   isSupported: boolean
@@ -44,12 +60,18 @@ export interface FontaraExtensionData {
   activeTab: FontaraTabInfo
   isReady: boolean
   settings: FontaraSettings
+  settingsRevision: number
   shortcuts: FontaraShortcuts
 }
 
 export interface FontaraImportedSettingsResult {
   ignoredKeyCount: number
   importedKeyCount: number
+  revision: number
+}
+
+export interface FontaraSettingsMutationResult {
+  revision: number
 }
 
 export type FontaraApplyMode = "font-styles" | "full"
@@ -58,10 +80,12 @@ export interface FontaraFontThemeCommandData {
   active: boolean
   applyMode: FontaraApplyMode
   customCSS: string | null
-  customFontCSS: string
+  customFontFamilyRevision: number | null
+  customFontFamilyValue: string | null
   fontFaceCSS: string
   fontName: string
   googleFontCSS: string | null
+  localFont?: FontaraLocalFontCommand
   textStrokeCSS: string
 }
 
@@ -75,6 +99,19 @@ export interface FontaraPageThemeCommandData {
   rtl: FontaraRtlThemeCommandData
 }
 
+/**
+ * Orders resolved theme commands for one content-script document.
+ *
+ * `dispatcherId` distinguishes service-worker lifetimes, `sequence` orders
+ * commands produced by one worker for the document, and `settingsRevision`
+ * prevents an asynchronously resolved command from restoring older settings.
+ */
+export interface FontaraContentCommandOrder {
+  dispatcherId: string
+  sequence: number
+  settingsRevision: number
+}
+
 export type FontaraUIMessage =
   | {
       type: "fontara-ui-bg-get-data"
@@ -86,14 +123,23 @@ export type FontaraUIMessage =
       type: "fontara-ui-bg-unsubscribe-from-changes"
     }
   | {
-      data: FontaraSettings
+      data: {
+        clientMutationId: string
+        settings: FontaraSettings
+      }
       type: "fontara-ui-bg-change-settings"
     }
   | {
-      data: FontaraSettings
+      data: {
+        clientMutationId: string
+        settings: FontaraSettings
+      }
       type: "fontara-ui-bg-import-settings"
     }
   | {
+      data: {
+        clientMutationId: string
+      }
       type: "fontara-ui-bg-reset-settings"
     }
   | {
@@ -103,6 +149,41 @@ export type FontaraUIMessage =
       }
       type: "fontara-ui-bg-run-command"
     }
+  | {
+      data: CustomFontTransactionBeginData
+      type: "fontara-ui-bg-custom-font-begin"
+    }
+  | {
+      data: CustomFontTransactionPutFaceData
+      type: "fontara-ui-bg-custom-font-put-face"
+    }
+  | {
+      data: CustomFontTransactionIdData
+      type: "fontara-ui-bg-custom-font-commit"
+    }
+  | {
+      data: CustomFontTransactionBatchCommitData
+      type: "fontara-ui-bg-custom-font-import-batch"
+    }
+  | {
+      data: CustomFontTransactionIdData
+      type: "fontara-ui-bg-custom-font-abort"
+    }
+  | {
+      data: { clientMutationId: string; familyValue: string }
+      type: "fontara-ui-bg-custom-font-delete"
+    }
+  | {
+      data: { clientMutationId: string; selectedValue: string }
+      type: "fontara-ui-bg-google-font-prepare"
+    }
+  | {
+      data: { clientMutationId: string }
+      type: "fontara-ui-bg-google-font-cache-clear"
+    }
+  | {
+      type: "fontara-ui-bg-google-font-cache-stats"
+    }
 
 export type FontaraBackgroundMessage = {
   data: FontaraExtensionData
@@ -110,10 +191,7 @@ export type FontaraBackgroundMessage = {
 }
 
 export type FontaraContentScriptMessage = {
-  data: {
-    isTopFrame: boolean
-    url: string
-  }
+  pageURL?: string
   scriptId: string
   type:
     | "fontara-cs-bg-document-connect"
@@ -122,13 +200,22 @@ export type FontaraContentScriptMessage = {
     | "fontara-cs-bg-document-resume"
 }
 
+export type FontaraCustomFontLoadResultMessage = {
+  data: CustomFontLoadResult
+  type: "fontara-cs-bg-custom-font-load-result"
+}
+
+export type FontaraCustomFontTransactionFamily = CustomFontFamilyDraft
+
 export type FontaraContentCommandMessage =
   | {
+      commandOrder?: FontaraContentCommandOrder
       data: FontaraPageThemeCommandData
       scriptId?: string
       type: "fontara-bg-cs-apply-theme"
     }
   | {
+      commandOrder?: FontaraContentCommandOrder
       scriptId?: string
       type: "fontara-bg-cs-clean-up"
     }
@@ -141,3 +228,6 @@ export type FontaraMessageResponse<T = unknown> = {
   data?: T
   error?: string
 }
+
+export type FontaraGoogleFontPrepareResult = GoogleFontBinaryPrepareResult
+export type FontaraGoogleFontCacheStats = GoogleFontBinaryCacheStats

@@ -1,4 +1,4 @@
-import { Settings2, Trash2 } from "lucide-react"
+import { Globe2, Settings2, Trash2 } from "lucide-react"
 import * as React from "react"
 
 import { DEFAULT_FONTS, type DefaultFont } from "../../config/fonts"
@@ -30,20 +30,26 @@ import {
   TEXT_STROKE_MIN,
   TEXT_STROKE_STEP
 } from "../../config/text-stroke"
-import type { FontData, SiteProfile } from "../../definitions"
+import type { CustomFontFamily } from "../../custom-font-types"
+import type { SiteProfile } from "../../definitions"
 import { cn } from "../../utils/cn"
 import {
+  decodeGoogleFontValue,
+  type GoogleFontData,
   getGoogleFontByValue,
-  getGoogleFontList
+  loadGoogleFontList
 } from "../../utils/google-fonts"
 import { openOptionsPageSafely } from "../../utils/options-page"
 import {
   decodeSystemFontValue,
-  getSystemFontList,
+  isSystemFontAccessSupported,
+  loadSystemFonts,
+  normalizeSystemFontFamilyKey,
   type SystemFontData
 } from "../../utils/system-fonts"
+import { fontaraConnector } from "../connect/connector"
 import { useExtensionData } from "../hooks/use-extension-data"
-import { useStorageValue } from "../hooks/use-storage"
+import { useDebouncedStorageValue, useStorageValue } from "../hooks/use-storage"
 import { useI18n } from "../i18n"
 import {
   EMPTY_CUSTOM_FONT_LIST,
@@ -113,7 +119,14 @@ export default function PerSiteSettings() {
   const { direction, formatNumber, language, t } = useI18n()
   const currentTab = useExtensionData()?.activeTab ?? null
   const [drawerOpen, setDrawerOpen] = React.useState(false)
+  const [googleFonts, setGoogleFonts] = React.useState<GoogleFontData[]>([])
+  const [googleFontsReady, setGoogleFontsReady] = React.useState(false)
+  const [googleFontPreparation, setGoogleFontPreparation] = React.useState<{
+    status: "error" | "loading"
+    value: string
+  } | null>(null)
   const [systemFonts, setSystemFonts] = React.useState<SystemFontData[]>([])
+  const [systemFontsReady, setSystemFontsReady] = React.useState(false)
 
   const [selectedFont] = useStorageValue<string>(
     STORAGE_KEYS.SELECTED_FONT,
@@ -123,14 +136,15 @@ export default function PerSiteSettings() {
     STORAGE_KEYS.TEXT_STROKE,
     getTextStrokeInitialValue
   )
-  const [customFontList] = useStorageValue<FontData[]>(
+  const [customFontList] = useStorageValue<CustomFontFamily[]>(
     STORAGE_KEYS.CUSTOM_FONT_LIST,
     EMPTY_CUSTOM_FONT_LIST
   )
-  const [siteProfiles, setSiteProfiles] = useStorageValue<SiteProfile[]>(
-    STORAGE_KEYS.SITE_PROFILES,
-    getSiteProfilesInitialValue
-  )
+  const [siteProfiles, setSiteProfiles, flushSiteProfiles] =
+    useDebouncedStorageValue<SiteProfile[]>(
+      STORAGE_KEYS.SITE_PROFILES,
+      getSiteProfilesInitialValue
+    )
   const [enabledByDefault] = useStorageValue<boolean>(
     STORAGE_KEYS.ENABLED_BY_DEFAULT,
     getEnabledByDefaultInitialValue
@@ -155,17 +169,53 @@ export default function PerSiteSettings() {
   React.useEffect(() => {
     let cancelled = false
 
-    if (!systemFontsEnabled) {
-      setSystemFonts([])
+    if (!googleFontsEnabled) {
+      setGoogleFonts([])
+      setGoogleFontsReady(false)
+      return () => {
+        cancelled = true
+      }
+    }
+    if (!drawerOpen) {
       return () => {
         cancelled = true
       }
     }
 
-    getSystemFontList()
+    void loadGoogleFontList()
       .then((fonts) => {
         if (!cancelled) {
-          setSystemFonts(fonts)
+          setGoogleFonts(fonts)
+          setGoogleFontsReady(true)
+        }
+      })
+      .catch((error) => {
+        if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
+          console.warn("Failed to load the Google Fonts catalog.", error)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [drawerOpen, googleFontsEnabled])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    if (!systemFontsEnabled || !drawerOpen) {
+      setSystemFonts([])
+      setSystemFontsReady(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    loadSystemFonts({ forceRefresh: true })
+      .then((state) => {
+        if (!cancelled) {
+          setSystemFonts(state.fonts)
+          setSystemFontsReady(state.status === "ready")
         }
       })
       .catch((error) => {
@@ -174,13 +224,14 @@ export default function PerSiteSettings() {
         }
         if (!cancelled) {
           setSystemFonts([])
+          setSystemFontsReady(false)
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [systemFontsEnabled])
+  }, [drawerOpen, systemFontsEnabled])
 
   const currentUrl = currentTab?.url ?? null
   const domainPattern = currentUrl ? createSitePatternFromUrl(currentUrl) : null
@@ -255,14 +306,14 @@ export default function PerSiteSettings() {
     {
       label: t("fontSelector.customGroup"),
       options: customFontList.map((font) => ({
-        label: font.name,
+        label: font.displayName,
         value: font.value
       }))
     },
     {
       label: t("fontSelector.googleGroup"),
       options: googleFontsEnabled
-        ? getGoogleFontList().map((font) => ({
+        ? googleFonts.map((font) => ({
             label: font.name,
             value: font.value
           }))
@@ -277,23 +328,60 @@ export default function PerSiteSettings() {
     }
   ]
   const fontOptions = fontOptionGroups.flatMap((group) => group.options)
+  const fallbackFontLabel = getDefaultFontLabel(DEFAULT_FONTS[0], language)
 
   const getFontLabel = (fontValue: string | undefined): string => {
     if (!fontValue) return t("popup.perSite.globalFont")
 
+    const systemFont = decodeSystemFontValue(fontValue)
+    if (systemFont) {
+      if (!systemFontsEnabled) {
+        return t("fontSelector.sourcePaused", {
+          fallback: fallbackFontLabel,
+          font: systemFont
+        })
+      }
+      const selectedFamilyKey = normalizeSystemFontFamilyKey(systemFont)
+      const available = systemFonts.some(
+        (font) =>
+          normalizeSystemFontFamilyKey(font.fontFamily) === selectedFamilyKey
+      )
+      return isSystemFontAccessSupported() && systemFontsReady && !available
+        ? t("fontSelector.sourceUnavailable", {
+            fallback: fallbackFontLabel,
+            font: systemFont
+          })
+        : systemFont
+    }
+
+    const googleFontFamily = decodeGoogleFontValue(fontValue)
+    if (googleFontFamily) {
+      const googleFont = getGoogleFontByValue(fontValue)
+      const label = googleFont?.family ?? googleFontFamily
+      if (!googleFontsEnabled) {
+        return t("fontSelector.sourcePaused", {
+          fallback: fallbackFontLabel,
+          font: label
+        })
+      }
+      return googleFontsReady && !googleFont
+        ? t("fontSelector.sourceUnavailable", {
+            fallback: fallbackFontLabel,
+            font: label
+          })
+        : label
+    }
+
     const option = fontOptions.find((font) => font.value === fontValue)
     if (option) return option.label
-
-    const systemFont = decodeSystemFontValue(fontValue)
-    if (systemFont) return systemFont
-
-    const googleFont = getGoogleFontByValue(fontValue)
-    if (googleFont) return googleFont.family
 
     return fontValue
   }
 
-  const saveProfilePatch = async (patch: SiteProfilePatch) => {
+  const saveProfilePatch = async (
+    patch: SiteProfilePatch,
+    options: { flush?: boolean } = { flush: true }
+  ) => {
     if (!profilePattern) return
 
     const nextPattern = profilePattern
@@ -336,6 +424,9 @@ export default function PerSiteSettings() {
 
     try {
       await setSiteProfiles(nextProfiles)
+      if (options.flush !== false) {
+        await flushSiteProfiles()
+      }
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to save per-site settings.", error)
@@ -351,6 +442,7 @@ export default function PerSiteSettings() {
       await setSiteProfiles(
         removeSiteProfile(normalizedSiteProfiles, profileToRemove.pattern)
       )
+      await flushSiteProfiles()
     } catch (error) {
       if (__DEBUG__) {
         console.warn("Failed to reset per-site settings.", error)
@@ -377,12 +469,29 @@ export default function PerSiteSettings() {
     })
   }
 
-  const handleFontChange = async (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const nextFont = event.currentTarget.value
+  const selectPerSiteFont = async (nextFont: string) => {
+    const googleFontFamily = decodeGoogleFontValue(nextFont)
 
-    await saveProfilePatch({ enabled: true, font: nextFont || null })
+    try {
+      if (googleFontFamily) {
+        setGoogleFontPreparation({ status: "loading", value: nextFont })
+        await fontaraConnector.prepareGoogleFont(nextFont)
+      }
+
+      await saveProfilePatch({ enabled: true, font: nextFont || null })
+      setGoogleFontPreparation(null)
+    } catch (error) {
+      if (googleFontFamily) {
+        setGoogleFontPreparation({ status: "error", value: nextFont })
+      }
+      if (__DEBUG__) {
+        console.warn("Failed to prepare the per-site Google Font.", error)
+      }
+    }
+  }
+
+  const handleFontChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    void selectPerSiteFont(event.currentTarget.value)
   }
 
   const handleCustomStrokeToggle = async (checked: boolean) => {
@@ -395,10 +504,13 @@ export default function PerSiteSettings() {
   const handleTextStrokeChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    await saveProfilePatch({
-      enabled: true,
-      textStroke: Number(event.currentTarget.value)
-    })
+    await saveProfilePatch(
+      {
+        enabled: true,
+        textStroke: Number(event.currentTarget.value)
+      },
+      { flush: false }
+    )
   }
 
   return (
@@ -406,6 +518,8 @@ export default function PerSiteSettings() {
       <button
         type="button"
         data-testid="fontara-per-site-settings-open"
+        aria-controls="fontara-per-site-settings-drawer"
+        aria-expanded={drawerOpen}
         className={cn(
           "flex w-full items-center gap-2 rounded-md border p-2 text-start transition",
           currentProfileEnabled
@@ -449,7 +563,10 @@ export default function PerSiteSettings() {
       </button>
 
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="bottom">
-        <DrawerContent dir={direction} className="max-h-[85vh] overflow-y-auto">
+        <DrawerContent
+          id="fontara-per-site-settings-drawer"
+          dir={direction}
+          className="max-h-[85vh] overflow-y-auto">
           <DrawerHeader>
             <DrawerTitle className="text-center">
               {t("popup.perSite.drawerTitle")}
@@ -461,13 +578,7 @@ export default function PerSiteSettings() {
 
           <div className="space-y-3 px-4 pb-2">
             <div className="flex items-center gap-3 rounded-md border border-[#e5e7eb] bg-[#f8fafc] p-3">
-              {currentTab.favIconUrl && (
-                <img
-                  alt=""
-                  src={currentTab.favIconUrl}
-                  className="size-6 shrink-0 rounded object-contain"
-                />
-              )}
+              <Globe2 aria-hidden="true" className="size-6 shrink-0" />
               <div className="min-w-0 flex-1">
                 <span className="block text-xs font-semibold text-[#64748b]">
                   {t("popup.perSite.currentSite")}
@@ -559,13 +670,22 @@ export default function PerSiteSettings() {
                 id="fontara-per-site-font"
                 value={currentProfile?.font ?? ""}
                 data-testid="fontara-per-site-font-select"
-                onChange={(event) => void handleFontChange(event)}
+                disabled={googleFontPreparation?.status === "loading"}
+                onChange={handleFontChange}
                 className="h-10 w-full rounded-md border border-[#dbe3ef] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#2374ff] focus:ring-2 focus:ring-[#2374ff]/15">
                 <option value="">
                   {t("popup.perSite.globalFontWithValue", {
                     font: getFontLabel(selectedFont)
                   })}
                 </option>
+                {currentProfile?.font &&
+                  !fontOptions.some(
+                    (font) => font.value === currentProfile.font
+                  ) && (
+                    <option value={currentProfile.font} disabled>
+                      {getFontLabel(currentProfile.font)}
+                    </option>
+                  )}
                 {fontOptionGroups.map((group) =>
                   group.options.length > 0 ? (
                     <optgroup key={group.label} label={group.label}>
@@ -585,6 +705,38 @@ export default function PerSiteSettings() {
                     })
                   : t("popup.perSite.globalFont")}
               </p>
+              {googleFontPreparation && (
+                <div
+                  aria-live="polite"
+                  className={cn(
+                    "flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-xs",
+                    googleFontPreparation.status === "error"
+                      ? "border-red-100 bg-red-50 text-red-700"
+                      : "border-blue-100 bg-blue-50 text-blue-700"
+                  )}>
+                  <span>
+                    {googleFontPreparation.status === "loading"
+                      ? t("fontSelector.googleDownloading", {
+                          font:
+                            decodeGoogleFontValue(
+                              googleFontPreparation.value
+                            ) ?? ""
+                        })
+                      : t("fontSelector.googleDownloadFailed")}
+                  </span>
+                  {googleFontPreparation.status === "error" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-7 shrink-0 px-2 text-[11px]"
+                      onClick={() =>
+                        void selectPerSiteFont(googleFontPreparation.value)
+                      }>
+                      {t("fontSelector.googleRetry")}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 rounded-md border border-[#e5e7eb] p-3">
@@ -626,10 +778,12 @@ export default function PerSiteSettings() {
                   value={profileTextStrokeValue}
                   disabled={!customStrokeEnabled}
                   onChange={(event) => void handleTextStrokeChange(event)}
+                  onBlur={() => void flushSiteProfiles()}
+                  onPointerUp={() => void flushSiteProfiles()}
                   aria-label={t("popup.perSite.textStrokeLabel")}
                   className="h-2 w-full cursor-pointer accent-[#2374ff] disabled:cursor-not-allowed"
                 />
-                <div className="flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-[#64748b]">
                   <span>
                     {formatNumber(TEXT_STROKE_MIN, {
                       maximumFractionDigits: 1,

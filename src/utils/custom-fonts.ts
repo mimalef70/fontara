@@ -1,9 +1,10 @@
 import { removeSiteProfileFontOverrides } from "../config/site-profiles"
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../config/storage"
-import type { FontData, SiteProfile } from "../definitions"
+import type { CustomFontFamily } from "../custom-font-types"
+import type { SiteProfile } from "../definitions"
 
 export function createCustomFontDeletionUpdate(
-  customFontList: FontData[],
+  customFontList: CustomFontFamily[],
   fontValue: string,
   selectedFont: string | undefined,
   siteProfiles?: SiteProfile[]

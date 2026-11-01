@@ -1,9 +1,16 @@
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import { createRequire } from "node:module"
 import test, { afterEach } from "node:test"
 
 import { DEFAULT_VALUES, STORAGE_KEYS } from "../../src/config/storage"
-import type { FontData, SiteProfile, WebsiteItem } from "../../src/definitions"
+import type { CustomFontFamily } from "../../src/custom-font-types"
+import type {
+  FontaraPageThemeCommandData,
+  SiteProfile,
+  WebsiteItem
+} from "../../src/definitions"
+import { CUSTOM_FONT_FACE_STORAGE_PREFIX } from "../../src/utils/custom-font-storage"
 import { createGoogleFontValue } from "../../src/utils/google-fonts"
 import { MESSAGE_TYPES_BG_TO_CS } from "../../src/utils/message"
 import { createSystemFontValue } from "../../src/utils/system-fonts"
@@ -18,8 +25,8 @@ type RequireWithCssExtensions = {
   extensions: Record<string, CssModuleLoader | undefined>
 }
 
-type StoredValues = {
-  [STORAGE_KEYS.CUSTOM_FONT_LIST]: FontData[]
+type StoredValues = Record<string, unknown> & {
+  [STORAGE_KEYS.CUSTOM_FONT_LIST]: CustomFontFamily[]
   [STORAGE_KEYS.DISABLED_FOR]: string[]
   [STORAGE_KEYS.ENABLED_BY_DEFAULT]: boolean
   [STORAGE_KEYS.ENABLED_FOR]: string[]
@@ -36,6 +43,7 @@ const require = createRequire(import.meta.url)
 const requireWithCssExtensions = require as unknown as RequireWithCssExtensions
 const originalCSSExtension = requireWithCssExtensions.extensions[".css"]
 const originalGlobals = {
+  __CHROMIUM_MV3__: Reflect.get(globalThis, "__CHROMIUM_MV3__") as unknown,
   __DEBUG__: Reflect.get(globalThis, "__DEBUG__") as unknown,
   addEventListener: Reflect.get(globalThis, "addEventListener") as unknown,
   cancelAnimationFrame: Reflect.get(
@@ -45,6 +53,7 @@ const originalGlobals = {
   chrome: Reflect.get(globalThis, "chrome") as unknown,
   document: Reflect.get(globalThis, "document") as unknown,
   fetch: Reflect.get(globalThis, "fetch") as unknown,
+  FontFace: Reflect.get(globalThis, "FontFace") as unknown,
   HTMLElement: Reflect.get(globalThis, "HTMLElement") as unknown,
   MutationObserver: Reflect.get(globalThis, "MutationObserver") as unknown,
   Node: Reflect.get(globalThis, "Node") as unknown,
@@ -72,6 +81,47 @@ class FakeStyleDeclaration {
   }
 }
 
+class FakeFontFace {
+  family: string
+  status: FontFaceLoadStatus = "unloaded"
+
+  constructor(
+    family: string,
+    readonly source: string | ArrayBuffer,
+    readonly descriptors?: FontFaceDescriptors
+  ) {
+    this.family = family
+  }
+
+  async load(): Promise<FakeFontFace> {
+    this.status = "loaded"
+    return this
+  }
+}
+
+class FakeFontFaceSet {
+  readonly faces = new Set<FakeFontFace>()
+
+  add(face: FakeFontFace): FakeFontFaceSet {
+    this.faces.add(face)
+    return this
+  }
+
+  check(font: string): boolean {
+    return Array.from(this.faces).some((face) => font.includes(face.family))
+  }
+
+  delete(face: FakeFontFace): boolean {
+    return this.faces.delete(face)
+  }
+
+  load(font: string): Promise<FakeFontFace[]> {
+    return Promise.resolve(
+      Array.from(this.faces).filter((face) => font.includes(face.family))
+    )
+  }
+}
+
 class FakeElement {
   attributes = new Map<string, string>()
   childNodes: Array<{ nodeType: number; textContent?: string | null }> = []
@@ -95,7 +145,9 @@ class FakeElement {
   }
 
   appendChild(child: FakeElement): FakeElement {
+    child.remove()
     child.parentElement = this
+    child.isConnected = true
     this.children.push(child)
     if (child.id) {
       this.elementsById.set(child.id, child)
@@ -132,7 +184,18 @@ class FakeElement {
     }
   }
 
+  removeAttribute(attributeName: string): void {
+    this.attributes.delete(attributeName)
+  }
+
   remove(): void {
+    if (this.parentElement) {
+      const siblings = this.parentElement.children
+      const index = siblings.indexOf(this)
+      if (index !== -1) siblings.splice(index, 1)
+      this.parentElement = null
+    }
+    this.isConnected = false
     if (this.id) {
       this.elementsById.delete(this.id)
     }
@@ -163,8 +226,11 @@ afterEach(() => {
 
 function createRuntimeMocks(): {
   dispatchWindowEvent: (type: string, event: { persisted?: boolean }) => void
+  deferStorageReads: () => () => void
   dispatchStorageChange: StorageListener
   getStorageGetCount: (key: string) => number
+  getRegisteredFontFamilies: () => string[]
+  getPendingWindowTimeoutCount: () => number
   getStyleText: (id: string) => string
   getTreeWalkerCount: () => number
   dispatchRuntimeMessage: (message: unknown) => void
@@ -190,21 +256,41 @@ function createRuntimeMocks(): {
   const listeners: StorageListener[] = []
   const runtimeMessageListeners: Array<(message: unknown) => void> = []
   const storageGetCounts = new Map<string, number>()
+  const windowTimeouts = new Set<ReturnType<typeof setTimeout>>()
   const windowListeners = new Map<string, Array<(event: unknown) => void>>()
   let runtimeRemoveError: unknown = null
+  let storageReadsDeferred = false
+  const deferredStorageReads: Array<() => void> = []
   let treeWalkerCount = 0
   const matchingWebsite: WebsiteItem = {
     isActive: true,
     regex: "^https?://example\\.com/?.*$",
     url: "https://example.com"
   }
-  const customFont: FontData = {
-    data: `data:font/woff2;base64,${Buffer.from("font").toString("base64")}`,
-    fileHash: "a".repeat(64),
-    name: "Runtime Custom",
-    originalFileName: "runtime.woff2",
-    type: "woff2",
-    value: "RuntimeCustom-Fontara"
+  const customFontBytes = Buffer.from("wOF2runtime-custom-font")
+  const customFontHash = createHash("sha256")
+    .update(customFontBytes)
+    .digest("hex")
+  const customFont: CustomFontFamily = {
+    value: "RuntimeCustom-Fontara",
+    displayName: "Runtime Custom",
+    sourceFamilyKey: "runtime custom",
+    unicodeRange: null,
+    revision: 1,
+    faces: [
+      {
+        id: "runtime-custom-face",
+        fileHash: customFontHash,
+        fileName: "runtime.woff2",
+        format: "woff2",
+        byteLength: customFontBytes.byteLength,
+        weight: { min: 400, max: 400 },
+        style: "normal",
+        stretch: { min: 100, max: 100 },
+        axes: [],
+        validation: "verified"
+      }
+    ]
   }
   const values: StoredValues = {
     [STORAGE_KEYS.CUSTOM_FONT_LIST]: [customFont],
@@ -218,6 +304,13 @@ function createRuntimeMocks(): {
     [STORAGE_KEYS.SYSTEM_FONTS_ENABLED]: false,
     [STORAGE_KEYS.TEXT_STROKE]: 0,
     [STORAGE_KEYS.WEBSITE_LIST]: [matchingWebsite]
+  }
+  values[`${CUSTOM_FONT_FACE_STORAGE_PREFIX}${customFontHash}`] = {
+    encoding: "base64",
+    byteLength: customFontBytes.byteLength,
+    format: "woff2",
+    hash: customFontHash,
+    data: customFontBytes.toString("base64")
   }
   const bodyElement = new FakeElement("body", elementsById)
   const editableElement = new FakeElement("div", elementsById)
@@ -243,8 +336,10 @@ function createRuntimeMocks(): {
   const linkedinParagraphElement = new FakeElement("p", elementsById)
   linkedinEditableElement.appendChild(linkedinParagraphElement)
   bodyElement.appendChild(linkedinEditableElement)
+  const fontFaceSet = new FakeFontFaceSet()
   const documentMock = {
     body: bodyElement,
+    fonts: fontFaceSet,
     createElement(tagName: string) {
       return new FakeElement(tagName, elementsById)
     },
@@ -300,6 +395,7 @@ function createRuntimeMocks(): {
   }
 
   Reflect.set(globalThis, "HTMLElement", FakeElement)
+  Reflect.set(globalThis, "FontFace", FakeFontFace)
   Reflect.set(globalThis, "Node", { TEXT_NODE: 3 })
   Reflect.set(globalThis, "NodeFilter", {
     FILTER_ACCEPT: 1,
@@ -329,6 +425,18 @@ function createRuntimeMocks(): {
       }
     }
   }
+  const clearWindowTimeout = (timerId: ReturnType<typeof setTimeout>) => {
+    clearTimeout(timerId)
+    windowTimeouts.delete(timerId)
+  }
+  const setWindowTimeout = (callback: () => void, delay = 0) => {
+    const timerId = setTimeout(() => {
+      windowTimeouts.delete(timerId)
+      callback()
+    }, delay)
+    windowTimeouts.add(timerId)
+    return timerId
+  }
   const windowMock = {
     getComputedStyle(element: FakeElement) {
       return {
@@ -343,6 +451,7 @@ function createRuntimeMocks(): {
       }
     },
     clearInterval() {},
+    clearTimeout: clearWindowTimeout,
     history: historyMock,
     location: locationMock,
     requestIdleCallback(callback: (deadline: IdleDeadline) => void) {
@@ -352,7 +461,7 @@ function createRuntimeMocks(): {
     setInterval(_callback: () => void) {
       return 1
     },
-    setTimeout
+    setTimeout: setWindowTimeout
   }
   Reflect.set(globalThis, "window", windowMock)
   Reflect.set(
@@ -411,14 +520,19 @@ function createRuntimeMocks(): {
         ) {
           if (typeof keys === "string") {
             storageGetCounts.set(keys, (storageGetCounts.get(keys) ?? 0) + 1)
-            callback({ [keys]: values[keys as keyof StoredValues] })
+            callback({ [keys]: values[keys] })
             return
           }
 
           for (const key of Object.keys(keys)) {
             storageGetCounts.set(key, (storageGetCounts.get(key) ?? 0) + 1)
           }
-          callback({ ...keys, ...values })
+          const snapshot = { ...keys, ...values }
+          if (storageReadsDeferred) {
+            deferredStorageReads.push(() => callback(snapshot))
+          } else {
+            callback(snapshot)
+          }
         },
         set(items: Record<string, unknown>, callback: () => void) {
           Object.assign(values, items)
@@ -438,6 +552,7 @@ function createRuntimeMocks(): {
       }
     }
   })
+  Reflect.set(globalThis, "__CHROMIUM_MV3__", true)
   requireWithCssExtensions.extensions[".css"] = (module) => {
     module.exports = `
       @font-face {
@@ -448,6 +563,13 @@ function createRuntimeMocks(): {
   }
 
   return {
+    deferStorageReads() {
+      storageReadsDeferred = true
+      return () => {
+        storageReadsDeferred = false
+        for (const read of deferredStorageReads.splice(0)) read()
+      }
+    },
     dispatchWindowEvent(type, event) {
       for (const listener of windowListeners.get(type) ?? []) {
         listener(event)
@@ -467,6 +589,12 @@ function createRuntimeMocks(): {
     getStorageGetCount(key) {
       return storageGetCounts.get(key) ?? 0
     },
+    getRegisteredFontFamilies() {
+      return Array.from(fontFaceSet.faces, (face) => face.family)
+    },
+    getPendingWindowTimeoutCount() {
+      return windowTimeouts.size
+    },
     getStyleText(id) {
       return elementsById.get(id)?.textContent ?? ""
     },
@@ -484,7 +612,9 @@ async function waitFor(
   condition: () => boolean,
   message: string
 ): Promise<void> {
-  for (let index = 0; index < 60; index += 1) {
+  const deadline = Date.now() + 2_000
+
+  while (Date.now() < deadline) {
     if (condition()) return
     await new Promise((resolve) => setTimeout(resolve, 5))
   }
@@ -492,7 +622,7 @@ async function waitFor(
   assert.ok(condition(), message)
 }
 
-test("selected custom font changes inject its font-face without a reload", async () => {
+test("selected custom font changes load its FontFace without a reload", async () => {
   const runtime = createRuntimeMocks()
   const originalWarn = console.warn
   let warnCalls = 0
@@ -577,7 +707,11 @@ test("selected custom font changes inject its font-face without a reload", async
     )
     assert.match(
       runtime.getStyleText("fontara-text-stroke-style"),
-      /^\*:not\(pre, pre \*, code,/
+      /^\*:not\(:is\(pre, pre \*, code,/
+    )
+    assert.match(
+      runtime.getStyleText("fontara-text-stroke-style"),
+      /-webkit-text-stroke: 0 !important;/
     )
     assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
 
@@ -634,14 +768,24 @@ test("selected custom font changes inject its font-face without a reload", async
 
     await waitFor(
       () =>
-        runtime
-          .getStyleText("fontara-custom-font-styles")
-          .includes('font-family: "RuntimeCustom-Fontara"'),
-      "expected selected custom font-face to be injected after storage change"
+        /--fontara-font: "RuntimeCustom-Fontara"/.test(
+          runtime.getStyleText("fontara-dynamic-font")
+        ) &&
+        runtime.getRegisteredFontFamilies().includes("RuntimeCustom-Fontara"),
+      "expected selected custom font face to load after storage change"
     )
     assert.match(
       runtime.getStyleText("fontara-dynamic-font"),
       /--fontara-font: "RuntimeCustom-Fontara"/
+    )
+    assert.equal(runtime.getStyleText("fontara-custom-font-styles"), "")
+    assert.doesNotMatch(
+      [
+        runtime.getStyleText("fontara-font-styles"),
+        runtime.getStyleText("fontara-dynamic-font"),
+        runtime.getStyleText("fontara-editable-font-style")
+      ].join("\n"),
+      /data:font/
     )
     assert.equal(runtime.getTreeWalkerCount(), initialTreeWalkerCount)
     assert.ok(
@@ -668,6 +812,10 @@ test("selected custom font changes inject its font-face without a reload", async
           runtime.getStyleText("fontara-dynamic-font")
         ) && runtime.getStyleText("fontara-custom-font-styles") === "",
       "expected missing selected custom font to fall back to the default font"
+    )
+    assert.equal(
+      runtime.getRegisteredFontFamilies().includes("RuntimeCustom-Fontara"),
+      false
     )
     assert.ok(
       runtime.getStorageGetCount(STORAGE_KEYS.CUSTOM_FONT_LIST) >
@@ -764,10 +912,10 @@ test("selected custom font changes inject its font-face without a reload", async
 
     await waitFor(
       () =>
-        /--fontara-font: "Noto Sans Arabic"/.test(
+        /--fontara-font: "Vazirmatn-Fontara"/.test(
           runtime.getStyleText("fontara-dynamic-font")
         ) && runtime.getStyleText("fontara-google-font-styles") === "",
-      "expected content fallback to apply the Google font family without a content-script network fetch"
+      "expected content fallback to keep the default until cached Google font CSS is available"
     )
     assert.equal(googleFontFetchCalls, 0)
 
@@ -861,7 +1009,8 @@ test("selected custom font changes inject its font-face without a reload", async
           active: true,
           applyMode: "font-styles",
           customCSS: null,
-          customFontCSS: "",
+          customFontFamilyRevision: null,
+          customFontFamilyValue: null,
           fontFaceCSS: "",
           fontName: "Resolved Font",
           googleFontCSS: null,
@@ -894,12 +1043,27 @@ test("selected custom font changes inject its font-face without a reload", async
       "local"
     )
 
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    assert.match(
+      runtime.getStyleText("fontara-dynamic-font"),
+      /--fontara-font: "Resolved Font"/,
+      "normal background mode should not keep a high-fanout storage listener"
+    )
+    assert.equal(
+      runtime.getStorageGetCount(STORAGE_KEYS.SELECTED_FONT),
+      selectedFontReadCountBeforeResolvedCommand
+    )
+
+    runtime.dispatchRuntimeMessage({
+      type: MESSAGE_TYPES_BG_TO_CS.SETTINGS_CHANGED
+    })
+
     await waitFor(
       () =>
         /--fontara-font: "RuntimeCustom-Fontara"/.test(
           runtime.getStyleText("fontara-dynamic-font")
         ),
-      "expected storage fallback to keep applying changes when background does not answer"
+      "expected the explicit restart broadcast to reactivate local fallback"
     )
     assert.ok(
       runtime.getStorageGetCount(STORAGE_KEYS.SELECTED_FONT) >
@@ -913,8 +1077,126 @@ test("selected custom font changes inject its font-face without a reload", async
     assert.doesNotThrow(() => {
       runtime.dispatchWindowEvent("pagehide", { persisted: false })
     })
+    assert.equal(
+      runtime.getPendingWindowTimeoutCount(),
+      0,
+      "runtime teardown must cancel pending editable maintenance timers"
+    )
     assert.equal(warnCalls, 0)
   } finally {
     console.warn = originalWarn
+  }
+})
+
+function resolvedTheme(fontName: string): FontaraPageThemeCommandData {
+  return {
+    font: {
+      active: true,
+      applyMode: "font-styles",
+      customCSS: null,
+      customFontFamilyRevision: null,
+      customFontFamilyValue: null,
+      fontFaceCSS: "@font-face { font-family: Test; src: local(Test) }",
+      fontName,
+      googleFontCSS: null,
+      textStrokeCSS: ""
+    },
+    rtl: { active: false, siteId: null }
+  }
+}
+
+async function flushThemeWork(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+test("ordered cleanup removes active styles even when local storage is stale", async () => {
+  const runtime = createRuntimeMocks()
+  const { createContentThemeScheduler } = await import(
+    "../../src/inject/content-theme-scheduler"
+  )
+  const { cleanupResolvedPageTheme } = await import(
+    "../../src/inject/theme-applier"
+  )
+  cleanupResolvedPageTheme()
+  const warnings: unknown[] = []
+  const scheduler = createContentThemeScheduler({
+    isDisposed: () => false,
+    onExtensionContextInvalidated: () => assert.fail("unexpected invalidation"),
+    sendDocumentLifecycleMessage: () => true,
+    warn: (_message, error) => warnings.push(error)
+  })
+  const order = (sequence: number) => ({
+    dispatcherId: "worker",
+    sequence,
+    settingsRevision: sequence
+  })
+  try {
+    scheduler.scheduleLocalThemeApply("font-styles")
+    await flushThemeWork()
+    assert.match(runtime.getStyleText("fontara-font-styles"), /@font-face/)
+    scheduler.cleanUpThemeCommand(order(1))
+    assert.equal(runtime.getStyleText("fontara-font-styles"), "")
+    assert.equal(runtime.getStyleText("fontara-dynamic-font"), "")
+    await flushThemeWork()
+    assert.equal(
+      runtime.getStyleText("fontara-dynamic-font"),
+      "",
+      "stale active storage must not re-enable an ordered cleanup"
+    )
+    assert.deepEqual(warnings, [])
+  } finally {
+    scheduler.dispose()
+    cleanupResolvedPageTheme()
+  }
+})
+
+test("delayed inactive storage cannot clear a newer font after a quick off/on", async () => {
+  const runtime = createRuntimeMocks()
+  const { createContentThemeScheduler } = await import(
+    "../../src/inject/content-theme-scheduler"
+  )
+  const { cleanupResolvedPageTheme } = await import(
+    "../../src/inject/theme-applier"
+  )
+  cleanupResolvedPageTheme()
+  const warnings: unknown[] = []
+  const scheduler = createContentThemeScheduler({
+    isDisposed: () => false,
+    onExtensionContextInvalidated: () => assert.fail("unexpected invalidation"),
+    sendDocumentLifecycleMessage: () => true,
+    warn: (_message, error) => warnings.push(error)
+  })
+  const order = (sequence: number) => ({
+    dispatcherId: "worker",
+    sequence,
+    settingsRevision: sequence
+  })
+  runtime.values[STORAGE_KEYS.EXTENSION_ENABLED] = false
+  const finishReads = runtime.deferStorageReads()
+  try {
+    scheduler.scheduleLocalThemeApply("font-styles")
+    await flushThemeWork()
+    scheduler.cleanUpThemeCommand(order(1))
+    scheduler.applyThemeCommand(resolvedTheme("New Font"), order(2))
+    await flushThemeWork()
+    assert.match(runtime.getStyleText("fontara-dynamic-font"), /"New Font"/)
+    finishReads()
+    await flushThemeWork()
+    assert.match(
+      runtime.getStyleText("fontara-dynamic-font"),
+      /"New Font"/,
+      "the old storage snapshot must not undo the latest apply"
+    )
+    scheduler.cleanUpThemeCommand(order(1))
+    assert.match(
+      runtime.getStyleText("fontara-dynamic-font"),
+      /"New Font"/,
+      "a delayed older cleanup command must be rejected"
+    )
+    assert.deepEqual(warnings, [])
+  } finally {
+    finishReads()
+    scheduler.dispose()
+    cleanupResolvedPageTheme()
   }
 })

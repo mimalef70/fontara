@@ -358,7 +358,8 @@ test("AMO compact UUID submission polls the exact upload and attaches source ato
   assert.deepEqual(JSON.parse(String(requests[6].init.body)), {
     release_notes: { "en-US": "Release notes" }
   })
-  assert.ok(requests[8].url.endsWith(`/versions/${version}/?show_source=true`))
+  assert.ok(requests[1].url.endsWith(`/versions/${version}/?show_source=true`))
+  assert.ok(requests[8].url.endsWith(`/versions/${version}/`))
   assert.ok(
     requests.every(
       ({ url, init }) =>
@@ -449,7 +450,7 @@ test("retries repair metadata only for an interrupted submission with matching a
   assert.equal(requests.filter(({ init }) => init.method === "POST").length, 0)
 })
 
-test("an interrupted submission repairs oversized notes without uploading or creating another version", async () => {
+test("an interrupted submission repairs oversized notes and raw-source retries need no writes", async () => {
   const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
   const notes = `- Complete change.\n  Wrapped details.\n- ${"🚀".repeat(3000)}`
   const bounded = amoReleaseNotes(notes, version)
@@ -492,13 +493,89 @@ test("new submissions and metadata repairs require release-note readback confirm
         addon,
         { ...detail, release_notes: staleNotes }
       ])
-      await assert.rejects(client.submit(packages), /intended release notes/)
+      await assert.rejects(
+        client.submit(packages),
+        /persist the confirmed release notes/
+      )
       assert.equal(
         requests.filter(({ init }) => init.method === "PATCH").length,
         1
       )
     }
   }
+})
+
+test("legacy AMO HTML is verified against the canonical PATCH response for new and repeated submissions", async () => {
+  const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
+  const url = `https://github.com/mimalef70/fontara/blob/v${version}/CHANGELOG.md`
+  const notes = `${Array.from({ length: 250 }, () => "- change").join("\n")}\n\nFull changelog: ${url}`
+  const html = `<ul>\n${"<li>change</li>\n".repeat(250)}</ul>\n<p>Full changelog: <a href="https://outbound.mozilla.org/v1/example/${encodeURIComponent(url)}">${url}</a></p>`
+  assert.ok([...notes].length <= 3000)
+  assert.ok([...html].length > 3000)
+  const confirmed = {
+    ...detail,
+    file: { status: "public" },
+    approval_notes: marker,
+    release_notes: { "en-US": html }
+  }
+  for (const existing of [
+    null,
+    { ...confirmed, release_notes: null },
+    confirmed
+  ]) {
+    const { client, requests } = harness([
+      ...(existing
+        ? [addon, existing]
+        : [addon, missing(), { results: [] }, uploaded, detail]),
+      confirmed,
+      addon,
+      confirmed
+    ])
+    const result = await client.submit({ ...packages, releaseNotes: notes })
+    assert.equal(result.state, "public")
+    assert.equal(result.unchanged, Boolean(existing))
+    assert.equal(
+      requests.filter(({ init }) => init.method === "POST").length,
+      existing ? 0 : 2
+    )
+    const patches = requests.filter(({ init }) => init.method === "PATCH")
+    assert.equal(patches.length, 1)
+    assert.deepEqual(JSON.parse(String(patches[0].init.body)), {
+      release_notes: { "en-US": notes }
+    })
+    assert.ok(
+      requests[requests.length - 1].url.endsWith(`/versions/${version}/`)
+    )
+  }
+})
+
+test("release-note updates reject wrong response identities and absent canonical text", async () => {
+  const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
+  const owned = { ...detail, approval_notes: marker, release_notes: null }
+  for (const updated of [
+    { ...detail, id: 91 },
+    { ...detail, version: "5.2.0" },
+    { ...detail, channel: "unlisted" },
+    { ...detail, source: null },
+    { ...detail, release_notes: null },
+    { ...detail, release_notes: { "en-US": "   " } },
+    { ...detail, release_notes: { "en-US": 5 } }
+  ]) {
+    const { client, requests } = harness([addon, owned, updated])
+    await assert.rejects(client.submit(packages), /AMO/)
+    assert.equal(requests.length, 3)
+  }
+  const { client } = harness([
+    addon,
+    owned,
+    detail,
+    addon,
+    { ...detail, id: 91 }
+  ])
+  await assert.rejects(
+    client.submit(packages),
+    /persist the confirmed release notes/
+  )
 })
 
 test("missing sources, disabled versions, and conflicting pending releases stop submission", async () => {

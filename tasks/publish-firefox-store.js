@@ -546,11 +546,11 @@ function createAmoClient({
     }
     return item
   }
-  async function status(version) {
+  async function status(version, { rawNotes = true } = {}) {
     releaseVersion(`v${version}`)
     await addon()
     const detail = await request(
-      `${addonPath}versions/${encodeURIComponent(version)}/?show_source=true`,
+      `${addonPath}versions/${encodeURIComponent(version)}/${rawNotes ? "?show_source=true" : ""}`,
       "GET",
       undefined,
       true
@@ -560,9 +560,11 @@ function createAmoClient({
     }
     return detail
   }
-  function accepted(detail, version, releaseNotes) {
+  function accepted(detail, version) {
     if (
       detail?.version !== version ||
+      !Number.isInteger(detail.id) ||
+      detail.id <= 0 ||
       detail.channel !== "listed" ||
       detail.is_disabled ||
       !["unreviewed", "public"].includes(detail.file?.status) ||
@@ -572,20 +574,45 @@ function createAmoClient({
         "AMO version is not an accepted listed submission with source attached; inspect its dashboard."
       )
     }
-    if (
-      releaseNotes !== undefined &&
-      detail.release_notes?.["en-US"] !== releaseNotes
-    ) {
-      throw new Error(
-        "AMO did not confirm the intended release notes; check status before retrying submission."
-      )
-    }
     return {
       version,
       versionId: detail.id,
       state: detail.file.status,
       sourceAttached: true
     }
+  }
+  async function updateReleaseNotes(version, versionId, releaseNotes) {
+    const updated = await request(
+      `${addonPath}versions/${versionId}/`,
+      "PATCH",
+      {
+        release_notes: { "en-US": releaseNotes }
+      }
+    )
+    accepted(updated, version)
+    const canonicalNotes = updated.release_notes?.["en-US"]
+    if (
+      updated.id !== versionId ||
+      typeof canonicalNotes !== "string" ||
+      !canonicalNotes.trim()
+    ) {
+      throw new Error(
+        "AMO did not confirm the release-note update; check status before retrying submission."
+      )
+    }
+    // Released AMO servers return sanitized HTML; raw show_source support was
+    // added later. Verify persistence against the canonical PATCH response using
+    // the same representation, including Markdown and outbound-link rewriting.
+    const confirmed = await status(version, { rawNotes: false })
+    if (
+      confirmed?.id !== versionId ||
+      confirmed.release_notes?.["en-US"] !== canonicalNotes
+    ) {
+      throw new Error(
+        "AMO did not persist the confirmed release notes; check status before retrying submission."
+      )
+    }
+    return accepted(confirmed, version)
   }
   async function submit({
     archive,
@@ -605,11 +632,8 @@ function createAmoClient({
         existing.approval_notes?.includes(marker) &&
         existing.release_notes?.["en-US"] !== releaseNotes
       ) {
-        await request(`${addonPath}versions/${existing.id}/`, "PATCH", {
-          release_notes: { "en-US": releaseNotes }
-        })
         return {
-          ...accepted(await status(version), version, releaseNotes),
+          ...(await updateReleaseNotes(version, existing.id, releaseNotes)),
           unchanged: true,
           metadataUpdated: true
         }
@@ -699,12 +723,8 @@ function createAmoClient({
         "AMO did not confirm the intended version; check its dashboard before retrying."
       )
     }
-    await request(`${addonPath}versions/${created.id}/`, "PATCH", {
-      release_notes: { "en-US": releaseNotes }
-    })
-    const confirmed = await status(version)
     return {
-      ...accepted(confirmed, version, releaseNotes),
+      ...(await updateReleaseNotes(version, created.id, releaseNotes)),
       unchanged: false,
       uploadId
     }

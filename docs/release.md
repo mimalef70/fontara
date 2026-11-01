@@ -421,8 +421,16 @@ A matching existing listed version with source attached is not uploaded again.
 A disabled version, another pending review, a newer version, invalid upload, or
 missing reviewer source stops submission. A retry repairs interrupted release-note
 updates only when the existing reviewer notes identify the same production and
-source hashes; it does not overwrite unrelated dashboard metadata. A same-version
-no-op confirms AMO state, not byte identity of a previously uploaded ZIP.
+source hashes; it does not overwrite unrelated dashboard metadata. An existing
+version result confirms AMO state, not byte identity of a previously uploaded ZIP.
+
+Release notes are limited to 3000 Unicode code points. Longer changelogs retain
+complete leading items and link to the full changelog at the verified tag. AMO
+can return rendered HTML instead of the submitted Markdown, so updates verify
+the canonical PATCH response against a fresh normal GET of the same version.
+Servers supporting raw-source responses can skip an already matching update;
+older servers may repeat the same metadata PATCH on retry. Neither path uploads
+or creates another version.
 
 ### One-time AMO credentials
 

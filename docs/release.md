@@ -141,22 +141,54 @@ version automatically at the configured initial percentage. A successful
 
 ## Chrome Web Store Automation
 
+### Configured deployment
+
+The following setup was verified on November 1, 2026:
+
+| Setting | Configured value |
+| --- | --- |
+| Google Cloud project | `fontara-releases` (`889078376271`) |
+| Billing account | None linked; verified in the Cloud Console before enabling release APIs. |
+| Service account | `fontara-store-release@fontara-releases.iam.gserviceaccount.com` |
+| Workload Identity provider | `projects/889078376271/locations/global/workloadIdentityPools/github-releases/providers/fontara-release` |
+| GitHub environment | `chrome-web-store`; only `master` and `v*` tags are allowed. |
+| Chrome publisher | `8ea046d5-23eb-47ac-a4e8-45e90296140e` |
+| Chrome item | `dcjdhicepiklefpimapdkbaeoocniemc` |
+| Initial rollout | `10%` |
+
+The service account has no keys and is linked to the Chrome publisher. Its
+impersonation grant is `roles/iam.workloadIdentityUser`, restricted to
+`attribute.repository_id/141708904` in the pool above. The provider uses the
+seven mappings and restrictive condition documented below. No project-wide
+editor/owner role is granted to the release service account.
+
+[Live authentication/status verification](https://github.com/mimalef70/fontara/actions/runs/41284253370)
+passed after IAM propagation, with package verification and GitHub publication
+skipped. [Release package verification](https://github.com/mimalef70/fontara/actions/runs/41283909097)
+passed the build and all four browser lanes, with both publication jobs skipped.
+These runs did not upload, submit, or publish a release.
+
 ### One-time authentication setup
 
 Use a Google Cloud service account with GitHub Workload Identity Federation
 (OIDC). The workflow requests a short-lived access token; no JSON private key,
 OAuth client secret, or refresh token is stored in GitHub or in a release ZIP.
 
-1. In a Google Cloud project, enable the Chrome Web Store API and the IAM
-   Service Account Credentials API. Create a service account dedicated to
-   FontARA releases; it does not need project-wide editor or owner roles.
+1. In a Google Cloud project, enable the Chrome Web Store, IAM, Resource
+   Manager, Service Account Credentials, and Security Token Service APIs.
+   Create a service account dedicated to FontARA releases; it does not need
+   project-wide editor or owner roles.
 2. In the Chrome Web Store publisher account, link that service account email.
    Chrome currently allows one service account per publisher. This grants
    access to all items owned by that publisher, so use a dedicated account and
    restrict its GitHub trust carefully.
 3. Create a Workload Identity Pool and GitHub OIDC provider with issuer
    `https://token.actions.githubusercontent.com`. Map `google.subject` to
-   `assertion.sub` and `attribute.repository_id` to `assertion.repository_id`.
+   `assertion.sub`, and map each of `repository_id`, `repository_owner_id`,
+   `workflow_ref`, `environment`, `ref`, and `event_name` from `assertion.NAME`
+   to `attribute.NAME`. This follows Google's deployment-pipeline setup
+   guidance to map the claims used by the condition; `repository_id` is also
+   used in the service account's IAM binding.
    Restrict the provider to FontARA's immutable numeric identities and this
    workflow, for example:
 
@@ -201,21 +233,30 @@ when configuring the trust relationship.
 
 #### Concrete setup commands
 
-The following is a setup plan, not a record of resources already created. Run
-it once from an authenticated Google Cloud CLI after authorizing creation of
-the dedicated project and the publisher access grant. The proposed project ID
-is `fontara-releases`; Google project IDs are globally unique, so choose an
-available ID if that name is taken. These commands do not attach a billing
+The commands below document provisioning a fresh deployment. The configured
+deployment above already exists; inspect it instead of rerunning creation
+commands. Run these only for an authorized new project and publisher access
+grant. Google project IDs are globally unique, so choose an available ID for
+another deployment. These commands do not attach a billing
 account, create service-account keys, or grant project editor/owner roles.
+The Cloud Console can automatically associate an existing billing account when
+creating a project. For a setup authorized without billing, check the project's
+billing page immediately and remove an automatic association before enabling
+APIs or creating release resources. The CLI guard below requires both
+`billingEnabled: false` and an empty billing-account reference; an unreadable
+or unexpected result stops setup.
 
-```sh
+```bash
+set -euo pipefail
 FONTARA_GCP_PROJECT_ID=fontara-releases
 FONTARA_WIF_POOL=github-releases
 FONTARA_WIF_PROVIDER=fontara-release
 FONTARA_SA_NAME=fontara-store-release
 
 gcloud projects create "$FONTARA_GCP_PROJECT_ID" --name="FontARA Releases"
-gcloud services enable chromewebstore.googleapis.com iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com --project="$FONTARA_GCP_PROJECT_ID"
+gcloud billing projects describe "$FONTARA_GCP_PROJECT_ID" --format=json |
+  python3 -c 'import json,sys; b=json.load(sys.stdin); sys.exit(0 if b.get("billingEnabled") is False and not b.get("billingAccountName") else "Stop: confirm the project has no billing account before continuing")'
+gcloud services enable chromewebstore.googleapis.com iam.googleapis.com cloudresourcemanager.googleapis.com iamcredentials.googleapis.com sts.googleapis.com --project="$FONTARA_GCP_PROJECT_ID"
 gcloud iam service-accounts create "$FONTARA_SA_NAME" --display-name="FontARA Chrome release publisher" --project="$FONTARA_GCP_PROJECT_ID"
 
 FONTARA_GCP_PROJECT_NUMBER="$(gcloud projects describe "$FONTARA_GCP_PROJECT_ID" --format='value(projectNumber)')"
@@ -225,7 +266,9 @@ gcloud iam workload-identity-pools create "$FONTARA_WIF_POOL" --location=global 
 
 FONTARA_WIF_CONDITION="assertion.repository_id == '141708904' && assertion.repository_owner_id == '17767869' && assertion.workflow_ref == 'mimalef70/fontara/.github/workflows/release.yml@' + assertion.ref && assertion.environment == 'chrome-web-store' && ((assertion.ref.startsWith('refs/tags/v') && assertion.event_name in ['push', 'workflow_dispatch']) || (assertion.ref == 'refs/heads/master' && assertion.event_name == 'workflow_dispatch'))"
 
-gcloud iam workload-identity-pools providers create-oidc "$FONTARA_WIF_PROVIDER" --workload-identity-pool="$FONTARA_WIF_POOL" --location=global --issuer-uri="https://token.actions.githubusercontent.com" --attribute-mapping="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id" --attribute-condition="$FONTARA_WIF_CONDITION" --project="$FONTARA_GCP_PROJECT_ID"
+FONTARA_WIF_MAPPING="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id,attribute.workflow_ref=assertion.workflow_ref,attribute.environment=assertion.environment,attribute.ref=assertion.ref,attribute.event_name=assertion.event_name"
+
+gcloud iam workload-identity-pools providers create-oidc "$FONTARA_WIF_PROVIDER" --workload-identity-pool="$FONTARA_WIF_POOL" --location=global --issuer-uri="https://token.actions.githubusercontent.com" --attribute-mapping="$FONTARA_WIF_MAPPING" --attribute-condition="$FONTARA_WIF_CONDITION" --project="$FONTARA_GCP_PROJECT_ID"
 
 gcloud iam service-accounts add-iam-policy-binding "$FONTARA_SA_EMAIL" --role=roles/iam.workloadIdentityUser --member="principalSet://iam.googleapis.com/projects/$FONTARA_GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$FONTARA_WIF_POOL/attribute.repository_id/141708904" --project="$FONTARA_GCP_PROJECT_ID"
 
@@ -249,6 +292,48 @@ exact `master` workflow for manual operations; the workflow's pre-authentication
 guard permits only `action=status` on a branch. That action requests only the
 `chromewebstore.readonly` scope. Submission and rollout both require a version
 tag before Google authentication, and use the write scope.
+
+The [Google deployment-pipeline guide](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
+asks for mappings for all condition fields. The [IAM REST reference](https://docs.cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.providers)
+also allows a condition to inspect the raw `assertion` directly; the complete
+mapping above keeps this setup aligned with the guide without broadening trust.
+
+### Verify the connection without publishing
+
+After linking the service account and setting the GitHub variables, run the
+read-only operation from the real release workflow:
+
+```sh
+gh workflow run release.yml --repo mimalef70/fontara --ref master -f action=status
+gh run list --repo mimalef70/fontara --workflow release.yml --event workflow_dispatch --branch master --limit 5
+```
+
+Open the newly dispatched run, or use `gh run watch RUN_ID --exit-status` with
+its ID. Confirm that the Google authentication and Chrome operation steps pass,
+and that the build and GitHub publication jobs are skipped. This exercises
+GitHub OIDC, the provider condition, service account impersonation, publisher
+access, and `fetchStatus` with the `chromewebstore.readonly` scope. The script
+checks the publisher/item identity before printing status. The returned version
+is the published or submitted revision; an unpublished dashboard draft is not
+reported by `fetchStatus`.
+
+New pools, providers, and IAM bindings can take up to five minutes to propagate.
+For a propagation failure immediately after setup, allow that interval and
+retry the status run before changing permissions. Keep tokens out of diagnostic
+output.
+
+To exercise the release package gate without submitting an extension, dispatch:
+
+```sh
+gh workflow run release.yml --repo mimalef70/fontara --ref master -f action=verify
+```
+
+This runs the full shared verification matrix and produces the tested ZIP
+artifact; both publication jobs must be skipped. Together these checks verify
+the package gate and the live authentication/status path. They do not establish
+that a real upload or review submission succeeded. Confirm those operations on
+the first intended release. Creating a `v*` tag is an actual release trigger,
+so it is not a non-publishing test.
 
 ### Publish a version
 

@@ -13,6 +13,9 @@ const {
   GUID,
   REQUIRED_JOBS,
   jwt,
+  SOURCE_SUPPLEMENT,
+  sourceSupplementFor,
+  verifySourceSupplement,
   createGitHubClient,
   prepareRelease,
   readVerifiedPackages,
@@ -20,7 +23,7 @@ const {
 } = require("../../tasks/publish-firefox-store.js")
 const { load } = require("js-yaml")
 const version = "5.1.0"
-const sha = "a".repeat(40)
+const sha = SOURCE_SUPPLEMENT.sha
 const archive = Buffer.from("exact verified production zip")
 const source = Buffer.from("exact matching source zip")
 const packages = { archive, source, version, releaseNotes: "Release notes" }
@@ -109,14 +112,16 @@ function githubFixture() {
       tag_name: "v5.1.0",
       draft: false,
       prerelease: false,
-      assets: ["firefox-mv3-prod.zip", "firefox-mv3-source-5.1.0.zip"].map(
-        (name) => ({
-          name,
-          state: "uploaded",
-          digest: `sha256:${"c".repeat(64)}`,
-          size: 10
-        })
-      )
+      assets: [
+        ["firefox-mv3-prod.zip", SOURCE_SUPPLEMENT.productionSha256],
+        ["firefox-mv3-source-5.1.0.zip", SOURCE_SUPPLEMENT.originalSha256],
+        [SOURCE_SUPPLEMENT.name, SOURCE_SUPPLEMENT.sha256]
+      ].map(([name, hash]) => ({
+        name,
+        state: "uploaded",
+        digest: `sha256:${hash}`,
+        size: 10
+      }))
     }
   }
   return {
@@ -171,6 +176,57 @@ test("release preparation resolves annotated tags and exact verified run assets"
   assert.deepEqual(automatic, manual)
   assert.equal(automatic.sha, sha)
   assert.equal(automatic.artifactId, 8)
+  assert.equal(automatic.sourceSupplement, SOURCE_SUPPLEMENT.name)
+})
+
+test("legacy source preparation pins its reviewed supplement while status needs none", async () => {
+  const fixture = githubFixture()
+  const release = fixture.data["releases/tags/v5.1.0"] as {
+    assets: Array<{ name: string; digest: string }>
+  }
+  const supplement = release.assets.find(
+    (asset) => asset.name === SOURCE_SUPPLEMENT.name
+  )
+  assert.ok(supplement)
+  supplement.digest = `sha256:${"f".repeat(64)}`
+  await assert.rejects(
+    prepareRelease({ tag: "v5.1.0", github: fixture.github }),
+    /supplement is missing or mismatched/
+  )
+  release.assets = release.assets.filter(
+    (asset) => asset.name !== SOURCE_SUPPLEMENT.name
+  )
+  const status = await prepareRelease({
+    tag: "v5.1.0",
+    github: fixture.github,
+    requireSource: false
+  })
+  assert.equal(status.sourceSupplement, undefined)
+  await assert.rejects(
+    prepareRelease({ tag: "v5.1.0", github: fixture.github }),
+    /supplement is missing or mismatched/
+  )
+})
+
+test("source correction identity cannot be retargeted by prepared metadata", () => {
+  const release = {
+    tag: SOURCE_SUPPLEMENT.tag,
+    sha: SOURCE_SUPPLEMENT.sha,
+    assets: {
+      "firefox-mv3-prod.zip": { sha256: SOURCE_SUPPLEMENT.productionSha256 },
+      "firefox-mv3-source-5.1.0.zip": {
+        sha256: SOURCE_SUPPLEMENT.originalSha256
+      }
+    }
+  }
+  assert.equal(sourceSupplementFor(release).name, SOURCE_SUPPLEMENT.name)
+  assert.equal(sourceSupplementFor({ ...release, tag: "v5.2.0" }), null)
+  assert.throws(
+    () => sourceSupplementFor({ ...release, sha: "f".repeat(40) }),
+    /does not match/
+  )
+  release.assets["firefox-mv3-source-5.1.0.zip"].sha256 = "f".repeat(64)
+  assert.throws(() => sourceSupplementFor(release), /does not match/)
 })
 
 test("release provenance rejects forks, wrong tags, unrelated workflows, and incomplete checks", async () => {
@@ -353,6 +409,43 @@ async function zip(files: Record<string, string>): Promise<Buffer> {
   return complete
 }
 
+test("reviewed source supplement preserves all original entries and only adds pinned ignore rules", async () => {
+  const original = {
+    "src/index.ts": "original code",
+    "package.json": '{"version":"5.1.0"}'
+  }
+  const rules = "/node_modules\n/build\n"
+  const ignoreHash = createHash("sha256").update(rules).digest("hex")
+  const originalZip = await zip(original)
+  verifySourceSupplement(
+    originalZip,
+    await zip({ ...original, ".gitignore": rules }),
+    ignoreHash
+  )
+  for (const changed of [
+    { ...original, ".gitignore": rules, "src/index.ts": "changed code" },
+    { ...original, ".gitignore": "different rules" },
+    { ...original, ".gitignore": rules, "extra.txt": "extra" },
+    { "package.json": original["package.json"], ".gitignore": rules }
+  ]) {
+    const corrected = await zip(changed)
+    assert.throws(
+      () => verifySourceSupplement(originalZip, corrected, ignoreHash),
+      /preserve every original entry/
+    )
+  }
+  const alreadyContainsIgnore = await zip({ ...original, ".gitignore": rules })
+  assert.throws(
+    () =>
+      verifySourceSupplement(
+        alreadyContainsIgnore,
+        alreadyContainsIgnore,
+        ignoreHash
+      ),
+    /preserve every original entry/
+  )
+})
+
 test("production/source validation detects tampering and mismatched source versions", async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "fontara-amo-test-"))
   try {
@@ -442,6 +535,29 @@ test("Firefox workflow keeps secrets out of validation and auto-submission disab
   assert.equal(checkout.with.ref, "master")
   assert.equal(workflow.permissions.contents, "read")
   assert.equal(workflow.permissions.actions, "read")
+  const supplement = job.steps.find(
+    (step: { name: string }) =>
+      step.name ===
+      "Download the pinned reviewer source supplement when required"
+  )
+  assert.equal(
+    runInNewContext(supplement.if, {
+      env: { AMO_ACTION: "status" },
+      steps: {
+        release: { outputs: { source_supplement: SOURCE_SUPPLEMENT.name } }
+      }
+    }),
+    false
+  )
+  assert.equal(
+    runInNewContext(supplement.if, {
+      env: { AMO_ACTION: "submit" },
+      steps: {
+        release: { outputs: { source_supplement: SOURCE_SUPPLEMENT.name } }
+      }
+    }),
+    true
+  )
   const operation = job.steps.find(
     (step: { name: string }) => step.name === "Run Mozilla Add-ons operation"
   )

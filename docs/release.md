@@ -393,12 +393,13 @@ released from GitHub after the one-time setup. See the official
 code from `master` and the exact packages from a completed `Release` tag-push
 run. It verifies repository identity, tag commit ancestry, all build/browser
 checks, and both Firefox asset digests against the published GitHub release.
+The original 5.1.0 release also uses the explicitly pinned reviewer-source
+supplement described below; its original artifacts remain verified and unchanged.
 It never executes code from the release source ZIP or rebuilds the package.
 Expired/missing artifacts stop the operation instead of selecting another build.
 
 The workflow supports three manual actions on `master`. Replace `vX.Y.Z` with
-an existing verified tag that includes the source-packaging fix. For the original
-`v5.1.0` tag, use only `status`; see the source-archive exception below.
+an existing verified tag, such as `v5.1.0`.
 
 ```sh
 gh workflow run firefox-release.yml --ref master -f release_tag=vX.Y.Z -f action=validate
@@ -409,8 +410,7 @@ gh workflow run firefox-release.yml --ref master -f release_tag=vX.Y.Z -f action
 - `validate` checks production/source identity and metadata without AMO credentials
   or requests. It does not prove Mozilla will accept or approve the upload.
 - `status` verifies the production package and reads AMO state without uploading
-  or changing a version. It can inspect an older release whose original source
-  archive cannot pass the newer submission checks.
+  or changing a version. It does not require or download reviewer source supplements.
 - `submit` uploads the verified ZIP to the existing listed add-on, waits for AMO
   validation, and creates the version with its source ZIP attached in the same
   request. Release notes and reviewer build instructions accompany the version.
@@ -455,12 +455,23 @@ explicit publication action and does not depend on this automatic switch.
 Source archives must include `.gitignore`, the lockfile, manifests, changelog,
 and `FIREFOX_SOURCE_README.md`. Tailwind uses the ignore rules when discovering
 source files, so leaving `.gitignore` out can change the rebuilt CSS. The original
-`v5.1.0` source artifact omitted that file. The automated `validate` and `submit`
-actions therefore reject that original archive; the production release ZIP and
-tag remain unchanged. Supply the reviewed corrected source through the AMO
-dashboard for that legacy submission. Future releases contain the packaging fix
-and can use the full automated path. Do not replace the old verified artifact or
-bypass its digest checks to make this gate pass.
+`v5.1.0` source artifact omitted that file. Its corrected source is an additional
+GitHub release asset named `firefox-mv3-source-5.1.0-review.zip`, not a replacement
+for either original ZIP or the tag. The trusted publisher pins the release
+commit, original production/source hashes, corrected source hash, and the exact
+tag's `.gitignore` hash. Before any AMO request, it verifies both original CI
+artifact hashes, the supplement's published and downloaded hashes, and every ZIP
+entry: all original entries must be byte-identical and `.gitignore` must be the
+only added entry. An isolated rebuild of this reviewed correction reproduced all
+152 production file contents. Reviewer notes disclose the correction explicitly.
+
+`validate` and `submit` download and check this one approved supplement through
+the API workflow; no dashboard upload, rebuild, arbitrary source override, or
+changed production package is needed. A missing or mismatched supplement stops
+submission. `status` remains read-only and needs no supplement. Future releases
+contain `.gitignore` in their normal verified source artifact and do not use this
+exception. The fixed source hash is
+`9d9f6df548148261fa1666b7917acced2525ea34aff85c50365addb604d80bf2`.
 
 [Mozilla's source-submission requirements](https://extensionworkshop.com/documentation/publish/source-code-submission/)
 and [version/source API](https://mozilla.github.io/addons-server/topics/api/addons.html#version-sources)

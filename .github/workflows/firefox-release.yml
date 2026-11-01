@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing verified release tag (original v5.1.0 supports status only)
+        description: Existing verified release tag (for example v5.1.0)
         type: string
         required: true
       action:
@@ -59,6 +59,12 @@ jobs:
           merge-multiple: true
           run-id: ${{ steps.release.outputs.run_id }}
           github-token: ${{ github.token }}
+      - name: Download the pinned reviewer source supplement when required
+        if: env.AMO_ACTION != 'status' && steps.release.outputs.source_supplement != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SUPPLEMENT: ${{ steps.release.outputs.source_supplement }}
+        run: gh release download "$AMO_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$SOURCE_SUPPLEMENT" --dir verified-firefox
       - name: Validate production and source archives before authentication
         if: env.AMO_ACTION != 'status'
         run: node tasks/publish-firefox-store.js --action validate --metadata "$RUNNER_TEMP/firefox-release.json" --directory verified-firefox

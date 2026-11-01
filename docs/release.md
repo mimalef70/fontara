@@ -387,6 +387,86 @@ released from GitHub after the one-time setup. See the official
 [API guide](https://developer.chrome.com/docs/webstore/using-api) and
 [publish method](https://developer.chrome.com/docs/webstore/api/reference/rest/v2/publishers.items/publish).
 
+## Firefox Add-ons Automation
+
+[firefox-release.yml](../.github/workflows/firefox-release.yml) uses publisher
+code from `master` and the exact packages from a completed `Release` tag-push
+run. It verifies repository identity, tag commit ancestry, all build/browser
+checks, and both Firefox asset digests against the published GitHub release.
+It never executes code from the release source ZIP or rebuilds the package.
+Expired/missing artifacts stop the operation instead of selecting another build.
+
+The workflow supports three manual actions on `master`. Replace `vX.Y.Z` with
+an existing verified tag that includes the source-packaging fix. For the original
+`v5.1.0` tag, use only `status`; see the source-archive exception below.
+
+```sh
+gh workflow run firefox-release.yml --ref master -f release_tag=vX.Y.Z -f action=validate
+gh workflow run firefox-release.yml --ref master -f release_tag=vX.Y.Z -f action=status
+gh workflow run firefox-release.yml --ref master -f release_tag=vX.Y.Z -f action=submit
+```
+
+- `validate` checks production/source identity and metadata without AMO credentials
+  or requests. It does not prove Mozilla will accept or approve the upload.
+- `status` verifies the production package and reads AMO state without uploading
+  or changing a version. It can inspect an older release whose original source
+  archive cannot pass the newer submission checks.
+- `submit` uploads the verified ZIP to the existing listed add-on, waits for AMO
+  validation, and creates the version with its source ZIP attached in the same
+  request. Release notes and reviewer build instructions accompany the version.
+  AMO may approve/sign a version automatically or send it for further review;
+  `unreviewed` is an accepted submission, not proof of public availability.
+
+A matching existing listed version with source attached is not uploaded again.
+A disabled version, another pending review, a newer version, invalid upload, or
+missing reviewer source stops submission. A retry repairs interrupted release-note
+updates only when the existing reviewer notes identify the same production and
+source hashes; it does not overwrite unrelated dashboard metadata. A same-version
+no-op confirms AMO state, not byte identity of a previously uploaded ZIP.
+
+### One-time AMO credentials
+
+Create the GitHub environment `mozilla-addons`, restricted to the `master`
+branch. Configure these environment secrets only after approving the account
+access and their transfer to GitHub:
+
+- `AMO_API_KEY`: issuer from Mozilla's API credentials page.
+- `AMO_API_SECRET`: its corresponding signing secret.
+
+Mozilla's API secret permits API requests on behalf of the Mozilla account; it
+is not an add-on-scoped credential. The publisher creates a distinct HS256 JWT
+with a 60-second lifetime for each request, while the underlying AMO secret
+remains a long-lived credential. Never place either credential in repository
+variables, source files, release notes, artifacts, or logs. The workflow exposes
+these secrets only to the AMO operation step. Missing credentials fail explicitly.
+See [Mozilla's authentication documentation](https://mozilla.github.io/addons-server/topics/api/auth.html)
+and the [API credentials page](https://addons.mozilla.org/en-US/developers/addon/api/key/).
+
+Automatic submission is **disabled by default**. Once account access and
+publication have been approved, set the environment variable
+`AMO_AUTO_SUBMIT_ENABLED` to the exact value `true`. Successful future `Release`
+tag-push runs then trigger Firefox submission. Leave it unset to retain manual
+submission and the staged observation policy below; automated runs still validate
+packages and explicitly report that submission is disabled. Manual `submit` is an
+explicit publication action and does not depend on this automatic switch.
+
+### Reviewer source and the original 5.1.0 release
+
+Source archives must include `.gitignore`, the lockfile, manifests, changelog,
+and `FIREFOX_SOURCE_README.md`. Tailwind uses the ignore rules when discovering
+source files, so leaving `.gitignore` out can change the rebuilt CSS. The original
+`v5.1.0` source artifact omitted that file. The automated `validate` and `submit`
+actions therefore reject that original archive; the production release ZIP and
+tag remain unchanged. Supply the reviewed corrected source through the AMO
+dashboard for that legacy submission. Future releases contain the packaging fix
+and can use the full automated path. Do not replace the old verified artifact or
+bypass its digest checks to make this gate pass.
+
+[Mozilla's source-submission requirements](https://extensionworkshop.com/documentation/publish/source-code-submission/)
+and [version/source API](https://mozilla.github.io/addons-server/topics/api/addons.html#version-sources)
+describe the reviewer source and listed-version submission contract. Store listing
+copy and screenshots remain separately maintained metadata.
+
 ## Release Checklist
 
 - `pnpm check` passes.
@@ -420,4 +500,6 @@ released from GitHub after the one-time setup. See the official
 Chrome tag releases submit the verified package for review with a 10% initial
 rollout by default. The increases above are explicit `rollout` actions in the
 Release workflow after the observation periods; they are never scheduled
-automatically. Firefox store publication and rollback remain separate actions.
+automatically. Firefox submission follows the separate workflow above; keep
+`AMO_AUTO_SUBMIT_ENABLED` unset while applying this staged observation policy.
+Firefox rollback remains a separate, explicit action.

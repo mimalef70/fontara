@@ -12,6 +12,12 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Added a separately enabled Firefox Add-ons release workflow that verifies the
+  original tag, CI run, and artifact hashes before uploading the package and
+  reviewer source. Mozilla account credentials require one-time setup.
+- Included `.gitignore` in reviewer source archives so Tailwind uses the same
+  scan exclusions outside Git and reproduces the packaged CSS.
+
 ## 5.1.0 - 2026-11-01
 
 - Added Chrome Web Store publication from verified release-tag artifacts using

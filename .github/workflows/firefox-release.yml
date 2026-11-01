@@ -1,0 +1,75 @@
+name: Firefox Release
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing verified release tag (original v5.1.0 supports status only)
+        type: string
+        required: true
+      action:
+        description: Validate packages, read AMO status, or submit the listed version
+        type: choice
+        options: [validate, status, submit]
+        default: validate
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  firefox-store:
+    if: >-
+      github.repository == 'mimalef70/fontara' && github.ref == 'refs/heads/master' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        startsWith(github.event.workflow_run.head_branch, 'v')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: mozilla-addons
+    concurrency:
+      group: mozilla-addons
+      cancel-in-progress: false
+    env:
+      AMO_RELEASE_TAG: ${{ inputs.release_tag || github.event.workflow_run.head_branch }}
+      AMO_ACTION: ${{ inputs.action || 'submit' }}
+    steps:
+      - name: Check out trusted publisher code from master
+        uses: actions/checkout@v7
+        with:
+          ref: master
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+      - name: Resolve the verified tag and original release artifact
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tasks/publish-firefox-store.js --action prepare --metadata "$RUNNER_TEMP/firefox-release.json"
+      - name: Download exact packages from the successful release
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ steps.release.outputs.artifact_id }}
+          path: verified-firefox
+          merge-multiple: true
+          run-id: ${{ steps.release.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Validate production and source archives before authentication
+        if: env.AMO_ACTION != 'status'
+        run: node tasks/publish-firefox-store.js --action validate --metadata "$RUNNER_TEMP/firefox-release.json" --directory verified-firefox
+      - name: Run Mozilla Add-ons operation
+        if: >-
+          env.AMO_ACTION != 'validate' &&
+          (github.event_name == 'workflow_dispatch' || vars.AMO_AUTO_SUBMIT_ENABLED == 'true')
+        env:
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: node tasks/publish-firefox-store.js --action "$AMO_ACTION" --metadata "$RUNNER_TEMP/firefox-release.json" --directory verified-firefox
+      - name: Explain disabled automatic submission
+        if: github.event_name == 'workflow_run' && vars.AMO_AUTO_SUBMIT_ENABLED != 'true'
+        run: echo 'Automatic AMO submission is disabled. Set AMO_AUTO_SUBMIT_ENABLED=true after approving the account credentials and automatic publication.' >> "$GITHUB_STEP_SUMMARY"

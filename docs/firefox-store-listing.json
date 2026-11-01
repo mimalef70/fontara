@@ -1,0 +1,82 @@
+{
+  "en-US": {
+    "summary": "Choose website fonts, add your own fonts, and improve right-to-left text with controls for each site.",
+    "description": "Read the web in the fonts you prefer. FontAra changes website fonts and improves right-to-left text, with controls for individual sites or the whole web. It is especially useful for Persian, Arabic, Kurdish, Dari, and pages that mix right-to-left and left-to-right text.\n\nYOUR FONTS AND YOUR SITES\n• Choose from bundled open-source fonts, or add your own WOFF, WOFF2, TTF, or OTF files with Regular and optional Bold styles.\n• Enable Google Fonts when you want more choices. Installed system-font enumeration is not available in Firefox.\n• Choose a font and text stroke for each site, or use global mode with inclusion and exclusion lists.\n• Use smart RTL to improve text direction and alignment in supported pages and editable fields.\n• Manage settings in English, Persian, or Arabic, and export or import a backup.\n\nFontAra is designed to preserve icons and code while changing readable text. Some websites need individual adjustments. Firefox internal pages, Mozilla Add-ons pages, and other browser-restricted pages cannot be modified.\n\nPRIVACY AND PERMISSIONS\nPage text is processed in your browser. FontAra has no analytics or advertising. Website access lets it apply your chosen font and text-direction settings on normal HTTP and HTTPS pages. Storage permissions keep your preferences, local font library, and font cache. Context-menu access is optional.\n\nCustom-font files remain in local extension storage and are included in a backup only when you export one. Eligible settings, including saved site rules, can sync through Firefox on desktop if browser sync is configured; you can turn settings sync off in FontAra. Custom-font files do not sync.\n\nGoogle Fonts is off by default and requires your consent in Firefox. When enabled, FontAra downloads and caches the fonts you select from Google. These requests omit credentials and referrers and do not send the visited page address or content. Google still receives your IP address, normal request metadata, and the requested font resource.\n\nPrivacy policy: https://mimalef70.github.io/fontara/privacy.html\nHelp and issue reports: https://github.com/mimalef70/fontara/issues\nSource code: https://github.com/mimalef70/fontara",
+    "release_notes": "• Rebuilt custom-font imports with Regular/Bold and supported variable-font faces, local font storage, backup migration, and clearer validation.\n• Improved per-site profiles, smart RTL, keyboard navigation, accessibility, and settings reliability.\n• Added optional Google Fonts in Firefox with browser consent, validated downloads, and a local font cache. Google Fonts remains off by default.\n• Removed the tabs permission and limited website access to HTTP and HTTPS pages.\n• Updated privacy information and English, Persian, and Arabic interface text.\n• Requires Firefox 140 or newer on desktop. Installed system-font enumeration is unavailable in Firefox."
+  },
+  "fa": {
+    "summary": "فونت سایت‌ها را انتخاب کنید، فونت دلخواه اضافه کنید و متن‌های راست‌به‌چپ را با تنظیمات هر سایت خواناتر کنید.",
+    "description": "وب را با فونت دلخواهتان بخوانید. فونت‌آرا به شما امکان می‌دهد فونت سایت‌ها و نمایش متن‌های راست‌به‌چپ را تغییر دهید؛ برای یک سایت یا به‌صورت سراسری. این افزونه به‌ویژه برای متن‌های فارسی، عربی، کردی، دری و صفحه‌هایی که دو جهت نوشتار را کنار هم دارند کاربرد دارد.\n\nفونت‌ها و سایت‌های شما\n• از فونت‌های متن‌باز داخلی استفاده کنید یا فایل‌های WOFF، WOFF2، TTF یا OTF خود را با حالت معمولی و در صورت نیاز ضخیم اضافه کنید.\n• برای انتخاب‌های بیشتر، Google Fonts را فعال کنید. فهرست‌کردن فونت‌های نصب‌شدهٔ سیستم در Firefox در دسترس نیست.\n• برای هر سایت فونت و ضخامت حاشیهٔ متن جداگانه تنظیم کنید، یا از حالت سراسری با فهرست سایت‌های مجاز و استثناها استفاده کنید.\n• با راست‌به‌چپ هوشمند، جهت و چینش متن را در صفحه‌ها و کادرهای ویرایش پشتیبانی‌شده بهبود دهید.\n• تنظیمات را با رابط فارسی، انگلیسی یا عربی مدیریت کنید و از آن‌ها نسخهٔ پشتیبان بگیرید یا پشتیبان را بازیابی کنید.\n\nفونت‌آرا برای تغییر متن خواندنی و حفظ آیکن‌ها و کدها طراحی شده است. بعضی سایت‌ها به تنظیم اختصاصی نیاز دارند. صفحه‌های داخلی Firefox، فروشگاه افزونه‌های Mozilla و دیگر صفحه‌های محدودشدهٔ مرورگر قابل تغییر نیستند.\n\nحریم خصوصی و دسترسی‌ها\nمتن صفحه در مرورگر شما پردازش می‌شود. فونت‌آرا ابزار تحلیل رفتار یا تبلیغات ندارد. دسترسی به سایت‌ها برای اعمال فونت و جهت متن انتخابی شما در صفحه‌های معمولی HTTP و HTTPS است. دسترسی‌های ذخیره‌سازی برای نگهداری تنظیمات، کتابخانهٔ محلی فونت و حافظهٔ نهان فونت‌ها استفاده می‌شوند. دسترسی به منوی راست‌کلیک اختیاری است.\n\nفایل‌های فونت دلخواه در فضای محلی افزونه می‌مانند و فقط هنگام خروجی‌گرفتن در فایل پشتیبان قرار می‌گیرند. تنظیمات قابل همگام‌سازی، از جمله قوانین ذخیره‌شدهٔ سایت‌ها، در صورت تنظیم همگام‌سازی مرورگر می‌توانند از طریق Firefox دسکتاپ همگام شوند؛ می‌توانید این قابلیت را در تنظیمات فونت‌آرا خاموش کنید. فایل‌های فونت دلخواه همگام نمی‌شوند.\n\nGoogle Fonts در حالت پیش‌فرض خاموش است و در Firefox به رضایت شما نیاز دارد. پس از فعال‌سازی، فونت‌آرا فونت‌های انتخابی را از Google دریافت و ذخیره می‌کند. این درخواست‌ها بدون اطلاعات ورود و referrer ارسال می‌شوند و آدرس یا محتوای صفحه‌ای که می‌بینید را منتقل نمی‌کنند. Google همچنان نشانی IP، اطلاعات معمول درخواست و منبع فونت درخواستی را دریافت می‌کند.\n\nسیاست حریم خصوصی: https://mimalef70.github.io/fontara/privacy.html\nراهنمایی و گزارش مشکل: https://github.com/mimalef70/fontara/issues\nکد منبع: https://github.com/mimalef70/fontara",
+    "release_notes": "• بازطراحی افزودن فونت دلخواه با حالت معمولی، ضخیم و فونت‌های متغیر پشتیبانی‌شده، ذخیره‌سازی محلی، مهاجرت پشتیبان‌ها و اعتبارسنجی روشن‌تر.\n• بهبود پروفایل سایت‌ها، راست‌به‌چپ هوشمند، کار با صفحه‌کلید، دسترس‌پذیری و پایداری تنظیمات.\n• افزودن Google Fonts اختیاری در Firefox با رضایت کاربر، دریافت اعتبارسنجی‌شده و حافظهٔ نهان محلی؛ این قابلیت به‌صورت پیش‌فرض خاموش است.\n• حذف دسترسی tabs و محدودکردن دسترسی سایت‌ها به HTTP و HTTPS.\n• به‌روزرسانی اطلاعات حریم خصوصی و رابط فارسی، انگلیسی و عربی.\n• نیازمند Firefox نسخهٔ ۱۴۰ یا جدیدتر در دسکتاپ. فهرست‌کردن فونت‌های نصب‌شدهٔ سیستم در Firefox در دسترس نیست."
+  },
+  "reviewer_notes": "FontARA 5.1.0, listed update for add-on {206079c5-9bab-485d-ad12-97298719c3f2}. No account, payment, or external API key is required to use the extension. The add-on ZIP is the unchanged verified GitHub release v5.1.0 artifact (commit 9e5770ca8272035d7fd453c776f2571b7b7a6b83). The review-source ZIP contains that release source plus only the same tag's .gitignore, omitted by the original source packager. That file preserves Tailwind scan exclusions. With this correction, all 152 rebuilt add-on file contents match the submitted package byte-for-byte; ZIP metadata timestamps outside Git may differ. CI covers Firefox stable and 140 ESR, including production-package installation and smoke tests.\n\nBuild from the attached source ZIP using Node.js 24.x and pnpm 11.5.0: pnpm install --frozen-lockfile; pnpm check; pnpm build:firefox. See FIREFOX_SOURCE_README.md. Build output is build/firefox-mv3-prod/ and build/firefox-mv3-prod.zip. No remote executable JavaScript or WebAssembly is loaded. Bundled minified UI scripts are built from the included src/ files and locked dependencies.\n\nTo test, open an ordinary HTTPS page, enable FontARA for the site from the toolbar popup, and choose a bundled font. The settings page provides custom-font import, per-site profiles, smart RTL, backups, and three interface languages. Internal Firefox and AMO pages cannot be modified. Firefox does not expose the Chromium fontSettings API, so installed system-font enumeration is disabled and that permission is omitted.\n\nGoogle Fonts is optional and off by default. Enabling it requests Firefox's optional technicalAndInteraction data permission; without consent, remote downloads remain disabled. Only selected font CSS/WOFF2 resources are fetched from fonts.googleapis.com and fonts.gstatic.com, with credentials omitted and no referrer; the background validates and caches font data and content scripts use FontFace(ArrayBuffer). No page URL or page text is sent to Google. Google necessarily receives IP/network request metadata and the requested font resource. Revoking consent stops network work. Required data collection is none; there is no analytics or advertising. Eligible preferences/site rules use Firefox storage.sync only through the browser's configured sync; local custom-font binaries are excluded.\n\nDesktop minimum: Firefox 140. Android minimum is declared as 142, but Android device behavior is not covered by the current CI matrix; this submission should not claim validated Android compatibility.",
+  "source_package_correction": {
+    "release_tag": "v5.1.0",
+    "release_commit": "9e5770ca8272035d7fd453c776f2571b7b7a6b83",
+    "original_source_sha256": "b21b28defd81df92c5597eb5622507501b3668758bb8a0d7c5067040c0dafbb8",
+    "review_source_filename": "firefox-mv3-source-5.1.0-review.zip",
+    "review_source_sha256": "9d9f6df548148261fa1666b7917acced2525ea34aff85c50365addb604d80bf2",
+    "only_added_entry": ".gitignore",
+    "gitignore_sha256": "507d7d0794bbfaf770cd9a3e7ece7d6e943ece2b0ab89655356f6a7c5f128684",
+    "reason": "Preserve Tailwind automatic source-detection exclusions when building outside the Git checkout. No runtime source or production package changed."
+  },
+  "listing_metadata": {
+    "name": "FontAra Font Changer",
+    "default_locale": "en-US",
+    "categories": [
+      {
+        "label": "Appearance",
+        "slug": "appearance"
+      },
+      {
+        "label": "Language Support",
+        "slug": "language-support"
+      }
+    ],
+    "homepage": "https://mimalef70.github.io/fontara/",
+    "support_url": "https://github.com/mimalef70/fontara/issues",
+    "privacy_policy_url": "https://mimalef70.github.io/fontara/privacy.html",
+    "source_url": "https://github.com/mimalef70/fontara",
+    "icon": "assets/icon-128.png",
+    "note": "Proposed listing fields; use the corresponding category options offered by the current AMO dashboard."
+  },
+  "screenshots": {
+    "capture_note": "Existing 5.1.0 production captures of shared extension UI. These scenes show no browser-specific system-font controls; they are not claimed to be captures of Firefox browser chrome.",
+    "en-US": [
+      {
+        "path": "docs/images/store/5.1.0/en/fontara-5.1.0-popup.png",
+        "caption": "Website font controls and current-site settings"
+      },
+      {
+        "path": "docs/images/store/5.1.0/en/fontara-5.1.0-custom-fonts.png",
+        "caption": "Import and manage local Regular and Bold fonts"
+      },
+      {
+        "path": "docs/images/store/5.1.0/en/fontara-5.1.0-site-profiles.png",
+        "caption": "Choose a font and text stroke for each site"
+      },
+      {
+        "path": "docs/images/store/5.1.0/en/fontara-5.1.0-smart-rtl.png",
+        "caption": "Configure smart right-to-left text support"
+      }
+    ],
+    "fa": [
+      {
+        "path": "docs/images/store/5.1.0/fa/fontara-5.1.0-popup.png",
+        "caption": "کنترل فونت سایت‌ها و تنظیمات سایت جاری"
+      },
+      {
+        "path": "docs/images/store/5.1.0/fa/fontara-5.1.0-custom-fonts.png",
+        "caption": "افزودن و مدیریت فونت‌های محلی معمولی و ضخیم"
+      },
+      {
+        "path": "docs/images/store/5.1.0/fa/fontara-5.1.0-site-profiles.png",
+        "caption": "انتخاب فونت و ضخامت حاشیهٔ متن برای هر سایت"
+      },
+      {
+        "path": "docs/images/store/5.1.0/fa/fontara-5.1.0-smart-rtl.png",
+        "caption": "تنظیم پشتیبانی هوشمند از متن راست‌به‌چپ"
+      }
+    ]
+  }
+}

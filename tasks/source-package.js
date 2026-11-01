@@ -15,6 +15,9 @@ const SOURCE_PACKAGE_FILES = [
   "SECURITY.md",
   "THIRD_PARTY_NOTICES.md",
   ".env.example",
+  // Tailwind's automatic source detection honors these exclusions when
+  // reviewers rebuild outside the Git checkout.
+  ".gitignore",
   "biome.json",
   "components.json",
   "package.json",

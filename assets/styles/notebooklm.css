@@ -36,6 +36,8 @@
   .mat-tonal-button,
   .query-box-input
 ):not(
+  [style*="font-"],
+  [style*="font-"] *,
   pre,
   pre *,
   code,

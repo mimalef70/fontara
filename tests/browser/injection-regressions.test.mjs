@@ -565,3 +565,201 @@ test("Chrome Claude independent list-item scopes preserve mixed-language sibling
     assert.deepEqual(directions, ["ltr", "ltr", "ltr"])
   })
 })
+
+test("Chrome Gemini RTL lists retain native markers and restore page styling", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.evaluate(() => {
+      document.body.innerHTML = `
+        <style>ol, ul, li { list-style-type: none; }</style>
+        <div id="model-response-message-content-1">
+          <ol id="ordered" start="4" reversed>
+            <li id="first">سلام دنیا</li>
+            <li>سلام دوباره<ul id="nested"><li id="bullet">سلام</li></ul></li>
+            <li id="english" dir="ltr">English text</li>
+          </ol>
+          <ol id="mixed">
+            <li>English explanation with several long technical words</li>
+            <li id="mixed-rtl">سلام</li>
+            <li>Another English explanation with even more technical terms</li>
+          </ol>
+        </div>
+      `
+      window.adapter = FontaraRegressionRuntime.createRtlSiteAdapter("gemini")
+      window.adapter.enable()
+    })
+    await page.waitForFunction(
+      () =>
+        document.querySelector("#ordered").dir === "rtl" &&
+        document.querySelector("#bullet").dir === "rtl"
+    )
+    const active = await page.evaluate(() => {
+      const ordered = document.querySelector("#ordered")
+      const first = document.querySelector("#first")
+      const bullet = document.querySelector("#bullet")
+      return {
+        orderedType: getComputedStyle(first).listStyleType,
+        bulletType: getComputedStyle(bullet).listStyleType,
+        firstDirection: getComputedStyle(first).direction,
+        englishDirection: getComputedStyle(document.querySelector("#english"))
+          .direction,
+        start: ordered.start,
+        reversed: ordered.reversed,
+        before: getComputedStyle(first, "::before").content,
+        mixedDirection: document.querySelector("#mixed").getAttribute("dir"),
+        mixedType: getComputedStyle(document.querySelector("#mixed-rtl"))
+          .listStyleType
+      }
+    })
+    assert.deepEqual(active, {
+      orderedType: "decimal",
+      bulletType: "circle",
+      firstDirection: "rtl",
+      englishDirection: "ltr",
+      start: 4,
+      reversed: true,
+      before: "none",
+      mixedDirection: null,
+      mixedType: "decimal"
+    })
+    await page.evaluate(() => window.adapter.disable())
+    assert.deepEqual(
+      await page.evaluate(() => ({
+        direction: document.querySelector("#ordered").getAttribute("dir"),
+        englishDirection: document
+          .querySelector("#english")
+          .getAttribute("dir"),
+        marker: getComputedStyle(document.querySelector("#first"))
+          .listStyleType,
+        styles: document.querySelectorAll("style[data-fontara-rtl]").length
+      })),
+      { direction: null, englishDirection: "ltr", marker: "none", styles: 0 }
+    )
+    await page.evaluate(() => window.adapter.dispose())
+  })
+})
+
+test("Chrome Claude code and math guards restore original direction and alignment", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.evaluate(() => {
+      document.body.innerHTML = `
+        <article>
+          <p>سلام دنیا</p>
+          <pre id="code" dir="auto" style="text-align: center !important">سلام</pre>
+          <pre id="plain-code">const answer = 42</pre>
+          <div class="katex-display" style="text-align: center">
+            <span id="math" class="katex" dir="auto">x + y</span>
+          </div>
+          <div id="role-math" role="math" dir="auto" style="text-align: center !important">a + b</div>
+        </article>
+      `
+      window.readGuards = () =>
+        Object.fromEntries(
+          ["code", "plain-code", "math", "role-math"].map((id) => {
+            const element = document.getElementById(id)
+            return [
+              id,
+              {
+                dir: element.getAttribute("dir"),
+                direction: element.style.getPropertyValue("direction"),
+                directionPriority:
+                  element.style.getPropertyPriority("direction"),
+                align: element.style.getPropertyValue("text-align"),
+                alignPriority: element.style.getPropertyPriority("text-align"),
+                computedAlign: getComputedStyle(element).textAlign
+              }
+            ]
+          })
+        )
+      window.originalGuards = window.readGuards()
+      window.adapter = FontaraRegressionRuntime.createRtlSiteAdapter("claude")
+    })
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      await page.evaluate(() => window.adapter.enable())
+      await page.waitForFunction(() =>
+        ["code", "plain-code", "math", "role-math"].every(
+          (id) => document.getElementById(id).dir === "ltr"
+        )
+      )
+      const active = await page.evaluate(() => window.readGuards())
+      assert.equal(active.code.computedAlign, "left")
+      assert.equal(active["plain-code"].computedAlign, "left")
+      assert.equal(active.math.computedAlign, "center")
+      assert.equal(active["role-math"].computedAlign, "center")
+      await page.evaluate(() => window.adapter.disable())
+      assert.deepEqual(
+        await page.evaluate(() => window.readGuards()),
+        await page.evaluate(() => window.originalGuards)
+      )
+    }
+    await page.evaluate(() => window.adapter.dispose())
+  })
+})
+
+test("Chrome chatbot font rules preserve code, math and nested symbol fonts", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    for (const site of ["chatgpt", "claude", "gemini"]) {
+      const css = readFileSync(`assets/styles/${site}.css`, "utf8")
+      const result = await page.evaluate((css) => {
+        document.body.innerHTML = `
+          <style>
+            :root { --fontara-font: "FontaraTest"; }
+            .code-font, .code-font code { font-family: "CodeFont"; }
+            .katex { font-family: "KaTeX_Main"; }
+            [role="math"] { font-family: "MathFont"; }
+            .material-symbols-outlined, .icon { font-family: "SymbolFont"; }
+            [aria-hidden="true"] { font-family: "HiddenFont"; }
+          </style>
+          <article>
+            <p id="text">Readable text</p>
+            <div class="font-user-message"><p id="user-text">User message text</p></div>
+            <pre class="code-font"><code><span id="code-font">const x = 1</span></code></pre>
+            <span class="katex"><span id="math-font">x + y</span></span>
+            <span role="math"><span id="role-math-font">a + b</span></span>
+            <span class="material-symbols-outlined"><span id="symbol-font">home</span></span>
+            <span class="icon"><span id="icon-font">home</span></span>
+            <span aria-hidden="true"><span id="hidden-font">hidden</span></span>
+            <span style='font-family: "AuthoredFont"'><span id="authored-font">special text</span></span>
+          </article>
+        `
+        const style = document.createElement("style")
+        style.textContent = css
+        document.head.appendChild(style)
+        const families = Object.fromEntries(
+          [
+            "text",
+            "user-text",
+            "code-font",
+            "math-font",
+            "role-math-font",
+            "symbol-font",
+            "icon-font",
+            "hidden-font",
+            "authored-font"
+          ].map((id) => [
+            id,
+            getComputedStyle(document.getElementById(id)).fontFamily
+          ])
+        )
+        style.remove()
+        return families
+      }, css)
+      assert.match(result.text, /FontaraTest/, site)
+      if (site === "claude") {
+        assert.match(result.text, /Anthropic Serif/)
+        assert.match(result["user-text"], /Anthropic Sans/)
+        assert.doesNotMatch(result["user-text"], /Anthropic Serif/)
+      }
+      for (const [id, family] of Object.entries({
+        "code-font": "CodeFont",
+        "math-font": "KaTeX_Main",
+        "role-math-font": "MathFont",
+        "symbol-font": "SymbolFont",
+        "icon-font": "SymbolFont",
+        "hidden-font": "HiddenFont",
+        "authored-font": "AuthoredFont"
+      })) {
+        assert.equal(result[id], family, `${site}: ${id}`)
+      }
+    }
+  })
+})

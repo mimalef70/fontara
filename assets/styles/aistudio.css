@@ -48,6 +48,8 @@
   ms-cmark-node *,
   textarea
 ):not(
+  [style*="font-"],
+  [style*="font-"] *,
   pre,
   pre *,
   code,

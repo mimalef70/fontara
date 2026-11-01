@@ -119,6 +119,8 @@ kbd {
     [class*="Paragraph-"]
   )
 ):not(
+  [style*="font-"],
+  [style*="font-"] *,
   pre,
   pre *,
   code,
@@ -162,4 +164,73 @@ kbd {
 .header-wordmark {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-header-wordmark-fallback) !important;
+}
+
+body :where(
+  p,
+  span,
+  div,
+  mark,
+  a,
+  h1, h2, h3, h4, h5, h6,
+  li,
+  label,
+  button,
+  input,
+  textarea,
+  select,
+  option,
+  em,
+  strong,
+  b,
+  i,
+  small,
+  time,
+  cite,
+  q,
+  blockquote,
+  figcaption,
+  summary,
+  dt, dd,
+  th, td, caption,
+  legend,
+  [role="heading"],
+  [role="button"],
+  [role="menuitem"],
+  [role="option"],
+  [role="tab"]
+):not(
+  [style*="font-"],
+  [style*="font-"] *,
+  pre,
+  pre *,
+  code,
+  code *,
+  [class*="code" i],
+  [class*="code" i] *,
+  .katex,
+  .katex *,
+  math,
+  math *,
+  [role="math"],
+  [role="math"] *,
+  mjx-container,
+  mjx-container *,
+  [class*="icon" i],
+  [class*="icon" i] *,
+  [class*="symbol" i],
+  [class*="symbol" i] *,
+  [aria-hidden="true"],
+  [aria-hidden="true"] *,
+  [class*="fa-"],
+  [class*="fa-"] *,
+  mat-icon,
+  mat-icon *,
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
+  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
+) {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-font-sans-child-fallback) !important;
 }

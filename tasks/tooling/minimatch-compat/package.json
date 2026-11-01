@@ -1,0 +1,11 @@
+{
+  "name": "@fontara/minimatch-compat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Compatibility adapter for secured development tooling dependencies",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "minimatch": "11.0.3"
+  }
+}

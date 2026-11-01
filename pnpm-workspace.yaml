@@ -1,21 +1,21 @@
 overrides:
-  brace-expansion: 1.1.18
   esbuild: 0.28.1
-  fast-uri: 3.1.7
-  js-yaml: 4.3.1
+  fast-uri: 3.1.9
+  js-yaml: 4.3.2
   nanoid: 3.3.18
   postcss: 8.5.26
-  shell-quote: 1.10.0
-  undici: 7.29.0
+  shell-quote: 1.12.0
+  undici: 7.30.1
+  adm-zip: 0.6.1
+  node-forge: 1.4.2
+  source-map-js: 1.2.2
+  # Legacy lint consumers need callable/default exports; the adapter delegates
+  # to patched minimatch 11. Remove when all parents support its exports.
+  minimatch@<11: file:./tasks/tooling/minimatch-compat
+  # deepmerge 4.3.1 has no published fix (GHSA-gcqx-w48m-w2h4). Preserve the
+  # linter schema merge hooks using @fastify/deepmerge until upstream migrates.
+  addons-linter>deepmerge: file:./tasks/tooling/addons-linter-deepmerge
 
 allowBuilds:
   esbuild: true
   spawn-sync: true
-
-auditConfig:
-  ignoreGhsas:
-    # Reviewed 2026-09-05: addons-linter 10.10.0 pins image-size 2.0.2,
-    # still the latest published version. Development lint tooling only.
-    # Recheck on each web-ext update; remove when a patched release exists.
-    - GHSA-5p2g-fcmc-qvqq
-    - GHSA-w3rx-r6r6-pgpr

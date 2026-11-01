@@ -113,15 +113,15 @@
     "axe-core": "4.12.1",
     "chokidar": "^5.0.0",
     "esbuild": "^0.28.1",
-    "js-yaml": "4.3.1",
+    "js-yaml": "4.3.2",
     "postcss": "8.5.26",
     "postcss-selector-parser": "7.1.6",
-    "puppeteer-core": "^25.1.0",
+    "puppeteer-core": "^25.16.0",
     "tailwindcss": "^4.3.0",
     "terser": "5.50.0",
     "tsx": "4.22.3",
     "typescript": "6.0.3",
-    "web-ext": "10.6.0",
+    "web-ext": "10.8.0",
     "yazl": "^3.3.1"
   }
 }

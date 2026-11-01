@@ -12,6 +12,7 @@ const require = createRequire(import.meta.url)
 const {
   GUID,
   REQUIRED_JOBS,
+  amoReleaseNotes,
   jwt,
   SOURCE_SUPPLEMENT,
   sourceSupplementFor,
@@ -135,6 +136,62 @@ function githubFixture() {
     }
   }
 }
+
+test("AMO notes preserve text through the 3000 Unicode code-point boundary", () => {
+  for (const count of [2999, 3000]) {
+    const notes = "🚀".repeat(count)
+    assert.equal(amoReleaseNotes(notes, version), notes)
+  }
+  assert.equal(
+    amoReleaseNotes("Short release notes", version),
+    "Short release notes"
+  )
+  assert.throws(() => amoReleaseNotes("", version), /release notes are empty/)
+})
+
+test("long AMO notes keep whole multiline bullets and point to the exact release changelog", () => {
+  const item = `- ${"🌍".repeat(1500)}\n  Wrapped continuation.\n\n  Second paragraph.\n  - Nested item stays attached.`
+  const notes = `${item}\n- ${"漢".repeat(1800)}\n- Final item.`
+  const expected = `${item}\n\nFull changelog: https://github.com/mimalef70/fontara/blob/v5.1.0/CHANGELOG.md`
+  assert.equal(amoReleaseNotes(notes, version), expected)
+  assert.ok([...expected].length <= 3000)
+  assert.equal(amoReleaseNotes(expected, version), expected)
+  assert.ok(
+    amoReleaseNotes(notes, "5.2.0").endsWith("/blob/v5.2.0/CHANGELOG.md")
+  )
+})
+
+test("AMO truncation fits an exact boundary and never cuts an oversized paragraph", () => {
+  const footer = `Full changelog: https://github.com/mimalef70/fontara/blob/v${version}/CHANGELOG.md`
+  const budget = 3000 - [...footer].length - 2
+  const fits = `- ${"🚀".repeat(budget - 2)}`
+  const tail = `\n- ${"z".repeat(3000)}`
+  const exact = amoReleaseNotes(fits + tail, version)
+  assert.equal(exact, `${fits}\n\n${footer}`)
+  assert.equal([...exact].length, 3000)
+  assert.equal(amoReleaseNotes(`${fits}🚀${tail}`, version), footer)
+  assert.equal(amoReleaseNotes("🚀".repeat(3001), version), footer)
+  assert.equal(
+    amoReleaseNotes(`Complete paragraph.\n\n${"x".repeat(4000)}`, version),
+    `Complete paragraph.\n\n${footer}`
+  )
+})
+
+test("AMO truncation keeps fenced examples whole so the changelog link stays visible", () => {
+  const footer = `Full changelog: https://github.com/mimalef70/fontara/blob/v${version}/CHANGELOG.md`
+  for (const fence of ["```", "~~~~"]) {
+    const example = `${fence}text\n- Code, not a changelog item.\n\nMore code.\n${fence}`
+    assert.equal(
+      amoReleaseNotes(`Intro.\n\n${example}\n\n${"x".repeat(4000)}`, version),
+      `Intro.\n\n${example}\n\n${footer}`
+    )
+    const oversized = `${fence}text\n- Keep this entire example.\n\n${"x".repeat(4000)}\n${fence}`
+    assert.equal(
+      amoReleaseNotes(`Intro.\n\n${oversized}\n\nLast paragraph.`, version),
+      `Intro.\n\n${footer}`
+    )
+  }
+})
 
 test("AMO JWTs use short-lived HS256 and unique request nonces", () => {
   const token = jwt(issuer, secret, 1000)
@@ -392,6 +449,35 @@ test("retries repair metadata only for an interrupted submission with matching a
   assert.equal(requests.filter(({ init }) => init.method === "POST").length, 0)
 })
 
+test("an interrupted submission repairs oversized notes without uploading or creating another version", async () => {
+  const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
+  const notes = `- Complete change.\n  Wrapped details.\n- ${"🚀".repeat(3000)}`
+  const bounded = amoReleaseNotes(notes, version)
+  const owned = { ...detail, approval_notes: marker, release_notes: null }
+  const confirmed = { ...detail, release_notes: { "en-US": bounded } }
+  const { client, requests } = harness([
+    addon,
+    owned,
+    confirmed,
+    addon,
+    confirmed
+  ])
+  const result = await client.submit({ ...packages, releaseNotes: notes })
+  assert.equal(result.metadataUpdated, true)
+  assert.equal(result.unchanged, true)
+  assert.equal(requests.filter(({ init }) => init.method === "POST").length, 0)
+  assert.deepEqual(JSON.parse(String(requests[2].init.body)), {
+    release_notes: { "en-US": bounded }
+  })
+  assert.ok([...bounded].length <= 3000)
+  const retry = harness([addon, { ...confirmed, approval_notes: marker }])
+  assert.equal(
+    (await retry.client.submit({ ...packages, releaseNotes: notes })).unchanged,
+    true
+  )
+  assert.ok(retry.requests.every(({ init }) => init.method === "GET"))
+})
+
 test("new submissions and metadata repairs require release-note readback confirmation", async () => {
   const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
   const owned = { ...detail, approval_notes: marker, release_notes: null }
@@ -557,8 +643,7 @@ test("production/source validation detects tampering and mismatched source versi
       "src/manifest-firefox-mv3.json": JSON.stringify(manifest),
       "pnpm-lock.yaml": "lockfileVersion: '9.0'",
       "FIREFOX_SOURCE_README.md": "Build instructions",
-      "CHANGELOG.md":
-        "## 5.1.0 - 2026-11-01\n\nRelease notes\n\n## 5.0.0\nOlder notes"
+      "CHANGELOG.md": `## 5.1.0 - 2026-11-01\n\nRelease notes\n\n${"x".repeat(4000)}\n\n## 5.0.0\nOlder notes`
     }
     const sourceArchive = await zip(sourceFiles)
     const assets: Record<string, { sha256: string; size: number }> = {}
@@ -575,7 +660,7 @@ test("production/source validation detects tampering and mismatched source versi
     const release = { tag: "v5.1.0", version, assets }
     assert.equal(
       readVerifiedPackages(directory, release).releaseNotes,
-      "Release notes"
+      "Release notes\n\nFull changelog: https://github.com/mimalef70/fontara/blob/v5.1.0/CHANGELOG.md"
     )
     fs.appendFileSync(path.join(directory, "firefox-mv3-prod.zip"), "tampered")
     assert.throws(() => readVerifiedPackages(directory, release), /digest/)

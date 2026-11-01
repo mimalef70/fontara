@@ -10,6 +10,7 @@ const REPOSITORY = "mimalef70/fontara"
 const REPOSITORY_ID = 141708904
 const GUID = "{206079c5-9bab-485d-ad12-97298719c3f2}"
 const AMO = "https://addons.mozilla.org/api/v5/addons/"
+const AMO_RELEASE_NOTES_LIMIT = 3000
 const REQUIRED_JOBS = [
   "verification / Check and build all packages",
   "verification / Chrome stable",
@@ -89,6 +90,43 @@ function releaseVersion(tag) {
     throw new Error("Select a release tag in vMAJOR.MINOR.PATCH format.")
   }
   return tag.slice(1)
+}
+
+function amoReleaseNotes(notes, version) {
+  const tag = `v${version}`
+  releaseVersion(tag)
+  if (typeof notes !== "string" || !notes.trim())
+    throw new Error("Version release notes are empty.")
+  // Django's max_length counts Unicode code points, not UTF-16 code units.
+  if ([...notes].length <= AMO_RELEASE_NOTES_LIMIT) return notes
+  const footer = `Full changelog: https://github.com/${REPOSITORY}/blob/${tag}/CHANGELOG.md`
+  const budget = AMO_RELEASE_NOTES_LIMIT - [...footer].length - 2
+  if (budget < 0) throw new Error("Release changelog URL exceeds AMO limits.")
+  const hasOpenFence = (text) => {
+    let fence
+    for (const line of text.split(/\r?\n/u)) {
+      const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/u)
+      if (!match) continue
+      if (!fence) fence = match[1]
+      else if (
+        match[1][0] === fence[0] &&
+        match[1].length >= fence.length &&
+        !match[2].trim()
+      )
+        fence = undefined
+    }
+    return Boolean(fence)
+  }
+  let excerpt = ""
+  // Cut only before a top-level list item or a new unindented paragraph.
+  // Wrapped lines and indented continuation paragraphs stay with their item.
+  const boundaries = /\r?\n(?=(?:[-*+]|\d+[.)]) )|\r?\n[ \t]*\r?\n(?=\S)/gu
+  for (const boundary of notes.matchAll(boundaries)) {
+    const candidate = notes.slice(0, boundary.index).trimEnd()
+    if ([...candidate].length > budget) break
+    if (!hasOpenFence(candidate)) excerpt = candidate
+  }
+  return excerpt ? `${excerpt}\n\n${footer}` : footer
 }
 
 function compareVersions(left, right) {
@@ -435,11 +473,13 @@ function readVerifiedPackages(
     (line, index) => index > start && line.startsWith("## ")
   )
   if (end < 0) end = lines.length
-  const releaseNotes = lines
-    .slice(start + 1, end)
-    .join("\n")
-    .trim()
-  if (!releaseNotes) throw new Error("Version release notes are empty.")
+  const releaseNotes = amoReleaseNotes(
+    lines
+      .slice(start + 1, end)
+      .join("\n")
+      .trim(),
+    release.version
+  )
   return {
     archive,
     source,
@@ -554,6 +594,7 @@ function createAmoClient({
     releaseNotes,
     reviewSourceNote = "Source and production ZIPs are the exact artifacts from the verified GitHub release."
   }) {
+    releaseNotes = amoReleaseNotes(releaseNotes, version)
     const existing = await status(version)
     const marker = `FontARA verified ZIP SHA-256: ${createHash("sha256").update(archive).digest("hex")}; source SHA-256: ${createHash("sha256").update(source).digest("hex")}.`
     if (existing) {
@@ -766,6 +807,7 @@ module.exports = {
   GUID,
   REQUIRED_JOBS,
   releaseVersion,
+  amoReleaseNotes,
   compareVersions,
   jwt,
   prepareRelease,

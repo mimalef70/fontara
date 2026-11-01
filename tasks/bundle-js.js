@@ -64,7 +64,20 @@ const textPlugin = {
     })
 
     build.onLoad({ filter: /.*/, namespace: "fontara-text" }, async (args) => {
-      const text = await fs.promises.readFile(args.path, "utf8")
+      let text = await fs.promises.readFile(args.path, "utf8")
+      if (build.initialOptions.minify && args.path.endsWith(".css")) {
+        // Imported site styles live inside the content-script bundle. Strip
+        // whitespace in production while preserving selectors, values, and
+        // identifiers; debug builds keep the readable source.
+        const result = await esbuild.transform(text, {
+          loader: "css",
+          minifyWhitespace: true,
+          charset: "utf8",
+          legalComments: "inline",
+          target: build.initialOptions.target
+        })
+        text = result.code.trim()
+      }
       return {
         contents: `export default ${JSON.stringify(text)};`,
         loader: "js"

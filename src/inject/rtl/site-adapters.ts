@@ -270,7 +270,7 @@ function createChatGptAdapter(): RtlSiteAdapter {
     '[data-testid="assistant-turn"]',
     '[data-testid="user-turn"]',
     '[data-testid="message-text"]',
-    '[data-dil-message-id]',
+    "[data-dil-message-id]",
     '[class*="DilRenderer-"]',
     '[class*="DilResponseRoot-"]',
     '[data-testid*="canvas"]',
@@ -297,7 +297,7 @@ function createChatGptAdapter(): RtlSiteAdapter {
     '[class*="TextBase-"]',
     '[class*="Title-"]',
     '[class*="RadioLabel-"]',
-    '[data-d-component]'
+    "[data-d-component]"
   ])
 
   return createStandardAdapter({
@@ -309,41 +309,21 @@ function createChatGptAdapter(): RtlSiteAdapter {
       '[data-type="unified-composer"]',
       '[data-type="unified-composer"] *',
       'form[data-type="unified-composer"]',
-      '[data-composer-body] [contenteditable]',
-      '[data-composer-input] [contenteditable]',
-      '[data-composer-markdown]',
-      '#prompt-textarea',
+      "[data-composer-body] [contenteditable]",
+      "[data-composer-input] [contenteditable]",
+      "[data-composer-markdown]",
+      "#prompt-textarea",
       "input",
       "textarea"
     ],
-    extraCss: `
-      :is([dir="rtl"],.writing-block-editor) :is(ul,ol) {
-        padding-inline: 1.5rem 0 !important;
-      }
-      :is([dir="rtl"],.writing-block-editor,[data-client-defined-widget="writing_block"])[dir="rtl"] :is(.ProseMirror,p,h1,h2,h3,h4,h5,h6,li,ul,ol) {
-        direction: rtl !important;
-        text-align: right !important;
-      }
-    `,
     applyToMessage: (element, engine) => {
       const messageText = getTextWithoutSelector(element, mathGuard)
       if (!engine.needsRTL(messageText) || !engine.textSelector) return true
 
-      if (element instanceof HTMLElement && element.matches(wbSel)) {
-        engine.applyRTL(element)
-      }
-
-      element.querySelectorAll(wbSel).forEach((wb) => {
-        if (
-          !engine.isExcluded(wb) &&
-          engine.needsRTL(getTextWithoutSelector(wb, mathGuard))
-        ) {
-          engine.applyRTL(wb)
-        }
-      })
-
       element.querySelectorAll(textSelector).forEach((child) => {
-        if (engine.isExcluded(child)) return
+        // Editors can contain both RTL prose and LTR text/code. Let their
+        // individual text blocks choose a direction instead of the editor root.
+        if (engine.isExcluded(child) || child.matches(wbSel)) return
         const childText = getTextWithoutSelector(child, mathGuard)
         if (engine.needsRTL(childText)) {
           engine.applyRTL(child)
@@ -469,7 +449,7 @@ function createClaudeAdapter(): RtlSiteAdapter {
     if (element.tagName === "UL" || element.tagName === "OL") {
       let rtlCount = 0
       let ltrCount = 0
-      element.querySelectorAll("li").forEach((listItem) => {
+      element.querySelectorAll(":scope > li").forEach((listItem) => {
         const direction = detectDominantDirection(listItem.textContent || "")
         if (direction === "rtl") {
           rtlCount += 1
@@ -497,16 +477,6 @@ function createClaudeAdapter(): RtlSiteAdapter {
 
       if (direction === "rtl") {
         applyRtlText(element)
-        if (element.tagName === "LI") {
-          const parentList = element.parentElement
-          if (
-            parentList instanceof HTMLElement &&
-            (parentList.tagName === "UL" || parentList.tagName === "OL") &&
-            parentList.getAttribute("dir") !== "rtl"
-          ) {
-            applyRtlList(parentList)
-          }
-        }
       } else {
         restoreIfModified(element)
       }
@@ -660,11 +630,6 @@ function createGeminiAdapter(): RtlSiteAdapter {
         isInSelector(element, uiExclude)
       ) {
         return true
-      }
-
-      const messageText = getElementText(element)
-      if (detectDominantDirection(messageText) === "rtl") {
-        currentEngine.applyRTL(element)
       }
 
       const candidates = new Set<HTMLElement>()

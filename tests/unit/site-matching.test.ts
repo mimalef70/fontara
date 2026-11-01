@@ -826,6 +826,58 @@ test("popular website toggles update every configured site pattern", () => {
   )
 })
 
+test("NotebookLM aliases share default activation and popular-site toggles", () => {
+  const notebook = POPULAR_WEBSITES.find(
+    (site) => site.siteName === "NotebookLM"
+  )
+  assert.ok(notebook)
+  assert.deepEqual(getWebsiteSitePatterns(notebook), [
+    "notebooklm.google.com",
+    "notebook.google.com"
+  ])
+  const urls = [
+    "https://notebooklm.google.com/notebook/test",
+    "https://notebook.google.com/notebook/test"
+  ]
+  for (const url of urls) {
+    const config = resolveFontaraSiteConfig(url, {})
+    assert.equal(config.font.active, true, `${url}: defaults`)
+    assert.equal(config.font.matchingWebsite?.url, notebook.url)
+    assert.equal(config.rtl.matchingSite?.id, "notebooklm")
+  }
+  for (const enabledByDefault of [false, true]) {
+    let settings = {
+      disabledFor: [] as string[],
+      enabledByDefault,
+      enabledFor: [] as string[]
+    }
+    for (const checked of [true, false, true]) {
+      settings = {
+        ...settings,
+        ...createWebsiteSiteListToggleUpdate(notebook, settings, checked)
+      }
+      for (const url of urls) {
+        assert.equal(
+          isSiteListUrlEnabled(url, settings),
+          checked,
+          `${url}: toggle ${checked} with default ${enabledByDefault}`
+        )
+      }
+      assert.equal(
+        isSiteListUrlEnabled("https://unrelated.google.com/", settings),
+        enabledByDefault
+      )
+      assert.equal(
+        isSiteListUrlEnabled(
+          "https://notebook.google.com.evil.example/",
+          settings
+        ),
+        enabledByDefault
+      )
+    }
+  }
+})
+
 test("manual exclude removes matching enabled overrides", () => {
   const update = createSiteListPatternAddUpdate("chatgpt.com", {
     disabledFor: [],

@@ -86,7 +86,8 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
     url: "https://notebooklm.google.com",
     regex: "^https://notebook(lm)?\\.google\\.com/.*$",
     icon: "assets/logos/NotebookLM.svg",
-    pattern: "https://notebooklm.google.com/*",
+    // The canonical URL is also included by getWebsiteSitePatterns.
+    pattern: "https://notebook.google.com/*",
     siteName: "NotebookLM",
     customCss: true,
     version: "5.0.0"

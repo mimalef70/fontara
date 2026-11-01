@@ -71,7 +71,7 @@ export class RtlAutoDirection {
   }
 
   private shouldSkipElement(element: Element): boolean {
-    if (this.isGeminiHost() && Boolean(element.closest(GEMINI_UI_SKIP))) {
+    if (this.isGeminiHost() && element.closest(GEMINI_UI_SKIP)) {
       return true
     }
     if (
@@ -79,7 +79,7 @@ export class RtlAutoDirection {
       !element.closest(
         ".docos-input-textarea, .docos-input-contenteditable, [class*='docos-']"
       ) &&
-      Boolean(element.closest(GOOGLE_SHEETS_SKIP))
+      element.closest(GOOGLE_SHEETS_SKIP)
     ) {
       return true
     }

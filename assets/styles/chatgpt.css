@@ -43,129 +43,8 @@ kbd {
     var(--fontara-chatgpt-kbd-fallback) !important;
 }
 
-/* Protect code, math, and icons across every text selector branch. */
-:is(
-  :is(.\*\:font-sans > *),
-  form[data-mobile-composer],
-  [class*="Paragraph-"],
-  [class*="TextBase-"],
-  [class*="Text-"],
-  [class*="Title-"],
-  [class*="RadioLabel-"],
-  [class*="ButtonInner-"],
-  [class*="DilRenderer-"],
-  [class*="DilResponseRoot-"],
-  [data-dil-message-id],
-  [data-d-component],
-  [data-d-text-flow],
-  [class*="editor-"],
-  .writing-block-editor,
-  .magic-edit-minimal,
-  .ProseMirror,
-  [class*="content-"],
-  [dir="auto"],
-  .markdown,
-  [class*="markdown_"],
-  .prose,
-  [data-message-author-role],
-  [data-testid*="canvas"],
-  [class*="canvas"],
-  [class*="Canvas"],
-  :where(
-    [data-message-author-role],
-    [data-testid*="conversation-turn"],
-    [data-testid*="canvas"],
-    [class*="canvas"],
-    [class*="Canvas"],
-    [class*="editor-"],
-    .writing-block-editor,
-    .magic-edit-minimal,
-    .ProseMirror,
-    [class*="content-"],
-    [class*="DilRenderer-"],
-    [class*="DilResponseRoot-"],
-    [data-dil-message-id],
-    .markdown,
-    [class*="markdown_"],
-    .prose,
-    [class*="Paragraph-"],
-    [class*="TextBase-"],
-    [dir="auto"],
-    article,
-    main
-  ) :where(
-    p,
-    span,
-    div,
-    li,
-    ul,
-    ol,
-    strong,
-    em,
-    b,
-    i,
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6,
-    blockquote,
-    td,
-    th,
-    table,
-    button,
-    label,
-    [class*="Paragraph-"]
-  )
-):not(
-  [style*="font-"],
-  [style*="font-"] *,
-  pre,
-  pre *,
-  code,
-  code *,
-  [class*="code" i],
-  [class*="code" i] *,
-  .katex,
-  .katex *,
-  math,
-  math *,
-  [role="math"],
-  [role="math"] *,
-  mjx-container,
-  mjx-container *,
-  [class*="icon" i],
-  [class*="icon" i] *,
-  [class*="symbol" i],
-  [class*="symbol" i] *,
-  [aria-hidden="true"],
-  [aria-hidden="true"] *,
-  [class*="fa-"],
-  [class*="fa-"] *,
-  mat-icon,
-  mat-icon *,
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
-) {
-  font-family: var(--fontara-font),
-    var(--fontara-chatgpt-font-sans-child-fallback) !important;
-}
-
-.writing-block-editor,
-[class*="editor-"],
-.ProseMirror {
-  --oai-wb-font-sans: var(--fontara-font),
-    var(--fontara-chatgpt-font-sans-child-fallback) !important;
-}
-
-.header-wordmark {
-  font-family: var(--fontara-font),
-    var(--fontara-chatgpt-header-wordmark-fallback) !important;
-}
-
+/* Protect code, math, and icons across readable text elements. */
+form[data-mobile-composer],
 body :where(
   p,
   span,
@@ -201,36 +80,77 @@ body :where(
   [role="tab"]
 ):not(
   [style*="font-"],
-  [style*="font-"] *,
-  pre,
-  pre *,
-  code,
-  code *,
-  [class*="code" i],
-  [class*="code" i] *,
-  .katex,
-  .katex *,
-  math,
-  math *,
-  [role="math"],
-  [role="math"] *,
-  mjx-container,
-  mjx-container *,
-  [class*="icon" i],
-  [class*="icon" i] *,
-  [class*="symbol" i],
-  [class*="symbol" i] *,
+  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
+  :is(.katex, math, [role="math"], mjx-container),
+  :is(.katex, math, [role="math"], mjx-container) *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  [class*="fa-"],
-  [class*="fa-"] *,
-  mat-icon,
-  mat-icon *,
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-font-sans-child-fallback) !important;
+}
+
+:is(
+  [class*="writing-block"],
+  [data-client-defined-widget="writing_block"],
+  [data-testid*="canvas"],
+  [class*="canvas" i],
+  .ProseMirror,
+  [class*="editor-"]
+) {
+  --oai-wb-font-sans: var(--fontara-font),
+    var(--fontara-chatgpt-font-sans-child-fallback) !important;
+}
+
+.header-wordmark {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-header-wordmark-fallback) !important;
+}
+
+[data-app-shell-titlebar] {
+  height: var(--app-shell-titlebar-height, var(--height-toolbar, 44px)) !important;
+  max-height: var(--app-shell-titlebar-height, var(--height-toolbar, 44px)) !important;
+  overflow: clip !important;
+  contain: layout paint !important;
+}
+
+[data-app-shell-titlebar] [data-test-id="header-shell-slot"] {
+  min-width: 0 !important;
+  max-height: 100% !important;
+}
+
+[data-app-shell-main-titlebar="true"] {
+  min-width: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  contain: layout paint !important;
+}
+
+[data-app-shell-titlebar] :is(button, a) {
+  text-align: inherit !important;
+}
+
+:root[dir="rtl"] [data-composer-body] .ProseMirror:has([data-empty-paragraph="true"]),
+:root[dir="rtl"] [data-composer-body] .placeholder {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+[class*="writing-block"] :is(p, h1, h2, h3, h4, h5, h6, li, th, td, blockquote)[dir="rtl"] {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+[class*="writing-block"] :is(ul, ol)[dir="rtl"],
+[class*="writing-block"] :is(ul, ol):has(> li[dir="rtl"]) {
+  padding-inline: 1.5rem 0 !important;
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+[class*="writing-block"] table:has([dir="rtl"]) {
+  direction: rtl !important;
 }

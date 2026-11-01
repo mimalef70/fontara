@@ -61,8 +61,9 @@ const DEFAULT_TEXTUAL_DESCENDANTS = [
 const COMMON_CODE_GUARD_SELECTORS = [
   "code",
   "pre",
-  '[class*="code"]',
-  '[class*="Code"]',
+  '[class*="code-block"]',
+  '[class*="CodeBlock"]',
+  '[class*="code-snippet"]',
   '[class*="language-"]',
   '[class*="hljs"]',
   ".monaco-editor",
@@ -263,7 +264,7 @@ function createStandardAdapter(config: StandardAdapterConfig): RtlSiteAdapter {
 
 function createChatGptAdapter(): RtlSiteAdapter {
   const wbSel =
-    '.writing-block-editor,.ProseMirror,[data-client-defined-widget="writing_block"]'
+    '.writing-block-editor,[class*="writing-block"],.ProseMirror,[data-client-defined-widget="writing_block"]'
   const messageSelectors = [
     '[data-testid="conversation-turn"]',
     "[data-message-author-role]",
@@ -306,6 +307,8 @@ function createChatGptAdapter(): RtlSiteAdapter {
     codeGuardSelectors,
     mathGuardSelectors: COMMON_MATH_GUARD_SELECTORS,
     excludeSelectors: [
+      "[data-app-shell-titlebar]",
+      "[data-app-shell-titlebar] *",
       '[data-type="unified-composer"]',
       '[data-type="unified-composer"] *',
       'form[data-type="unified-composer"]',
@@ -327,6 +330,20 @@ function createChatGptAdapter(): RtlSiteAdapter {
         const childText = getTextWithoutSelector(child, mathGuard)
         if (engine.needsRTL(childText)) {
           engine.applyRTL(child)
+          if (
+            child.tagName === "LI" &&
+            child.parentElement &&
+            (child.parentElement.tagName === "UL" ||
+              child.parentElement.tagName === "OL")
+          ) {
+            child.parentElement.setAttribute("dir", "rtl")
+          }
+          if (
+            (child.tagName === "TD" || child.tagName === "TH") &&
+            child.closest("table")
+          ) {
+            child.closest("table")?.setAttribute("dir", "rtl")
+          }
         }
       })
       return true

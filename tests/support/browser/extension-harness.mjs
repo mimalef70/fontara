@@ -7,7 +7,7 @@ import os from "node:os"
 import path from "node:path"
 import { promisify } from "node:util"
 
-import puppeteer from "puppeteer-core"
+import puppeteer, { ProtocolError } from "puppeteer-core"
 
 import { getFirefoxDriver, launchFirefoxDriver } from "./firefox-driver.mjs"
 
@@ -1079,6 +1079,49 @@ async function createPage(browser, url, options = {}) {
   return page
 }
 
+export async function launchChromeExtensionBrowser(
+  launchOptions,
+  extensionDir
+) {
+  let browser
+  try {
+    // Keep the browser handle before installation so failures can always close
+    // it. Passing an array to enableExtensions installs inside Puppeteer launch.
+    browser = await puppeteer.launch({
+      ...launchOptions,
+      enableExtensions: true
+    })
+    try {
+      await browser.installExtension(extensionDir)
+    } catch (error) {
+      const unavailableInstallCommand =
+        error instanceof ProtocolError &&
+        error.message.startsWith("Protocol error (Extensions.loadUnpacked):") &&
+        (error.originalMessage === "Method not available." ||
+          error.code === -32601)
+      if (!unavailableInstallCommand) throw error
+
+      // Chrome 130 has no usable Extensions.loadUnpacked command. Its supported
+      // startup flags still load unpacked extensions; modern Chrome keeps CDP.
+      await browser.close()
+      browser = undefined
+      browser = await puppeteer.launch({
+        ...launchOptions,
+        enableExtensions: true,
+        args: [
+          ...(launchOptions.args ?? []),
+          `--disable-extensions-except=${extensionDir}`,
+          `--load-extension=${extensionDir}`
+        ]
+      })
+    }
+    return browser
+  } catch (error) {
+    await browser?.close().catch(() => {})
+    throw error
+  }
+}
+
 async function launchChromeWithExtension(extensionDir) {
   const chromePath = await findChromeBinary()
   if (!chromePath) {
@@ -1096,18 +1139,20 @@ async function launchChromeWithExtension(extensionDir) {
   const userDataDir = await fs.mkdtemp(
     path.join(os.tmpdir(), "fontara-browser-chrome-")
   )
-  const browser = await puppeteer.launch({
-    args: getChromeLaunchArgs(),
-    browser: "chrome",
-    defaultViewport: BROWSER_VIEWPORTS.desktop,
-    enableExtensions: [extensionDir],
-    executablePath: chromePath,
-    headless: getHeadlessMode(),
-    pipe: true,
-    userDataDir
-  })
-
+  let browser
   try {
+    browser = await launchChromeExtensionBrowser(
+      {
+        args: getChromeLaunchArgs(),
+        browser: "chrome",
+        defaultViewport: BROWSER_VIEWPORTS.desktop,
+        executablePath: chromePath,
+        headless: getHeadlessMode(),
+        pipe: true,
+        userDataDir
+      },
+      extensionDir
+    )
     const extensionBaseUrl = await findExtensionBaseUrl(
       browser,
       "chrome-extension://"
@@ -1122,7 +1167,7 @@ async function launchChromeWithExtension(extensionDir) {
       userDataDir
     }
   } catch (error) {
-    await browser.close().catch(() => {})
+    await browser?.close().catch(() => {})
     await fs.rm(userDataDir, { force: true, recursive: true })
     throw error
   }

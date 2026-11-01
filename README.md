@@ -21,7 +21,7 @@ required Regular, and optional Bold), reliable opt-in Chromium system fonts,
 revisioned settings writes, stronger privacy and accessibility, and production
 release gates for Chrome and Firefox.
 
-![FontARA 5.1 popup](docs/images/store/5.1.0/fa/fontara-5.1-popup.png)
+![FontARA 5.1 popup](docs/images/store/5.1.0/fa/fontara-5.1.0-popup.png)
 
 ## Contents
 
@@ -115,15 +115,15 @@ are mainly for testers, reviewers, and contributors.
 The screenshots below show the popup, options page, site controls, and browser
 integration.
 
-![FontARA popup and page preview](docs/images/store/5.1.0/fa/fontara-5.1-popup.png)
+![FontARA popup and page preview](docs/images/store/5.1.0/fa/fontara-5.1.0-popup.png)
 
-![FontARA settings overview](docs/images/store/5.1.0/fa/fontara-5.1-general.png)
+![FontARA settings overview](docs/images/store/5.1.0/fa/fontara-5.1.0-general.png)
 
-![FontARA custom-font library](docs/images/store/5.1.0/fa/fontara-5.1-custom-fonts.png)
+![FontARA custom-font library](docs/images/store/5.1.0/fa/fontara-5.1.0-custom-fonts.png)
 
-![FontARA site profiles preview](docs/images/store/5.1.0/fa/fontara-5.1-site-profiles.png)
+![FontARA site profiles preview](docs/images/store/5.1.0/fa/fontara-5.1.0-site-profiles.png)
 
-![FontARA smart RTL settings](docs/images/store/5.1.0/fa/fontara-5.1-smart-rtl.png)
+![FontARA smart RTL settings](docs/images/store/5.1.0/fa/fontara-5.1.0-smart-rtl.png)
 
 ## Built-in Site Optimizations
 

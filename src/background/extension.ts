@@ -159,7 +159,11 @@ export class ExtensionRuntime {
         logDebug("Failed to handle FontAra install/update event.", error)
       })
     })
-    chrome.runtime.setUninstallURL(URLS.UNINSTALL_FORM)
+    // Clear the legacy third-party survey URL for existing installations too.
+    chrome.runtime.setUninstallURL("", () => {
+      const error = chrome.runtime.lastError
+      if (error) logDebug("Failed to clear the legacy uninstall page.", error)
+    })
   }
 
   static start(): Promise<void> {

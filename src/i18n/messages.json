@@ -10,7 +10,7 @@
         "description": "Short name of the extension."
       },
       "extensionDescription": {
-        "message": "Change fonts across the web for every language, with smart right-to-left support for RTL writing systems.",
+        "message": "Choose your website fonts, add custom fonts, and improve right-to-left text with settings for each site.",
         "description": "Description of the extension."
       },
       "contextMenuTitle": {
@@ -48,7 +48,7 @@
         "description": "Short name of the extension."
       },
       "extensionDescription": {
-        "message": "فونت همه زبان‌ها را در وب تغییر دهید، با پشتیبانی هوشمند از نوشتارهای راست‌به‌چپ.",
+        "message": "فونت سایت‌ها را انتخاب کنید، فونت دلخواه اضافه کنید و متن‌های راست‌به‌چپ را با تنظیمات هر سایت خواناتر کنید.",
         "description": "Description of the extension."
       },
       "contextMenuTitle": {
@@ -86,7 +86,7 @@
         "description": "Short name of the extension."
       },
       "extensionDescription": {
-        "message": "غيّر الخطوط على الويب لكل اللغات، مع دعم ذكي للكتابة من اليمين إلى اليسار.",
+        "message": "اختر خطوط المواقع وأضف خطوطك الخاصة وحسّن عرض النص من اليمين إلى اليسار، مع إعدادات لكل موقع.",
         "description": "Description of the extension."
       },
       "contextMenuTitle": {

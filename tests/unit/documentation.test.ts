@@ -40,11 +40,11 @@ test("project documentation exposes contributor and maintainer guides", () => {
     "docs/images/demo/browsers/opera.svg",
     "docs/images/demo/browsers/safari.svg",
     "docs/images/sponsors/muchat-logo-type.svg",
-    "docs/images/store/5.1.0/fa/fontara-5.1-popup.png",
-    "docs/images/store/5.1.0/fa/fontara-5.1-general.png",
-    "docs/images/store/5.1.0/fa/fontara-5.1-custom-fonts.png",
-    "docs/images/store/5.1.0/fa/fontara-5.1-site-profiles.png",
-    "docs/images/store/5.1.0/fa/fontara-5.1-smart-rtl.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1.0-popup.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1.0-general.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1.0-custom-fonts.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1.0-site-profiles.png",
+    "docs/images/store/5.1.0/fa/fontara-5.1.0-smart-rtl.png",
     ".github/PULL_REQUEST_TEMPLATE.md"
   ]
 
@@ -97,9 +97,9 @@ test("project documentation exposes contributor and maintainer guides", () => {
   assert.match(readme, /Browser-restricted pages/)
   assert.match(
     readme,
-    /docs\/images\/store\/5\.1\.0\/fa\/fontara-5\.1-popup\.png/
+    /docs\/images\/store\/5\.1\.0\/fa\/fontara-5\.1\.0-popup\.png/
   )
-  assert.match(readme, /fontara-5\.1-smart-rtl\.png/)
+  assert.match(readme, /fontara-5\.1\.0-smart-rtl\.png/)
   assert.match(readme, /github\.com\/mimalef70\/fontara\/graphs\/contributors/)
   assert.match(readme, /## Sponsors/)
   assert.match(readme, /docs\/images\/sponsors\/muchat-logo-type\.svg/)

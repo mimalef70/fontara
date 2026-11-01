@@ -58,7 +58,14 @@ test("public site and privacy page meet WCAG A/AA on mobile and desktop", async 
     server.once("error", reject)
     server.listen(0, "127.0.0.1", resolve)
   })
-  t.after(() => new Promise((resolve) => server.close(resolve)))
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.close(resolve)
+        // Chrome may keep a speculative connection open until it exits.
+        server.closeAllConnections()
+      })
+  )
   const browser = await puppeteer.launch({
     executablePath,
     headless: true,

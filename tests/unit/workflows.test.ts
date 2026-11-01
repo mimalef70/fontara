@@ -3,6 +3,7 @@ import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
 import test from "node:test"
+import { runInNewContext } from "node:vm"
 
 const require = createRequire(import.meta.url)
 const { load } = require("js-yaml") as { load: (source: string) => Workflow }
@@ -99,7 +100,10 @@ test("release publishes only packages from the shared completed verification", (
   assert.equal(ci.jobs.verification.uses, "./.github/workflows/verify.yml")
   assert.equal(release.jobs.verification.uses, ci.jobs.verification.uses)
   assert.equal(release.jobs.publish.needs, "verification")
-  assert.equal(release.jobs.publish.if, "startsWith(github.ref, 'refs/tags/')")
+  assert.equal(
+    release.jobs.publish.if,
+    "startsWith(github.ref, 'refs/tags/') && (github.event_name == 'push' || inputs.action == 'submit')"
+  )
   assert.equal(verification.jobs.browsers.needs, "build")
   const upload = verification.jobs.build.steps?.find((step) =>
     step.uses?.startsWith("actions/upload-artifact@")
@@ -131,6 +135,60 @@ test("release publishes only packages from the shared completed verification", (
         step.run?.includes(`${browser} production artifact`)
       )
     )
+  }
+})
+
+test("manual verification and status runs never publish GitHub releases, even on tags", () => {
+  const release = load(readWorkflow("release.yml"))
+  const cases = [
+    {
+      ref: "refs/tags/v5.1.0",
+      event: "push",
+      action: undefined,
+      expected: true
+    },
+    {
+      ref: "refs/tags/v5.1.0",
+      event: "workflow_dispatch",
+      action: "submit",
+      expected: true
+    },
+    {
+      ref: "refs/tags/v5.1.0",
+      event: "workflow_dispatch",
+      action: "verify",
+      expected: false
+    },
+    {
+      ref: "refs/tags/v5.1.0",
+      event: "workflow_dispatch",
+      action: "status",
+      expected: false
+    },
+    {
+      ref: "refs/tags/v5.1.0",
+      event: "workflow_dispatch",
+      action: "rollout",
+      expected: false
+    },
+    {
+      ref: "refs/heads/master",
+      event: "workflow_dispatch",
+      action: "submit",
+      expected: false
+    }
+  ]
+  for (const { ref, event, action, expected } of cases) {
+    const actual = runInNewContext(
+      release.jobs.publish.if || "false",
+      {
+        github: { ref, event_name: event },
+        inputs: { action },
+        startsWith: (value: string, prefix: string) => value.startsWith(prefix)
+      },
+      { timeout: 1000 }
+    )
+    assert.equal(actual, expected, `${event} ${action || ""} on ${ref}`)
   }
 })
 

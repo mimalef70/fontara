@@ -7,7 +7,6 @@ const TEXT_INPUT_TYPES = new Set([
   "url",
   "tel",
   "email",
-  "password",
   "number"
 ])
 const EDITABLE_SELECTOR =
@@ -40,6 +39,7 @@ type TrackedEditable = {
 export class RtlAutoDirection {
   private enabled = false
   private observer: MutationObserver | null = null
+  private passwordInputs = new WeakSet<HTMLInputElement>()
   private trackedInputs = new Map<HTMLElement, TrackedEditable>()
 
   enable(): void {
@@ -71,6 +71,20 @@ export class RtlAutoDirection {
   }
 
   private shouldSkipElement(element: Element): boolean {
+    const autocompleteTokens = (element.getAttribute("autocomplete") || "")
+      .toLowerCase()
+      .split(/\s+/)
+    if (
+      autocompleteTokens.some(
+        (token) =>
+          token === "current-password" ||
+          token === "new-password" ||
+          token === "one-time-code" ||
+          token.startsWith("cc-")
+      )
+    ) {
+      return true
+    }
     if (this.isGeminiHost() && element.closest(GEMINI_UI_SKIP)) {
       return true
     }
@@ -90,7 +104,11 @@ export class RtlAutoDirection {
     if (!(element instanceof HTMLElement)) return false
     if (element instanceof HTMLTextAreaElement) return true
     if (element instanceof HTMLInputElement) {
-      return TEXT_INPUT_TYPES.has((element.type || "").toLowerCase())
+      const type = (element.type || "").toLowerCase()
+      if (type === "password") this.passwordInputs.add(element)
+      // A reveal-password button can change the type to text. The field still
+      // contains a credential and must not become eligible for text sampling.
+      return !this.passwordInputs.has(element) && TEXT_INPUT_TYPES.has(type)
     }
 
     return element.matches('[contenteditable]:not([contenteditable="false"])')
@@ -159,19 +177,14 @@ export class RtlAutoDirection {
   }
 
   private updateDirection(element: HTMLElement): void {
-    if (!this.isEditable(element) || this.shouldSkipElement(element)) return
-
-    const dirAttr = (element.getAttribute("dir") || "").toLowerCase()
-    const firstChar = this.extractFromEditable(element)
-
-    if (element.isContentEditable && this.isGeminiHost()) {
-      if (!firstChar) {
-        this.preserveNativeBidi(element)
-        return
-      }
-      this.applyDetectedDirection(element, firstChar)
+    // Recheck before reading: an input event can arrive before the observer
+    // notices that a previously ordinary field became a password or OTP field.
+    if (!this.isEditable(element) || this.shouldSkipElement(element)) {
+      this.detachTrackedInput(element, true)
       return
     }
+
+    const dirAttr = (element.getAttribute("dir") || "").toLowerCase()
 
     if (
       element instanceof HTMLInputElement ||
@@ -189,6 +202,11 @@ export class RtlAutoDirection {
       }
     }
 
+    const firstChar = this.extractFromEditable(element)
+    if (element.isContentEditable && this.isGeminiHost() && !firstChar) {
+      this.preserveNativeBidi(element)
+      return
+    }
     this.applyDetectedDirection(element, firstChar)
   }
 
@@ -306,7 +324,31 @@ export class RtlAutoDirection {
     if (this.observer || !this.enabled || !document.documentElement) return
 
     this.observer = new MutationObserver((mutations) => {
+      // Inspect the whole batch first: a password can be inserted and revealed
+      // in one task, before its earlier childList record is processed.
       for (const mutation of mutations) {
+        if (
+          mutation.type === "attributes" &&
+          mutation.target instanceof HTMLInputElement &&
+          mutation.attributeName === "type" &&
+          mutation.oldValue?.toLowerCase() === "password"
+        ) {
+          this.passwordInputs.add(mutation.target)
+        }
+      }
+      for (const mutation of mutations) {
+        if (
+          mutation.type === "attributes" &&
+          mutation.target instanceof HTMLElement
+        ) {
+          const element = mutation.target
+          if (!this.isEditable(element) || this.shouldSkipElement(element)) {
+            this.detachTrackedInput(element, true)
+          } else {
+            this.attachAutoDirection(element)
+          }
+          continue
+        }
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== 11) {
             return
@@ -340,6 +382,9 @@ export class RtlAutoDirection {
       this.cleanupDisconnectedTrackedInputs()
     })
     this.observer.observe(document.documentElement, {
+      attributeFilter: ["type", "autocomplete", "contenteditable"],
+      attributeOldValue: true,
+      attributes: true,
       childList: true,
       subtree: true
     })

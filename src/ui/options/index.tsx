@@ -2700,7 +2700,13 @@ function OptionsPage() {
                                 data-testid="fontara-custom-font-coverage"
                                 aria-describedby="custom-font-unicode-range-description"
                                 className="h-11 w-full border-[#dbe3ef] bg-white">
-                                <SelectValue />
+                                <SelectValue>
+                                  {t(
+                                    unicodeRangeLabelKeys[
+                                      fontUnicodeRangePreset
+                                    ]
+                                  )}
+                                </SelectValue>
                               </SelectTrigger>
                               {isFontCoverageSelectOpen && (
                                 <SelectContent dir={direction}>

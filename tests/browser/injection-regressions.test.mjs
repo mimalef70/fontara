@@ -23,6 +23,7 @@ async function withRuntimePage(context, callback) {
       contents: `
         export { createRtlSiteAdapter } from "./src/inject/rtl/site-adapters";
         export { RtlEngine } from "./src/inject/rtl/rtl-engine";
+        export { RtlAutoDirection } from "./src/inject/rtl/auto-direction";
         export { createTextStrokeCSS } from "./src/generators/text-stroke";
       `,
       resolveDir: process.cwd()
@@ -49,6 +50,84 @@ async function withRuntimePage(context, callback) {
     await browser.close()
   }
 }
+
+test("Chrome RTL never reads sensitive fields, including revealed passwords and same-task changes", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    const result = await page.evaluate(async () => {
+      document.body.innerHTML = `
+        <input id="password" type="password" dir="ltr">
+        <input id="otp" autocomplete="one-time-code" dir="ltr">
+        <input id="payment" autocomplete="section-checkout billing cc-number" dir="ltr">
+        <input id="ordinary" type="text" dir="ltr" value="سلام">
+        <input id="changing" type="text" dir="ltr" value="سلام" style="text-align:center">
+      `
+      const reads = []
+      const protect = (element) => {
+        Object.defineProperty(element, "value", {
+          configurable: true,
+          get() {
+            reads.push(element.id)
+            throw new Error(`Sensitive field read: ${element.id}`)
+          }
+        })
+      }
+      for (const id of ["password", "otp", "payment"]) {
+        protect(document.getElementById(id))
+      }
+      const autoDirection = new FontaraRegressionRuntime.RtlAutoDirection()
+      autoDirection.enable()
+      const ordinary = document.getElementById("ordinary")
+      const ordinaryDirection = ordinary.dir
+      const password = document.getElementById("password")
+      password.type = "text"
+      const changing = document.getElementById("changing")
+      changing.type = "password"
+      protect(changing)
+      changing.dispatchEvent(new Event("input"))
+      // Flush real MutationObserver delivery, then expose the changed field.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      changing.type = "text"
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      password.dispatchEvent(new Event("input"))
+      changing.dispatchEvent(new Event("input"))
+
+      // An untracked password added and revealed within the same task still
+      // needs its old type recorded before any attempt to sample its value.
+      const transient = document.createElement("input")
+      transient.id = "transient-password"
+      transient.type = "password"
+      transient.dir = "ltr"
+      protect(transient)
+      document.body.appendChild(transient)
+      transient.type = "text"
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      ordinary.autocomplete = "section-checkout cc-csc"
+      protect(ordinary)
+      ordinary.dispatchEvent(new Event("change"))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      const directions = Object.fromEntries(
+        [...document.querySelectorAll("input")].map((input) => [
+          input.id,
+          input.dir
+        ])
+      )
+      autoDirection.disable()
+      return {
+        changingAlignment: changing.style.textAlign,
+        directions,
+        ordinaryDirection,
+        reads
+      }
+    })
+    assert.deepEqual(result.reads, [])
+    assert.equal(result.ordinaryDirection, "rtl")
+    assert.equal(result.changingAlignment, "center")
+    for (const [id, direction] of Object.entries(result.directions)) {
+      assert.equal(direction, "ltr", `${id} must retain its page direction`)
+    }
+  })
+})
 
 test("Chrome text stroke protects code and icon subtrees from inheritance", async (context) => {
   await withRuntimePage(context, async (page) => {

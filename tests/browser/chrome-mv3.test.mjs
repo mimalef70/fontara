@@ -1028,10 +1028,29 @@ test("Chrome MV3 manually maps unusual Regular/Bold files, applies them, recover
       [STORAGE_KEYS.SYNC_SETTINGS]: false
     })
     await clickByTestId(optionsPage, "fontara-options-nav-fonts")
+    assert.ok(
+      await optionsPage.$eval(
+        '[data-testid="fontara-custom-font-coverage"]',
+        (element) => element.textContent.trim().length > 0
+      ),
+      "The selected text coverage must be visible before opening its menu."
+    )
     await clickByTestId(optionsPage, "fontara-custom-font-coverage")
+    const coverageLabel = await optionsPage.$eval(
+      '[data-testid="fontara-custom-font-coverage-latin-arabic"]',
+      (element) => element.textContent.trim()
+    )
     await clickByTestId(
       optionsPage,
       "fontara-custom-font-coverage-latin-arabic"
+    )
+    assert.equal(
+      await optionsPage.$eval(
+        '[data-testid="fontara-custom-font-coverage"]',
+        (element) => element.textContent.trim()
+      ),
+      coverageLabel,
+      "The text coverage must remain visible after its menu unmounts."
     )
     await setValueByTestId(
       optionsPage,

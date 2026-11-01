@@ -4,18 +4,29 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      action:
+        description: Verify packages, inspect Chrome status, submit a version tag, or increase its rollout
+        type: choice
+        options: [verify, status, submit, rollout]
+        default: verify
+      deploy_percentage:
+        description: Target percentage (required for rollout; submit defaults to CWS_DEPLOY_PERCENTAGE or 10)
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
 jobs:
   verification:
+    if: github.event_name == 'push' || inputs.action == 'verify' || inputs.action == 'submit'
     uses: ./.github/workflows/verify.yml
 
   publish:
     name: Publish verified packages
     needs: verification
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && (github.event_name == 'push' || inputs.action == 'submit')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -33,3 +44,78 @@ jobs:
           files: |
             build/*-prod.zip
             build/firefox-mv3-source-*.zip
+
+  chrome-store:
+    name: Publish to Chrome Web Store
+    needs: verification
+    if: >-
+      always() && !cancelled() &&
+      ((needs.verification.result == 'success' &&
+        (github.event_name == 'push' || inputs.action == 'submit')) ||
+       inputs.action == 'status' || inputs.action == 'rollout')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: chrome-web-store
+    concurrency:
+      group: chrome-web-store
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CWS_ACTION: ${{ inputs.action || 'submit' }}
+      CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+      CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+      CWS_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.CWS_WORKLOAD_IDENTITY_PROVIDER }}
+      CWS_SERVICE_ACCOUNT: ${{ vars.CWS_SERVICE_ACCOUNT }}
+      CWS_DEPLOY_PERCENTAGE: ${{ inputs.deploy_percentage || vars.CWS_DEPLOY_PERCENTAGE || '10' }}
+      REQUESTED_DEPLOY_PERCENTAGE: ${{ inputs.deploy_percentage }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+      - name: Validate release action and publishing configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$CWS_ACTION" != status && "$GITHUB_REF" != refs/tags/v* ]]; then
+            echo '::error::Select a version tag for Chrome submission or rollout.'
+            exit 1
+          fi
+          if [[ "$CWS_ACTION" == rollout && -z "$REQUESTED_DEPLOY_PERCENTAGE" ]]; then
+            echo '::error::Rollout requires an explicit deploy_percentage.'
+            exit 1
+          fi
+          for setting in CWS_PUBLISHER_ID CWS_EXTENSION_ID CWS_WORKLOAD_IDENTITY_PROVIDER CWS_SERVICE_ACCOUNT; do
+            if [[ -z "${!setting}" ]]; then
+              echo "::error::Missing $setting. Complete the one-time setup in docs/release.md."
+              exit 1
+            fi
+          done
+      - name: Download the exact Chrome package tested by verification
+        if: env.CWS_ACTION == 'submit'
+        uses: actions/download-artifact@v8
+        with:
+          name: fontara-verified-packages
+          path: build
+      - name: Validate the verified ZIP and release tag before authentication
+        if: env.CWS_ACTION == 'submit'
+        run: node tasks/publish-chrome-store.js --action validate
+      - name: Authenticate with a short-lived Google token
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.CWS_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: ${{ env.CWS_ACTION == 'status' && 'https://www.googleapis.com/auth/chromewebstore.readonly' || 'https://www.googleapis.com/auth/chromewebstore' }}
+          access_token_lifetime: 1800s
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Run Chrome Web Store operation
+        env:
+          CWS_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: node tasks/publish-chrome-store.js --action "$CWS_ACTION"

@@ -12,6 +12,16 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Added Chrome Web Store publication from verified release-tag artifacts using
+  short-lived GitHub OIDC credentials, explicit rollout controls, and normal
+  Google review. Store authentication requires a one-time publisher setup.
+- Rewrote store descriptions and the privacy policy in English, Persian, and
+  Arabic, and generated matching screenshots from the production extension.
+- Stopped smart RTL from inspecting password, payment-card, and one-time-code
+  fields, including passwords temporarily revealed by a site's visibility
+  toggle. Cleared the legacy third-party uninstall survey URL.
+- Fixed the selected custom-font text coverage label disappearing while its
+  menu was closed.
 - Restored Firefox stable/beta browser tests after extension-page input
   restrictions changed. The harness uses geckodriver for trusted clicks and
   uploads, with a checksum-verified driver installation in CI.

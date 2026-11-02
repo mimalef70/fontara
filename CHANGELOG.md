@@ -12,6 +12,12 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Added versioned browser downloads, SHA-256 manifests, build metadata, and
+  installation guidance to GitHub releases without rebuilding verified packages.
+- Added automatic collection of matching store-signed Chrome CRX3 and Firefox
+  XPI downloads, with signature/content checks and retries while store approval
+  is pending. Existing release packages remain immutable.
+
 - Fixed ChatGPT Canvas font application when page styles contain font-size
   variables or Unicode bidi utilities. Protected authored fonts and code editors,
   kept titlebars out of smart RTL without clipping their menus, and restored

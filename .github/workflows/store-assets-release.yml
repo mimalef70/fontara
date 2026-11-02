@@ -1,0 +1,90 @@
+name: Verify and publish signed store assets
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    if: github.repository == 'mimalef70/fontara' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      complete: ${{ steps.release.outputs.complete }}
+      release_tag: ${{ steps.release.outputs.tag }}
+      publisher_sha: ${{ steps.publisher.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          persist-credentials: false
+      - id: publisher
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+      - name: Resolve original verified release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STORE_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node tasks/sync-store-assets.js --action prepare --metadata "$RUNNER_TEMP/store-release.json"
+      - name: Download exact packages from original successful CI
+        if: steps.release.outputs.complete != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ steps.release.outputs.artifact_id }}
+          run-id: ${{ steps.release.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: verified-packages
+          merge-multiple: true
+      - name: Verify official store packages without store credentials
+        if: steps.release.outputs.complete != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tasks/sync-store-assets.js --action collect --metadata "$RUNNER_TEMP/store-release.json" --directory verified-packages --output store-assets
+      - name: Upload verified store files and result
+        if: steps.release.outputs.complete != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-store-assets-${{ inputs.release_tag }}
+          path: store-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: collect
+    if: needs.collect.outputs.complete != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: fontara-release-assets-${{ needs.collect.outputs.release_tag }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.collect.outputs.publisher_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+      - uses: actions/download-artifact@v8
+        with:
+          name: verified-store-assets-${{ inputs.release_tag }}
+          path: store-assets
+      - name: Add immutable signed assets and refresh store availability
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tasks/sync-store-assets.js --action publish --directory store-assets

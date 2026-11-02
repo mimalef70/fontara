@@ -93,6 +93,88 @@ Release archives are written to `build/*-prod.zip`. When Firefox is part of the
 build, the Firefox source review package is also written to
 `build/firefox-mv3-source-<version>.zip`.
 
+## Public release downloads
+
+Every new release publishes a browser download table, installation links, the
+tag's changelog, and versioned filenames. The publishing job copies the exact
+verified archives; it never rebuilds extension code. Original filenames remain
+available because store submission and provenance checks depend on them.
+
+| Download | Purpose |
+| --- | --- |
+| `fontara-<version>-chrome.zip` | Chrome unpacked/developer package. |
+| `fontara-<version>-edge.zip`, `-brave.zip`, `-opera.zip` | Corresponding Chromium packages; these do not imply a separate store listing. |
+| `fontara-<version>-firefox.zip` | Unsigned Firefox developer/review package; ordinary Firefox installation uses the signed XPI or AMO. |
+| `fontara-<version>-source.zip` | Reproducible reviewer source and build instructions. |
+| `fontara-<version>-safari-experimental.zip` | Experimental web-extension resources; not an installable Safari app. |
+| `build-info.json` | Release tag/commit, declared toolchain, and archive hashes. |
+| `SHA256SUMS` | Integrity manifest for the original ZIPs, versioned copies, and build information. |
+
+For a normal installation, prefer the
+[Chrome Web Store](https://chromewebstore.google.com/detail/dcjdhicepiklefpimapdkbaeoocniemc)
+or [Mozilla Add-ons](https://addons.mozilla.org/firefox/addon/fontara-font-changer/).
+For a Chromium development installation, extract the matching ZIP and choose
+**Load unpacked** on the browser's extensions page with Developer mode enabled.
+The Firefox source ZIP is source code, not the installable extension.
+
+### Store-signed CRX and XPI
+
+The separate `Store Release Assets` workflow obtains already published store
+packages after release workflows complete, periodically, or on manual request.
+It does not upload a new store version, generate a signing key, or re-sign an
+extension. This preserves the existing extension identity and store update path.
+
+Only packages matching the requested version and the verified release contents
+are attached. Chrome CRX3 signatures and extension identity are checked; Firefox
+downloads are checked against the AMO hash, add-on identity, and signing files.
+Package contents are compared with the original release ZIPs, allowing only
+the explicitly checked store metadata and signature additions. A store still
+serving an older version is reported as pending. The next scheduled run retries;
+it never labels an old CRX as a new release.
+
+To refresh a published release manually, use:
+
+```sh
+gh workflow run store-assets.yml --ref master -f release_tag=v5.1.0
+```
+
+Leaving `release_tag` empty scans recent eligible stable releases and the latest
+release, so an older release still awaiting store approval is revisited when a
+newer tag appears. The scan is bounded to 50 releases and a 30-day window, plus
+the latest eligible release. The workflow runs after successful release workflows
+and every six hours. Collection uses a
+read-only token; a separate job can attach verified files to GitHub Releases.
+Neither job needs a Chrome or Mozilla account credential. Pending store approval
+does not fail the workflow. Invalid signatures, unexpected contents, and network
+errors do fail it rather than being mislabeled as approval delays.
+
+The signed files use `fontara-<version>-chrome.crx` and
+`fontara-<version>-firefox.xpi`. Their separate checksum manifest and managed
+release-note section can be updated as store approvals complete; original
+release ZIPs and their checksums are preserved. Existing signed assets with
+different bytes cause an error rather than being replaced.
+
+Incomplete collections require the original CI artifact, retained for 30 days;
+an expired artifact stops collection rather than permitting a rebuild. Once both
+signed packages are collected, a receipt binds their hashes, the original ZIP
+hashes, checksums and tag commit, so completed releases do not depend on artifact
+retention. `store-assets.json` records those results and
+`SHA256SUMS-store.txt` covers the signed downloads.
+
+A CRX download is useful for supported Chromium distribution and archival use;
+it is not a promise of ordinary drag-and-drop installation on every platform.
+Chrome restricts external installations on Windows and macOS. Use the store for
+normal installations and follow Google's
+[installation policy](https://developer.chrome.com/docs/extensions/how-to/distribute/install-extensions)
+and [CRX hosting guidance](https://developer.chrome.com/docs/extensions/how-to/distribute/host-on-linux).
+Firefox users can choose **Install Add-on From File** in `about:addons` for the
+Mozilla-signed XPI. Browser restrictions and review decisions still apply.
+
+The layout is inspired by
+[AdGuard's browser-specific release packages](https://github.com/AdguardTeam/AdguardBrowserExtension/releases/tag/v5.5.3.3).
+FontARA publishes only its own supported targets; it does not add unsupported
+MV2 variants or claim a Safari app distribution.
+
 ## Firefox Review Package
 
 ```sh
@@ -126,6 +208,8 @@ Known warning category:
 | Verify release packages | reusable workflow call | Runs `pnpm verify`, uploads production/source ZIPs, then runs stable/minimum browser suites and production smoke tests. |
 | Browser Tests | manual, nightly | Browser matrix across Chrome and Firefox channels. |
 | Release | `v*` tags, manual | Verifies and publishes the exact packages to GitHub Releases, then submits Chrome to the Web Store. Manual status and rollout operations are also available. |
+| Firefox Release | successful tag Release, manual | Submits the verified Firefox package and reviewer source through AMO. |
+| Store Release Assets | successful release workflows, every six hours, manual | Revisits eligible releases and attaches matching official CRX/XPI packages as store approvals finish. |
 
 [verify.yml](../.github/workflows/verify.yml) is the common gate for
 [ci.yml](../.github/workflows/ci.yml) and

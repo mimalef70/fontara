@@ -40,10 +40,45 @@ test("storage normalization removes credentials, query, and hash from captured s
 
   assert.deepEqual(capturedSite, {
     isActive: true,
-    regex: "^https?://example\\.com/?.*$",
+    regex: "^https?://example\\.com(?:[/?#].*)?$",
     url: "example.com"
   })
   assert.doesNotMatch(serialized, /user|password|token|secret|#message/)
+})
+
+test("storage normalization repairs legacy hostname regexes without expanding site access", async () => {
+  Reflect.set(globalThis, "chrome", {})
+  const settings = await normalizeStorageValues({
+    [STORAGE_KEYS.CUSTOM_FONT_LIST]: [],
+    [STORAGE_KEYS.WEBSITE_LIST]: [
+      {
+        url: "example.com",
+        regex: "^https?://example\\.com/?.*$",
+        isActive: false
+      }
+    ]
+  })
+  const websites = settings[STORAGE_KEYS.WEBSITE_LIST] as Array<{
+    regex: string
+    url: string
+    isActive: boolean
+  }>
+  const capturedSite = websites.find((website) => website.url === "example.com")
+  assert.ok(capturedSite)
+  assert.equal(capturedSite.isActive, false)
+  const siteRegex = new RegExp(capturedSite.regex)
+  for (const url of [
+    "https://example.com",
+    "http://example.com/path",
+    "https://example.com?q=1"
+  ])
+    assert.equal(siteRegex.test(url), true)
+  for (const url of [
+    "https://example.com.evil.example/",
+    "https://example.com@evil.example/",
+    "https://example.com0/"
+  ])
+    assert.equal(siteRegex.test(url), false)
 })
 
 test("explicit path scope keeps only a normalized path", async () => {

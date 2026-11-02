@@ -1,0 +1,9 @@
+# Explicit ownership for credentials, distribution and extension trust boundaries.
+/.github/ @mimalef70
+/tasks/*release* @mimalef70
+/tasks/publish-*-store.js @mimalef70
+/tasks/sync-store-assets.js @mimalef70
+/src/manifest*.json @mimalef70
+/src/background/messenger.ts @mimalef70
+/src/utils/*font*storage.ts @mimalef70
+/SECURITY.md @mimalef70

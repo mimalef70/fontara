@@ -7,7 +7,7 @@ function readSource(filePath: string): string {
 }
 
 test("Firefox consent is requested directly from the Google Fonts toggle gesture", () => {
-  const source = readSource("src/ui/options/index.tsx")
+  const source = readSource("src/ui/options/use-font-sources.ts")
   const start = source.indexOf("const handleGoogleFontsToggle")
   const end = source.indexOf("const handleClearGoogleFontCache", start)
   const handler = source.slice(start, end)
@@ -59,7 +59,9 @@ test("global and per-site Google choices commit only after preparation", () => {
 })
 
 test("Google cache controls expose stats and an explicit clear action", () => {
-  const source = readSource("src/ui/options/index.tsx")
+  const source =
+    readSource("src/ui/options/use-font-sources.ts") +
+    readSource("src/ui/options/font-sources-section.tsx")
 
   assert.match(source, /getGoogleFontCacheStats\(\)/)
   assert.match(source, /clearGoogleFontCache\(\)/)

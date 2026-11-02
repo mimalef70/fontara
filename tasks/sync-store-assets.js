@@ -19,6 +19,8 @@ const {
   GUID
 } = require("./publish-firefox-store")
 
+const { downloadPreparedPackages } = require("./release-provenance")
+
 const REPOSITORY = "mimalef70/fontara"
 const EXTENSION_ID = "dcjdhicepiklefpimapdkbaeoocniemc"
 const UPDATE_URL = "https://clients2.google.com/service/update2/crx"
@@ -393,7 +395,12 @@ async function prepare(tag, github, fetchImpl = fetch) {
       return { tag, complete: true }
     }
   }
-  const prepared = await prepareRelease({ tag, github, requireSource: false })
+  const prepared = await prepareRelease({
+    tag,
+    github,
+    requireSource: false,
+    includeChrome: true
+  })
   const chrome = asset(release, "chrome-mv3-prod.zip")
   prepared.assets[chrome.name] = {
     sha256: chrome.digest.slice(7),
@@ -692,12 +699,15 @@ async function publish(directory, github) {
   const prepared = await prepareRelease({
     tag: result.tag,
     github,
-    requireSource: false
+    requireSource: false,
+    includeChrome: true
   })
   if (
     prepared.sha !== result.sha ||
     prepared.runId !== result.runId ||
-    prepared.artifactId !== result.artifactId
+    (prepared.artifactId !== null &&
+      result.artifactId !== null &&
+      prepared.artifactId !== result.artifactId)
   )
     throw new Error("Store artifact provenance mismatch.")
   let release = await github(`releases/tags/${encodeURIComponent(result.tag)}`)
@@ -835,7 +845,14 @@ async function main() {
     process.env.GITHUB_TOKEN || process.env.GH_TOKEN
   )
   if (values.action === "plan") {
-    const tags = await plan(values.tag, github)
+    const pendingTrigger =
+      process.env.GITHUB_EVENT_NAME === "workflow_run" && values.tag
+    const published = pendingTrigger
+      ? await github(`releases/tags/${encodeURIComponent(values.tag)}`, {
+          allowMissing: true
+        })
+      : true
+    const tags = published ? await plan(values.tag, github) : []
     if (process.env.GITHUB_OUTPUT)
       fs.appendFileSync(
         process.env.GITHUB_OUTPUT,
@@ -848,13 +865,18 @@ async function main() {
     if (process.env.GITHUB_OUTPUT)
       fs.appendFileSync(
         process.env.GITHUB_OUTPUT,
-        `complete=${prepared.complete}\nrun_id=${prepared.runId || ""}\nartifact_id=${prepared.artifactId || ""}\ntag=${prepared.tag}\n`
+        `complete=${prepared.complete}\npackage_source=${prepared.packageSource || ""}\nrun_id=${prepared.runId || ""}\nartifact_id=${prepared.artifactId || ""}\ntag=${prepared.tag}\n`
       )
     console.log(
       prepared.complete
         ? `${prepared.tag}: both store downloads already verified; no work remains.`
         : `${prepared.tag}: verified original Release run ${prepared.runId}.`
     )
+  } else if (values.action === "download") {
+    const metadata = JSON.parse(fs.readFileSync(values.metadata))
+    if (metadata.packageSource !== "release-assets")
+      throw new Error("Durable release download was not selected.")
+    await downloadPreparedPackages(metadata, values.directory, github)
   } else if (values.action === "collect")
     await collect(
       JSON.parse(fs.readFileSync(values.metadata)),
@@ -863,7 +885,7 @@ async function main() {
       github
     )
   else if (values.action === "publish") await publish(values.directory, github)
-  else throw new Error("Select plan, prepare, collect, or publish.")
+  else throw new Error("Select plan, prepare, download, collect, or publish.")
 }
 module.exports = {
   EXTENSION_ID,

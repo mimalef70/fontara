@@ -49,7 +49,14 @@ test("popup waits for extension data and semantically disables inactive controls
 })
 
 test("options navigation exposes selection and closes its mobile sheet", () => {
-  const optionsSource = readSource("src/ui/options/index.tsx")
+  const optionsSource = [
+    "index.tsx",
+    "options-navigation.tsx",
+    "sites-settings-section.tsx",
+    "saved-fonts-section.tsx"
+  ]
+    .map((module) => readSource(`src/ui/options/${module}`))
+    .join("\n")
   const sidebarSource = readSource("src/ui/components/ui/sidebar.tsx")
 
   assert.match(optionsSource, /role="tablist"/)

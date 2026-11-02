@@ -148,7 +148,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
   },
   {
     url: "https://www.linkedin.com",
-    regex: "^https://[^/]*linkedin\\.com/.*$",
+    regex: "^https://(?:[a-z0-9-]+\\.)*linkedin\\.com/.*$",
     icon: "assets/logos/linkedin-active.png",
     pattern: "https://*linkedin.com/*",
     siteName: "LinkedIn",
@@ -268,7 +268,7 @@ export const POPULAR_WEBSITES: WebsiteItem[] = [
   },
   {
     url: "https://www.dropbox.com",
-    regex: "^https://www\\.[^/]*dropbox\\.com/.*$",
+    regex: "^https://(?:[a-z0-9-]+\\.)*dropbox\\.com/.*$",
     icon: "assets/logos/dropbox-active.png",
     pattern: "https://*dropbox.com/*",
     siteName: "Dropbox"

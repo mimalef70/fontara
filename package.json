@@ -74,7 +74,11 @@
     "verify": "pnpm check && pnpm test:coverage && pnpm build:all && pnpm lint:extension && pnpm check:release-version && pnpm audit --prod && pnpm audit && pnpm check:reproducible-zip",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "test:browser:site": "node --test --test-timeout=60000 tests/browser/site-accessibility.test.mjs"
+    "test:browser:site": "node --test --test-timeout=60000 tests/browser/site-accessibility.test.mjs",
+    "lint:workflows": "node tasks/check-workflows.js",
+    "test:browser:performance": "pnpm build:test:chrome && node --test --test-timeout=120000 tests/browser/performance-budget.test.mjs",
+    "release:prepare": "node tasks/prepare-version.js prepare",
+    "release:publish": "node tasks/prepare-version.js publish"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.16",

@@ -12,26 +12,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.0
           run_install: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-actionlint
+      - name: Validate GitHub Actions expressions and shell commands
+        run: pnpm lint:workflows
       - name: Validate source, dependencies, packages, and reproducibility
         run: pnpm verify
+      - name: Generate production dependency inventory from the frozen installation
+        run: node tasks/generate-sbom.js
       - name: Preserve the exact packages for browser tests and release
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: fontara-verified-packages
           if-no-files-found: error
           path: |
             build/*-prod.zip
             build/firefox-mv3-source-*.zip
+            build/fontara-production-dependencies.cdx.json
           retention-days: 30
 
   browsers:
@@ -39,6 +45,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      FONTARA_BROWSER_ARTIFACT_DIR: browser-artifacts
     strategy:
       fail-fast: false
       matrix:
@@ -56,18 +64,18 @@ jobs:
             browser: firefox
             version: "140.0esr"
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.0
           run_install: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Download production packages
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: fontara-verified-packages
           path: build
@@ -78,14 +86,14 @@ jobs:
       - name: Set up Chrome
         if: matrix.browser == 'chrome'
         id: chrome
-        uses: browser-actions/setup-chrome@v2
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2
         with:
           chrome-version: ${{ matrix.version }}
           install-dependencies: true
       - name: Set up Firefox
         if: matrix.browser == 'firefox'
         id: firefox
-        uses: browser-actions/setup-firefox@v1
+        uses: browser-actions/setup-firefox@0bc507ddf224827e3b1af68e014d5e42ab93e795 # v1
         with:
           firefox-version: ${{ matrix.version }}
       - name: Set up geckodriver
@@ -101,6 +109,11 @@ jobs:
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: node --test --test-timeout=120000 --test-name-pattern='Chrome production artifact' tests/browser/production-artifacts.test.mjs
+      - name: Measure Chrome runtime performance budgets
+        if: matrix.browser == 'chrome'
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node --test --test-timeout=120000 tests/browser/performance-budget.test.mjs
       - name: Firefox runtime regressions
         if: matrix.browser == 'firefox'
         env:
@@ -115,3 +128,11 @@ jobs:
           FONTARA_FIREFOX_BROWSER_TESTS: "1"
           FONTARA_FIREFOX_HEADLESS: "1"
         run: node --test --test-timeout=120000 --test-name-pattern='Firefox production artifact' tests/browser/production-artifacts.test.mjs
+      - name: Preserve browser reports and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: browser-failure-${{ matrix.browser }}-${{ matrix.version }}
+          path: browser-artifacts
+          if-no-files-found: ignore
+          retention-days: 14

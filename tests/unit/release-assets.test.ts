@@ -17,6 +17,7 @@ const {
   checkExistingAssets
 } = require("../../tasks/prepare-release-assets.js")
 const { GUID } = require("../../tasks/publish-firefox-store.js")
+const { SBOM_NAME } = require("../../tasks/generate-sbom.js")
 const version = "5.2.0"
 const tag = `v${version}`
 const commit = "a".repeat(40)
@@ -72,6 +73,7 @@ function fixture() {
   }
   const source = {
     "package.json": JSON.stringify({
+      name: "font-ara",
       version,
       packageManager: "pnpm@11.5.0",
       engines: { node: ">=24 <25" }
@@ -86,6 +88,24 @@ function fixture() {
   fs.writeFileSync(
     path.join(directory, `firefox-mv3-source-${version}.zip`),
     zip(source)
+  )
+  fs.writeFileSync(
+    path.join(directory, SBOM_NAME),
+    JSON.stringify({
+      bomFormat: "CycloneDX",
+      specVersion: "1.6",
+      version: 1,
+      metadata: {
+        component: {
+          type: "application",
+          name: "font-ara",
+          version,
+          "bom-ref": "root"
+        }
+      },
+      components: [],
+      dependencies: [{ ref: "root", dependsOn: [] }]
+    })
   )
   return {
     root,
@@ -129,7 +149,17 @@ test("release bundle preserves verified bytes and emits deterministic complete c
       names.push(name)
       assert.equal(hash, digest(fs.readFileSync(path.join(f.output, name))))
     }
-    assert.equal(names.length, 15)
+    assert.equal(names.length, 17)
+    assert.ok(names.includes(SBOM_NAME))
+    const inventory = fs.readFileSync(path.join(f.directory, SBOM_NAME))
+    assert.deepEqual(fs.readFileSync(path.join(f.output, SBOM_NAME)), inventory)
+    const provenance = JSON.parse(
+      fs.readFileSync(path.join(f.output, "release-provenance.json"), "utf8")
+    )
+    assert.deepEqual(provenance.assets[SBOM_NAME], {
+      sha256: digest(inventory),
+      size: inventory.length
+    })
     assert.ok(names.includes("build-info.json"))
     assert.ok(!names.includes("SHA256SUMS"))
     assert.ok(!names.includes("release-body.md"))
@@ -150,6 +180,25 @@ test("release bundle preserves verified bytes and emits deterministic complete c
       fs.readFileSync(path.join(f.output, "SHA256SUMS"), "utf8"),
       sums
     )
+  })
+})
+
+test("future releases require the verified dependency inventory and reject a stale version", () => {
+  withFixture((f) => {
+    const file = path.join(f.directory, SBOM_NAME)
+    const inventory = JSON.parse(fs.readFileSync(file, "utf8"))
+    inventory.metadata.component.version = "5.1.0"
+    fs.writeFileSync(file, JSON.stringify(inventory))
+    assert.throws(
+      () => prepareReleaseAssets(f.options),
+      /inventory format or package identity/
+    )
+    fs.rmSync(file)
+    assert.throws(
+      () => prepareReleaseAssets(f.options),
+      /missing its production dependency inventory/
+    )
+    assert.equal(fs.existsSync(f.output), false)
   })
 })
 

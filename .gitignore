@@ -9,6 +9,7 @@
 
 # testing
 /coverage
+/browser-artifacts/
 
 # Local proprietary font packages used for manual compatibility audits.
 /iranyekan/

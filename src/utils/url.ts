@@ -7,23 +7,9 @@ import type { SiteProfile, WebsiteItem } from "../definitions"
 import { getLocalValue, getLocalValues } from "./storage"
 
 export { getMatchingWebsite } from "../config/site-manager"
+export { createRegexFromUrl } from "./site-url-regex"
 
 export type UrlActivationState = FontaraSiteActivationState
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
-
-export function createRegexFromUrl(url: string): string {
-  try {
-    const urlObj = new URL(
-      /^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `https://${url}`
-    )
-    return `^https?://${escapeRegex(urlObj.host.toLowerCase())}/?.*$`
-  } catch {
-    return url
-  }
-}
 
 export async function getStoredWebsiteList(): Promise<WebsiteItem[]> {
   try {

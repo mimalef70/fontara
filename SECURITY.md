@@ -15,7 +15,7 @@ Please do not open a public GitHub issue for a security vulnerability.
 
 Use one of these private channels:
 
-- GitHub private vulnerability reporting, if it is enabled for the repository.
+- [GitHub private vulnerability reporting](https://github.com/mimalef70/fontara/security/advisories/new), enabled for this repository.
 - A direct private contact with the maintainer listed on the GitHub profile or
   project website.
 

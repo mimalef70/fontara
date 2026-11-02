@@ -23,6 +23,37 @@ jobs:
     if: github.event_name == 'push' || inputs.action == 'verify' || inputs.action == 'submit'
     uses: ./.github/workflows/verify.yml
 
+  provenance-check:
+    name: Verify live attestation service without publishing
+    needs: verification
+    if: github.repository == 'mimalef70/fontara' && github.ref == 'refs/heads/master' && github.event_name == 'workflow_dispatch' && inputs.action == 'verify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.x
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: fontara-verified-packages
+          path: build
+      - name: Prepare a branch-only verification subject
+        run: node tasks/check-release-provenance.js --action prepare
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: provenance-check.json
+      - name: Verify attestation identity and rejection by production tag policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tasks/check-release-provenance.js --action verify
+
   publish:
     name: Publish verified packages
     needs: verification
@@ -31,27 +62,37 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     concurrency:
       group: fontara-release-assets-${{ github.ref_name }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.x
       - name: Download the packages tested by verification
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: fontara-verified-packages
           path: build
+      - name: Verify release tag belongs to trusted master
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tasks/publish-firefox-store.js --action check-tag --tag "$GITHUB_REF_NAME"
       - name: Prepare versioned downloads, integrity checks, and release notes
         env:
           GH_TOKEN: ${{ github.token }}
         run: node tasks/prepare-release-assets.js --tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --directory build --output release-assets --check-existing
+      - name: Attest durable release provenance after all verification gates
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: release-assets/release-provenance.json
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           fail_on_unmatched_files: true
           overwrite_files: false
@@ -60,14 +101,16 @@ jobs:
           files: |
             release-assets/*.zip
             release-assets/build-info.json
+            release-assets/fontara-production-dependencies.cdx.json
+            release-assets/release-provenance.json
             release-assets/SHA256SUMS
 
   chrome-store:
     name: Publish to Chrome Web Store
-    needs: verification
+    needs: [verification, publish]
     if: >-
       always() && !cancelled() &&
-      ((needs.verification.result == 'success' &&
+      ((needs.verification.result == 'success' && needs.publish.result == 'success' &&
         (github.event_name == 'push' || inputs.action == 'submit')) ||
        inputs.action == 'status' || inputs.action == 'rollout')
     runs-on: ubuntu-latest
@@ -88,10 +131,10 @@ jobs:
       CWS_DEPLOY_PERCENTAGE: ${{ inputs.deploy_percentage || vars.CWS_DEPLOY_PERCENTAGE || '10' }}
       REQUESTED_DEPLOY_PERCENTAGE: ${{ inputs.deploy_percentage }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.x
       - name: Validate release action and publishing configuration
@@ -114,10 +157,15 @@ jobs:
           done
       - name: Download the exact Chrome package tested by verification
         if: env.CWS_ACTION == 'submit'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: fontara-verified-packages
           path: build
+      - name: Verify publishing tag belongs to trusted master
+        if: env.CWS_ACTION != 'status'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tasks/publish-firefox-store.js --action check-tag --tag "$GITHUB_REF_NAME"
       - name: Validate the verified ZIP and release tag before authentication
         if: env.CWS_ACTION == 'submit'
         run: node tasks/publish-chrome-store.js --action validate

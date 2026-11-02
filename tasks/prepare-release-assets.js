@@ -11,6 +11,13 @@ const {
   verifySourceSupplement
 } = require("./publish-firefox-store")
 
+const {
+  createProvenance,
+  PROVENANCE_NAME,
+  LEGACY_RELEASE
+} = require("./release-provenance")
+const { SBOM_NAME, MAX_SBOM_BYTES, validateSbom } = require("./generate-sbom")
+
 const REPOSITORY = "mimalef70/fontara"
 const TARGETS = ["chrome", "firefox", "edge", "brave", "opera", "safari"]
 const START = "<!-- fontara-release-assets:start -->"
@@ -151,8 +158,13 @@ function releaseSection(info) {
     "",
     "### Integrity and build provenance",
     "",
-    `- [SHA256SUMS](${download("SHA256SUMS")}) covers the original ZIPs, versioned aliases and build metadata.`,
+    `- [SHA256SUMS](${download("SHA256SUMS")}) covers the original ZIPs, versioned aliases, available dependency inventory and build metadata.`,
     `- [build-info.json](${download("build-info.json")}) records the release commit, package hashes, manifest versions and required toolchain.`,
+    ...(info.dependencyInventory
+      ? [
+          `- [Production dependency inventory (CycloneDX 1.6)](${download(SBOM_NAME)}) records the frozen production dependency graph, including peer and optional packages. This is a conservative inventory, not an exact list of tree-shaken bundled code or non-package assets.`
+        ]
+      : []),
     `- Source commit: [${info.commit}](${`https://github.com/${REPOSITORY}/commit/${info.commit}`}).`,
     `- [Full changelog at ${info.tag}](https://github.com/${REPOSITORY}/blob/${info.tag}/CHANGELOG.md).`,
     "",
@@ -270,6 +282,23 @@ function prepareReleaseAssets({
   )
     throw new Error("Release manifests must declare browser minimum versions.")
   const files = new Map(originals)
+  const inventoryPath = path.join(directory, SBOM_NAME)
+  let dependencyInventory
+  if (fs.existsSync(inventoryPath)) {
+    if (fs.statSync(inventoryPath).size > MAX_SBOM_BYTES)
+      throw new Error("Production inventory exceeds the size budget.")
+    const bytes = fs.readFileSync(inventoryPath)
+    validateSbom(JSON.parse(bytes), pkg)
+    files.set(SBOM_NAME, bytes)
+    dependencyInventory = {
+      name: SBOM_NAME,
+      sha256: sha256(bytes),
+      size: bytes.length
+    }
+  } else if (tag !== LEGACY_RELEASE.tag || commit !== LEGACY_RELEASE.sha)
+    throw new Error(
+      "The verified build is missing its production dependency inventory."
+    )
   const packages = TARGETS.map((target) => {
     const original = `${target}-mv3-prod.zip`
     const name = `fontara-${version}-${target}${target === "safari" ? "-experimental" : ""}.zip`
@@ -301,6 +330,7 @@ function prepareReleaseAssets({
     preparation:
       "Byte-identical copies of supplied release ZIPs; no rebuild or repacking.",
     ...(sourceCorrection ? { sourceCorrection } : {}),
+    ...(dependencyInventory ? { dependencyInventory } : {}),
     packages
   }
   const section = releaseSection(info)
@@ -312,6 +342,12 @@ function prepareReleaseAssets({
   files.set(
     "build-info.json",
     Buffer.from(`${JSON.stringify(info, null, 2)}\n`)
+  )
+  files.set(
+    PROVENANCE_NAME,
+    Buffer.from(
+      `${JSON.stringify(createProvenance(tag, commit, files), null, 2)}\n`
+    )
   )
   const sums = [...files]
     .sort(([a], [b]) => a.localeCompare(b, "en"))

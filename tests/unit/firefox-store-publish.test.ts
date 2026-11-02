@@ -22,6 +22,7 @@ const {
   readVerifiedPackages,
   createAmoClient
 } = require("../../tasks/publish-firefox-store.js")
+const { LEGACY_RELEASE } = require("../../tasks/release-provenance.js")
 const { load } = require("js-yaml")
 const version = "5.1.0"
 const sha = SOURCE_SUPPLEMENT.sha
@@ -71,7 +72,7 @@ function harness(replies: Reply[]) {
 
 function githubFixture() {
   const run = {
-    id: 7,
+    id: 41285062250,
     repository: { id: 141708904 },
     head_repository: { id: 141708904 },
     workflow_id: 3,
@@ -92,16 +93,16 @@ function githubFixture() {
     [`git/tags/${"b".repeat(40)}`]: { object: { type: "commit", sha } },
     [`compare/${sha}...master`]: { merge_base_commit: { sha } },
     "actions/workflows/release.yml": { id: 3 },
-    "actions/runs/7": run,
-    "actions/workflows/release.yml/runs?branch=v5.1.0&event=push&status=success&per_page=100":
+    "actions/runs/41285062250": run,
+    "actions/workflows/release.yml/runs?branch=v5.1.0&status=completed&per_page=100":
       { workflow_runs: [run] },
-    "actions/runs/7/jobs?filter=latest&per_page=100": {
+    "actions/runs/41285062250/jobs?filter=latest&per_page=100": {
       jobs: REQUIRED_JOBS.map((name: string) => ({
         name,
         conclusion: "success"
       }))
     },
-    "actions/runs/7/artifacts?per_page=100": {
+    "actions/runs/41285062250/artifacts?per_page=100": {
       artifacts: [
         {
           id: 8,
@@ -230,12 +231,60 @@ test("GitHub repository identity request has no trailing slash or redirects", as
 
 test("release preparation resolves annotated tags and exact verified run assets", async () => {
   const { github } = githubFixture()
-  const automatic = await prepareRelease({ tag: "v5.1.0", runId: 7, github })
+  const automatic = await prepareRelease({
+    tag: "v5.1.0",
+    runId: 41285062250,
+    github
+  })
   const manual = await prepareRelease({ tag: "v5.1.0", github })
   assert.deepEqual(automatic, manual)
   assert.equal(automatic.sha, sha)
   assert.equal(automatic.artifactId, 8)
   assert.equal(automatic.sourceSupplement, SOURCE_SUPPLEMENT.name)
+})
+
+test("implicit legacy retries use the original pinned run after artifacts expire, even beyond the run listing", async () => {
+  const fixture = githubFixture()
+  const newer = { ...fixture.run, id: 99, event: "workflow_dispatch" }
+  fixture.data[
+    "actions/workflows/release.yml/runs?branch=v5.1.0&status=completed&per_page=100"
+  ] = { workflow_runs: [newer] }
+  fixture.data["actions/runs/99"] = newer
+  fixture.data["actions/runs/99/jobs?filter=latest&per_page=100"] =
+    fixture.data["actions/runs/41285062250/jobs?filter=latest&per_page=100"]
+  for (const id of [LEGACY_RELEASE.runId, 99])
+    fixture.data[`actions/runs/${id}/artifacts?per_page=100`] = {
+      artifacts: []
+    }
+  const release = fixture.data["releases/tags/v5.1.0"] as {
+    assets: Array<{ name: string; state: string; digest: string; size: number }>
+  }
+  release.assets.push({
+    name: "chrome-mv3-prod.zip",
+    state: "uploaded",
+    digest: `sha256:${LEGACY_RELEASE.assets["chrome-mv3-prod.zip"]}`,
+    size: 10
+  })
+  const prepared = await prepareRelease({
+    tag: LEGACY_RELEASE.tag,
+    github: fixture.github
+  })
+  assert.equal(prepared.runId, LEGACY_RELEASE.runId)
+  assert.equal(prepared.packageSource, "release-assets")
+  assert.equal(prepared.artifactId, null)
+  await assert.rejects(
+    prepareRelease({
+      tag: LEGACY_RELEASE.tag,
+      runId: 99,
+      github: fixture.github
+    }),
+    /Legacy release provenance identity mismatch/
+  )
+  fixture.run.head_repository.id = 1
+  await assert.rejects(
+    prepareRelease({ tag: LEGACY_RELEASE.tag, github: fixture.github }),
+    /completed Release/
+  )
 })
 
 test("legacy source preparation pins its reviewed supplement while status needs none", async () => {
@@ -297,19 +346,29 @@ test("release provenance rejects forks, wrong tags, unrelated workflows, and inc
     { head_branch: "master" },
     { path: ".github/workflows/evil.yml" },
     { workflow_id: 4 },
-    { conclusion: "failure" }
+    { conclusion: "cancelled" }
   ]) {
     const fixture = githubFixture()
     Object.assign(fixture.run, change)
     await assert.rejects(
-      prepareRelease({ tag: "v5.1.0", runId: 7, github: fixture.github }),
-      /successful Release/
+      prepareRelease({
+        tag: "v5.1.0",
+        runId: 41285062250,
+        github: fixture.github
+      }),
+      /completed Release/
     )
   }
   const fixture = githubFixture()
-  fixture.data["actions/runs/7/jobs?filter=latest&per_page=100"] = { jobs: [] }
+  fixture.data["actions/runs/41285062250/jobs?filter=latest&per_page=100"] = {
+    jobs: []
+  }
   await assert.rejects(
-    prepareRelease({ tag: "v5.1.0", runId: 7, github: fixture.github }),
+    prepareRelease({
+      tag: "v5.1.0",
+      runId: 41285062250,
+      github: fixture.github
+    }),
     /every required/
   )
   const other = githubFixture()
@@ -320,6 +379,140 @@ test("release provenance rejects forks, wrong tags, unrelated workflows, and inc
     prepareRelease({ tag: "v5.1.0", github: other.github }),
     /ancestor/
   )
+})
+
+test("a Chrome submission failure does not block a verified Firefox publication milestone", async () => {
+  for (const event of ["push", "workflow_dispatch"]) {
+    const fixture = githubFixture()
+    fixture.run.event = event
+    fixture.run.conclusion = "failure"
+    const prepared = await prepareRelease({
+      tag: "v5.1.0",
+      github: fixture.github
+    })
+    assert.equal(prepared.runId, 41285062250)
+    assert.equal(prepared.packageSource, "artifact")
+  }
+})
+
+test("manual verification and failed browser gates never authorize store publication", async () => {
+  for (const failed of REQUIRED_JOBS) {
+    const fixture = githubFixture()
+    fixture.run.event = "workflow_dispatch"
+    fixture.data["actions/runs/41285062250/jobs?filter=latest&per_page=100"] = {
+      jobs: REQUIRED_JOBS.map((name: string) => ({
+        name,
+        conclusion: name === failed ? "skipped" : "success"
+      }))
+    }
+    await assert.rejects(
+      prepareRelease({ tag: "v5.1.0", github: fixture.github }),
+      /every required/
+    )
+    const automatic = await prepareRelease({
+      tag: "v5.1.0",
+      github: fixture.github,
+      runId: 41285062250,
+      allowIncomplete: true
+    })
+    assert.equal(automatic.eligible, false)
+    assert.equal(automatic.assets, undefined)
+  }
+})
+
+test("AMO status resolves trusted tag identity without jobs, artifacts, ZIPs, or reviewer source", async () => {
+  const fixture = githubFixture()
+  for (const key of Object.keys(fixture.data)) {
+    if (key.startsWith("actions/")) delete fixture.data[key]
+  }
+  const published = fixture.data["releases/tags/v5.1.0"] as {
+    assets: unknown[]
+  }
+  published.assets = []
+  const prepared = await prepareRelease({
+    tag: "v5.1.0",
+    github: fixture.github,
+    statusOnly: true
+  })
+  assert.equal(prepared.statusOnly, true)
+  assert.equal(prepared.sha, sha)
+  assert.deepEqual(prepared.assets, {})
+})
+
+test("expired CI artifacts use independently attested release assets and reject altered provenance", async () => {
+  const futureTag = "v5.2.0"
+  const futureSha = "c".repeat(40)
+  const data = JSON.parse(
+    JSON.stringify(githubFixture().data)
+      .split("5.1.0")
+      .join("5.2.0")
+      .split(sha)
+      .join(futureSha)
+  )
+  data["actions/runs/41285062250/artifacts?per_page=100"].artifacts[0].expired =
+    true
+  const published = data["releases/tags/v5.2.0"]
+  const hashes = Object.fromEntries(
+    published.assets.map(
+      (asset: { name: string; digest: string; size: number }) => [
+        asset.name,
+        { sha256: asset.digest.slice(7), size: asset.size }
+      ]
+    )
+  )
+  const manifest = {
+    schema: 1,
+    repository: "mimalef70/fontara",
+    workflow: ".github/workflows/release.yml",
+    tag: futureTag,
+    sha: futureSha,
+    assets: hashes
+  }
+  const bytes = Buffer.from(JSON.stringify(manifest))
+  published.assets.push({
+    name: "release-provenance.json",
+    state: "uploaded",
+    size: bytes.length,
+    digest: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+    browser_download_url: `https://github.com/mimalef70/fontara/releases/download/${futureTag}/release-provenance.json`
+  })
+  let verifications = 0
+  const options = {
+    tag: futureTag,
+    github: async (route: string) => {
+      assert.ok(data[route], route)
+      return data[route]
+    },
+    fetchImpl: async () => new Response(bytes),
+    run: (command: string, args: string[]) => {
+      assert.equal(command, "gh")
+      for (const [flag, expected] of [
+        ["--source-ref", `refs/tags/${futureTag}`],
+        ["--source-digest", futureSha],
+        ["--signer-digest", futureSha],
+        ["--signer-workflow", "mimalef70/fontara/.github/workflows/release.yml"]
+      ])
+        assert.equal(args[args.indexOf(flag) + 1], expected)
+      assert.ok(args.includes("--deny-self-hosted-runners"))
+      verifications++
+      return "[{}]"
+    }
+  }
+  const prepared = await prepareRelease(options)
+  assert.equal(prepared.artifactId, null)
+  assert.equal(prepared.packageSource, "release-assets")
+  assert.equal(verifications, 1)
+  await assert.rejects(
+    prepareRelease({
+      ...options,
+      run: () => {
+        throw new Error("bad signature")
+      }
+    }),
+    /attestation/
+  )
+  published.assets[0].digest = `sha256:${"f".repeat(64)}`
+  await assert.rejects(prepareRelease(options), /differs from attested/)
 })
 
 test("AMO compact UUID submission polls the exact upload and attaches source atomically", async () => {
@@ -801,7 +994,12 @@ test("Firefox workflow keeps secrets out of validation and auto-submission disab
     runInNewContext(supplement.if, {
       env: { AMO_ACTION: "status" },
       steps: {
-        release: { outputs: { source_supplement: SOURCE_SUPPLEMENT.name } }
+        release: {
+          outputs: {
+            source_supplement: SOURCE_SUPPLEMENT.name,
+            eligible: "true"
+          }
+        }
       }
     }),
     false
@@ -810,7 +1008,12 @@ test("Firefox workflow keeps secrets out of validation and auto-submission disab
     runInNewContext(supplement.if, {
       env: { AMO_ACTION: "submit" },
       steps: {
-        release: { outputs: { source_supplement: SOURCE_SUPPLEMENT.name } }
+        release: {
+          outputs: {
+            source_supplement: SOURCE_SUPPLEMENT.name,
+            eligible: "true"
+          }
+        }
       }
     }),
     true
@@ -827,7 +1030,8 @@ test("Firefox workflow keeps secrets out of validation and auto-submission disab
     const result = runInNewContext(operation.if, {
       env: { AMO_ACTION: action },
       github: { event_name: event },
-      vars: { AMO_AUTO_SUBMIT_ENABLED: enabled }
+      vars: { AMO_AUTO_SUBMIT_ENABLED: enabled },
+      steps: { release: { outputs: { eligible: "true" } } }
     })
     assert.equal(result, expected)
   }

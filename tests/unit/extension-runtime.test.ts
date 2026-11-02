@@ -40,8 +40,15 @@ function createStorageChange(
 function installChromeRuntimeMock(
   localValues: Record<string, unknown>,
   syncValues: Record<string, unknown>
-): { getUninstallURL: () => string } {
+): {
+  getUninstallURL: () => string
+  getLocalReadCount: () => number
+  setLocalReadError: (message: string | null) => void
+  notifyLocalChange: () => void
+} {
   let runtimeError: { message?: string } | undefined
+  let localReadError: string | null = null
+  let localReadCount = 0
   let uninstallURL = "https://legacy-survey.example/uninstall"
   const storageListeners: Array<
     (
@@ -110,6 +117,13 @@ function installChromeRuntimeMock(
           key: string | string[] | Record<string, unknown> | null,
           callback: (items: Record<string, unknown>) => void
         ) {
+          localReadCount += 1
+          if (localReadError) {
+            runtimeError = { message: localReadError }
+            callback({})
+            runtimeError = undefined
+            return
+          }
           runtimeError = undefined
           if (key === null) {
             callback({ ...localValues })
@@ -191,15 +205,43 @@ function installChromeRuntimeMock(
       }
     }
   })
-  return { getUninstallURL: () => uninstallURL }
+  return {
+    getUninstallURL: () => uninstallURL,
+    getLocalReadCount: () => localReadCount,
+    setLocalReadError: (message) => {
+      localReadError = message
+    },
+    notifyLocalChange: () =>
+      notifyStorageListeners(
+        "local",
+        {},
+        { [STORAGE_KEYS.EXTENSION_ENABLED]: true }
+      )
+  }
 }
 
-test("startup clears a previously registered third-party uninstall page", async () => {
+test("startup shares failed attempts and retries after storage recovers", async () => {
   const mock = installChromeRuntimeMock(
     { [STORAGE_KEYS.SYNC_SETTINGS]: false },
     {}
   )
-  await ExtensionRuntime.start()
+  mock.setLocalReadError("temporary-storage-error")
+  const failedAttempt = ExtensionRuntime.start()
+  assert.equal(ExtensionRuntime.start(), failedAttempt)
+  // A storage event can arrive during failed initialization. It must not leave
+  // an unhandled rejection or prevent a later request from retrying startup.
+  mock.notifyLocalChange()
+  await assert.rejects(failedAttempt, /temporary-storage-error/)
+  await new Promise((resolve) => setImmediate(resolve))
+
+  const failedReadCount = mock.getLocalReadCount()
+  mock.setLocalReadError(null)
+  const recoveredAttempt = ExtensionRuntime.start()
+  assert.notEqual(recoveredAttempt, failedAttempt)
+  assert.equal(ExtensionRuntime.start(), recoveredAttempt)
+  await recoveredAttempt
+  assert.ok(mock.getLocalReadCount() > failedReadCount)
+  assert.equal((await ExtensionRuntime.collectData()).isReady, true)
   assert.equal(mock.getUninstallURL(), "")
   await new Promise((resolve) => setTimeout(resolve, 40))
 })

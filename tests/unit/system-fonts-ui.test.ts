@@ -7,7 +7,7 @@ function readSource(path: string): string {
 }
 
 test("disabling system fonts preserves dormant global and per-site selections", () => {
-  const optionsSource = readSource("src/ui/options/index.tsx")
+  const optionsSource = readSource("src/ui/options/use-font-sources.ts")
   const handlerStart = optionsSource.indexOf("const handleSystemFontsToggle")
   const handlerEnd = optionsSource.indexOf(
     "const handleGoogleFontsToggle",
@@ -22,7 +22,7 @@ test("disabling system fonts preserves dormant global and per-site selections", 
 })
 
 test("system font intent is saved before a temporary fontSettings load error", () => {
-  const optionsSource = readSource("src/ui/options/index.tsx")
+  const optionsSource = readSource("src/ui/options/use-font-sources.ts")
   const handlerStart = optionsSource.indexOf("const handleSystemFontsToggle")
   const handlerEnd = optionsSource.indexOf(
     "const handleGoogleFontsToggle",

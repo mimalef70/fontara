@@ -10,6 +10,11 @@ const packageJSON = JSON.parse(
 const sourceManifest = JSON.parse(
   fs.readFileSync(path.join(rootDir, "src/manifest.json"), "utf8")
 )
+const args = process.argv.slice(2)
+if (args.some((argument) => argument !== "--source-only")) {
+  throw new Error("Only --source-only is supported by the version validator.")
+}
+const sourceOnly = args.includes("--source-only")
 
 if (packageJSON.version !== sourceManifest.version) {
   throw new Error(
@@ -24,7 +29,7 @@ if (tag?.startsWith("v") && tag.slice(1) !== packageJSON.version) {
   )
 }
 
-for (const target of ["chrome-mv3", "firefox-mv3"]) {
+for (const target of sourceOnly ? [] : ["chrome-mv3", "firefox-mv3"]) {
   const builtManifestPath = path.join(
     rootDir,
     "build",

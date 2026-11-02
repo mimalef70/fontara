@@ -174,6 +174,29 @@ The nightly channel matrix supplements the stable/minimum checks required by
 normal CI and releases. Both workflows install geckodriver from Mozilla's
 versioned release archive and verify its SHA-256 checksum before execution.
 
+### Performance measurements and failure reports
+
+`pnpm test:browser:performance` measures repeated replacement of a 1,200-node
+document in a real Chrome extension session. It checks settling-time p95,
+long-task duration, retained heap after garbage collection and CPU time against
+explicit budgets. Two warm-up rounds precede twelve measured rounds. The stable
+and minimum Chrome CI lanes run this test and preserve
+`browser-artifacts/performance-budget.json`; compare these measurements when
+changing DOM processing rather than increasing thresholds to silence a failure.
+
+To collect diagnostics during a local browser run, set
+`FONTARA_BROWSER_ARTIFACT_DIR=browser-artifacts`. Failed extension harness tests
+save viewport screenshots, bounded DOM snapshots, console errors and failure
+metadata before closing the browser. Collection accepts only the fresh test
+profile's extension pages and local synthetic fixtures, clears input values and
+does not dump storage or network responses. CI preserves these files for 14 days.
+
+`pnpm lint:workflows` runs actionlint, including shellcheck when available on
+PATH. Install [actionlint](https://github.com/rhysd/actionlint) locally or set
+`ACTIONLINT_PATH` to its executable. CI installs a checksum-verified actionlint
+release before the build checks; workflow contract tests remain an additional
+layer rather than a replacement for expression and shell validation.
+
 ## Package Lint
 
 ```sh

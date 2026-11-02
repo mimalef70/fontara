@@ -63,18 +63,18 @@ test("CI, release, and browser workflows use native build checks without Plasmo 
 
   assert.match(workflowText, /version:\s*11\.5\.0/)
   assert.match(workflowText, /node-version:\s*24\.x/)
-  assert.match(workflowText, /actions\/checkout@v7/)
-  assert.match(workflowText, /actions\/setup-node@v7/)
-  assert.match(workflowText, /pnpm\/action-setup@v6/)
-  assert.match(releaseGateText, /actions\/upload-artifact@v7/)
-  assert.match(release, /softprops\/action-gh-release@v3/)
+  assert.match(workflowText, /actions\/checkout@[0-9a-f]{40} # v7/)
+  assert.match(workflowText, /actions\/setup-node@[0-9a-f]{40} # v7/)
+  assert.match(workflowText, /pnpm\/action-setup@[0-9a-f]{40} # v6/)
+  assert.match(releaseGateText, /actions\/upload-artifact@[0-9a-f]{40} # v7/)
+  assert.match(release, /softprops\/action-gh-release@[0-9a-f]{40} # v3/)
   assert.match(releaseGateText, /pnpm verify/)
   assert.match(releaseGateText, /firefox-mv3-source-\*\.zip/)
   assert.match(browser, /workflow_dispatch:/)
   assert.match(browser, /schedule:/)
   assert.match(browser, /fail-fast:\s*false/)
-  assert.match(browser, /browser-actions\/setup-chrome@v2/)
-  assert.match(browser, /browser-actions\/setup-firefox@v1/)
+  assert.match(browser, /browser-actions\/setup-chrome@[0-9a-f]{40} # v2/)
+  assert.match(browser, /browser-actions\/setup-firefox@[0-9a-f]{40} # v1/)
   assert.match(browser, /version:\s*stable/)
   assert.match(browser, /version:\s*beta/)
   assert.match(browser, /version:\s*latest/)
@@ -91,6 +91,22 @@ test("CI, release, and browser workflows use native build checks without Plasmo 
   assert.match(browser, /pnpm test:browser:firefox/)
   assert.doesNotMatch(workflowText, /plasmo/i)
   assert.doesNotMatch(workflowText, /PlasmoHQ/)
+})
+
+test("all external workflow actions use immutable commit references", () => {
+  for (const name of fs
+    .readdirSync(path.resolve(import.meta.dirname, "../../.github/workflows"))
+    .filter((name) => name.endsWith(".yml"))) {
+    for (const match of readWorkflow(name).matchAll(/uses:\s*([^\s#]+)/g)) {
+      const reference = match[1]
+      if (reference.startsWith("./")) continue
+      assert.match(
+        reference,
+        /^[\w.-]+\/[\w./-]+@[a-f0-9]{40}$/,
+        `${name}: ${reference}`
+      )
+    }
+  }
 })
 
 test("release publishes only packages from the shared completed verification", () => {
@@ -112,9 +128,25 @@ test("release publishes only packages from the shared completed verification", (
     step.uses?.startsWith("actions/download-artifact@")
   )
   assert.ok(upload?.with?.name)
+  assert.match(
+    String(upload.with.path),
+    /build\/fontara-production-dependencies\.cdx\.json/
+  )
+  const buildSteps = verification.jobs.build.steps ?? []
+  const inventoryIndex = buildSteps.findIndex(
+    (step) => step.run === "node tasks/generate-sbom.js"
+  )
+  const verifyIndex = buildSteps.findIndex((step) => step.run === "pnpm verify")
+  assert.ok(
+    verifyIndex >= 0 &&
+      inventoryIndex > verifyIndex &&
+      inventoryIndex < buildSteps.indexOf(upload)
+  )
   assert.equal(download?.with?.name, upload.with.name)
   const publishSteps = release.jobs.publish.steps ?? []
-  const preparation = publishSteps.filter((step) => step.run)
+  const preparation = publishSteps.filter((step) =>
+    step.run?.startsWith("node tasks/prepare-release-assets.js ")
+  )
   assert.equal(preparation.length, 1)
   assert.ok(preparation[0].run)
   assert.match(preparation[0].run, /^node tasks\/prepare-release-assets\.js /)
@@ -132,6 +164,20 @@ test("release publishes only packages from the shared completed verification", (
     String(publication.with.files),
     /release-assets\/build-info\.json/
   )
+  assert.match(
+    String(publication.with.files),
+    /release-assets\/release-provenance\.json/
+  )
+  assert.match(
+    String(publication.with.files),
+    /release-assets\/fontara-production-dependencies\.cdx\.json/
+  )
+  const attestation = publishSteps.findIndex((step) =>
+    step.uses?.startsWith("actions/attest@")
+  )
+  const uploadIndex = publishSteps.indexOf(publication)
+  assert.ok(attestation > 0 && attestation < uploadIndex)
+  assert.equal(release.jobs.publish.permissions?.attestations, "write")
   const browserSteps = verification.jobs.browsers.steps ?? []
   assert.ok(browserSteps.some((step) => step.run?.startsWith("unzip ")))
   assert.equal(
@@ -150,6 +196,90 @@ test("release publishes only packages from the shared completed verification", (
       )
     )
   }
+})
+
+test("live provenance self-test requires the full verifier and never authorizes a release tag", () => {
+  const workflow = load(readWorkflow("release.yml"))
+  const check = workflow.jobs["provenance-check"]
+  assert.equal(check.needs, "verification")
+  assert.equal(check.permissions?.contents, "read")
+  assert.equal(check.permissions?.attestations, "write")
+  for (const [ref, event, action, expected] of [
+    ["refs/heads/master", "workflow_dispatch", "verify", true],
+    ["refs/heads/master", "workflow_dispatch", "status", false],
+    ["refs/tags/v5.2.0", "workflow_dispatch", "verify", false],
+    ["refs/tags/v5.2.0", "push", "submit", false]
+  ]) {
+    assert.equal(
+      runInNewContext(check.if || "false", {
+        github: { repository: "mimalef70/fontara", ref, event_name: event },
+        inputs: { action }
+      }),
+      expected
+    )
+  }
+  assert.equal(
+    check.steps?.some(
+      (step) =>
+        step.uses?.startsWith("softprops/") ||
+        /publish-(chrome|firefox)-store/.test(step.run || "")
+    ),
+    false
+  )
+})
+
+test("Chrome submission requires the verified GitHub publication milestone while status and rollout remain independent", () => {
+  const job = load(readWorkflow("release.yml")).jobs["chrome-store"]
+  assert.deepEqual(job.needs, ["verification", "publish"])
+  const eligible = (
+    event: string,
+    action: string | undefined,
+    verification: string,
+    publish: string,
+    cancelled = false
+  ) =>
+    runInNewContext(
+      job.if || "false",
+      {
+        github: { event_name: event },
+        inputs: { action },
+        needs: {
+          verification: { result: verification },
+          publish: { result: publish }
+        },
+        always: () => true,
+        cancelled: () => cancelled
+      },
+      { timeout: 1000 }
+    )
+  for (const [event, action] of [
+    ["push", undefined],
+    ["workflow_dispatch", "submit"]
+  ]) {
+    assert.equal(eligible(event || "", action, "success", "success"), true)
+    for (const failed of ["failure", "cancelled", "skipped"])
+      for (const [verification, publish] of [
+        [failed, "success"],
+        ["success", failed]
+      ])
+        assert.equal(
+          eligible(event || "", action, verification, publish),
+          false
+        )
+  }
+  for (const action of ["status", "rollout"])
+    assert.equal(
+      eligible("workflow_dispatch", action, "skipped", "skipped"),
+      true
+    )
+  assert.equal(
+    eligible("workflow_dispatch", "verify", "success", "skipped"),
+    false
+  )
+  assert.equal(
+    eligible("workflow_dispatch", "submit", "success", "success", true),
+    false
+  )
 })
 
 test("manual verification and status runs never publish GitHub releases, even on tags", () => {

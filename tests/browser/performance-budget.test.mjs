@@ -6,6 +6,8 @@ import test from "node:test"
 import {
   STORAGE_KEYS,
   sendSettingsFromOptions,
+  waitForContentBridge,
+  waitForFont,
   withChromeMv3ExtensionHarness
 } from "../support/browser/extension-harness.mjs"
 
@@ -25,6 +27,9 @@ test("Chrome bounds settling time, long tasks and retained memory under repeated
   await withChromeMv3ExtensionHarness(t, async (harness) => {
     const options = await harness.createExtensionPage("ui/options/index.html")
     const page = await harness.createFixturePage()
+    // A settings acknowledgement alone does not establish content/runtime
+    // readiness. Keep startup storage listeners out of the measured workload.
+    await waitForContentBridge(page)
     await sendSettingsFromOptions(options, {
       [STORAGE_KEYS.SYNC_SETTINGS]: false,
       [STORAGE_KEYS.EXTENSION_ENABLED]: true,
@@ -33,6 +38,9 @@ test("Chrome bounds settling time, long tasks and retained memory under repeated
       [STORAGE_KEYS.DISABLED_FOR]: [],
       [STORAGE_KEYS.SELECTED_FONT]: "Samim-Fontara"
     })
+    await page.bringToFront()
+    await page.waitForFunction(() => document.visibilityState === "visible")
+    await waitForFont(page, "Samim-Fontara")
     const client = await page.createCDPSession()
     await client.send("Performance.enable")
     await page.evaluate(() => {

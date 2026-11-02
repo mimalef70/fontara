@@ -118,3 +118,67 @@ Use `.env.local` for local secrets and never commit API keys.
 - Keep tab delivery resilient to MV3 service worker restarts.
 - Avoid broad page selectors in inject code when a config or site fix can solve
   the problem more safely.
+
+## Repository Controls
+
+The default branch requires a PR, resolved review conversations, an up-to-date
+base and all five shared verification checks. Force-push and deletion are
+blocked, including for maintainers; the quality ruleset has no bypass actors.
+CodeQL results are also required; unresolved security findings of medium or
+higher severity and code-scanning errors block merging.
+Independent review is encouraged, but a mandatory approval count is not imposed
+on the active solo-maintainer workflow. CODEOWNERS identifies sensitive release,
+manifest and messaging changes for review.
+
+Release tags matching `v*` cannot be moved or deleted. Only repository admins
+can create them. The release preparation/publishing commands use the maintainer's
+local GitHub authentication; store credentials stay in GitHub environments.
+Actions receive read access by default, and write/OIDC permissions are granted
+only in the jobs that need them. Bot PR approval is disabled.
+
+Dependabot checks npm and GitHub Actions weekly, with compatible updates grouped
+and major upgrades reviewed individually. Automatic security updates, secret
+scanning, push protection, private vulnerability reporting and CodeQL analysis
+for JavaScript/TypeScript and Actions are enabled. A green dependency audit does
+not replace review of new security findings or temporary dependency overrides.
+
+## Preparing and Publishing a Version
+
+Use an authenticated maintainer checkout (`gh auth status`) with a clean `master`
+matching the live `origin/master`. Replace the example with the next intended
+version. Start with a preview:
+
+```sh
+pnpm release:prepare --version 5.1.1 --dry-run
+pnpm release:prepare --version 5.1.1
+```
+
+The second command creates `codex/release-5.1.1`, updates only `package.json`,
+`src/manifest.json` and the Unreleased changelog, validates source versions,
+commits the reviewed paths and opens a PR. The root package version is not stored
+in the pnpm lockfile importer, so dependency resolution is unchanged. The
+source-only version check ignores stale local build output; the full CI still
+validates every production manifest.
+
+Review and merge that PR after all checks pass. Then publish its exact reviewed
+merge commit (replace `123` with the release PR number):
+
+```sh
+pnpm release:publish --version 5.1.1 --pr 123 --dry-run
+pnpm release:publish --version 5.1.1 --pr 123
+```
+
+Publishing verifies the canonical repository, merged PR, its exact three changed
+files, package/manifest/changelog consistency, ancestry and all five successful
+CI jobs on that merge SHA. It creates an annotated tag and pushes only that tag,
+starting the automatic GitHub/Chrome/Firefox release workflows. It never merges
+a PR or skips tests. A newer version on master or an existing local/remote tag
+stops the command. Later same-version commits on master do not change the reviewed
+commit selected for release. Store approval remains independent of GitHub CI.
+
+The local commands use the maintainer's GitHub authentication, so PR creation
+triggers ordinary CI and tag creation honors the admin-only tag rule without
+granting workflow tokens blanket repository bypass. No store login is needed.
+If a command fails after creating a branch, commit or tag, it leaves that state
+for inspection; it never resets the worktree, force-pushes or deletes a release
+tag. Check `git status`, the PR and remote tag before retrying.

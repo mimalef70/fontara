@@ -12,6 +12,21 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Recovered from temporary background startup/storage failures and prevented
+  delayed UI responses from replacing newer settings.
+- Tightened custom and built-in site matching to reject lookalike domains and
+  preserved the boundary checks through saved-settings migration.
+- Split Options into focused feature controllers and sections while preserving
+  draft inputs, previews, consent and navigation behavior.
+- Added durable attested release provenance, independent store retries, and
+  artifact-independent Firefox status checks.
+- Added pinned Actions, workflow linting, browser failure diagnostics and measured
+  DOM-processing CPU, settling-time and memory budgets.
+- Added release preparation and publication commands with dry-run previews,
+  synchronized version/changelog PRs and exact reviewed-commit CI checks.
+- Added explicit utility return types and an Edge installation link, incorporating
+  the still-applicable contributions from PRs #156 and #115.
+
 - Added versioned browser downloads, SHA-256 manifests, build metadata, and
   installation guidance to GitHub releases without rebuilding verified packages.
 - Added automatic collection of matching store-signed Chrome CRX3 and Firefox

@@ -54,7 +54,7 @@ are mainly for testers, reviewers, and contributors.
 | Chrome | [Chrome Web Store](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/) | `pnpm build:chrome` | Stable and minimum 130; nightly beta |
 | Firefox | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/fontara-font-changer/) | `pnpm build:firefox` | Stable and minimum 140 ESR; nightly beta/ESR |
 | Opera | [Opera Add-ons](https://addons.opera.com/en/extensions/details/fontara-font-changer/) | `pnpm build:opera` | Manual smoke |
-| Edge | Build locally | `pnpm build:edge` | Chromium-compatible package |
+| Edge | [Install from Chrome Web Store](https://chrome.google.com/webstore/detail/dcjdhicepiklefpimapdkbaeoocniemc/) | `pnpm build:edge` | Chromium-compatible package; allow extensions from other stores when prompted |
 | Brave | Build locally | `pnpm build:brave` | Chromium-compatible package |
 | Safari-style MV3 package | Build locally | `pnpm build:safari` | Package output only |
 

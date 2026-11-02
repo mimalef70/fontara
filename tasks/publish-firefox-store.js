@@ -5,6 +5,11 @@ const path = require("node:path")
 const { execFileSync } = require("node:child_process")
 const { createHash, createHmac, randomUUID } = require("node:crypto")
 const { setTimeout: delay } = require("node:timers/promises")
+const {
+  LEGACY_RELEASE,
+  durableProvenance,
+  downloadPreparedPackages
+} = require("./release-provenance")
 
 const REPOSITORY = "mimalef70/fontara"
 const REPOSITORY_ID = 141708904
@@ -192,7 +197,7 @@ function createGitHubClient(token, fetchImpl = fetch) {
     throw new Error(
       "A read-only GITHUB_TOKEN is required to verify the release."
     )
-  return async (suffix) => {
+  return async (suffix, { allowMissing = false } = {}) => {
     let response
     try {
       response = await fetchImpl(
@@ -212,115 +217,162 @@ function createGitHubClient(token, fetchImpl = fetch) {
         "GitHub release verification request failed or timed out."
       )
     }
-    return jsonResponse(response, "GitHub release verification", [token])
+    return jsonResponse(
+      response,
+      "GitHub release verification",
+      [token],
+      allowMissing
+    )
   }
 }
 
-async function prepareRelease({ tag, runId, github, requireSource = true }) {
+async function resolveTrustedTag(tag, github) {
   const version = releaseVersion(tag)
   const repository = await github("")
   if (
     repository.id !== REPOSITORY_ID ||
     repository.full_name !== REPOSITORY ||
     repository.default_branch !== "master"
-  ) {
+  )
     throw new Error("Unexpected GitHub repository identity or default branch.")
-  }
   let object = (await github(`git/ref/tags/${encodeURIComponent(tag)}`)).object
-  for (let depth = 0; object?.type === "tag" && depth < 5; depth++) {
+  for (let depth = 0; object?.type === "tag" && depth < 5; depth++)
     object = (await github(`git/tags/${object.sha}`)).object
-  }
-  if (object?.type !== "commit" || !/^[0-9a-f]{40}$/.test(object.sha)) {
+  if (object?.type !== "commit" || !/^[0-9a-f]{40}$/.test(object.sha))
     throw new Error("Release tag must resolve to a commit.")
-  }
   const sha = object.sha
   const comparison = await github(`compare/${sha}...master`)
-  if (comparison.merge_base_commit?.sha !== sha) {
+  if (comparison.merge_base_commit?.sha !== sha)
     throw new Error(
       "Release tag is not an ancestor of the trusted master branch."
     )
+  return { tag, version, sha }
+}
+
+function validReleaseRun(run, workflowId, tag, sha) {
+  return (
+    run &&
+    run.repository?.id === REPOSITORY_ID &&
+    run.head_repository?.id === REPOSITORY_ID &&
+    run.workflow_id === workflowId &&
+    run.path === ".github/workflows/release.yml" &&
+    ["push", "workflow_dispatch"].includes(run.event) &&
+    run.head_branch === tag &&
+    run.head_sha === sha &&
+    run.status === "completed" &&
+    ["success", "failure"].includes(run.conclusion)
+  )
+}
+
+async function prepareRelease({
+  tag,
+  runId,
+  github,
+  requireSource = true,
+  statusOnly = false,
+  includeChrome = false,
+  allowIncomplete = false,
+  fetchImpl = fetch,
+  run: execute = execFileSync
+}) {
+  const identity = await resolveTrustedTag(tag, github)
+  const { version, sha } = identity
+  if (statusOnly) {
+    const published = await github(`releases/tags/${encodeURIComponent(tag)}`)
+    if (published.draft || published.prerelease || published.tag_name !== tag)
+      throw new Error("A published stable GitHub release is required.")
+    return { ...identity, statusOnly: true, assets: {} }
   }
   const workflow = await github("actions/workflows/release.yml")
-  let run
+  // Historical proof is pinned to the original publication. A newer retry must
+  // not hide it in the run listing or become the implicit provenance authority.
+  if (!runId && tag === LEGACY_RELEASE.tag && sha === LEGACY_RELEASE.sha)
+    runId = LEGACY_RELEASE.runId
+  let candidates
   if (runId) {
     if (!/^\d+$/.test(String(runId))) throw new Error("Invalid release run ID.")
-    run = await github(`actions/runs/${runId}`)
+    const run = await github(`actions/runs/${runId}`)
+    if (!validReleaseRun(run, workflow.id, tag, sha))
+      throw new Error(
+        "An original completed Release run is required for this exact tag commit."
+      )
+    candidates = [run]
   } else {
     const runs = await github(
-      `actions/workflows/release.yml/runs?branch=${encodeURIComponent(tag)}&event=push&status=success&per_page=100`
+      `actions/workflows/release.yml/runs?branch=${encodeURIComponent(tag)}&status=completed&per_page=100`
     )
-    run = runs.workflow_runs?.find((candidate) => candidate.head_sha === sha)
-  }
-  if (
-    !run ||
-    run.repository?.id !== REPOSITORY_ID ||
-    run.head_repository?.id !== REPOSITORY_ID ||
-    run.workflow_id !== workflow.id ||
-    run.path !== ".github/workflows/release.yml" ||
-    run.event !== "push" ||
-    run.head_branch !== tag ||
-    run.head_sha !== sha ||
-    run.status !== "completed" ||
-    run.conclusion !== "success"
-  ) {
-    throw new Error(
-      "An original successful Release tag-push run is required for this exact tag commit."
+    candidates = (runs.workflow_runs || []).filter((run) =>
+      validReleaseRun(run, workflow.id, tag, sha)
     )
   }
-  const jobs = await github(
-    `actions/runs/${run.id}/jobs?filter=latest&per_page=100`
-  )
-  if (
-    !REQUIRED_JOBS.every((name) =>
-      jobs.jobs?.some(
-        (job) => job.name === name && job.conclusion === "success"
+  let run
+  for (const candidate of candidates) {
+    const jobs = await github(
+      `actions/runs/${candidate.id}/jobs?filter=latest&per_page=100`
+    )
+    if (
+      REQUIRED_JOBS.every((name) =>
+        jobs.jobs?.some(
+          (job) => job.name === name && job.conclusion === "success"
+        )
       )
-    )
-  ) {
+    ) {
+      run = candidate
+      break
+    }
+  }
+  if (!run) {
+    if (allowIncomplete) return { ...identity, eligible: false }
     throw new Error(
       "The release did not pass every required build/browser/publication gate."
     )
   }
-  const artifacts = await github(
-    `actions/runs/${run.id}/artifacts?per_page=100`
-  )
-  const matches =
-    artifacts.artifacts?.filter(
-      (artifact) => artifact.name === "fontara-verified-packages"
-    ) || []
-  if (
-    matches.length !== 1 ||
-    matches[0].expired ||
-    matches[0].workflow_run?.head_sha !== sha
-  ) {
-    throw new Error(
-      "The exact verified release artifact is missing, expired, or ambiguous; no rebuild is allowed."
-    )
-  }
   const release = await github(`releases/tags/${encodeURIComponent(tag)}`)
-  if (release.draft || release.prerelease || release.tag_name !== tag) {
+  if (release.draft || release.prerelease || release.tag_name !== tag)
     throw new Error("A published stable GitHub release is required.")
-  }
-  const names = ["firefox-mv3-prod.zip", `firefox-mv3-source-${version}.zip`]
+  const names = ["firefox-mv3-prod.zip"]
+  if (requireSource) names.push(`firefox-mv3-source-${version}.zip`)
+  if (includeChrome) names.push("chrome-mv3-prod.zip")
   const assets = {}
   for (const name of names) {
     const found = release.assets?.filter((asset) => asset.name === name) || []
     if (
       found.length !== 1 ||
       found[0].state !== "uploaded" ||
-      !/^sha256:[0-9a-f]{64}$/.test(found[0].digest || "")
-    ) {
+      !/^sha256:[0-9a-f]{64}$/.test(found[0].digest || "") ||
+      !Number.isSafeInteger(found[0].size) ||
+      found[0].size <= 0 ||
+      found[0].size > 50 * 1024 * 1024
+    )
       throw new Error(`Missing unique published release asset/digest: ${name}`)
-    }
     assets[name] = { sha256: found[0].digest.slice(7), size: found[0].size }
   }
   const prepared = {
-    tag,
-    version,
-    sha,
+    ...identity,
     runId: run.id,
-    artifactId: matches[0].id,
-    assets
+    artifactId: null,
+    assets,
+    eligible: true,
+    packageSource: "artifact"
+  }
+  const artifacts = await github(
+    `actions/runs/${run.id}/artifacts?per_page=100`
+  )
+  const matches = (artifacts.artifacts || []).filter(
+    (artifact) => artifact.name === "fontara-verified-packages"
+  )
+  if (
+    matches.length > 1 ||
+    (matches.length === 1 && matches[0].workflow_run?.head_sha !== sha)
+  )
+    throw new Error(
+      "The exact verified release artifact is ambiguous or belongs to another commit."
+    )
+  if (matches.length === 1 && !matches[0].expired)
+    prepared.artifactId = matches[0].id
+  else {
+    await durableProvenance(prepared, release, { fetchImpl, run: execute })
+    prepared.packageSource = "release-assets"
   }
   const correction = requireSource ? sourceSupplementFor(prepared) : null
   if (correction) {
@@ -333,11 +385,10 @@ async function prepareRelease({ tag, runId, github, requireSource = true }) {
       !Number.isInteger(found[0].size) ||
       found[0].size <= 0 ||
       found[0].size > 50 * 1024 * 1024
-    ) {
+    )
       throw new Error(
         "The uniquely named, pinned reviewer source supplement is missing or mismatched."
       )
-    }
     assets[correction.name] = { sha256: correction.sha256, size: found[0].size }
     prepared.sourceSupplement = correction.name
   }
@@ -746,9 +797,33 @@ async function main(args = process.argv.slice(2), env = process.env) {
     }
   })
   const action = values.action
-  if (!["prepare", "validate", "status", "submit"].includes(action))
+  if (
+    ![
+      "check-tag",
+      "prepare",
+      "download",
+      "validate",
+      "status",
+      "submit"
+    ].includes(action)
+  )
     throw new Error("Unknown Firefox release action.")
   const version = releaseVersion(values.tag)
+  if (action === "check-tag") {
+    const identity = await resolveTrustedTag(
+      values.tag,
+      createGitHubClient(env.GITHUB_TOKEN)
+    )
+    if (
+      identity.sha !== env.GITHUB_SHA ||
+      env.GITHUB_REF !== `refs/tags/${values.tag}`
+    )
+      throw new Error(
+        "The executing release commit does not match its trusted tag."
+      )
+    console.log(`Trusted release tag: ${identity.tag} (${identity.sha}).`)
+    return
+  }
   if (action === "prepare") {
     if (
       env.GITHUB_REPOSITORY !== REPOSITORY ||
@@ -771,28 +846,44 @@ async function main(args = process.argv.slice(2), env = process.env) {
       tag: values.tag,
       runId,
       github: createGitHubClient(env.GITHUB_TOKEN),
-      requireSource: env.AMO_ACTION !== "status"
+      requireSource: env.AMO_ACTION !== "status",
+      statusOnly: env.AMO_ACTION === "status",
+      allowIncomplete: env.GITHUB_EVENT_NAME === "workflow_run"
     })
     fs.writeFileSync(values.metadata, `${JSON.stringify(release, null, 2)}\n`)
     if (env.GITHUB_OUTPUT)
       fs.appendFileSync(
         env.GITHUB_OUTPUT,
-        `run_id=${release.runId}\nartifact_id=${release.artifactId}\nsource_supplement=${release.sourceSupplement || ""}\n`
+        `eligible=${release.eligible !== false}\npackage_source=${release.packageSource || ""}\nrun_id=${release.runId || ""}\nartifact_id=${release.artifactId || ""}\nsource_supplement=${release.sourceSupplement || ""}\n`
       )
     console.log(
-      `Verified original Release run ${release.runId} for ${values.tag} (${release.sha}).`
+      release.eligible === false
+        ? `No verified publication milestone for ${values.tag}; no store action will run.`
+        : `Verified release identity for ${values.tag} (${release.sha}).`
     )
     return
   }
   const release = JSON.parse(fs.readFileSync(values.metadata, "utf8"))
   if (release.tag !== values.tag)
     throw new Error("Prepared release tag mismatch.")
-  const packages = readVerifiedPackages(values.directory, release, {
-    requireSource: action !== "status"
-  })
-  console.log(
-    `Verified Firefox ${version} ZIP SHA-256: ${release.assets["firefox-mv3-prod.zip"].sha256}`
-  )
+  if (action === "download") {
+    if (release.packageSource !== "release-assets")
+      throw new Error("Durable release download was not selected.")
+    await downloadPreparedPackages(
+      release,
+      values.directory,
+      createGitHubClient(env.GITHUB_TOKEN)
+    )
+    return
+  }
+  const packages =
+    action === "status" ? null : readVerifiedPackages(values.directory, release)
+  if (action === "status" && !release.statusOnly)
+    throw new Error("Status requires a separately verified release identity.")
+  if (packages)
+    console.log(
+      `Verified Firefox ${version} ZIP SHA-256: ${release.assets["firefox-mv3-prod.zip"].sha256}`
+    )
   if (action !== "status")
     console.log(
       `Verified submission source SHA-256: ${createHash("sha256").update(packages.source).digest("hex")}${release.sourceSupplement ? " (reviewed additive supplement)" : ""}`
@@ -831,6 +922,8 @@ module.exports = {
   compareVersions,
   jwt,
   prepareRelease,
+  resolveTrustedTag,
+  validReleaseRun,
   readVerifiedPackages,
   createAmoClient,
   createGitHubClient,

@@ -26,6 +26,7 @@ import {
   decodeGoogleFontValue,
   isSelectableGoogleFontFamily
 } from "./google-font-runtime"
+import { createRegexFromUrl } from "./site-url-regex"
 import { isSystemFontFeatureSupported, isSystemFontValue } from "./system-fonts"
 
 const BUNDLED_FONT_VALUES = new Set(DEFAULT_FONTS.map((font) => font.value))
@@ -85,20 +86,6 @@ export function mergeWebsiteLists(
   }
 
   return mergedList
-}
-
-function createRegexFromUrl(url: string): string {
-  try {
-    const parsedURL = new URL(
-      /^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `https://${url}`
-    )
-    const escapedHost = parsedURL.host
-      .toLowerCase()
-      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    return `^https?://${escapedHost}/?.*$`
-  } catch {
-    return url
-  }
 }
 
 function normalizeOptionalString(value: unknown): string | undefined {

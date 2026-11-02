@@ -9,6 +9,7 @@ import { promisify } from "node:util"
 
 import puppeteer, { ProtocolError } from "puppeteer-core"
 
+import { createBrowserDiagnostics } from "./diagnostics.mjs"
 import { getFirefoxDriver, launchFirefoxDriver } from "./firefox-driver.mjs"
 
 const execFileAsync = promisify(execFile)
@@ -1220,6 +1221,7 @@ async function withExtensionHarness(testContext, launchBrowser, callback) {
   }
 
   const { browser, extensionBaseUrl, extensionId, userDataDir } = launchResult
+  const diagnostics = createBrowserDiagnostics(browser, testContext.name)
   let crossOriginServer = null
   let server = null
 
@@ -1249,7 +1251,11 @@ async function withExtensionHarness(testContext, launchBrowser, callback) {
       extensionId,
       server
     })
+  } catch (error) {
+    await diagnostics.capture(error)
+    throw error
   } finally {
+    diagnostics.dispose()
     try {
       if (launchResult.close) await launchResult.close()
       else await browser.close().catch(() => {})

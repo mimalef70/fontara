@@ -1,6 +1,8 @@
 # Release Guide
 
 This guide is a practical checklist for preparing FontARA release packages.
+Use the reviewed [version preparation and publication commands](development.md#preparing-and-publishing-a-version)
+to create a version PR, then publish its immutable tag after merge and green CI.
 
 ## Before Release
 
@@ -108,7 +110,8 @@ available because store submission and provenance checks depend on them.
 | `fontara-<version>-source.zip` | Reproducible reviewer source and build instructions. |
 | `fontara-<version>-safari-experimental.zip` | Experimental web-extension resources; not an installable Safari app. |
 | `build-info.json` | Release tag/commit, declared toolchain, and archive hashes. |
-| `SHA256SUMS` | Integrity manifest for the original ZIPs, versioned copies, and build information. |
+| `fontara-production-dependencies.cdx.json` | CycloneDX 1.6 production dependency inventory from the verified frozen lockfile. |
+| `SHA256SUMS` | Integrity manifest for the ZIPs, dependency inventory, provenance, and build information. |
 
 For a normal installation, prefer the
 [Chrome Web Store](https://chromewebstore.google.com/detail/dcjdhicepiklefpimapdkbaeoocniemc)
@@ -116,6 +119,39 @@ or [Mozilla Add-ons](https://addons.mozilla.org/firefox/addon/fontara-font-chang
 For a Chromium development installation, extract the matching ZIP and choose
 **Load unpacked** on the browser's extensions page with Developer mode enabled.
 The Firefox source ZIP is source code, not the installable extension.
+
+### Durable package provenance
+
+Every new release includes `release-provenance.json`, a deterministic manifest
+of all ZIP and production dependency inventory hashes and sizes. The publication job attests it after the complete
+verification matrix succeeds. The attestation is stored by GitHub independently
+of the 30-day Actions artifact. Check a downloaded manifest with:
+
+```sh
+gh attestation verify release-provenance.json --repo mimalef70/fontara \
+  --signer-workflow mimalef70/fontara/.github/workflows/release.yml \
+  --source-ref refs/tags/vX.Y.Z --source-digest EXACT_TAG_COMMIT \
+  --signer-digest EXACT_TAG_COMMIT --deny-self-hosted-runners
+```
+
+The ordinary SHA256SUMS is useful for integrity; this additional signed proof
+binds package hashes to the reviewed workflow and source identity. The legacy
+5.1.0 release predates attestations and is handled only by explicitly reviewed
+pinned hashes, not retroactively represented as attested.
+
+CI runs `node tasks/generate-sbom.js` after the full build verification. It uses
+the pinned pnpm native `sbom --prod --lockfile-only` command with CycloneDX 1.6,
+retains package versions, dependency relationships and available distribution
+hashes, and removes the random document UUID and generation timestamp for
+reproducibility. The publisher copies this exact verified inventory without
+regenerating it and includes it in SHA256SUMS and the attested manifest.
+This is a conservative production dependency inventory, including optional and
+peer dependencies; tree shaking can omit some packages from the delivered code.
+It does not claim to inventory fonts, images or other non-package assets, and
+lockfile-only output does not infer missing license information. Historical
+5.1.0 has no retroactively generated inventory. Its implicit retries select the
+original pinned publication run directly, even after later runs or artifact
+expiration; explicit unrelated runs cannot use the historical proof exception.
 
 ### Store-signed CRX and XPI
 
@@ -154,11 +190,16 @@ release-note section can be updated as store approvals complete; original
 release ZIPs and their checksums are preserved. Existing signed assets with
 different bytes cause an error rather than being replaced.
 
-Incomplete collections require the original CI artifact, retained for 30 days;
-an expired artifact stops collection rather than permitting a rebuild. Once both
-signed packages are collected, a receipt binds their hashes, the original ZIP
-hashes, checksums and tag commit, so completed releases do not depend on artifact
-retention. `store-assets.json` records those results and
+Original CI artifacts are the preferred source and remain available for 30 days.
+After expiry, the workflow downloads the permanent GitHub Release ZIPs only after
+verifying `release-provenance.json` with GitHub's signed artifact attestation.
+Verification binds the repository, release workflow, exact tag ref, source and
+signer commit, hosted runner and every requested package hash/size. It never
+rebuilds an old release or trusts a checksum file alone. The historical 5.1.0
+release has one explicit exception pinned to its original run, commit and three
+original Chrome/Firefox/source hashes; no other unsigned release qualifies.
+Once both signed packages are collected, a completion receipt avoids redundant
+store requests. `store-assets.json` records those results and
 `SHA256SUMS-store.txt` covers the signed downloads.
 
 A CRX download is useful for supported Chromium distribution and archival use;
@@ -208,7 +249,7 @@ Known warning category:
 | Verify release packages | reusable workflow call | Runs `pnpm verify`, uploads production/source ZIPs, then runs stable/minimum browser suites and production smoke tests. |
 | Browser Tests | manual, nightly | Browser matrix across Chrome and Firefox channels. |
 | Release | `v*` tags, manual | Verifies and publishes the exact packages to GitHub Releases, then submits Chrome to the Web Store. Manual status and rollout operations are also available. |
-| Firefox Release | successful tag Release, manual | Submits the verified Firefox package and reviewer source through AMO. |
+| Firefox Release | completed tag Release with verified publication, manual | Submits the verified Firefox package and reviewer source through AMO. |
 | Store Release Assets | successful release workflows, every six hours, manual | Revisits eligible releases and attaches matching official CRX/XPI packages as store approvals finish. |
 
 [verify.yml](../.github/workflows/verify.yml) is the common gate for
@@ -413,8 +454,11 @@ gh workflow run release.yml --repo mimalef70/fontara --ref master -f action=veri
 ```
 
 This runs the full shared verification matrix and produces the tested ZIP
-artifact; both publication jobs must be skipped. Together these checks verify
-the package gate and the live authentication/status path. They do not establish
+artifact; both publication jobs must be skipped. On `master` it also signs a
+branch-only test manifest through GitHub's real attestation service, verifies
+its exact workflow/ref/commit, and checks that production tag policy rejects it.
+No GitHub Release or store version is created. Together these checks verify
+the package gate, live provenance service and live authentication/status path. They do not establish
 that a real upload or review submission succeeded. Confirm those operations on
 the first intended release. Creating a `v*` tag is an actual release trigger,
 so it is not a non-publishing test.
@@ -474,13 +518,20 @@ released from GitHub after the one-time setup. See the official
 ## Firefox Add-ons Automation
 
 [firefox-release.yml](../.github/workflows/firefox-release.yml) uses publisher
-code from `master` and the exact packages from a completed `Release` tag-push
-run. It verifies repository identity, tag commit ancestry, all build/browser
-checks, and both Firefox asset digests against the published GitHub release.
+code from `master` and the exact packages from a completed `Release` run for
+that version tag. Tag pushes and explicit tagged `submit` retries qualify only
+when every build/browser job and GitHub publication succeeded. Chrome submission
+is an independent outcome: its API failure cannot block Firefox once that
+verified publication milestone exists. Manual `verify`/`status`, fork runs,
+unrelated workflows and failed verification never qualify. The publisher checks
+repository identity, tag commit ancestry and every original asset digest.
 The original 5.1.0 release also uses the explicitly pinned reviewer-source
 supplement described below; its original artifacts remain verified and unchanged.
 It never executes code from the release source ZIP or rebuilds the package.
-Expired/missing artifacts stop the operation instead of selecting another build.
+After CI artifact expiry, the signed durable provenance described above
+allows the original release ZIPs to be retrieved without rebuilding. Missing or
+invalid provenance stops publication. Chrome publication also verifies that its
+executing tag commit belongs to trusted `master` before requesting credentials.
 
 The workflow supports three manual actions on `master`. Replace `vX.Y.Z` with
 an existing verified tag, such as `v5.1.0`.
@@ -493,8 +544,10 @@ gh workflow run firefox-release.yml --ref master -f release_tag=vX.Y.Z -f action
 
 - `validate` checks production/source identity and metadata without AMO credentials
   or requests. It does not prove Mozilla will accept or approve the upload.
-- `status` verifies the production package and reads AMO state without uploading
-  or changing a version. It does not require or download reviewer source supplements.
+- `status` verifies repository/tag ancestry and the published release identity,
+  then reads AMO state without uploading or changing a version. It does not query
+  Actions runs/artifacts or download ZIPs; it continues working after retention
+  expires.
 - `submit` uploads the verified ZIP to the existing listed add-on, waits for AMO
   validation, and creates the version with its source ZIP attached in the same
   request. Release notes and reviewer build instructions accompany the version.
@@ -537,7 +590,7 @@ and the [API credentials page](https://addons.mozilla.org/en-US/developers/addon
 Automatic submission is **disabled by default**. Once account access and
 publication have been approved, set the environment variable
 `AMO_AUTO_SUBMIT_ENABLED` to the exact value `true`. Successful future `Release`
-tag-push runs then trigger Firefox submission. Leave it unset to retain manual
+tag runs with a successful verified-package publication then trigger Firefox submission. Leave it unset to retain manual
 submission and the staged observation policy below; automated runs still validate
 packages and explicitly report that submission is disabled. Manual `submit` is an
 explicit publication action and does not depend on this automatic switch.
@@ -589,20 +642,34 @@ copy and screenshots remain separately maintained metadata.
 - `CHANGELOG.md` mentions user-visible changes, migration notes, and known
   issues.
 
-## 5.1.0 Staged Rollout
+## Publication and recovery policy
 
-1. Install the signed Chrome and Firefox artifacts in the internal test channel
-   for three full days.
-2. Publish Chrome Web Store at 10%, then advance to 25% after 48 hours, 50%
-   after another 48 hours, and 100% after another 72 hours.
-3. Publish Firefox only after Chrome has remained at 50% for 72 hours without a
-   P0/P1 regression.
-4. Stop rollout and roll back for any data loss, binary disclosure, extension
-   startup failure, or three independent reports of the same regression.
+Chrome and Firefox submissions are independent after a verified GitHub release.
+Automatic Firefox submission is enabled through `AMO_AUTO_SUBMIT_ENABLED=true`;
+it does not wait for a Chrome rollout percentage. Chrome starts at 10% by default.
+Increase to 25% after 48 healthy hours, 50% after another 48 hours, and 100% after
+another 72 hours using explicit `rollout` actions. Review decisions can still
+require a store dashboard visit; API acceptance is not public availability.
 
-Chrome tag releases submit the verified package for review with a 10% initial
-rollout by default. The increases above are explicit `rollout` actions in the
-Release workflow after the observation periods; they are never scheduled
-automatically. Firefox submission follows the separate workflow above; keep
-`AMO_AUTO_SUBMIT_ENABLED` unset while applying this staged observation policy.
-Firefox rollback remains a separate, explicit action.
+For an interrupted release:
+
+1. Inspect the failed job and store `status` before repeating an upload. A
+   successful verified-package publication is sufficient for a Firefox retry
+   even when Chrome submission failed.
+2. Retry the failed Chrome job in its original release run, or select the exact
+   version tag with `action=submit`. Retry Firefox independently from `master`
+   with its exact `release_tag`. Never move a published tag or replace its ZIPs.
+3. Re-run `Store Release Assets` after approval or a transient download error.
+   Expired CI artifacts use attested permanent release files, not a new build.
+4. If a release has lost both its verified CI artifact and valid durable proof,
+   stop. Investigate the missing provenance or prepare a new version; never
+   downgrade validation just to complete a retry.
+
+Stop rollout for data loss, binary disclosure, startup failure or repeated
+reports of the same serious regression. GitHub rollout commands intentionally
+cannot lower percentages or downgrade extension versions. Inspect each store's
+available emergency controls, then prepare a fix-forward release with a strictly
+higher version: revert the faulty code through a reviewed PR, preserve migration
+compatibility and pass the full matrix before tagging. Existing release assets
+remain available for investigation. Firefox store intervention and any listing
+changes remain explicit actions; there is no silent automatic rollback.

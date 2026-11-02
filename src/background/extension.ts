@@ -147,7 +147,11 @@ export class ExtensionRuntime {
     })
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === "local" && Object.keys(changes).length > 0) {
-        void ExtensionRuntime.handleLocalSettingsChange(changes)
+        void ExtensionRuntime.handleLocalSettingsChange(changes).catch(
+          (error) => {
+            logDebug("Failed to handle FontAra storage changes.", error)
+          }
+        )
       }
     })
     chrome.runtime.onInstalled.addListener((details) => {
@@ -196,6 +200,10 @@ export class ExtensionRuntime {
         ExtensionRuntime.scheduleReportChanges()
       })
       .catch((error) => {
+        // Keep concurrent callers on one attempt, but allow the next request to
+        // recover after a temporary storage or migration failure.
+        startPromise = null
+        started = false
         logDebug("Failed to initialize FontAra runtime.", error)
         throw error
       })

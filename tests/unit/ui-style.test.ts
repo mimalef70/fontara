@@ -6,6 +6,14 @@ import test from "node:test"
 
 const require = createRequire(import.meta.url)
 
+function readOptionsSources(...modules: string[]): string {
+  return modules
+    .map((module) =>
+      fs.readFileSync(path.resolve("src/ui/options", module), "utf8")
+    )
+    .join("\n")
+}
+
 test("UI follows the selected extension font", () => {
   const tailwindConfig = require("../../tailwind.config.js") as {
     theme?: {
@@ -20,10 +28,7 @@ test("UI follows the selected extension font", () => {
     path.resolve("src/ui/popup/index.tsx"),
     "utf8"
   )
-  const optionsSource = fs.readFileSync(
-    path.resolve("src/ui/options/index.tsx"),
-    "utf8"
-  )
+  const optionsSource = readOptionsSources("use-options-state.ts")
   const fontSelectorSource = fs.readFileSync(
     path.resolve("src/ui/components/FontSelector.tsx"),
     "utf8"
@@ -120,10 +125,7 @@ test("extension pages render inside error boundaries", () => {
     path.resolve("src/ui/popup/index.tsx"),
     "utf8"
   )
-  const optionsSource = fs.readFileSync(
-    path.resolve("src/ui/options/index.tsx"),
-    "utf8"
-  )
+  const optionsSource = readOptionsSources("index.tsx")
 
   assert.match(errorBoundarySource, /componentDidCatch/)
   assert.match(errorBoundarySource, /getDerivedStateFromError/)
@@ -183,9 +185,26 @@ test("options page uses the local shadcn sidebar layout", () => {
     path.resolve("tailwind.config.js"),
     "utf8"
   )
-  const optionsSource = fs.readFileSync(
-    path.resolve("src/ui/options/index.tsx"),
-    "utf8"
+  const optionsSource = readOptionsSources(
+    "index.tsx",
+    "use-options-state.ts",
+    "use-options-controller.ts",
+    "options-navigation.tsx",
+    "general-settings-section.tsx",
+    "fonts-settings-section.tsx",
+    "font-sources-section.tsx",
+    "custom-font-upload-section.tsx",
+    "saved-fonts-section.tsx",
+    "sites-settings-section.tsx",
+    "rtl-settings-section.tsx",
+    "advanced-settings-section.tsx",
+    "use-custom-font-library.ts",
+    "use-settings-backup.ts",
+    "use-font-sources.ts",
+    "use-site-access.ts",
+    "custom-font-presentation.tsx",
+    "backup-helpers.ts",
+    "site-access-helpers.ts"
   )
   const profilesSource = ["use-site-profiles.ts", "SiteProfilesSection.tsx"]
     .map((file) =>
@@ -755,9 +774,12 @@ test("checkbox and switch controls stay aligned in rtl layouts", () => {
 })
 
 test("custom font uploads validate metadata and commit binary transactions", () => {
-  const optionsSource = fs.readFileSync(
-    path.resolve("src/ui/options/index.tsx"),
-    "utf8"
+  const optionsSource = readOptionsSources(
+    "use-custom-font-library.ts",
+    "use-settings-backup.ts",
+    "custom-font-presentation.tsx",
+    "custom-font-upload-section.tsx",
+    "saved-fonts-section.tsx"
   )
 
   assert.match(
@@ -806,10 +828,7 @@ test("custom font uploads validate metadata and commit binary transactions", () 
 })
 
 test("settings export reads the latest local storage snapshot", () => {
-  const optionsSource = fs.readFileSync(
-    path.resolve("src/ui/options/index.tsx"),
-    "utf8"
-  )
+  const optionsSource = readOptionsSources("use-settings-backup.ts")
 
   assert.match(optionsSource, /getLocalValues\(getSettingsBackupDefaults\(\)\)/)
   assert.match(optionsSource, /normalizeStorageValues/)
@@ -821,10 +840,7 @@ test("settings export reads the latest local storage snapshot", () => {
 })
 
 test("partial settings backups preserve the local custom-font catalog", () => {
-  const optionsSource = fs.readFileSync(
-    path.resolve("src/ui/options/index.tsx"),
-    "utf8"
-  )
+  const optionsSource = readOptionsSources("use-settings-backup.ts")
 
   assert.match(
     optionsSource,
@@ -844,7 +860,8 @@ test("UI storage hooks use stable initial value references", () => {
   const uiSources = [
     "src/ui/hooks/use-selected-ui-font.ts",
     "src/ui/popup/index.tsx",
-    "src/ui/options/index.tsx",
+    "src/ui/options/use-options-state.ts",
+    "src/ui/options/use-settings-backup.ts",
     "src/ui/components/CustomUrlToggle.tsx",
     "src/ui/components/FontSelector.tsx",
     "src/ui/components/PerSiteSettings.tsx",

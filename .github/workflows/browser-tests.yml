@@ -17,6 +17,8 @@ jobs:
     name: ${{ matrix.label }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      FONTARA_BROWSER_ARTIFACT_DIR: browser-artifacts
     strategy:
       fail-fast: false
       matrix:
@@ -39,16 +41,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.5.0
           run_install: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.x
           cache: pnpm
@@ -59,7 +60,7 @@ jobs:
       - name: Set up Chrome
         if: matrix.browser == 'chrome'
         id: setup-chrome
-        uses: browser-actions/setup-chrome@v2
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2
         with:
           chrome-version: ${{ matrix.version }}
           install-dependencies: true
@@ -71,7 +72,7 @@ jobs:
       - name: Set up Firefox
         if: matrix.browser == 'firefox'
         id: setup-firefox
-        uses: browser-actions/setup-firefox@v1
+        uses: browser-actions/setup-firefox@0bc507ddf224827e3b1af68e014d5e42ab93e795 # v1
         with:
           firefox-version: ${{ matrix.version }}
 
@@ -93,3 +94,11 @@ jobs:
           FONTARA_FIREFOX_BROWSER_TESTS: "1"
           FONTARA_FIREFOX_HEADLESS: "1"
         run: pnpm test:browser:firefox
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: nightly-browser-failure-${{ matrix.browser }}-${{ matrix.version }}
+          path: browser-artifacts
+          if-no-files-found: ignore
+          retention-days: 14

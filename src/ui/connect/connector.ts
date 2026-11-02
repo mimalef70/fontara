@@ -25,6 +25,8 @@ class FontaraConnector {
   private changeSubscribers = new Set<ChangeSubscriber>()
   private latestData: FontaraExtensionData | null = null
   private mutationSequence = 0
+  private pendingDataRequests = 0
+  private subscriptionGeneration = 0
 
   private createClientMutationId(): string {
     if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
@@ -66,43 +68,63 @@ class FontaraConnector {
 
   private publishChanges(data: FontaraExtensionData): void {
     if (this.changeSubscribers.size === 0) {
-      this.latestData = null
+      this.clearLatestDataIfIdle()
       return
     }
 
-    this.latestData = data
+    if (this.rememberData(data) !== data) return
 
     for (const subscriber of this.changeSubscribers) {
       subscriber(data)
     }
   }
 
+  private rememberData(data: FontaraExtensionData): FontaraExtensionData {
+    if (
+      this.latestData &&
+      data.settingsRevision < this.latestData.settingsRevision
+    ) {
+      // activeTab.isActive is resolved from the same settings snapshot, so an
+      // older snapshot must not replace any part of the newer one. Equal
+      // revisions still carry fresh tab/shortcut changes and are accepted.
+      return this.latestData
+    }
+
+    this.latestData = data
+    return data
+  }
+
   private notifyWithLatestData(callback: ChangeSubscriber): void {
-    const data = this.latestData
-    if (!data) return
+    if (!this.latestData) return
+    const generation = this.subscriptionGeneration
 
     queueMicrotask(() => {
-      if (this.changeSubscribers.has(callback)) {
-        callback(data)
+      if (
+        this.changeSubscribers.has(callback) &&
+        this.subscriptionGeneration === generation &&
+        this.latestData
+      ) {
+        callback(this.latestData)
       }
     })
   }
 
   private clearLatestDataIfIdle(): void {
-    if (this.changeSubscribers.size === 0) {
+    if (this.changeSubscribers.size === 0 && this.pendingDataRequests === 0) {
       this.latestData = null
     }
   }
 
   getData(): Promise<FontaraExtensionData> {
+    this.pendingDataRequests += 1
     return this.sendRequest<FontaraExtensionData>({
       type: MESSAGE_TYPES_UI_TO_BG.GET_DATA
-    }).then((data) => {
-      if (this.changeSubscribers.size > 0) {
-        this.latestData = data
-      }
-      return data
     })
+      .then((data) => this.rememberData(data))
+      .finally(() => {
+        this.pendingDataRequests -= 1
+        this.clearLatestDataIfIdle()
+      })
   }
 
   changeSettings(
@@ -252,15 +274,22 @@ class FontaraConnector {
   }
 
   subscribeToChanges(callback: ChangeSubscriber): void {
+    const firstSubscriber = this.changeSubscribers.size === 0
+    if (firstSubscriber) this.subscriptionGeneration += 1
     this.changeSubscribers.add(callback)
     this.notifyWithLatestData(callback)
 
-    if (this.changeSubscribers.size === 1) {
+    if (firstSubscriber) {
+      const generation = this.subscriptionGeneration
       chrome.runtime.onMessage.addListener(this.onChangesReceived)
       void this.sendRequest<FontaraExtensionData>({
         type: MESSAGE_TYPES_UI_TO_BG.SUBSCRIBE_TO_CHANGES
       })
-        .then((data) => this.publishChanges(data))
+        .then((data) => {
+          if (this.subscriptionGeneration === generation) {
+            this.publishChanges(data)
+          }
+        })
         .catch((error) => {
           if (typeof __DEBUG__ !== "undefined" && __DEBUG__) {
             console.warn(
@@ -276,6 +305,7 @@ class FontaraConnector {
     this.changeSubscribers.delete(callback)
 
     if (this.changeSubscribers.size === 0) {
+      this.subscriptionGeneration += 1
       chrome.runtime.onMessage.removeListener(this.onChangesReceived)
       this.clearLatestDataIfIdle()
       void this.sendRequest<boolean>({

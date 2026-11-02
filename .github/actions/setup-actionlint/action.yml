@@ -1,0 +1,24 @@
+name: Set up actionlint
+description: Install checksum-verified actionlint for Linux x64 CI
+runs:
+  using: composite
+  steps:
+    - name: Install actionlint 1.7.12
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ "${RUNNER_OS}/${RUNNER_ARCH}" != "Linux/X64" ]]; then
+          echo 'This actionlint package requires Linux x64.' >&2
+          exit 1
+        fi
+        fontara_lint_dir="${RUNNER_TEMP}/fontara-actionlint"
+        mkdir -p "$fontara_lint_dir"
+        curl --fail --silent --show-error --location --retry 3 \
+          https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+          --output "$fontara_lint_dir/actionlint.tar.gz"
+        printf '%s  %s\n' \
+          8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 \
+          "$fontara_lint_dir/actionlint.tar.gz" | sha256sum --check --status
+        tar -xzf "$fontara_lint_dir/actionlint.tar.gz" -C "$fontara_lint_dir" actionlint
+        "$fontara_lint_dir/actionlint" --version
+        printf '%s\n' "$fontara_lint_dir" >> "$GITHUB_PATH"

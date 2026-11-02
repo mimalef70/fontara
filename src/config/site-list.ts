@@ -474,7 +474,7 @@ function createSitePatternsFromExtensionPattern(pattern: string): string[] {
     slashIndex < 0 ? withoutProtocol : withoutProtocol.slice(0, slashIndex)
   if (!host || host === "*") return []
 
-  const normalizedHost = host.replace(/^\*\./, "*.")
+  const normalizedHost = host.toLowerCase()
   if (!normalizedHost.includes("*")) {
     return [normalizedHost]
   }

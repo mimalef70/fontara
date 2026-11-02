@@ -300,8 +300,9 @@ test("Chrome release credentials are isolated from builds and used only after ve
     fs.readFileSync(".github/workflows/release.yml", "utf8")
   )
   const job = workflow.jobs["chrome-store"]
-  assert.equal(job.needs, "verification")
+  assert.deepEqual(job.needs, ["verification", "publish"])
   assert.match(job.if, /needs\.verification\.result == 'success'/)
+  assert.match(job.if, /needs\.publish\.result == 'success'/)
   assert.equal(job.environment, "chrome-web-store")
   assert.deepEqual(job.permissions, { contents: "read", "id-token": "write" })
   assert.equal(job.concurrency["cancel-in-progress"], false)

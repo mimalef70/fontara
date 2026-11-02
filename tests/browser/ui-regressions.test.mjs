@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import path from "node:path"
 import test from "node:test"
 
 import {
@@ -6,6 +7,7 @@ import {
   STORAGE_KEYS,
   sendSettingsFromOptions,
   setValueByTestId,
+  uploadFileByTestId,
   waitFor,
   waitForExtensionLocalValue,
   withChromeMv3ExtensionHarness
@@ -220,5 +222,94 @@ test("Chrome MV3 a delayed Google profile save preserves profiles changed during
       { ...initialProfile, font: "google-font:Roboto" },
       otherProfile
     ])
+  })
+})
+
+test("Chrome MV3 Options feature drafts and loaded font preview survive section navigation", async (t) => {
+  await withChromeMv3ExtensionHarness(t, async (harness) => {
+    const page = await harness.createExtensionPage("ui/options/index.html")
+    await sendSettingsFromOptions(page, {
+      uiLanguage: "en",
+      [STORAGE_KEYS.SYNC_SETTINGS]: false
+    })
+    await clickByTestId(page, "fontara-options-nav-fonts")
+    await setValueByTestId(page, "fontara-custom-font-name", "Navigation draft")
+    await uploadFileByTestId(
+      page,
+      "fontara-custom-font-regular-file",
+      path.resolve("assets/fonts/shabnam/Shabnam.woff2")
+    )
+    await page.waitForSelector(
+      '[data-testid="fontara-custom-font-regular-ready"]'
+    )
+    const previewFamily = await waitFor(
+      () =>
+        page.$eval(
+          '[data-testid="fontara-custom-font-preview"] [style]',
+          (element) => {
+            const family = element.style.fontFamily
+            return family.startsWith("FontaraUploadPreview-") ? family : false
+          }
+        ),
+      { message: "Custom font preview did not become ready before navigation." }
+    )
+
+    await clickByTestId(page, "fontara-options-nav-sites")
+    await setValueByTestId(
+      page,
+      "fontara-site-list-pattern-input",
+      "draft.example"
+    )
+    await clickByTestId(page, "fontara-options-nav-advanced")
+    await clickByTestId(page, "fontara-settings-import-open")
+    await page.waitForSelector('[data-testid="fontara-settings-import-choose"]')
+
+    await clickByTestId(page, "fontara-options-nav-fonts")
+    assert.equal(
+      await page.$eval(
+        '[data-testid="fontara-custom-font-name"]',
+        (element) => element.value
+      ),
+      "Navigation draft"
+    )
+    assert.match(
+      await page.$eval(
+        '[data-testid="fontara-custom-font-regular-ready"]',
+        (element) => element.textContent
+      ),
+      /Shabnam\.woff2/
+    )
+    assert.equal(
+      await page.$eval(
+        '[data-testid="fontara-custom-font-preview"] [style]',
+        (element) => element.style.fontFamily
+      ),
+      previewFamily,
+      "Section navigation must not unload/recreate the prepared preview font."
+    )
+    assert.equal(
+      await page.evaluate(
+        (family) =>
+          [...document.fonts].some(
+            (face) => face.family === family && face.status === "loaded"
+          ),
+        previewFamily
+      ),
+      true
+    )
+
+    await clickByTestId(page, "fontara-options-nav-sites")
+    assert.equal(
+      await page.$eval(
+        '[data-testid="fontara-site-list-pattern-input"]',
+        (element) => element.value
+      ),
+      "draft.example"
+    )
+    await clickByTestId(page, "fontara-options-nav-advanced")
+    await page.waitForSelector(
+      '[data-testid="fontara-settings-import-choose"]',
+      { visible: true }
+    )
   })
 })

@@ -83,6 +83,42 @@ test("popular website regexes match their declared base URLs", () => {
   }
 })
 
+test("popular website matches cannot cross hostname boundaries", () => {
+  for (const website of POPULAR_WEBSITES) {
+    const hostname = new URL(website.url).hostname
+    const lookalikeParts = hostname.split(".")
+    lookalikeParts[lookalikeParts.length - 2] =
+      `attacker${lookalikeParts[lookalikeParts.length - 2]}`
+    const lookalikes = [
+      `https://${hostname}.evil.example/`,
+      `https://${lookalikeParts.join(".")}/`,
+      `https://${hostname}@evil.example/`,
+      `https://evil.example/path/${hostname}/`
+    ]
+    for (const url of lookalikes) {
+      assert.equal(getMatchingWebsite(url, [website]), null, url)
+    }
+  }
+
+  for (const [siteName, domain] of [
+    ["LinkedIn", "linkedin.com"],
+    ["Dropbox", "dropbox.com"]
+  ]) {
+    const website = POPULAR_WEBSITES.find((site) => site.siteName === siteName)
+    assert.ok(website)
+    for (const hostname of [domain, `www.${domain}`, `team.${domain}`]) {
+      assert.equal(
+        getMatchingWebsite(`https://${hostname}/path`, [website]),
+        website
+      )
+    }
+    assert.equal(
+      getMatchingWebsite(`https://www.attacker${domain}/`, [website]),
+      null
+    )
+  }
+})
+
 test("site configuration stays internally consistent", () => {
   const websiteUrls = new Set<string>()
   const websiteNames = new Set<string>()
@@ -363,6 +399,27 @@ test("custom URL regex escapes host metacharacters", () => {
     getMatchingWebsite("http://[::1]/anything", [customWebsite]),
     customWebsite
   )
+})
+
+test("custom URL regex requires the complete host before a path or query", () => {
+  for (const hostname of ["example.com", "example.com:8443", "[::1]:8080"]) {
+    const website: WebsiteItem = {
+      url: `https://${hostname}/`,
+      regex: createRegexFromUrl(`https://${hostname}/`)
+    }
+    for (const suffix of ["", "/path", "?q=1", "#section"]) {
+      assert.equal(
+        getMatchingWebsite(`https://${hostname}${suffix}`, [website]),
+        website
+      )
+    }
+    for (const suffix of [".evil.example/", "@evil.example/", "0/path"]) {
+      assert.equal(
+        getMatchingWebsite(`https://${hostname}${suffix}`, [website]),
+        null
+      )
+    }
+  }
 })
 
 test("site pattern scopes separate domain, path, and regex matching", () => {

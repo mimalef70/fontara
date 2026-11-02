@@ -4,7 +4,7 @@ import test from "node:test"
 
 import { build } from "esbuild"
 import puppeteer from "puppeteer-core"
-
+import { createBrowserDiagnostics } from "../support/browser/diagnostics.mjs"
 import { findChromeBinary } from "../support/browser/extension-harness.mjs"
 
 let runtimeBundle
@@ -39,6 +39,7 @@ async function withRuntimePage(context, callback) {
     headless: true,
     pipe: true
   })
+  const diagnostics = createBrowserDiagnostics(browser, context.name)
   try {
     const page = await browser.newPage()
     await page.setContent("<html><head></head><body></body></html>")
@@ -46,7 +47,11 @@ async function withRuntimePage(context, callback) {
       content: (await runtimeBundle).outputFiles[0].text
     })
     await callback(page)
+  } catch (error) {
+    await diagnostics.capture(error)
+    throw error
   } finally {
+    diagnostics.dispose()
     await browser.close()
   }
 }

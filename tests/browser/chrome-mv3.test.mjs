@@ -2563,10 +2563,11 @@ test("Chrome MV3 options UI exports, imports, and resets settings backups", asyn
       sitePattern
     ])
 
-    const importFilePath = path.join(
-      os.tmpdir(),
-      `fontara-settings-import-${Date.now()}.json`
+    const importDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "fontara-settings-import-")
     )
+    t.after(() => fs.rm(importDirectory, { force: true, recursive: true }))
+    const importFilePath = path.join(importDirectory, "settings.json")
     await fs.writeFile(
       importFilePath,
       JSON.stringify({
@@ -2593,7 +2594,6 @@ test("Chrome MV3 options UI exports, imports, and resets settings backups", asyn
         version: 1
       })
     )
-    t.after(() => fs.rm(importFilePath, { force: true }))
 
     await clickByTestId(optionsPage, "fontara-settings-import-open")
     await chooseFileByTestId(

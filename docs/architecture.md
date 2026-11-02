@@ -120,6 +120,19 @@ The options page delegates its profile workflow to:
 | [SiteProfilesSection.tsx](../src/ui/options/SiteProfilesSection.tsx) | Profile form/list rendering with shared shadcn components and i18n. |
 | [use-font-catalogs.ts](../src/ui/options/use-font-catalogs.ts) | Lazy external-font catalogs, grouped choices, and saved-font/fallback labels used by profiles and the overview. |
 
+The Options entrypoint renders feature sections through one
+`useOptionsController` composition. `useOptionsState` owns shared preferences;
+`useCustomFontLibrary`, `useSettingsBackup`, `useFontSources`, and `useSiteAccess`
+own their feature operations. These hooks remain mounted while sections change,
+so draft text, uploaded preview fonts and consent state survive navigation.
+Rendering lives in typed section components; storage mutations still pass through
+the shared background connector. Incoming UI settings snapshots are monotonic by
+revision, while equal-revision messages can refresh active-tab and shortcut data.
+
+A failed initial storage/migration attempt releases the startup promise so a
+later request can recover. Concurrent requests share the same in-flight startup;
+storage listeners handle rejected recovery attempts without unhandled promises.
+
 A saved profile font remains selectable before its catalog loads, including
 dormant system-font choices while that source is paused. Only the explicit
 global-font option removes that override.

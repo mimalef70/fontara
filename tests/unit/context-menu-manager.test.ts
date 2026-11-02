@@ -156,10 +156,17 @@ test("context menu clicks are registered synchronously before loading settings",
   assert.deepEqual(localValues[STORAGE_KEYS.WEBSITE_LIST], [
     {
       url: "example.com",
-      regex: "^https?://example\\.com/?.*$",
+      regex: "^https?://example\\.com(?:[/?#].*)?$",
       isActive: true
     }
   ])
+  const websites = localValues[STORAGE_KEYS.WEBSITE_LIST] as Array<{
+    regex: string
+  }>
+  const siteRegex = new RegExp(websites[0].regex)
+  assert.equal(siteRegex.test("https://example.com/path"), true)
+  assert.equal(siteRegex.test("https://example.com.evil.example/path"), false)
+  assert.equal(siteRegex.test("https://example.com@evil.example/path"), false)
 })
 
 test("context menu manager skips registration without permission", async () => {

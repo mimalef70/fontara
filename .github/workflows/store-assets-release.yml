@@ -18,18 +18,19 @@ jobs:
     permissions:
       contents: read
       actions: read
+      attestations: read
     outputs:
       complete: ${{ steps.release.outputs.complete }}
       release_tag: ${{ steps.release.outputs.tag }}
       publisher_sha: ${{ steps.publisher.outputs.sha }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: master
           persist-credentials: false
       - id: publisher
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.x
       - name: Resolve original verified release
@@ -39,14 +40,19 @@ jobs:
           STORE_RELEASE_TAG: ${{ inputs.release_tag }}
         run: node tasks/sync-store-assets.js --action prepare --metadata "$RUNNER_TEMP/store-release.json"
       - name: Download exact packages from original successful CI
-        if: steps.release.outputs.complete != 'true'
-        uses: actions/download-artifact@v8
+        if: steps.release.outputs.complete != 'true' && steps.release.outputs.package_source == 'artifact'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           artifact-ids: ${{ steps.release.outputs.artifact_id }}
           run-id: ${{ steps.release.outputs.run_id }}
           github-token: ${{ github.token }}
           path: verified-packages
           merge-multiple: true
+      - name: Download packages using durable attested release provenance
+        if: steps.release.outputs.complete != 'true' && steps.release.outputs.package_source == 'release-assets'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tasks/sync-store-assets.js --action download --metadata "$RUNNER_TEMP/store-release.json" --directory verified-packages
       - name: Verify official store packages without store credentials
         if: steps.release.outputs.complete != 'true'
         env:
@@ -54,7 +60,7 @@ jobs:
         run: node tasks/sync-store-assets.js --action collect --metadata "$RUNNER_TEMP/store-release.json" --directory verified-packages --output store-assets
       - name: Upload verified store files and result
         if: steps.release.outputs.complete != 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: verified-store-assets-${{ inputs.release_tag }}
           path: store-assets/
@@ -72,15 +78,20 @@ jobs:
     permissions:
       contents: write
       actions: read
+      attestations: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.collect.outputs.publisher_sha }}
+          ref: master
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - name: Require the reviewed publisher commit
+        env:
+          EXPECTED_PUBLISHER_SHA: ${{ needs.collect.outputs.publisher_sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_PUBLISHER_SHA"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.x
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: verified-store-assets-${{ inputs.release_tag }}
           path: store-assets

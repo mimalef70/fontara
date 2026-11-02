@@ -81,14 +81,14 @@ body :where(
 ):not(
   :is([style*="font-family" i], [style*="font:" i]),
   :is([style*="font-family" i], [style*="font:" i]) *,
-  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
+  :is(pre, code, [class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(pre, code, [class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   :is(.katex, math, [role="math"], mjx-container),
   :is(.katex, math, [role="math"], mjx-container) *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  :is([class~="icon" i], [class~="symbol" i], mat-icon, [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
-  :is([class~="icon" i], [class~="symbol" i], mat-icon, [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-font-sans-child-fallback) !important;

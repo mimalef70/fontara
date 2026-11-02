@@ -45,8 +45,8 @@ body :where(
   pre *,
   code,
   code *,
-  :is([class*="code-block" i], [class*="code-snippet" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is([class*="code-block" i], [class*="code-snippet" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   .katex,
   .katex *,
   math,
@@ -57,10 +57,8 @@ body :where(
   mjx-container *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  [class*="fa-"],
-  [class*="fa-"] *,
-  :is([class~="icon" i], [class~="symbol" i], mat-icon, gem-icon, [class*="material-symbol"], [class*="material-icon"], [class*="lumi-symbol"], [class*="google-symbol"], [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
-  :is([class~="icon" i], [class~="symbol" i], mat-icon, gem-icon, [class*="material-symbol"], [class*="material-icon"], [class*="lumi-symbol"], [class*="google-symbol"], [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, gem-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, gem-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-gemini-google-sans-flex-ui-fallback) !important;

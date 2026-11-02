@@ -50,8 +50,8 @@
   pre *,
   code,
   code *,
-  :is([class*="code-block" i], [class*="code-snippet" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is([class*="code-block" i], [class*="code-snippet" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   .katex,
   .katex *,
   math,
@@ -62,10 +62,8 @@
   mjx-container *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  [class*="fa-"],
-  [class*="fa-"] *,
-  :is([class~="icon" i], [class~="symbol" i], [data-cds="Icon"], mat-icon, [class*="material-symbol"], [class*="material-icon"], [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
-  :is([class~="icon" i], [class~="symbol" i], [data-cds="Icon"], mat-icon, [class*="material-symbol"], [class*="material-icon"], [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-claude-anthropic-sans-ui-fallback) !important;
@@ -113,20 +111,20 @@
   pre *,
   code,
   code *,
-  :is([class*="code-block" i], [class*="code-snippet" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is([class*="code-block" i], [class*="code-snippet" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   .katex,
   .katex *,
   [role="math"],
   [role="math"] *,
   math,
   math *,
+  mjx-container,
+  mjx-container *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  [class*="fa-"],
-  [class*="fa-"] *,
-  :is([class~="icon" i], [class~="symbol" i], [data-cds="Icon"], mat-icon, [class*="material-symbol"], [class*="material-icon"], [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
-  :is([class~="icon" i], [class~="symbol" i], [data-cds="Icon"], mat-icon, [class*="material-symbol"], [class*="material-icon"], [class*="fa-"], .fa, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-claude-message-fallback) !important;

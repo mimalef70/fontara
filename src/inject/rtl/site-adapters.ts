@@ -61,12 +61,10 @@ const DEFAULT_TEXTUAL_DESCENDANTS = [
 const COMMON_CODE_GUARD_SELECTORS = [
   "code",
   "pre",
-  '[class*="code-block"]',
-  '[class*="CodeBlock"]',
-  '[class*="code-snippet"]',
+  '[class*="code"]',
+  '[class*="Code"]',
   '[class*="language-"]',
   '[class*="hljs"]',
-  ".CodeMirror",
   ".monaco-editor",
   ".cm-editor"
 ]
@@ -282,7 +280,14 @@ function createChatGptAdapter(): RtlSiteAdapter {
     wbSel
   ]
   const codeGuardSelectors = [
-    ...COMMON_CODE_GUARD_SELECTORS,
+    // ChatGPT uses [unicode-bidi:plaintext] utilities on prose containers.
+    // Narrow its substring guards without changing the other site adapters.
+    ...COMMON_CODE_GUARD_SELECTORS.filter(
+      (selector) =>
+        selector !== '[class*="code"]' && selector !== '[class*="Code"]'
+    ),
+    ".CodeMirror",
+    '[class*="code-snippet"]',
     '[data-testid="code-block"]',
     '[data-testid="code-snippet"]',
     '[class*="code-block"]',

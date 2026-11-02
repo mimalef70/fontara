@@ -113,10 +113,24 @@ test("release publishes only packages from the shared completed verification", (
   )
   assert.ok(upload?.with?.name)
   assert.equal(download?.with?.name, upload.with.name)
-  assert.equal(
-    release.jobs.publish.steps?.some((step) => Boolean(step.run)),
-    false,
-    "Publishing must not rebuild or alter verified archives"
+  const publishSteps = release.jobs.publish.steps ?? []
+  const preparation = publishSteps.filter((step) => step.run)
+  assert.equal(preparation.length, 1)
+  assert.ok(preparation[0].run)
+  assert.match(preparation[0].run, /^node tasks\/prepare-release-assets\.js /)
+  assert.match(preparation[0].run, /--check-existing/)
+  assert.doesNotMatch(preparation[0].run, /pnpm|build:|tasks\/cli/)
+  const publication = publishSteps.find((step) =>
+    step.uses?.startsWith("softprops/action-gh-release@")
+  )
+  assert.ok(publication?.with)
+  assert.equal(publication.with.overwrite_files, false)
+  assert.equal(publication.with.body_path, "release-assets/release-body.md")
+  assert.equal(typeof publication.with.files, "string")
+  assert.match(String(publication.with.files), /release-assets\/SHA256SUMS/)
+  assert.match(
+    String(publication.with.files),
+    /release-assets\/build-info\.json/
   )
   const browserSteps = verification.jobs.browsers.steps ?? []
   assert.ok(browserSteps.some((step) => step.run?.startsWith("unzip ")))

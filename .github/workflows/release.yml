@@ -31,19 +31,36 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+    concurrency:
+      group: fontara-release-assets-${{ github.ref_name }}
+      cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
       - name: Download the packages tested by verification
         uses: actions/download-artifact@v8
         with:
           name: fontara-verified-packages
           path: build
+      - name: Prepare versioned downloads, integrity checks, and release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tasks/prepare-release-assets.js --tag "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --directory build --output release-assets --check-existing
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v3
         with:
           fail_on_unmatched_files: true
+          overwrite_files: false
+          name: FontARA ${{ github.ref_name }}
+          body_path: release-assets/release-body.md
           files: |
-            build/*-prod.zip
-            build/firefox-mv3-source-*.zip
+            release-assets/*.zip
+            release-assets/build-info.json
+            release-assets/SHA256SUMS
 
   chrome-store:
     name: Publish to Chrome Web Store

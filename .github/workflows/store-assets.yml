@@ -1,0 +1,58 @@
+name: Store Release Assets
+
+on:
+  workflow_run:
+    workflows: [Release, Firefox Release]
+    types: [completed]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing stable release tag (blank checks recent releases)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    if: >-
+      github.repository == 'mimalef70/fontara' && github.ref == 'refs/heads/master' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.repository.id == 141708904 &&
+        github.event.workflow_run.head_repository.id == 141708904))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tags: ${{ steps.queue.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+      - id: queue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STORE_RELEASE_TAG: ${{ inputs.release_tag || (github.event.workflow_run.name == 'Release' && startsWith(github.event.workflow_run.head_branch, 'v') && github.event.workflow_run.head_branch) || '' }}
+        run: node tasks/sync-store-assets.js --action plan
+
+  sync:
+    needs: plan
+    if: needs.plan.outputs.tags != '[]'
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        tag: ${{ fromJSON(needs.plan.outputs.tags) }}
+    uses: ./.github/workflows/store-assets-release.yml
+    with:
+      release_tag: ${{ matrix.tag }}
+    permissions:
+      contents: write
+      actions: read

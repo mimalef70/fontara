@@ -65,8 +65,8 @@
   body,
   html
 ):not(
-  [style*="font-"],
-  [style*="font-"] *,
+  :is([style*="font-family" i], [style*="font:" i]),
+  :is([style*="font-family" i], [style*="font:" i]) *,
   pre,
   pre *,
   code,
@@ -109,7 +109,16 @@
   --fontara-claude-message-fallback: var(--fontara-claude-anthropic-sans-ui-fallback);
 }
 
-:is(article, [data-test-render-count], .font-claude-message, [role="article"], [class*="font-user-message"]) :where(
+:is(
+  .standard-markdown,
+  [class*="_blocks_"],
+  [data-cds="Prose"],
+  article,
+  [data-test-render-count],
+  .font-claude-message,
+  [role="article"],
+  [class*="font-user-message"]
+) :where(
   p,
   span,
   div,
@@ -126,8 +135,8 @@
   legend,
   [role="heading"]
 ):not(
-  [style*="font-"],
-  [style*="font-"] *,
+  :is([style*="font-family" i], [style*="font:" i]),
+  :is([style*="font-family" i], [style*="font:" i]) *,
   pre,
   pre *,
   code,

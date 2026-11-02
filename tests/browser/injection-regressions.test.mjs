@@ -894,8 +894,17 @@ test("Chrome chatbot font rules preserve code, math and nested symbol fonts", as
   await withRuntimePage(context, async (page) => {
     for (const site of ["chatgpt", "claude", "gemini"]) {
       const css = readFileSync(`assets/styles/${site}.css`, "utf8")
-      const result = await page.evaluate((css) => {
-        document.body.innerHTML = `
+      const result = await page.evaluate(
+        (css, site) => {
+          if (site !== "gemini") {
+            document.body.setAttribute(
+              "style",
+              "--font-ui-size: 16px; --text-4xl: 36px;"
+            )
+          } else {
+            document.body.removeAttribute("style")
+          }
+          document.body.innerHTML = `
           <style>
             :root { --fontara-font: "FontaraTest"; }
             .code-font, .code-font code { font-family: "CodeFont"; }
@@ -916,28 +925,31 @@ test("Chrome chatbot font rules preserve code, math and nested symbol fonts", as
             <span style='font-family: "AuthoredFont"'><span id="authored-font">special text</span></span>
           </article>
         `
-        const style = document.createElement("style")
-        style.textContent = css
-        document.head.appendChild(style)
-        const families = Object.fromEntries(
-          [
-            "text",
-            "user-text",
-            "code-font",
-            "math-font",
-            "role-math-font",
-            "symbol-font",
-            "icon-font",
-            "hidden-font",
-            "authored-font"
-          ].map((id) => [
-            id,
-            getComputedStyle(document.getElementById(id)).fontFamily
-          ])
-        )
-        style.remove()
-        return families
-      }, css)
+          const style = document.createElement("style")
+          style.textContent = css
+          document.head.appendChild(style)
+          const families = Object.fromEntries(
+            [
+              "text",
+              "user-text",
+              "code-font",
+              "math-font",
+              "role-math-font",
+              "symbol-font",
+              "icon-font",
+              "hidden-font",
+              "authored-font"
+            ].map((id) => [
+              id,
+              getComputedStyle(document.getElementById(id)).fontFamily
+            ])
+          )
+          style.remove()
+          return families
+        },
+        css,
+        site
+      )
       assert.match(result.text, /FontaraTest/, site)
       if (site === "claude") {
         assert.match(result.text, /Anthropic Serif/)

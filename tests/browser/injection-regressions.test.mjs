@@ -978,10 +978,13 @@ test("Chrome AI chatbots apply fonts to sidebars, tooltips and ProseMirror lists
       style.textContent = css
       document.head.appendChild(style)
       const res = {
-        title: getComputedStyle(document.getElementById("gemini-title")).fontFamily,
-        tooltip: getComputedStyle(document.getElementById("gemini-tooltip")).fontFamily,
+        title: getComputedStyle(document.getElementById("gemini-title"))
+          .fontFamily,
+        tooltip: getComputedStyle(document.getElementById("gemini-tooltip"))
+          .fontFamily,
         p: getComputedStyle(document.getElementById("gemini-p")).fontFamily,
-        code: getComputedStyle(document.getElementById("gemini-code")).fontFamily
+        code: getComputedStyle(document.getElementById("gemini-code"))
+          .fontFamily
       }
       style.remove()
       return res
@@ -1014,7 +1017,8 @@ test("Chrome AI chatbots apply fonts to sidebars, tooltips and ProseMirror lists
       document.head.appendChild(style)
       const res = {
         p: getComputedStyle(document.getElementById("claude-p")).fontFamily,
-        title: getComputedStyle(document.getElementById("claude-title")).fontFamily
+        title: getComputedStyle(document.getElementById("claude-title"))
+          .fontFamily
       }
       style.remove()
       return res
@@ -1039,10 +1043,14 @@ test("Chrome AI chatbots apply fonts to sidebars, tooltips and ProseMirror lists
       style.textContent = css
       document.head.appendChild(style)
       const res = {
-        ulDirection: getComputedStyle(document.getElementById("canvas-ul")).direction,
-        liDirection: getComputedStyle(document.getElementById("canvas-li")).direction,
-        paddingRight: getComputedStyle(document.getElementById("canvas-ul")).paddingRight,
-        paddingLeft: getComputedStyle(document.getElementById("canvas-ul")).paddingLeft
+        ulDirection: getComputedStyle(document.getElementById("canvas-ul"))
+          .direction,
+        liDirection: getComputedStyle(document.getElementById("canvas-li"))
+          .direction,
+        paddingRight: getComputedStyle(document.getElementById("canvas-ul"))
+          .paddingRight,
+        paddingLeft: getComputedStyle(document.getElementById("canvas-ul"))
+          .paddingLeft
       }
       style.remove()
       return res

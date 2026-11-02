@@ -622,6 +622,120 @@ test("Chrome ChatGPT writing blocks preserve mixed directions and composer sizin
   })
 })
 
+test("Chrome ChatGPT typography preserves authored fonts, code and titlebar geometry", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.setContent(`
+      <style>
+        :root { --fontara-font: FontaraRegression; }
+        .CodeMirror { font-family: monospace; }
+        [data-app-shell-titlebar] { height: 96px; position: relative; }
+        #header-menu { position: absolute; top: 100%; height: 40px; }
+      </style>
+      <body style="--font-ui-size: 16px">
+        <div data-app-shell-titlebar>
+          <div data-app-shell-main-titlebar="true" class="markdown">
+            <p id="header-title">عنوان فارسی</p>
+            <div id="header-menu">Menu</div>
+          </div>
+        </div>
+        <div class="writing-block-editor [unicode-bidi:plaintext]">
+          <p id="canvas-text">سلام دنیا</p>
+          <p style="font-family: Georgia"><span id="authored-font">Authored font</span></p>
+          <pre><code id="canvas-code">const greeting = "سلام"</code></pre>
+          <div class="CodeMirror"><span id="codemirror-code">const greeting = "سلام"</span></div>
+        </div>
+      </body>`)
+    await page.addStyleTag({
+      content: readFileSync("assets/styles/chatgpt.css", "utf8")
+    })
+    await page.evaluate(() => {
+      window.adapter = FontaraRegressionRuntime.createRtlSiteAdapter("chatgpt")
+      window.adapter.enable()
+    })
+    await page.waitForFunction(
+      () => document.getElementById("canvas-text").dir === "rtl"
+    )
+    const result = await page.evaluate(() => {
+      const style = (id) => getComputedStyle(document.getElementById(id))
+      const header = getComputedStyle(
+        document.querySelector("[data-app-shell-titlebar]")
+      )
+      const main = getComputedStyle(
+        document.querySelector("[data-app-shell-main-titlebar]")
+      )
+      const result = {
+        canvasFont: style("canvas-text").fontFamily,
+        authoredFont: style("authored-font").fontFamily,
+        codeFont: style("canvas-code").fontFamily,
+        codeMirrorFont: style("codemirror-code").fontFamily,
+        codeDirection: style("canvas-code").direction,
+        codeMirrorDirection: style("codemirror-code").direction,
+        headerDirection: document
+          .getElementById("header-title")
+          .getAttribute("dir"),
+        headerHeight: header.height,
+        headerOverflow: header.overflow,
+        headerContain: header.contain,
+        mainOverflow: main.overflow,
+        mainContain: main.contain
+      }
+      window.adapter.dispose()
+      return result
+    })
+    assert.match(result.canvasFont, /FontaraRegression/)
+    assert.match(result.authoredFont, /Georgia/)
+    assert.doesNotMatch(result.codeFont, /FontaraRegression/)
+    assert.doesNotMatch(result.codeMirrorFont, /FontaraRegression/)
+    assert.equal(result.codeDirection, "ltr")
+    assert.equal(result.codeMirrorDirection, "ltr")
+    assert.equal(result.headerDirection, null)
+    assert.equal(result.headerHeight, "96px")
+    assert.equal(result.headerOverflow, "visible")
+    assert.equal(result.headerContain, "none")
+    assert.equal(result.mainOverflow, "visible")
+    assert.equal(result.mainContain, "none")
+  })
+})
+
+test("Chrome ChatGPT restores writing-block list and table roots after edits and disable", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.setContent(`
+      <ul id="list" class="writing-block-list" dir="ltr"><li id="item">سلام دنیا</li></ul>
+      <table id="table" class="writing-block-table" dir="auto"><tr><td id="cell">سلام دنیا</td></tr></table>`)
+    await page.evaluate(() => {
+      window.adapter = FontaraRegressionRuntime.createRtlSiteAdapter("chatgpt")
+      window.adapter.enable()
+    })
+    const waitForDirections = (list, table) =>
+      page.waitForFunction(
+        (list, table) =>
+          document.getElementById("list").dir === list &&
+          document.getElementById("table").dir === table,
+        {},
+        list,
+        table
+      )
+    await waitForDirections("rtl", "rtl")
+    await page.evaluate(() => {
+      document.getElementById("item").textContent = "English list item"
+      document.getElementById("cell").textContent = "English table cell"
+    })
+    await waitForDirections("ltr", "auto")
+    await page.evaluate(() => {
+      document.getElementById("item").textContent = "سلام دوباره"
+      document.getElementById("cell").textContent = "سلام دوباره"
+    })
+    await waitForDirections("rtl", "rtl")
+    const result = await page.evaluate(() => {
+      window.adapter.disable()
+      return ["list", "table", "item", "cell"].map((id) =>
+        document.getElementById(id).getAttribute("dir")
+      )
+    })
+    assert.deepEqual(result, ["ltr", "auto", null, null])
+  })
+})
+
 test("Chrome Claude independent list-item scopes preserve mixed-language siblings", async (context) => {
   await withRuntimePage(context, async (page) => {
     await page.evaluate(() => {

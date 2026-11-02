@@ -263,7 +263,7 @@ function createStandardAdapter(config: StandardAdapterConfig): RtlSiteAdapter {
 
 function createChatGptAdapter(): RtlSiteAdapter {
   const wbSel =
-    '.writing-block-editor,.ProseMirror,[data-client-defined-widget="writing_block"]'
+    '.writing-block-editor,[class*="writing-block"],.ProseMirror,[data-client-defined-widget="writing_block"]'
   const messageSelectors = [
     '[data-testid="conversation-turn"]',
     "[data-message-author-role]",
@@ -280,7 +280,14 @@ function createChatGptAdapter(): RtlSiteAdapter {
     wbSel
   ]
   const codeGuardSelectors = [
-    ...COMMON_CODE_GUARD_SELECTORS,
+    // ChatGPT uses [unicode-bidi:plaintext] utilities on prose containers.
+    // Narrow its substring guards without changing the other site adapters.
+    ...COMMON_CODE_GUARD_SELECTORS.filter(
+      (selector) =>
+        selector !== '[class*="code"]' && selector !== '[class*="Code"]'
+    ),
+    ".CodeMirror",
+    '[class*="code-snippet"]',
     '[data-testid="code-block"]',
     '[data-testid="code-snippet"]',
     '[class*="code-block"]',
@@ -306,6 +313,8 @@ function createChatGptAdapter(): RtlSiteAdapter {
     codeGuardSelectors,
     mathGuardSelectors: COMMON_MATH_GUARD_SELECTORS,
     excludeSelectors: [
+      "[data-app-shell-titlebar]",
+      "[data-app-shell-titlebar] *",
       '[data-type="unified-composer"]',
       '[data-type="unified-composer"] *',
       'form[data-type="unified-composer"]',
@@ -327,6 +336,22 @@ function createChatGptAdapter(): RtlSiteAdapter {
         const childText = getTextWithoutSelector(child, mathGuard)
         if (engine.needsRTL(childText)) {
           engine.applyRTL(child)
+          if (
+            child.tagName === "LI" &&
+            child.parentElement &&
+            (child.parentElement.tagName === "UL" ||
+              child.parentElement.tagName === "OL")
+          ) {
+            engine.rememberStyle(child.parentElement, [])
+            child.parentElement.setAttribute("dir", "rtl")
+          }
+          if (child.tagName === "TD" || child.tagName === "TH") {
+            const table = child.closest("table")
+            if (table) {
+              engine.rememberStyle(table, [])
+              table.setAttribute("dir", "rtl")
+            }
+          }
         }
       })
       return true

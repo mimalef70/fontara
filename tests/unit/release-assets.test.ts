@@ -17,7 +17,7 @@ const {
   checkExistingAssets
 } = require("../../tasks/prepare-release-assets.js")
 const { GUID } = require("../../tasks/publish-firefox-store.js")
-const { SBOM_NAME } = require("../../tasks/generate-sbom.js")
+const { SBOM_NAME, MAX_SBOM_BYTES } = require("../../tasks/generate-sbom.js")
 const version = "5.2.0"
 const tag = `v${version}`
 const commit = "a".repeat(40)
@@ -198,6 +198,24 @@ test("future releases require the verified dependency inventory and reject a sta
       () => prepareReleaseAssets(f.options),
       /missing its production dependency inventory/
     )
+    assert.equal(fs.existsSync(f.output), false)
+  })
+})
+
+test("release inventory rejects symlinks, directories and oversized files before output", () => {
+  withFixture((f) => {
+    const file = path.join(f.directory, SBOM_NAME)
+    const target = path.join(f.root, "inventory.json")
+    fs.renameSync(file, target)
+    fs.symlinkSync(target, file)
+    assert.throws(() => prepareReleaseAssets(f.options), /ELOOP/)
+    fs.unlinkSync(file)
+    fs.mkdirSync(file)
+    assert.throws(() => prepareReleaseAssets(f.options), /regular file/)
+    fs.rmdirSync(file)
+    fs.writeFileSync(file, "")
+    fs.truncateSync(file, MAX_SBOM_BYTES + 1)
+    assert.throws(() => prepareReleaseAssets(f.options), /size budget/)
     assert.equal(fs.existsSync(f.output), false)
   })
 })

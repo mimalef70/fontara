@@ -301,6 +301,58 @@ test("prepare dry-run leaves source, index, branch and HEAD untouched", (t) => {
   )
 })
 
+test("prepare rejects an input replaced by a symlink after repository checks", (t) => {
+  const fixture = temporaryRepository(t)
+  const input = path.join(fixture.cwd, "package.json")
+  const target = path.join(fixture.cwd, "build/package.json")
+  fs.mkdirSync(path.dirname(target))
+  fs.writeFileSync(target, inputs["package.json"])
+  const raw = fixture.context.raw
+  fixture.context.raw = (command: string, args: string[]) => {
+    const result = raw(command, args)
+    if (
+      command === "git" &&
+      args[0] === "show-ref" &&
+      args[3] === "refs/heads/codex/release-5.2.0"
+    ) {
+      fs.unlinkSync(input)
+      fs.symlinkSync(target, input)
+    }
+    return result
+  }
+  assert.throws(
+    () => prepareVersion({ ...options, dryRun: true }, fixture.context),
+    { code: "ELOOP" }
+  )
+  assert.equal(fs.readFileSync(target, "utf8"), inputs["package.json"])
+  assert.equal(fixture.git("rev-parse", "HEAD"), fixture.base)
+  assert.equal(fixture.git("branch", "--show-current"), "master")
+})
+
+test("prepare reads the checked descriptor if its path changes during validation", (t) => {
+  const fixture = temporaryRepository(t)
+  const input = path.join(fixture.cwd, "package.json")
+  const target = path.join(fixture.cwd, "build/package.json")
+  fs.mkdirSync(path.dirname(target))
+  fs.writeFileSync(target, '{"version":"6.0.0"}')
+  const fstatSync = fs.fstatSync
+  let replaced = false
+  t.mock.method(fs, "fstatSync", (descriptor: number) => {
+    const stat = fstatSync(descriptor)
+    if (!replaced) {
+      replaced = true
+      fs.unlinkSync(input)
+      fs.symlinkSync(target, input)
+    }
+    return stat
+  })
+  const plan = prepareVersion({ ...options, dryRun: true }, fixture.context)
+  assert.equal(replaced, true)
+  assert.equal(plan.previous, "5.1.0")
+  assert.equal(plan.version, "5.2.0")
+  assert.equal(fs.readFileSync(target, "utf8"), '{"version":"6.0.0"}')
+})
+
 test("prepare rejects dirty worktrees and local branches that differ from remote master", (t) => {
   const fixture = temporaryRepository(t)
   fs.writeFileSync(path.join(fixture.cwd, "user-work.txt"), "do not stage")

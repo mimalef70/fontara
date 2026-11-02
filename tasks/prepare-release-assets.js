@@ -24,6 +24,44 @@ const START = "<!-- fontara-release-assets:start -->"
 const END = "<!-- fontara-release-assets:end -->"
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex")
 
+function readProductionInventory(file) {
+  let descriptor
+  try {
+    descriptor = fs.openSync(
+      file,
+      fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK
+    )
+  } catch (error) {
+    if (error.code === "ENOENT") return null
+    throw error
+  }
+  try {
+    const stat = fs.fstatSync(descriptor)
+    if (!stat.isFile() || stat.size > MAX_SBOM_BYTES)
+      throw new Error(
+        "Production inventory must be a regular file within the size budget."
+      )
+    const bytes = Buffer.alloc(MAX_SBOM_BYTES + 1)
+    let length = 0
+    while (length < bytes.length) {
+      const count = fs.readSync(
+        descriptor,
+        bytes,
+        length,
+        bytes.length - length,
+        null
+      )
+      if (!count) break
+      length += count
+    }
+    if (length > MAX_SBOM_BYTES)
+      throw new Error("Production inventory exceeds the size budget.")
+    return bytes.subarray(0, length)
+  } finally {
+    fs.closeSync(descriptor)
+  }
+}
+
 function inspectZip(bytes, names) {
   if (bytes.length > 50 * 1024 * 1024)
     throw new Error("Release ZIP exceeds the 50 MiB archive budget.")
@@ -284,10 +322,8 @@ function prepareReleaseAssets({
   const files = new Map(originals)
   const inventoryPath = path.join(directory, SBOM_NAME)
   let dependencyInventory
-  if (fs.existsSync(inventoryPath)) {
-    if (fs.statSync(inventoryPath).size > MAX_SBOM_BYTES)
-      throw new Error("Production inventory exceeds the size budget.")
-    const bytes = fs.readFileSync(inventoryPath)
+  const bytes = readProductionInventory(inventoryPath)
+  if (bytes) {
     validateSbom(JSON.parse(bytes), pkg)
     files.set(SBOM_NAME, bytes)
     dependencyInventory = {

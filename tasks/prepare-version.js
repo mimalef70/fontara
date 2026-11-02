@@ -290,18 +290,28 @@ function showDiff(name, before, after) {
   ].join("\n")
 }
 
+function readReleaseInput(cwd, name) {
+  const descriptor = fs.openSync(
+    path.join(cwd, name),
+    fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK
+  )
+  try {
+    const stat = fs.fstatSync(descriptor)
+    if (!stat.isFile() || stat.size > 2 * 1024 * 1024)
+      throw new Error(`Unsafe release input: ${name}`)
+    // Validate and read the same opened file, even if its path is replaced.
+    return fs.readFileSync(descriptor, "utf8")
+  } finally {
+    fs.closeSync(descriptor)
+  }
+}
+
 function prepareVersion(options, context = createContext()) {
   const refs = inspectRepository(context, options.version)
   const branch = `codex/release-${options.version}`
   assertPreparationBase(context, refs, branch)
   const files = Object.fromEntries(
-    RELEASE_FILES.map((name) => {
-      const file = path.join(context.cwd, name)
-      const stat = fs.lstatSync(file)
-      if (!stat.isFile() || stat.size > 2 * 1024 * 1024)
-        throw new Error(`Unsafe release input: ${name}`)
-      return [name, fs.readFileSync(file, "utf8")]
-    })
+    RELEASE_FILES.map((name) => [name, readReleaseInput(context.cwd, name)])
   )
   const plan = createPreparationPlan(
     files,
@@ -319,7 +329,7 @@ function prepareVersion(options, context = createContext()) {
   const freshRefs = inspectRepository(context, options.version)
   assertPreparationBase(context, freshRefs, branch)
   for (const name of RELEASE_FILES) {
-    if (fs.readFileSync(path.join(context.cwd, name), "utf8") !== files[name])
+    if (readReleaseInput(context.cwd, name) !== files[name])
       throw new Error("A release input changed while planning.")
   }
   context.git("switch", "-c", branch)
@@ -488,7 +498,7 @@ function publishVersion(options, context = createContext()) {
     )
   const changelog = readRemoteFile(context, "CHANGELOG.md", sha)
   const heading = new RegExp(
-    `^## ${options.version.replace(/\./g, "\\.")} - \\d{4}-\\d{2}-\\d{2}\\n\\n([^]+?)(?=^## |$)`,
+    `^## ${options.version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} - \\d{4}-\\d{2}-\\d{2}\\n\\n([^]+?)(?=^## |$)`,
     "m"
   )
   if (!heading.exec(changelog)?.[1]?.trim())

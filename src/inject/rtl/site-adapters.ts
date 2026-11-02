@@ -712,13 +712,13 @@ function createGeminiAdapter(): RtlSiteAdapter {
           padding-inline-end: 0 !important;
         }
 
-        ${messageScope} :is(ul, ol)[dir="rtl"],
-        ${messageScope} :is(ul, ol):has(> li[dir="rtl"]) {
+        ${messageScope} ol[dir="rtl"],
+        ${messageScope} ol:has(> li[dir="rtl"]) {
           list-style-type: revert !important;
         }
 
-        ${messageScope} :is(ul, ol)[dir="rtl"] > li,
-        ${messageScope} :is(ul, ol) > li[dir="rtl"] {
+        ${messageScope} ol[dir="rtl"] > li,
+        ${messageScope} ol > li[dir="rtl"] {
           list-style-type: inherit !important;
           list-style-position: outside !important;
         }

@@ -66,6 +66,7 @@ const COMMON_CODE_GUARD_SELECTORS = [
   '[class*="code-snippet"]',
   '[class*="language-"]',
   '[class*="hljs"]',
+  ".CodeMirror",
   ".monaco-editor",
   ".cm-editor"
 ]
@@ -336,13 +337,15 @@ function createChatGptAdapter(): RtlSiteAdapter {
             (child.parentElement.tagName === "UL" ||
               child.parentElement.tagName === "OL")
           ) {
+            engine.rememberStyle(child.parentElement, [])
             child.parentElement.setAttribute("dir", "rtl")
           }
-          if (
-            (child.tagName === "TD" || child.tagName === "TH") &&
-            child.closest("table")
-          ) {
-            child.closest("table")?.setAttribute("dir", "rtl")
+          if (child.tagName === "TD" || child.tagName === "TH") {
+            const table = child.closest("table")
+            if (table) {
+              engine.rememberStyle(table, [])
+              table.setAttribute("dir", "rtl")
+            }
           }
         }
       })

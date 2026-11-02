@@ -81,8 +81,8 @@ body :where(
 ):not(
   :is([style*="font-family" i], [style*="font:" i]),
   :is([style*="font-family" i], [style*="font:" i]) *,
-  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
+  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   :is(.katex, math, [role="math"], mjx-container),
   :is(.katex, math, [role="math"], mjx-container) *,
   [aria-hidden="true"],
@@ -109,29 +109,6 @@ body :where(
 .header-wordmark {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-header-wordmark-fallback) !important;
-}
-
-[data-app-shell-titlebar] {
-  height: var(--app-shell-titlebar-height, var(--height-toolbar, 44px)) !important;
-  max-height: var(--app-shell-titlebar-height, var(--height-toolbar, 44px)) !important;
-  overflow: clip !important;
-  contain: layout paint !important;
-}
-
-[data-app-shell-titlebar] [data-test-id="header-shell-slot"] {
-  min-width: 0 !important;
-  max-height: 100% !important;
-}
-
-[data-app-shell-main-titlebar="true"] {
-  min-width: 0 !important;
-  max-height: 100% !important;
-  overflow: hidden !important;
-  contain: layout paint !important;
-}
-
-[data-app-shell-titlebar] :is(button, a) {
-  text-align: inherit !important;
 }
 
 :root[dir="rtl"] [data-composer-body] .ProseMirror:has([data-empty-paragraph="true"]),

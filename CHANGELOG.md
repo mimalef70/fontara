@@ -12,6 +12,10 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Fixed ChatGPT Canvas font application when page styles contain font-size
+  variables or Unicode bidi utilities. Protected authored fonts and code editors,
+  kept titlebars out of smart RTL without clipping their menus, and restored
+  writing-block list/table directions after edits or disabling smart RTL.
 - Added a separately enabled Firefox Add-ons release workflow that verifies the
   original tag, CI run, and artifact hashes before uploading the package and
   reviewer source. Mozilla account credentials require one-time setup.

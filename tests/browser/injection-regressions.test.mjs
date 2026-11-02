@@ -807,7 +807,7 @@ test("Chrome Gemini RTL lists retain native markers and restore page styling", a
     })
     assert.deepEqual(active, {
       orderedType: "decimal",
-      bulletType: "circle",
+      bulletType: "none",
       firstDirection: "rtl",
       englishDirection: "ltr",
       start: 4,

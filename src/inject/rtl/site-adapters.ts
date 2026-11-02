@@ -336,14 +336,18 @@ function createChatGptAdapter(): RtlSiteAdapter {
         const childText = getTextWithoutSelector(child, mathGuard)
         if (engine.needsRTL(childText)) {
           engine.applyRTL(child)
-          if (
-            child.tagName === "LI" &&
-            child.parentElement &&
-            (child.parentElement.tagName === "UL" ||
-              child.parentElement.tagName === "OL")
-          ) {
-            engine.rememberStyle(child.parentElement, [])
-            child.parentElement.setAttribute("dir", "rtl")
+          const listItem = child.tagName === "LI" ? child : child.closest("li")
+          if (listItem) {
+            engine.rememberStyle(listItem, [])
+            listItem.setAttribute("dir", "rtl")
+            const listRoot = listItem.parentElement
+            if (
+              listRoot &&
+              (listRoot.tagName === "UL" || listRoot.tagName === "OL")
+            ) {
+              engine.rememberStyle(listRoot, [])
+              listRoot.setAttribute("dir", "rtl")
+            }
           }
           if (child.tagName === "TD" || child.tagName === "TH") {
             const table = child.closest("table")

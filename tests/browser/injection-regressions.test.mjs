@@ -958,3 +958,98 @@ test("Chrome chatbot font rules preserve code, math and nested symbol fonts", as
     }
   })
 })
+
+test("Chrome AI chatbots apply fonts to sidebars, tooltips and ProseMirror lists", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    // 1. Gemini
+    const geminiCss = readFileSync("assets/styles/gemini.css", "utf8")
+    const gemini = await page.evaluate((css) => {
+      document.body.innerHTML = `
+        <style>:root { --fontara-font: "FontaraTest"; }</style>
+        <a class="mat-mdc-list-item mdc-list-item--with-leading-icon">
+          <span class="title-text" id="gemini-title">گفتگو</span>
+        </a>
+        <div class="mat-mdc-tooltip mdc-tooltip__surface" id="gemini-tooltip">حباب</div>
+        <div style="font-size: 14px">
+          <p id="gemini-p">متن (<code id="gemini-code">کد</code>)</p>
+        </div>
+      `
+      const style = document.createElement("style")
+      style.textContent = css
+      document.head.appendChild(style)
+      const res = {
+        title: getComputedStyle(document.getElementById("gemini-title")).fontFamily,
+        tooltip: getComputedStyle(document.getElementById("gemini-tooltip")).fontFamily,
+        p: getComputedStyle(document.getElementById("gemini-p")).fontFamily,
+        code: getComputedStyle(document.getElementById("gemini-code")).fontFamily
+      }
+      style.remove()
+      return res
+    }, geminiCss)
+    assert.match(gemini.title, /FontaraTest/)
+    assert.match(gemini.tooltip, /FontaraTest/)
+    assert.match(gemini.p, /FontaraTest/)
+    assert.doesNotMatch(gemini.code, /FontaraTest/)
+
+    // 2. Claude
+    const claudeCss = readFileSync("assets/styles/claude.css", "utf8")
+    const claude = await page.evaluate((css) => {
+      document.body.innerHTML = `
+        <style>
+          :root { --fontara-font: "FontaraTest"; }
+          .prose { font-family: var(--_prose-font-body, "Anthropic Sans"); }
+          [data-row-main-button] { font-family: "Anthropic Sans"; }
+        </style>
+        <div data-cds="Prose" class="prose" style="--_prose-font-body: var(--cds-font-voice);">
+          <div class="standard-markdown">
+            <p id="claude-p">پاسخ</p>
+          </div>
+        </div>
+        <a data-roving-item data-row-main-button>
+          <span class="dframe-fade-label"><span id="claude-title">عنوان</span></span>
+        </a>
+      `
+      const style = document.createElement("style")
+      style.textContent = css
+      document.head.appendChild(style)
+      const res = {
+        p: getComputedStyle(document.getElementById("claude-p")).fontFamily,
+        title: getComputedStyle(document.getElementById("claude-title")).fontFamily
+      }
+      style.remove()
+      return res
+    }, claudeCss)
+    assert.match(claude.p, /FontaraTest/)
+    assert.match(claude.p, /Anthropic Serif/)
+    assert.match(claude.title, /FontaraTest/)
+    assert.match(claude.title, /Anthropic Sans/)
+
+    // 3. ChatGPT Canvas List
+    const chatgptCss = readFileSync("assets/styles/chatgpt.css", "utf8")
+    const chatgpt = await page.evaluate((css) => {
+      document.body.innerHTML = `
+        <style>:root { --fontara-font: "FontaraTest"; }</style>
+        <div class="writing-block-editor">
+          <ul id="canvas-ul">
+            <li id="canvas-li"><p id="canvas-p" dir="rtl">سلام آیتم</p></li>
+          </ul>
+        </div>
+      `
+      const style = document.createElement("style")
+      style.textContent = css
+      document.head.appendChild(style)
+      const res = {
+        ulDirection: getComputedStyle(document.getElementById("canvas-ul")).direction,
+        liDirection: getComputedStyle(document.getElementById("canvas-li")).direction,
+        paddingRight: getComputedStyle(document.getElementById("canvas-ul")).paddingRight,
+        paddingLeft: getComputedStyle(document.getElementById("canvas-ul")).paddingLeft
+      }
+      style.remove()
+      return res
+    }, chatgptCss)
+    assert.equal(chatgpt.ulDirection, "rtl")
+    assert.equal(chatgpt.liDirection, "rtl")
+    assert.equal(chatgpt.paddingLeft, "0px")
+    assert.equal(chatgpt.paddingRight, "24px")
+  })
+})

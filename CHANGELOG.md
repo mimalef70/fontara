@@ -185,3 +185,9 @@ Known issues and notes:
 - Added Google Fonts, system font, bundled font, and custom font flows.
 - Added no-reload page update coverage for font changes, site toggles, profiles,
   and storage updates.
+
+- Fixed Persian/custom fonts not applying to chat body text on claude.ai,
+  chatgpt.com and other site stylesheets. The "author-set inline font" guard
+  matched any inline style containing `font-` (including CSS variables such as
+  `--font-ui-size` or `--_prose-font-body`), which excluded entire page
+  subtrees. It now only matches real `font-family` / `font:` declarations.

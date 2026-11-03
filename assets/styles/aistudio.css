@@ -48,8 +48,8 @@
   ms-cmark-node *,
   textarea
 ):not(
-  [style*="font-"],
-  [style*="font-"] *,
+  :is([style*="font-family" i], [style*="font:" i]),
+  :is([style*="font-family" i], [style*="font:" i]) *,
   pre,
   pre *,
   code,

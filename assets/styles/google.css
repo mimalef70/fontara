@@ -53,7 +53,7 @@
   .fasr,
   .fat,
   .icofont,
-  [style*="font-"],
+  :is([style*="font-family" i], [style*="font:" i]),
   [class*="icon"],
   [class*="Icon"],
   [class*="symbol"],

@@ -1038,6 +1038,11 @@ test("Chrome AI chatbots apply fonts to sidebars, tooltips and ProseMirror lists
             <li id="canvas-li"><p id="canvas-p" dir="rtl">سلام آیتم</p></li>
           </ul>
         </div>
+        <div class="ProseMirror">
+          <ul id="canvas-pm-ul">
+            <li id="canvas-pm-li"><p dir="auto">آیتم با دیر اتو</p></li>
+          </ul>
+        </div>
       `
       const style = document.createElement("style")
       style.textContent = css
@@ -1050,7 +1055,14 @@ test("Chrome AI chatbots apply fonts to sidebars, tooltips and ProseMirror lists
         paddingRight: getComputedStyle(document.getElementById("canvas-ul"))
           .paddingRight,
         paddingLeft: getComputedStyle(document.getElementById("canvas-ul"))
-          .paddingLeft
+          .paddingLeft,
+        pmUlDirection: getComputedStyle(document.getElementById("canvas-pm-ul"))
+          .direction,
+        pmLiDirection: getComputedStyle(document.getElementById("canvas-pm-li"))
+          .direction,
+        pmPaddingRight: getComputedStyle(
+          document.getElementById("canvas-pm-ul")
+        ).paddingRight
       }
       style.remove()
       return res
@@ -1059,5 +1071,8 @@ test("Chrome AI chatbots apply fonts to sidebars, tooltips and ProseMirror lists
     assert.equal(chatgpt.liDirection, "rtl")
     assert.equal(chatgpt.paddingLeft, "0px")
     assert.equal(chatgpt.paddingRight, "24px")
+    assert.equal(chatgpt.pmUlDirection, "rtl")
+    assert.equal(chatgpt.pmLiDirection, "rtl")
+    assert.equal(chatgpt.pmPaddingRight, "24px")
   })
 })

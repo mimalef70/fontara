@@ -118,12 +118,14 @@ body :where(
 }
 
 :is([class*="writing-block"], .ProseMirror) :is(p, h1, h2, h3, h4, h5, h6, th, td, blockquote)[dir="rtl"],
-:is([class*="writing-block"], .ProseMirror) li:is([dir="rtl"], :has([dir="rtl"])) {
+:is([class*="writing-block"], .ProseMirror)[dir="rtl"] li,
+:is([class*="writing-block"], .ProseMirror) li:is([dir="rtl"], :has([dir="rtl"]), :has(p[dir="auto"])) {
   direction: rtl !important;
   text-align: right !important;
 }
 
-:is([class*="writing-block"], .ProseMirror) :is(ul, ol):is([dir="rtl"], :has([dir="rtl"])) {
+:is([class*="writing-block"], .ProseMirror)[dir="rtl"] :is(ul, ol),
+:is([class*="writing-block"], .ProseMirror) :is(ul, ol):is([dir="rtl"], :has([dir="rtl"]), :has(p[dir="auto"])) {
   padding-inline: 1.5rem 0 !important;
   direction: rtl !important;
   text-align: right !important;

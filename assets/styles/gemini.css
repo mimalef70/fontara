@@ -57,8 +57,10 @@ body :where(
   mjx-container *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  :is([class*="icon" i], [class*="symbol" i], mat-icon, gem-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
-  :is([class*="icon" i], [class*="symbol" i], mat-icon, gem-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
+  :is(mat-icon, gem-icon, [class*="material-symbol"], [class*="material-icon"], [class*="lumi-symbol"], [class*="google-symbol"], [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is(mat-icon, gem-icon, [class*="material-symbol"], [class*="material-icon"], [class*="lumi-symbol"], [class*="google-symbol"], [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *,
+  :is([class*="icon" i], [class*="symbol" i]):not([class*="-with-"], [class*="with-"], [class*="has-"]),
+  :is([class*="icon" i], [class*="symbol" i]):not([class*="-with-"], [class*="with-"], [class*="has-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-gemini-google-sans-flex-ui-fallback) !important;

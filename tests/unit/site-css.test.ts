@@ -172,3 +172,17 @@ test("ChatGPT CSS targets the mobile composer without StyleX hashes", () => {
   assert.match(css, /(?:^|,\s*)form\[data-mobile-composer\]\s*(?:,|\{)/m)
   assert.doesNotMatch(css, /(^|[\s,])\.x[a-z\d]+\b/)
 })
+
+test("site CSS only treats real inline font declarations as author-set fonts", () => {
+  // `[style*="font-"]` also matches CSS custom properties such as
+  // `--_prose-font-body: ...` (claude.ai) and excludes the whole subtree.
+  for (const fileName of getSiteStyleFiles()) {
+    const css = fs.readFileSync(path.join(SITE_STYLES_DIR, fileName), "utf8")
+
+    assert.doesNotMatch(
+      css,
+      /\[style\*="font-"/,
+      `${fileName} uses the broad [style*="font-"] guard; match font-family/font: instead`
+    )
+  }
+})

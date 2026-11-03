@@ -39,8 +39,8 @@ body :where(
   [role="option"],
   [role="tab"]
 ):not(
-  [style*="font-"],
-  [style*="font-"] *,
+  :is([style*="font-family" i], [style*="font:" i]),
+  :is([style*="font-family" i], [style*="font:" i]) *,
   pre,
   pre *,
   code,

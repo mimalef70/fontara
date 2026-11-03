@@ -1,16 +1,22 @@
 :root {
-  --fontara-claude-anthropic-sans-root-fallback: "Anthropic Sans", system-ui,
-    "Segoe UI", Roboto, Helvetica, Arial, sans-serif, ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", Roboto, sans-serif;
-  --fontara-claude-anthropic-sans-ui-fallback: "Anthropic Sans", system-ui,
-    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --fontara-claude-anthropic-serif-display-fallback: "Anthropic Serif",
-    Georgia, "Arial Hebrew", "Noto Sans Hebrew", "Times New Roman", Times,
-    "Hiragino Sans", "Yu Gothic", Meiryo, "Noto Sans CJK JP", "PingFang TC",
-    "Microsoft JhengHei", "Noto Sans CJK TC", "PingFang SC",
-    "Microsoft YaHei", "Noto Sans CJK SC", "Apple SD Gothic Neo",
-    "Malgun Gothic", "Noto Sans CJK KR", serif;
-  --fontara-claude-message-fallback: var(--fontara-claude-anthropic-serif-display-fallback);
+  --fontara-claude-anthropic-sans-root-fallback: var(--cds-font-sans, "anthropic-sans"),
+    "anthropic-sans", "Anthropic Sans", system-ui, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --fontara-claude-anthropic-sans-ui-fallback: var(--font-ui, "anthropic-sans"),
+    "anthropic-sans", "Anthropic Sans", system-ui, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --fontara-claude-anthropic-serif-display-fallback: "anthropic-serif",
+    "Anthropic Serif", Georgia, "Times New Roman", Times, serif;
+  --fontara-claude-message-fallback: var(
+    --_prose-font-body,
+    var(
+      --font-claude-response,
+      var(
+        --cds-font-voice,
+        var(--fontara-claude-anthropic-serif-display-fallback)
+      )
+    )
+  );
 }
 
 .cds-root[data-font],
@@ -36,43 +42,22 @@
   [data-sourcepos],
   [data-row-label],
   [data-row-label] *,
+  [data-row-main-button],
+  [data-row-main-button] *,
+  [data-roving-item],
   .dframe-fade-label,
   [class*="dframe-"],
-  [data-cds="Prose"],
-  .prose,
-  .standard-markdown,
-  .standard-markdown :where(
-    p,
-    span,
-    div,
-    li,
-    ul,
-    ol,
-    strong,
-    em,
-    b,
-    i,
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6,
-    blockquote,
-    td,
-    th
-  ),
   body,
   html
 ):not(
-  [style*="font-"],
-  [style*="font-"] *,
+  :is([style*="font-family" i], [style*="font:" i]),
+  :is([style*="font-family" i], [style*="font:" i]) *,
   pre,
   pre *,
   code,
   code *,
-  [class*="code" i],
-  [class*="code" i] *,
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   .katex,
   .katex *,
   math,
@@ -81,20 +66,10 @@
   [role="math"] *,
   mjx-container,
   mjx-container *,
-  [class*="icon" i],
-  [class*="icon" i] *,
-  [class*="symbol" i],
-  [class*="symbol" i] *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  [class*="fa-"],
-  [class*="fa-"] *,
-  mat-icon,
-  mat-icon *,
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-claude-anthropic-sans-ui-fallback) !important;
@@ -109,7 +84,17 @@
   --fontara-claude-message-fallback: var(--fontara-claude-anthropic-sans-ui-fallback);
 }
 
-:is(article, [data-test-render-count], .font-claude-message, [role="article"], [class*="font-user-message"]) :where(
+:is(
+  article,
+  [data-test-render-count],
+  .font-claude-message,
+  [role="article"],
+  [class*="font-user-message"],
+  [data-cds="Prose"],
+  [data-perf-reply-text],
+  .standard-markdown,
+  [data-testid*="message"]
+) :where(
   p,
   span,
   div,
@@ -118,6 +103,10 @@
   h1, h2, h3, h4, h5, h6,
   li,
   label,
+  em,
+  strong,
+  b,
+  i,
   blockquote,
   figcaption,
   summary,
@@ -126,36 +115,26 @@
   legend,
   [role="heading"]
 ):not(
-  [style*="font-"],
-  [style*="font-"] *,
+  :is([style*="font-family" i], [style*="font:" i]),
+  :is([style*="font-family" i], [style*="font:" i]) *,
   pre,
   pre *,
   code,
   code *,
-  [class*="code" i],
-  [class*="code" i] *,
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is([class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   .katex,
   .katex *,
-  math,
-  math *,
   [role="math"],
   [role="math"] *,
+  math,
+  math *,
   mjx-container,
   mjx-container *,
-  [class*="icon" i],
-  [class*="icon" i] *,
-  [class*="symbol" i],
-  [class*="symbol" i] *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  [class*="fa-"],
-  [class*="fa-"] *,
-  mat-icon,
-  mat-icon *,
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
-  :is(.fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *,
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is(.monaco-editor, .cm-editor, .hljs, [class*="language-"]) *
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], [data-cds="Icon"], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-claude-message-fallback) !important;

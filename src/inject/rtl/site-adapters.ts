@@ -334,16 +334,24 @@ function createChatGptAdapter(): RtlSiteAdapter {
         // individual text blocks choose a direction instead of the editor root.
         if (engine.isExcluded(child) || child.matches(wbSel)) return
         const childText = getTextWithoutSelector(child, mathGuard)
-        if (engine.needsRTL(childText)) {
+        if (
+          engine.needsRTL(childText) ||
+          (child.matches('p[dir="auto"]') &&
+            detectDominantDirection(childText) === "rtl")
+        ) {
           engine.applyRTL(child)
-          if (
-            child.tagName === "LI" &&
-            child.parentElement &&
-            (child.parentElement.tagName === "UL" ||
-              child.parentElement.tagName === "OL")
-          ) {
-            engine.rememberStyle(child.parentElement, [])
-            child.parentElement.setAttribute("dir", "rtl")
+          const listItem = child.tagName === "LI" ? child : child.closest("li")
+          if (listItem) {
+            engine.rememberStyle(listItem, [])
+            listItem.setAttribute("dir", "rtl")
+            const listRoot = listItem.parentElement
+            if (
+              listRoot &&
+              (listRoot.tagName === "UL" || listRoot.tagName === "OL")
+            ) {
+              engine.rememberStyle(listRoot, [])
+              listRoot.setAttribute("dir", "rtl")
+            }
           }
           if (child.tagName === "TD" || child.tagName === "TH") {
             const table = child.closest("table")
@@ -705,22 +713,27 @@ function createGeminiAdapter(): RtlSiteAdapter {
           unicode-bidi: embed;
         }
 
-        ${messageScope} :is(ul, ol)[dir="rtl"] {
+        ${messageScope} :is(ul, ol)[dir="rtl"]:not(.md-content *) {
           direction: rtl !important;
           text-align: right !important;
           padding-inline-start: 2rem !important;
           padding-inline-end: 0 !important;
         }
 
-        ${messageScope} :is(ul, ol)[dir="rtl"],
-        ${messageScope} :is(ul, ol):has(> li[dir="rtl"]) {
+        ${messageScope} :is(ul, ol):not(.md-content *):is([dir="rtl"], :has(> li[dir="rtl"])) {
           list-style-type: revert !important;
         }
 
-        ${messageScope} :is(ul, ol)[dir="rtl"] > li,
-        ${messageScope} :is(ul, ol) > li[dir="rtl"] {
+        ${messageScope} :is(ul, ol):not(.md-content *)[dir="rtl"] > li,
+        ${messageScope} :is(ul, ol):not(.md-content *) > li[dir="rtl"] {
           list-style-type: inherit !important;
           list-style-position: outside !important;
+        }
+
+        ${messageScope} :is(ul, ol):not(.md-content *)[dir="rtl"] > li::before,
+        ${messageScope} :is(ul, ol):not(.md-content *) > li[dir="rtl"]::before {
+          content: none !important;
+          display: none !important;
         }
 
         ${messageScope} :is(ul, ol)[dir="rtl"] > li:not([dir="ltr"]),

@@ -12,6 +12,9 @@ This project follows a practical release-note format:
 
 ## Unreleased
 
+- Fixed font application across Gemini and Claude conversation sidebars, hover
+  previews, and response messages containing CSS custom properties. Aligned
+  ChatGPT Canvas RTL list markers and parents to the right.
 - Added versioned browser downloads, SHA-256 manifests, build metadata, and
   installation guidance to GitHub releases without rebuilding verified packages.
 - Added automatic collection of matching store-signed Chrome CRX3 and Firefox

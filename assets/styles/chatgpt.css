@@ -81,14 +81,14 @@ body :where(
 ):not(
   :is([style*="font-family" i], [style*="font:" i]),
   :is([style*="font-family" i], [style*="font:" i]) *,
-  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
-  :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
+  :is(pre, code, [class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
+  :is(pre, code, [class*="code" i], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   :is(.katex, math, [role="math"], mjx-container),
   :is(.katex, math, [role="math"], mjx-container) *,
   [aria-hidden="true"],
   [aria-hidden="true"] *,
-  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]),
-  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .fass, .fasr, .fat, .icofont, .typcn, mu, [class*="mu-"], [class*="vjs-"]) *
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]),
+  :is([class*="icon" i], [class*="symbol" i], mat-icon, [class*="fa-"], .fa, .fab, .fad, .fal, .far, .fas, .icofont, .typcn, [class*="mu-"], [class*="vjs-"]) *
 ) {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-font-sans-child-fallback) !important;
@@ -117,18 +117,20 @@ body :where(
   text-align: right !important;
 }
 
-[class*="writing-block"] :is(p, h1, h2, h3, h4, h5, h6, li, th, td, blockquote)[dir="rtl"] {
+:is([class*="writing-block"], .ProseMirror) :is(p, h1, h2, h3, h4, h5, h6, th, td, blockquote)[dir="rtl"],
+:is([class*="writing-block"], .ProseMirror)[dir="rtl"] li,
+:is([class*="writing-block"], .ProseMirror) li:is([dir="rtl"], :has([dir="rtl"]), :has(p[dir="auto"])) {
   direction: rtl !important;
   text-align: right !important;
 }
 
-[class*="writing-block"] :is(ul, ol)[dir="rtl"],
-[class*="writing-block"] :is(ul, ol):has(> li[dir="rtl"]) {
+:is([class*="writing-block"], .ProseMirror)[dir="rtl"] :is(ul, ol),
+:is([class*="writing-block"], .ProseMirror) :is(ul, ol):is([dir="rtl"], :has([dir="rtl"]), :has(p[dir="auto"])) {
   padding-inline: 1.5rem 0 !important;
   direction: rtl !important;
   text-align: right !important;
 }
 
-[class*="writing-block"] table:has([dir="rtl"]) {
+:is([class*="writing-block"], .ProseMirror) table:has([dir="rtl"]) {
   direction: rtl !important;
 }

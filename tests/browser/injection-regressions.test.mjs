@@ -958,3 +958,46 @@ test("Chrome chatbot font rules preserve code, math and nested symbol fonts", as
     }
   })
 })
+
+test("Chrome Gemini font rules apply to sidebar navigation items with icons", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    const css = readFileSync("assets/styles/gemini.css", "utf8")
+    const result = await page.evaluate((css) => {
+      document.body.innerHTML = `
+        <style>
+          :root { --fontara-font: "FontaraTest"; }
+          .material-symbols-outlined { font-family: "SymbolFont"; }
+        </style>
+        <nav>
+          <a class="mat-mdc-list-item mdc-list-item mat-mdc-tooltip-trigger gem-nav-list-item gmat-override mat-mdc-list-item-single-line mdc-list-item--with-one-line mdc-list-item--with-leading-icon">
+            <span class="material-symbols-outlined"><span id="sidebar-icon">chat</span></span>
+            <span class="mdc-list-item__content">
+              <span class="mdc-list-item__primary-text" id="sidebar-title">منابع کنکور ارشد</span>
+            </span>
+          </a>
+        </nav>
+      `
+      const style = document.createElement("style")
+      style.textContent = css
+      document.head.appendChild(style)
+      const titleFont = getComputedStyle(
+        document.getElementById("sidebar-title")
+      ).fontFamily
+      const iconFont = getComputedStyle(
+        document.getElementById("sidebar-icon")
+      ).fontFamily
+      style.remove()
+      return { titleFont, iconFont }
+    }, css)
+    assert.match(
+      result.titleFont,
+      /FontaraTest/,
+      "Gemini sidebar title applies font"
+    )
+    assert.equal(
+      result.iconFont,
+      "SymbolFont",
+      "Gemini sidebar icon preserves symbol font"
+    )
+  })
+})

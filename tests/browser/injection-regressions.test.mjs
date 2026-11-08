@@ -25,6 +25,7 @@ async function withRuntimePage(context, callback) {
         export { RtlEngine } from "./src/inject/rtl/rtl-engine";
         export { RtlAutoDirection } from "./src/inject/rtl/auto-direction";
         export { createTextStrokeCSS } from "./src/generators/text-stroke";
+        export { injectResolvedFontStyles, removeFontStyles } from "./src/inject/font-style-manager";
       `,
       resolveDir: process.cwd()
     },
@@ -645,13 +646,20 @@ test("Chrome ChatGPT typography preserves authored fonts, code and titlebar geom
           <div class="CodeMirror"><span id="codemirror-code">const greeting = "سلام"</span></div>
         </div>
       </body>`)
-    await page.addStyleTag({
-      content: readFileSync("assets/styles/chatgpt.css", "utf8")
-    })
-    await page.evaluate(() => {
-      window.adapter = FontaraRegressionRuntime.createRtlSiteAdapter("chatgpt")
-      window.adapter.enable()
-    })
+    await page.evaluate(
+      (customCSS) => {
+        FontaraRegressionRuntime.injectResolvedFontStyles({
+          active: true,
+          fontName: "FontaraRegression",
+          fontFaceCSS: "",
+          customCSS
+        })
+        window.adapter =
+          FontaraRegressionRuntime.createRtlSiteAdapter("chatgpt")
+        window.adapter.enable()
+      },
+      readFileSync("assets/styles/chatgpt.css", "utf8")
+    )
     await page.waitForFunction(
       () => document.getElementById("canvas-text").dir === "rtl"
     )
@@ -694,6 +702,76 @@ test("Chrome ChatGPT typography preserves authored fonts, code and titlebar geom
     assert.equal(result.headerContain, "none")
     assert.equal(result.mainOverflow, "visible")
     assert.equal(result.mainContain, "none")
+  })
+})
+
+test("Chrome ChatGPT fonts cover missed headings alongside matching chat text and choices", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.setContent(`
+      <style>.site-text { font-family: serif; }</style>
+      <main class="site-text">
+        <div style="--message-font-family: serif; --message-font: serif">
+          <h2 id="heading">عنوان <strong id="bold">نمونه</strong></h2>
+        </div>
+        <p id="paragraph">این یک متن آزمایشی است</p>
+        <button id="choice">گزینه نمونه</button>
+        <p id="authored" style="font-family: Georgia">متن</p>
+        <pre style="font-family: monospace"><code id="code">const x = 1</code></pre>
+      </main>`)
+    const css = readFileSync("assets/styles/chatgpt.css", "utf8")
+    await page.evaluate((customCSS) => {
+      FontaraRegressionRuntime.injectResolvedFontStyles({
+        active: true,
+        fontName: "FontaraRegression",
+        fontFaceCSS: "",
+        customCSS
+      })
+    }, css)
+    const fonts = await page.evaluate(() =>
+      Object.fromEntries(
+        ["heading", "paragraph", "bold", "choice", "authored", "code"].map(
+          (id) => [id, getComputedStyle(document.getElementById(id)).fontFamily]
+        )
+      )
+    )
+    for (const id of ["paragraph", "choice", "heading", "bold"]) {
+      assert.match(fonts[id], /FontaraRegression/, id)
+    }
+    assert.match(fonts.authored, /Georgia/)
+    assert.doesNotMatch(fonts.code, /FontaraRegression/)
+
+    await page.evaluate(() => {
+      const p = document.createElement("p")
+      p.id = "streamed"
+      p.style.setProperty("--stream-font", "serif")
+      p.textContent = "سلام دنیا"
+      document.querySelector("main").append(p)
+      document.getElementById("authored").style.removeProperty("font-family")
+    })
+    await page.waitForFunction(() =>
+      ["streamed", "authored"].every((id) =>
+        getComputedStyle(document.getElementById(id)).fontFamily.includes(
+          "FontaraRegression"
+        )
+      )
+    )
+    await page.evaluate(() => {
+      document.getElementById("streamed").style.fontFamily = "Georgia"
+    })
+    await page.waitForFunction(() =>
+      getComputedStyle(document.getElementById("streamed")).fontFamily.includes(
+        "Georgia"
+      )
+    )
+    await page.evaluate(() => FontaraRegressionRuntime.removeFontStyles())
+    assert.equal(await page.$("[data-fontara-authored-font]"), null)
+    assert.doesNotMatch(
+      await page.$eval(
+        "#paragraph",
+        (element) => getComputedStyle(element).fontFamily
+      ),
+      /FontaraRegression/
+    )
   })
 })
 
@@ -916,9 +994,12 @@ test("Chrome chatbot font rules preserve code, math and nested symbol fonts", as
             <span style='font-family: "AuthoredFont"'><span id="authored-font">special text</span></span>
           </article>
         `
-        const style = document.createElement("style")
-        style.textContent = css
-        document.head.appendChild(style)
+        FontaraRegressionRuntime.injectResolvedFontStyles({
+          active: true,
+          fontName: "FontaraTest",
+          fontFaceCSS: "",
+          customCSS: css
+        })
         const families = Object.fromEntries(
           [
             "text",
@@ -935,7 +1016,7 @@ test("Chrome chatbot font rules preserve code, math and nested symbol fonts", as
             getComputedStyle(document.getElementById(id)).fontFamily
           ])
         )
-        style.remove()
+        FontaraRegressionRuntime.removeFontStyles()
         return families
       }, css)
       assert.match(result.text, /FontaraTest/, site)

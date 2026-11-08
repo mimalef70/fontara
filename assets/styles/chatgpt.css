@@ -79,8 +79,8 @@ body :where(
   [role="option"],
   [role="tab"]
 ):not(
-  :is([style*="font-family" i], [style*="font:" i]),
-  :is([style*="font-family" i], [style*="font:" i]) *,
+  [data-fontara-authored-font],
+  [data-fontara-authored-font] *,
   :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]),
   :is(pre, code, [class*="code-block"], [class*="CodeBlock"], [class*="code-snippet"], .CodeMirror, .monaco-editor, .cm-editor, .hljs, [class*="language-"]) *,
   :is(.katex, math, [role="math"], mjx-container),

@@ -775,6 +775,65 @@ test("Chrome ChatGPT fonts cover missed headings alongside matching chat text an
   })
 })
 
+test("Chrome ChatGPT clears copied font exclusions after cloned styles are stripped", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.setContent(`
+      <style>.site-text { font-family: serif; }</style>
+      <main class="site-text">
+        <section id="template" style="font-family: Georgia">
+          <p>متن نمونه</p>
+          <div style="font-family: Georgia"><p>عنوان نمونه</p></div>
+        </section>
+      </main>`)
+    await page.evaluate(
+      (customCSS) => {
+        FontaraRegressionRuntime.injectResolvedFontStyles({
+          active: true,
+          fontName: "FontaraRegression",
+          fontFaceCSS: "",
+          customCSS
+        })
+      },
+      readFileSync("assets/styles/chatgpt.css", "utf8")
+    )
+    const result = await page.evaluate(async () => {
+      const source = document.getElementById("template")
+      const copy = source.cloneNode(true)
+      copy.id = "stripped-copy"
+      copy.removeAttribute("style")
+      for (const element of copy.querySelectorAll("[style]")) {
+        element.removeAttribute("style")
+      }
+      const authoredCopy = source.cloneNode(true)
+      authoredCopy.id = "authored-copy"
+      document.querySelector("main").append(copy, authoredCopy)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      const result = {
+        fonts: [...copy.querySelectorAll("p")].map(
+          (element) => getComputedStyle(element).fontFamily
+        ),
+        staleMarkers:
+          copy.querySelectorAll("[data-fontara-authored-font]").length +
+          Number(copy.hasAttribute("data-fontara-authored-font")),
+        authoredFonts: [...authoredCopy.querySelectorAll("p")].map(
+          (element) => getComputedStyle(element).fontFamily
+        )
+      }
+      FontaraRegressionRuntime.removeFontStyles()
+      return {
+        ...result,
+        markersAfterDisable: document.querySelectorAll(
+          "[data-fontara-authored-font]"
+        ).length
+      }
+    })
+    for (const font of result.fonts) assert.match(font, /FontaraRegression/)
+    assert.equal(result.staleMarkers, 0)
+    for (const font of result.authoredFonts) assert.match(font, /Georgia/)
+    assert.equal(result.markersAfterDisable, 0)
+  })
+})
+
 test("Chrome ChatGPT restores writing-block list and table roots after edits and disable", async (context) => {
   await withRuntimePage(context, async (page) => {
     await page.setContent(`

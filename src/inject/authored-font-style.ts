@@ -13,14 +13,17 @@ function refresh(element: Element): void {
   if (authored) {
     element.setAttribute(ATTRIBUTE, "")
     marked.add(element)
-  } else if (marked.delete(element)) {
+  } else {
+    marked.delete(element)
     element.removeAttribute(ATTRIBUTE)
   }
 }
 
 function scan(root: Element): void {
   refresh(root)
-  for (const element of root.querySelectorAll("[style]")) refresh(element)
+  for (const element of root.querySelectorAll(`[style], [${ATTRIBUTE}]`)) {
+    refresh(element)
+  }
 }
 
 export function trackAuthoredFontStyles(): void {
